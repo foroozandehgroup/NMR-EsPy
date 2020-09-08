@@ -1,0 +1,32 @@
+18:20:58
+07-09-2020
+Example estimation result for NMR-EsPy docs.
+
+Experiment Information:
+data path:               /opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1
+sweep width:             5494.5055Hz (10.9861ppm)
+trans. frequency:        500.1322MHz
+basic trans. frequency:  500.1300MHz
+trans. offset:           2249.2060Hz (4.4972ppm)
+
+Region Considered:
+2643.2517 - 2590.7681Hz (5.2851 - 5.1802ppm)
+
+# │amplitude │phase      │frequency (Hz) │frequency (ppm) │damping factor │integrals │normalised integrals 
+──┼──────────┼───────────┼───────────────┼────────────────┼───────────────┼──────────┼─────────────────────
+1 │1.6086E4  │-5.5352E-3 │2.6020E3       │5.2027          │7.4556         │8.8382E7  │0.27516              
+2 │3.2920E4  │2.8302E-3  │2.6094E3       │5.2175          │6.7415         │1.8087E8  │0.56312              
+3 │1.6443E4  │2.7258E-4  │2.6118E3       │5.2221          │7.6353         │9.0346E7  │0.28128              
+4 │1.9644E4  │1.6782E-3  │2.6168E3       │5.2322          │8.56           │1.0793E8  │0.33603              
+5 │3.0082E4  │2.2001E-3  │2.6192E3       │5.2369          │6.3481         │1.6528E8  │0.51458              
+6 │723.92    │1.2423E-3  │2.6221E3       │5.2428          │5.1161         │3.9775E6  │0.012383             
+7 │2.2091E4  │4.1350E-3  │2.6263E3       │5.2513          │8.771          │1.2138E8  │0.37789              
+8 │871.53    │1.3454E-3  │2.6301E3       │5.2588          │7.3168         │4.7885E6  │0.014908             
+9 │4.9538E3  │2.4237E-3  │2.6366E3       │5.2719          │7.3795         │2.7218E7  │0.084739             
+
+Estimation performed using NMR-EsPy
+Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk
+If used in any publications, please cite:
+<Ref to paper>
+For more information, visit our group website:
+http://foroozandeh.chem.ox.ac.uk/home

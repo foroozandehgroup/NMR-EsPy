@@ -1,0 +1,27 @@
+# FIGURE
+figure.autolayout:     True
+
+# SAVEFIG
+savefig.dpi:           600
+savefig.transparent:   True
+savefig.bbox:          tight
+
+# AXES
+axes.linewidth:        1.2
+axes.spines.right:     False
+axes.spines.left:      False
+axes.spines.top:       False
+axes.xmargin:          .0
+axes.ymargin:          .03
+axes.formatter.limits: -99, 99
+
+# LINES
+lines.linewidth:       1.2
+
+# FONT
+font.family:           serif
+
+# TICKS
+xtick.labelsize:       small
+ytick.left:            False
+ytick.labelleft:       False

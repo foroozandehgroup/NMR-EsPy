@@ -1,0 +1,31 @@
+##TITLE= Audit trail, TopSpin 4.0.8
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= simon
+$$ /opt/topspin4.0.8/examdata/exam1d_1H/1000/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2007-09-18 11:21:15.984 +0200>,<Administrator>,<APOLLON>,<go>,<TOPSPIN 2.1.b.10>,
+      <created by zg
+	started at 2007-09-18 11:19:02.000 +0200,
+	POWCHK enabled, PULCHK disabled,
+       configuration hash MD5:
+       83 02 B3 85 E9 E8 BF 76 C4 05 9F 99 79 2C 19 F3
+       data hash MD5: 64K
+       0C AE 36 8D 90 14 46 80 38 F8 85 D6 79 3C 2E 70>)
+(   2,<2020-06-22 23:38:43.750 +0100>,<simon>,<precision>,<proc1d>,<TopSpin 4.0.8>,
+      <convdta from       1 "exam1d_1H" "/opt/topspin4.0.8/examdata"
+       data hash MD5: 65384
+       9E F5 1B DB 22 E1 3C D0 0A 32 B3 F4 03 F0 DE AF>)
+(   3,<2020-06-22 23:38:43.965 +0100>,<simon>,<precision>,<proc1d>,<TopSpin 4.0.8>,
+      <Start of raw data processing
+       efp LB = 0.3 FT_mod = 6 PKNL = 1 PHC0 = -296.1665 PHC1 = 1.796566 SI = 32K 
+       data hash MD5: 32K
+       55 F2 8F B1 E9 1B 9C D0 20 52 52 57 2A 72 5F F5>)
+(   4,<2020-06-22 23:38:44.007 +0100>,<simon>,<precision>,<proc1d>,<TopSpin 4.0.8>,
+      <abs n ABSG = 5 
+       data hash MD5: 32K
+       F0 51 B4 1A 10 62 84 AD 31 2C BD 72 79 D7 2F 4D>)
+##END=
+
+$$ hash MD5
+$$ 8C 5C E1 C3 25 74 55 97 F6 73 6A B4 C0 B3 CC FD
