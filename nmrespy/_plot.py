@@ -85,7 +85,7 @@ def plotres_1d(data, peaks, shifts, region, nuc, data_col,
     print(xlab)
     ax.set_xlabel(xlab)
 
-    return fig, ax, lines, labels
+    return fig, ax, lines, labs
 
 
 def _get_ymaxmin(lines, left, right):
