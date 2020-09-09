@@ -283,7 +283,7 @@ def _write_pdf(info, table, path, descrip, timestamp):
     msg += r'\end{minipage}' + '\n'
     # NMR-EsPy logo
     msg += r'\begin{minipage}[b][2.5cm][c]{.27\textwidth}' + '\n'
-    msg += r'\href{http://foroozandeh.chem.ox.ac.uk/home}' \
+    msg += r'\href{https://github.com/foroozandehgroup/NMR-EsPy}' \
            + r'{\includegraphics[scale=0.1]{' \
            + f'{logopath}' \
            + r'}}' + '\n'
@@ -708,7 +708,7 @@ def _strval(value, sf, sci_lims):
         msg = f'\n{R}sci_lims[0] should by an int less than 0, and' \
               + f' sci_lims[1] should be an int greater than 0'
         raise ValueError(msg)
-    
+
     # determine number of decimal points
     dp = sf - int(np.ceil(np.log10(np.absolute(value))))
     dp = 0 if dp < 0 else dp
