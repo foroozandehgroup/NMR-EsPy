@@ -228,7 +228,16 @@ Here are the resulting files:
 * :download:`example.pdf <_static/example.pdf>`
 * :download:`example_plot.pdf <_static/example_plot.pdf>`
 
-A full script for achieving everything covered in this tutorial is as follows:
+A full script for achieving everything covered in this tutorial is given below.
+In this example, some customistation of the plot has been done, including:
+
+* Making the plot of the original data black instead of the default grey, by
+  setting ``datacol='k'`` in :py:meth:`~nmrespy.core.plot_result`
+* Colouring the oscillator plots using matplotib's `winter` colormap, by
+  setting ``osccols='winter'`` in :py:meth:`~nmrespy.core.plot_result`
+  (see https://matplotlib.org/3.1.0/tutorials/colors/colormaps.html).
+* Manually tweaking the locations of some of the oscillator labels to improve
+  clarity.
 
 .. code-block:: python
    :linenos:
@@ -251,17 +260,21 @@ A full script for achieving everything covered in this tutorial is as follows:
    info.pickle_save(fname='example.pkl')
 
    # write to textfile and pdf
+   # N.B. The appropriate file extension is added automatically if not given
    msg = 'Example estimation result for NMR-EsPy docs.'
    info.write_result(descrip=msg, fname='example') # textfile is default
    info.write_result(descrip=msg, fname='example', format='pdf')
 
    # construct figure of result
-   fig, ax, lines, labels = info.plot_result(datacol='k',
-                                             osccols='winter')
+   fig, ax, lines, labs = info.plot_result(datacol='k',
+                                           osccols='winter')
 
-   # tweak the location of some of the oscillator labels to make more
-   # aesthetically pleasing...
+   # tweak locations of oscillator labels to for aesthetic improvement
+   labs['osc1'].set_x(5.2013)
+   labs['osc2'].set_x(5.216)
+   labs['osc5'].set_x(5.2393)
+   labs['osc7'].set_x(5.2497)
+   labs['osc9'].set_x(5.2705)
 
-
-   # save figure to PDF
+   # save figure
    fig.savefig('example_plot.pdf', format='pdf')

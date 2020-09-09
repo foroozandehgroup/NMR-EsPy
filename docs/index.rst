@@ -35,6 +35,12 @@
 Welcome to NMR-EsPy's documentation!
 ====================================
 
+.. image:: ../nmrespy/pics/nmrespy_full.png
+   :height: 2129px
+   :width: 3599px
+   :scale: 10 %
+   :align: center
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
