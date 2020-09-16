@@ -6,8 +6,6 @@ import pickle
 import re
 import sys
 
-from memory_profiler import profile
-
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 from scipy.integrate import simps
@@ -895,7 +893,6 @@ class NMREsPyBruker:
         self.highs = highs_idx
         self.lows = lows_idx
 
-    @profile
     def matrix_pencil(self, M_in=0, trim=None, func_print=True):
         """Implementation of the 1D Matrix Pencil Method [1]_ [2]_ or 2D
         Modified Matrix Enchancement and Matrix Pencil (MMEMP) method [3]_
@@ -1128,9 +1125,8 @@ class NMREsPyBruker:
         generate. By default, it is advised to use `'trust_region'`, however
         if your guess has a large number of signals (as a rule of thmub,
         > 50), you may find `'lbfgs'` to performs more effectively.
-
-
         """
+        
         # TODO: include freq threshold
 
         dim = self.get_dim()

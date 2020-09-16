@@ -14,45 +14,42 @@ from scipy.linalg import hankel
 from scipy import sparse
 from scipy.sparse.linalg import svds
 
-from memory_profiler import profile
-
 from ._timing import _print_time
 from ._cols import *
 if USE_COLORAMA:
     import colorama
 
-@profile
+
 def mpm_1d(data, M_in, sw, offset, fprint):
-    """
-    mpm_1d(data, M_in, sw, offset, fprint)
+    """1D Matrix Pencil Method, with the option of model order selection
+    using the Minimum Description Length (MDL)
 
-    ———Description—————————————————————————————
-    Matrix Pencil Method for 1D time-domain signal analysis.
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Signal to be considered (unnormalised).
 
-    ———Parameters——————————————————————————————
-    data - ndarray
-        1D data array to be considered (unnormalised).
-    M_in - int
-        The number of oscillators. If 0, the number of oscilators will
+    M_in : int
+        The number of oscillators. If ``0``, the number of oscilators will
         be estimated using the MDL.
-    sw - float
+
+    sw : float
         The experiment sweep width in Hz.
-    offset - tuple
+
+    offset : float
         The experiment transmitter offset frequency in Hz.
-    fprint - bool
+
+    fprint : bool
         Flag specifiying whether to print infomation to the terminal as
         the method runs.
 
-    ———Returns—————————————————————————————————
-    para - ndarray
-        Array of oscillators parameters. If M_in is 0, the shape of para
-        will be (MDL, 4), where MDL is the result of using the Minimum
-        Description Length. If M_in > 0, the shape of para will be
-        (M_in, 4).
-        Each element along axis-0 will have elements ordered as follows:
-        [amplitude, phase, frequency, damping]
+    Returns
+    -------
+    para : numpy.ndarray
+        Array of oscillators parameters.
 
-    ———Referecnes——————————————————————————————
+    Referecnes
+    ----------
     [1] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
     parameters of exponentially damped/undamped sinusoids in noise”. In:
     IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
