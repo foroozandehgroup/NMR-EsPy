@@ -132,6 +132,8 @@ class NMREsPyBruker:
         msg += f'{self.theta0}, '
         msg += f'{self.theta})'
 
+        return msg
+
 
     def __str__(self):
         dtype = self.get_dtype()
