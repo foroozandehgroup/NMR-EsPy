@@ -79,7 +79,9 @@ class NMREsPyBruker:
     """
 
     def __init__(self, dtype, data, path, sw, off, n, sfo, nuc, endian,
-                 intfloat, dim):
+                 intfloat, dim, filt_spec=None, virt_echo=None,
+                 half_echo=None, ve_n=None, ve_sw=None, ve_off=None,
+                 highs=None, lows=None, theta0=None, theta=None):
 
         self.dtype = dtype # type of data ('raw' or 'pdata')
         self.data = data
@@ -92,12 +94,22 @@ class NMREsPyBruker:
         self.endian = endian # endianness of binary file(s)
         self.intfloat = intfloat # data type in binary file(s)
         self.dim = dim # data dimesnion
+        self.filt_spec = filt_spec # filtered spectrum
+        self.virt_echo = virt_echo # virtual echo
+        self.half_echo = half_echo # first half of virt_echo
+        self.ve_n = ve_n # number of points in virtual echo if cut
+        self.ve_sw = ve_sw # sw width of virtual echo if cut
+        self.ve_off = ve_off # offset of virtual echo if cut
+        self.highs = highs # idx values corresponding to highest ppms of region
+        self.lows = lows # idx values corresponding to lowest ppms of region
+        self.theta0 = theta0 # mpm result
+        self.theta = theta # nlp result
 
         # TODO add checks here
 
 
     def __repr__(self):
-        msg = f'nmrespy.NMREsPyBruker('
+        msg = f'nmrespy.core.NMREsPyBruker('
         msg += f'{self.dtype}, '
         msg += f'{self.data}, '
         msg += f'{self.path}, '
@@ -108,8 +120,18 @@ class NMREsPyBruker:
         msg += f'{self.nuc}, '
         msg += f'{self.endian}, '
         msg += f'{self.intfloat}, '
-        msg += f'{self.dim})'
-        return msg
+        msg += f'{self.dim}, '
+        msg += f'{self.filt_spec}, '
+        msg += f'{self.virt_echo}, '
+        msg += f'{self.half_echo}, '
+        msg += f'{self.ve_n}, '
+        msg += f'{self.ve_sw}, '
+        msg += f'{self.ve_off}, '
+        msg += f'{self.highs}, '
+        msg += f'{self.lows}, '
+        msg += f'{self.theta0}, '
+        msg += f'{self.theta})'
+
 
     def __str__(self):
         dtype = self.get_dtype()
@@ -725,13 +747,13 @@ class NMREsPyBruker:
                                           kill)
 
     def _get_nondefault_param(self, name, method, kill):
-        """Retrieve attributes that are not present in the class by
-        default. Raise error if not found with advise on why"""
-        if name in dir(self):
+        """Retrieve attributes that may be assigned the value None. Warn user/
+        raise error depending on the value of ``kill``"""
+        if self.__dict__[name]: # determine if attribute is not None
             return self.__dict__[name]
         else:
             if kill is True:
-                raise AttributeNotFoundError(name, method)
+                raise AttributeIsNoneError(name, method)
             else:
                 return None
 
@@ -1126,7 +1148,7 @@ class NMREsPyBruker:
         if your guess has a large number of signals (as a rule of thmub,
         > 50), you may find `'lbfgs'` to performs more effectively.
         """
-        
+
         # TODO: include freq threshold
 
         dim = self.get_dim()

@@ -74,12 +74,11 @@ class PhaseVarianceAmbiguityError(Exception):
         super().__init__(self.msg)
 
 
-class AttributeNotFoundError(Exception):
-    """Raise when the user calls a get_<attr>() method, but the attribute
-    doesn't exists, as it is necessary to generate it using other methods
-    first"""
+class AttributeIsNoneError(Exception):
+    """Raise when the user calls a ``get_<attr>`` method, but the attribute
+    is None"""
     def __init__(self, attribute, method):
-        self.msg = f'\n{R}{attribute} doesn\'t exist. This is' \
+        self.msg = f'\n{R}{attribute} is None. A non-NoneType value is' \
                    + f' generated after calling {method} on the class.' \
                    + f' Perhaps you are yet to do this?{END}'
         super().__init__(self.msg)
