@@ -20,9 +20,9 @@ def import_bruker_fid(dir, ask_convdta=True):
         Absolute path to data directory.
 
     ask_convdta : bool, optional
-        If `True` (default), the user will be warned that the data should
-        have its digitial filter removed prior to importing. If `False`,
-        the user is not prompted.
+        If ``True`` (default), the user will be warned that the data should
+        have its digitial filter removed prior to importing. If ``False``,
+        the user is not warned.
 
     Returns
     -------
@@ -50,13 +50,11 @@ def import_bruker_fid(dir, ask_convdta=True):
     To do this, open the data you wish to analyse in TopSpin,
     and enter ``convdta`` in the bottom-left command line.
     You will be prompted to enter a value for the new data
-    directory. It is this value you should use in for `dir`,
+    directory. It is this value you should use in `dir`,
     not the one corresponding to the original (digitally filtered)
     signal.
-
-
-
     """
+
     # Show a warning checking that the data being imported has had
     # |convdta| applied to it. Prompts user to proceed or quit
     if ask_convdta:
@@ -151,35 +149,40 @@ def import_bruker_fid(dir, ask_convdta=True):
 
 
 def import_bruker_pdata(dir):
-    """
-    import_bruker_pdata(dir)
-
-    Decription
-    ----------
-    Import processed data stored in Bruker format, and retrieve other
-    relevent parameters.
+    """ Create a new estimation instance containing Bruker processed data
 
     Parameters
     ----------
-    dir - string
-        Absolute path to data directory. This path should satisfy the
-        following:
-
-        1D data:
-        * a file with path dir/1r exists
-        * a file with path dir/procs exists
-        * a file with path dir/../../acqus exists
-
-        2D data:
-        * a file with path dir/2rr exists
-        * a file with path dir/procs exists
-        * a file with path dir/proc2s exists
-        * a file with path dir/../../acqus exists
-        * a file with path dir/../../acqu2s exists
+    dir : str
+        Absolute path to data directory.
 
     Returns
     -------
-    NMREsPyBruker instance
+    :py:class:`nmrespy.core.NMREsPyBruker`
+
+    Notes
+    -----
+    *Directory Requirements* \ The path specified by `dir` should contain the
+    following files depending on whether you are importing 1- or 2-dimesnional
+    data:
+
+    * 1D data
+
+      - ``dir/1r``
+      - ``dir/1i`` (optional)
+      - ``dir/../../acqus``
+      - ``dir/procs``
+
+    * 2D data
+
+      - ``dir/2rr``
+      - ``dir/2ri`` (optional)
+      - ``dir/2ir`` (optional)
+      - ``dir/2ii`` (optional)
+      - ``dir/../../acqus``
+      - ``dir/../../acqu2s``
+      - ``dir/procs``
+      - ``dir/proc2s``
     """
 
     if os.path.isdir(dir) is not True:
@@ -279,27 +282,38 @@ def import_bruker_pdata(dir):
                          dtypp, dim)
 
 
-def pickle_load(fname='NMREsPy_result.pkl', dir='.'):
-    """
-    pickle_load(fname='NMREsPy_result.pkl', dir='.')
-
-    Decription
-    ----------
-    Imports a serialised byte stream contained in a specified file, using
+def pickle_load(fname, dir='.'):
+    """Deserialises and imports a byte stream contained in a specified file, using
     Python's "Pickling" protocol.
 
     Parameters
     ----------
-    fname - str
+    fname : str
         Name of the file containing the serialised object. The extension
-        '.pkl' may be included or omitted. Default is 'NMREsPy_result.pkl'
-    dir - str
-        Name of the directory the file is contained in. Default is '.',
-        denoting the current working directory.
+        '.pkl' may be included or omitted.
+    dir : str, deafult: '.'
+        Name of the directory the file is contained in.
 
     Returns
     -------
-    NMREsPyBruker instance
+    :py:class:`nmrespy.core.NMREsPyBruker`
+
+    Notes
+    -----
+    .. warning::
+       `From the Python docs:`
+
+       "The pickle module is not secure. Only unpickle data you trust.
+       It is possible to construct malicious pickle data which will execute
+       arbitrary code during unpickling. Never unpickle data that could have
+       come from an untrusted source, or that could have been tampered with."
+
+       You should only use :py:func:`~nmrespy.load.pickle_load` on files that
+       you are 100% certain were generated using
+       :py:meth:`~nmrespy.core.NMREsPyBruker.pickle_save`. If you use
+       :py:func:`~nmrespy.load.pickle_load` on a .pkl file, and the resulting
+       output is not an instance of :py:class:`~nmrespy.core.NMREsPyBruker`,
+       you will be warned.
     """
 
     if fname[-4:] == '.pkl':

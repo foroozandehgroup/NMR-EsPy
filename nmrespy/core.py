@@ -23,8 +23,9 @@ class NMREsPyBruker:
     """A class for consideration of Bruker data.
 
     .. note::
-        An instance of this class should not be invoked directly. Instead,
-        you should use one of the following functions:
+        An instance of this class should not be invoked directly. You should
+        use one of the following functions to generate/de-serialise an
+        instance of `NMREsPyBruker`:
 
         * :py:func:`~nmrespy.load.import_bruker_fid`
         * :py:func:`~nmrespy.load.import_bruker_pdata`
@@ -62,8 +63,8 @@ class NMREsPyBruker:
         The transmitter frequency in each dimension (MHz)
 
     nuc : (str,) or (str, str)
-        The nucleus in each dimension. Element will be of the form '1H',
-        '13C', '15N', etc.
+        The nucleus in each dimension. Elements will be of the form ``'1H'``,
+        ``'13C'``, ``'15N'``, etc.
 
     endian : 0, 1
         The endianess of the binary files. This is equivalent to either
@@ -74,8 +75,46 @@ class NMREsPyBruker:
         This is equivalent to DTYPA or DTYPP, depending on the data type.
         0 indicates the data is stored as 4-bit integers. 2 indicates the
         data is stored as 8-bit floats.
+
     dim : 1, 2
         The dimension of the data.
+
+    filt_spec : numpy.ndarray or None, default: `None`
+        Spectral data which has been filtered using :py:meth:`virtual_echo`
+
+    virt_echo : numpy.ndarray or None, default: `None`
+        Time-domain virtual echo derived using :py:meth:`virtual_echo`
+
+    half_echo : numpy.ndarray or None, default: `None`
+        First half of ``virt_echo``, derived using :py:meth:`virtual_echo`
+
+    ve_n : (int,), (int, int) or None, default: `None`
+        The size of the virtual echo generated using :py:meth:`virtual_echo`
+        if ``cut=True``
+
+    ve_sw : (float,), (float, float) or None, default: `None`
+        The sweep width (Hz) of the virtual echo generated using
+        :py:meth:`virtual_echo` if ``cut=True``, in each dimension.
+
+    ve_off : (float,), (float, float) or None, default: `None`
+        The transmitter offset (Hz) of the virtual echo generated using
+        :py:meth:`virtual_echo` if ``cut=True``, in each dimension.
+
+    highs : (int,), (int, int) or None, default: `None`
+        The index of the point corresponding to the highest ppm value that
+        is contained within the filter region specified using
+        :py:meth:`virtual_echo`, in each dimension.
+
+    lows : (int,), (int, int) or None, default: `None`
+        The index of the point corresponding to the lowest ppm value that
+        is contained within the filter region specified using
+        :py:meth:`virtual_echo`, in each dimension.
+
+    theta0 : numpy.ndarray or None, default: `None`
+        The parameter estimate derived using :py:meth:`matrix_pencil`
+
+    theta : numpy.ndarray or None, default: `None`
+        The parameter estimate derived using :py:meth:`nonlinear_programming`
     """
 
     def __init__(self, dtype, data, path, sw, off, n, sfo, nuc, endian,
@@ -137,7 +176,7 @@ class NMREsPyBruker:
 
     def __str__(self):
         cats = [] # categories
-        vals = [] # values (basic info)
+        vals = [] # values
         msg = ''
         cats.append(f'\n{MA}<NMREsPyBruker object at {hex(id(self))}>{END}\n')
         vals.append('')
@@ -269,7 +308,10 @@ class NMREsPyBruker:
             vals.append('')
             cats.append('Result (theta):')
             vals.append(f'numpy.ndarray with shape {theta.shape}')
-        
+
+        # string with consistent padding
+        # elements in cats with magenta coloring are titles, do not
+        # involve in padding considerations
         pad = max(len(c) for c in cats if f'{MA}' not in c)
         for c, v in zip(cats, vals):
             p = (pad - len(c) + 1) + len(v)
