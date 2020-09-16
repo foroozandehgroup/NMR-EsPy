@@ -4,7 +4,7 @@ import re
 
 import numpy as np
 
-from . import NMREsPyBruker
+from .core import NMREsPyBruker
 from ._cols import *
 if USE_COLORAMA:
     import colorama

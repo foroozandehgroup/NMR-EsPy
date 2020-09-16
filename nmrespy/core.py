@@ -136,79 +136,96 @@ class NMREsPyBruker:
 
 
     def __str__(self):
+        cats = [] # categories
+        vals = [] # values (basic info)
+        msg = ''
+        cats.append(f'\n{MA}<NMREsPyBruker object at {hex(id(self))}>{END}\n')
+        vals.append('')
+        cats.append(f'{MA}───Basic Info───{END}')
+        vals.append('')
+        cats.append('Path:')
+        vals.append(self.get_datapath())
+        cats.append('Type:')
+        vals.append(self.get_dtype())
+        cats.append('Dimension:')
+        vals.append(str(self.get_dim()))
+
+        data = self.get_data()
         dtype = self.get_dtype()
-        path = self.get_datapath()
-        dim = self.get_dim()
-        sw = self.get_sw()
-        sw_p = self.get_sw(unit='ppm')
-        off = self.get_offset()
-        off_p = self.get_offset(unit='ppm')
-        bf = self.get_bf()
-        sfo = self.get_sfo()
-        nuc = self.get_nuc()
+        if  type == 'raw':
+            cats.append('Data:')
+            vals.append(f'numpy.ndarray of shape {data.shape}\n')
 
-        msg = f'\n{MA}<NMREsPyBruker object at {hex(id(self))}>{END}\n'
-
-        msg += f'\n{MA}───Basic Info───{END}\n'
-        if dtype == 'raw':
-            data = self.get_data()
-            msg += f'{MA}Type:{END}' + ' '*18 + f'raw FID\n'
-            msg += f'{MA}Dimension:{END}' + ' '*13 + f'{dim}\n'
-            msg += f'{MA}Data:{END}' + ' '*18 + f'numpy.ndarray of shape' \
-                   + f'{data.shape}\n'
         elif dtype == 'pdata':
-            msg += f'{MA}Type:{END}' + ' '*18 + f'processed data\n'
-            msg += f'{MA}Dimension:{END}' + ' '*13 + f'{self.get_dim()}\n'
-            msg += f'{MA}Data:{END}'
-            for i, (k, v) in enumerate(self.data.items()):
+            for i, (k, v) in enumerate(data.items()):
                 if i == 0:
-                    msg += ' '*18 + f'{k}, numpy.ndarray of shape {v.shape}\n'
+                    cats.append('Data:')
+                    vals.append(f'{k}, numpy.ndarray of shape {v.shape}')
                 else:
-                    msg += ' '*23 + f'{k}, numpy.ndarray of shape {v.shape}\n'
+                    cats.append('')
+                    vals.append(f'{k}, numpy.ndarray of shape {v.shape}')
 
-        msg += f'{MA}Directory:{END}' + ' '*13 + f'{self.path}\n'
+        sw_h = self.get_sw()
+        sw_p = self.get_sw(unit='ppm')
 
-        for i, (sw_, sw_p_) in enumerate(zip(sw, sw_p)):
+        for i, (sh, sp) in enumerate(zip(sw_h, sw_p)):
             if i == 0:
-                msg += f'{MA}Sweep width:{END}' + ' '*11 \
-                          + f'{sw_:.4f}Hz ({sw_p_:.4f}ppm) (F{i+1})\n'
+                cats.append('Sweep Width:')
             else:
-                msg += ' '*23 + f'{sw_:.4f}Hz ({sw_p_:.4f}ppm) (F{i+1})\n'
+                cats.append('')
 
-        for i, (off_, off_p_) in enumerate(zip(off, off_p)):
-                if i == 0:
-                    msg += f'{MA}Transmitter offset:{END}' + ' '*4 \
-                              + f'{off_:.4f}Hz ({off_p_:.4f}ppm) (F{i+1})\n'
-                else:
-                    msg += ' '*23 + f'{off_:.4f}Hz ({off_p_:.4f}ppm) (F{i+1})\n'
+            s = f'{sh:.4f}Hz ({sp:.4f}ppm) (F{i+1})'
+            vals.append(s)
 
-        for i, bf_ in enumerate(bf):
+
+        off_h = self.get_offset()
+        off_p = self.get_offset(unit='ppm')
+
+        for i, (oh, op) in enumerate(zip(off_h, off_p)):
             if i == 0:
-                msg += f'{MA}Basic frequency:{END}' + ' '*7 \
-                          + f'{bf_:.4f}MHz (F{i+1})\n'
+                cats.append('Transmitter Offset:')
             else:
-                msg += ' '*23 + f'{bf_:.4f}MHz (F{i+1})\n'
+                cats.append('')
 
-        for i, sfo_ in enumerate(sfo):
-            if i == 0:
-                msg += f'{MA}Transmitter frequency:{END}'\
-                          + f' {sfo_:.4f}MHz (F{i+1})\n'
-            else:
-                msg += ' '*23 + f'{sfo_:.4f}MHz (F{i+1})\n'
+            s = f'{oh:.4f}Hz ({op:.4f}ppm) (F{i+1})'
+            vals.append(s)
 
-        for i, nuc_ in enumerate(nuc):
+        bf = self.get_bf()
+        for i, b in enumerate(bf):
             if i == 0:
-                msg += f'{MA}Nuclei:{END}' + ' '*16 \
-                          + f'{nuc_} (F{i+1})\n'
+                cats.append('Basic Frequency:')
             else:
-                msg += ' '*23 + f'{nuc_} (F{i+1})\n'
+                cats.append('')
+
+            s = f'{b:.4f}MHz (F{i+1})'
+            vals.append(s)
+
+        sfo = self.get_sfo()
+        for i, sf in enumerate(sfo):
+            if i == 0:
+                cats.append('Transmitter Frequency:')
+            else:
+                cats.append('')
+
+            s = f'{sf:.4f}MHz (F{i+1})'
+            vals.append(s)
+
+        nuc = self.get_nuc()
+        for i, n in enumerate(nuc):
+            if i == 0:
+                cats.append('Nuclei:')
+            else:
+                cats.append('')
+
+            vals.append(f'{n} (F{i+1})')
 
         # Virtual echo information
         virt_echo = self.get_virt_echo(kill=False)
         if virt_echo is None:
             pass
         else:
-            msg += f'\n{MA}───Virtual Echo Info───{END}\n'
+            cats.append(f'\n{MA}───Virtual Echo Info───{END}')
+            vals.append('')
             half_echo = self.get_half_echo()
             filt_spec = self.get_filt_spec()
             bounds = zip(self.get_highs(unit='Hz'),
@@ -216,58 +233,48 @@ class NMREsPyBruker:
                          self.get_lows(unit='Hz'),
                          self.get_lows(unit='ppm'))
 
-            msg += f'{MA}Virtual Echo:{END}' + ' '*6 \
-                      + f'numpy.ndarray of shape {virt_echo.shape}\n'
-            msg += f'{MA}Half Echo:{END}' + ' '*9 \
-                      + f'numpy.ndarray of shape {half_echo.shape}\n'
-            msg += f'{MA}Filtered Spectrum:{END}' \
-                      + f' numpy.ndarray of shape {filt_spec.shape}\n'
+            cats.append('Virtual Echo:')
+            vals.append(f'numpy.ndarray of shape {virt_echo.shape}')
+            cats.append('Half Echo:')
+            vals.append(f'numpy.ndarray of shape {half_echo.shape}')
+            cats.append('Filtered Spectrum:')
+            vals.append(f'numpy.ndarray of shape {filt_spec.shape}')
+
             for i, (hi, hi_p, lo, lo_p) in enumerate(bounds):
                 if i == 0:
-                    msg += f'{MA}Region:{END}' + ' '*12 \
-                              + f'{hi:.4f} - {lo:.4f}Hz' \
-                              + f' ({hi_p:.4f} - {lo_p:.4f}ppm) (F{i+1})\n'
-                else:
-                    msg += ' '*20 + f'{hi:.4f} - {lo:.4f}Hz' \
-                              + f' ({hi_p:.4f} - {lo_p:.4f}ppm) (F{i+1})\n'
+                    cats.append('Region:')
 
-            ve_sw = self.get_ve_sw(kill=False)
-            if ve_sw is None:
-                pass
-            else:
-                ve_sw_p = self.get_ve_sw(unit='ppm')
-                ve_off = self.get_ve_offset()
-                ve_off_p = self.get_ve_offset(unit='ppm')
-                for i, (sw, sw_p) in enumerate(zip(ve_sw, ve_sw_p)):
-                    if i == 0:
-                        msg += f'{MA}VE sweep width:{END}' + ' '*4 \
-                                  + f'{sw:.4f}Hz ({sw_p:.4f}ppm) (F{i+1})\n'
-                    else:
-                        msg += ' '*19 + f'{sw:.4f}Hz' \
-                                  + f' ({sw_p:.4f}ppm) (F{i+1})\n'
-                for i, (off, off_p) in enumerate(zip(ve_off, ve_off_p)):
-                    if i == 0:
-                        msg += f'{MA}VE offset:{END}' + ' '*9 \
-                                  + f'{off:.4f}Hz ({off_p:.4f}ppm) (F{i+1})\n'
-                    else:
-                        msg += ' '*24 + f' {off:.4f}Hz' \
-                                  + f' ({off_p:.4f}ppm) (F{i+1})\n'
+                else:
+                    cats.append('')
+
+                s = f'{hi:.4f} - {lo:.4f}Hz' + f' ({hi_p:.4f} - ' \
+                    + f'{lo_p:.4f}ppm) (F{i+1})\n'
+
+                vals.append(s)
 
         theta0 = self.get_theta0(kill=False)
         if theta0 is None:
             pass
         else:
-            msg += f'\n{MA}───Matrix Pencil Info───{END}\n'
-            msg += f'{MA}Result (theta0):{END} numpy.ndarray with' \
-                   + f' shape {theta0.shape}\n'
+            cats.append(f'\n{MA}───Matrix Pencil Info───{END}')
+            vals.append('')
+            cats.append('Result (theta0):')
+            vals.append(f'numpy.ndarray with shape {theta0.shape}')
 
         theta = self.get_theta(kill=False)
         if theta is None:
             pass
         else:
-            msg += f'\n{MA}───Nonlinear Programming Info───{END}\n'
-            msg += f'{MA}Result (theta):{END} numpy.ndarray with' \
-                   + f' shape {theta.shape}\n'
+            cats.append(f'\n{MA}───Nonlinear Programming Info───{END}')
+            vals.append('')
+            cats.append('Result (theta):')
+            vals.append(f'numpy.ndarray with shape {theta.shape}')
+        
+        pad = max(len(c) for c in cats if f'{MA}' not in c)
+        for c, v in zip(cats, vals):
+            p = (pad - len(c) + 1) + len(v)
+            msg += c + v.rjust(p) + '\n'
+
         return msg
 
 
@@ -751,7 +758,7 @@ class NMREsPyBruker:
     def _get_nondefault_param(self, name, method, kill):
         """Retrieve attributes that may be assigned the value None. Warn user/
         raise error depending on the value of ``kill``"""
-        if self.__dict__[name]: # determine if attribute is not None
+        if self.__dict__[name] is not None: # determine if attribute is not None
             return self.__dict__[name]
         else:
             if kill is True:
