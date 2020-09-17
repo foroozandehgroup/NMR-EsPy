@@ -1610,7 +1610,7 @@ class NMREsPyBruker:
         return param
 
     def _check_data(self):
-        if 'half_echo' in self.__dict__:
+        if self.half_echo is not None:
             return self.get_half_echo()
         elif self.dtype == 'raw':
             return self.get_data()
