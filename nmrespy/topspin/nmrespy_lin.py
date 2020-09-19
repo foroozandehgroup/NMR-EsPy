@@ -1,8 +1,7 @@
 # nmrespy.py
-# Simon Hulse, 18/7/20
 # simon.hulse@chem.ox.ac.uk
-# Jython script for Spectral Estimation of 1D fid within TopSpin
-# Calls an external Python script for the estimation
+# Jython script for Spectral Estimation of NMR data within TopSpin
+# Calls an external Python3 script for the estimation and GUI
 
 # Linux version
 
@@ -15,7 +14,7 @@ from subprocess import *
 checknmrespy = Popen(["python3 -c 'import nmrespy' ; echo $?"], shell=True, stdout=PIPE).communicate()[0]
 
 if int(checknmrespy):
-	ERRMSG('Could not find NMR-ESPY in your Python 3 PATH!\nSee the NMR-ESPY documentation for help', modal=1)
+	ERRMSG('Could not find NMR-ESPY in your Python 3 PATH!', modal=1)
 	EXIT()
 
 else:

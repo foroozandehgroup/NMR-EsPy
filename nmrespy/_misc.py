@@ -115,7 +115,7 @@ def conv_ppm_idx(p, sw_p, offset_p, n, direction='ppm->idx'):
     """
     if direction == 'ppm->idx':
         if isinstance(p, float):
-            return int(round((offset_p + (sw_p / 2) - p) * (N / sw_p)))
+            return int(round((offset_p + (sw_p / 2) - p) * (n / sw_p)))
         else:
             msg = f'\n{R}p should be a float if converting from ppm to' \
                   + f' index. Got {type(p)} instead{END}'
@@ -123,7 +123,7 @@ def conv_ppm_idx(p, sw_p, offset_p, n, direction='ppm->idx'):
 
     elif direction == 'idx->ppm':
         if isinstance(p, int):
-            return float(offset_p + (sw_p / 2) - ((p * sw_p) / N))
+            return float(offset_p + (sw_p / 2) - ((p * sw_p) / n))
         else:
             msg = f'\n{R}p should be a int if converting from index to' \
                   + f' ppm. Got {type(p)} instead{END}'
@@ -174,7 +174,7 @@ def mkfid(para, n, sw, offset, dim):
         Z = np.exp(np.outer(tp, (1j * 2 * np.pi * para_new[..., 2] -
                    para_new[..., 3])))
         alpha = para_new[..., 0] * np.exp(1j * para[..., 1])
-        fid = np.matmul(Z, alpha).flatten()
+        fid = np.matmul(Z, alpha)
 
     if dim == 2:
         # time points

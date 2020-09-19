@@ -191,7 +191,7 @@ def _write_txt(info, table, path, descrip, timestamp):
     msg += 'simon.hulse@chem.ox.ac.uk\nIf used in any publications, please'
     msg += ' cite:\n<Ref to paper>\nFor more information, visit our group'
     msg += ' website:\nhttp://foroozandeh.chem.ox.ac.uk/home\n'
-    print(path)
+
     with open(path, 'w') as file:
         file.write(msg)
 
@@ -321,7 +321,6 @@ def _write_pdf(info, table, path, descrip, timestamp):
                + r' ($' + f'{off_p:.4f}' + r'$ppm) \\' + '\n'
 
         if region_h and region_p:
-            print(region_p[0])
             msg += r'Spectral Region: & $' + f' {region_h[0][0]:.4f}' \
                    + r'$ - $' + f'{region_h[0][1]:.4f}' + r'\si{\hertz}$' \
                    + r' ($' + f'{region_p[0][0]:.4f}' + r'$ - $' \
@@ -449,80 +448,6 @@ def _write_pdf(info, table, path, descrip, timestamp):
 
         os.rename(tmp_texpath, final_texpath)
         raise LaTeXFailedError(final_texpath)
-
-
-def _order_para(para, order, dim):
-
-    if order == 'amp':
-        para = para[np.argsort(para[:, 0])]
-    elif order == 'phase':
-        para = para[np.argsort(para[:, 1])]
-    elif order == 'freq':
-        if dim == 1:
-            para = para[np.argsort(para[:, 2])]
-        else:
-            msg = f'{O}Order label \'freq\' is ambiguous with 2D data.' \
-                  + f' Ordering with respect to freq1{END}'
-            print(msg)
-            para = para[np.argsort(para[:, 2])]
-    elif order == 'damp':
-        if dim == 1:
-            para = para[np.argsort(para[:, 3])]
-        else:
-            msg = f'{O}Order label \'damp\' is ambiguous with 2D data.' \
-                  + f' Ordering with respect to damp1{END}'
-            print(msg)
-            para = para[np.argsort(para[:, 4])]
-
-    elif order == 'freq1':
-        if dim == 1:
-            msg = f'{O}Order label \'freq1\' is not valid with 1D data.' \
-                  + f' Ordering with respect to freq{END}'
-            print(msg)
-        para = para[np.argsort(para[:, 2])]
-
-    elif order == 'freq2':
-        if dim == 1:
-            msg = f'{O}Order label \'freq2\' is not valid with 1D data.' \
-                  + f' Ordering with respect to freq{END}'
-            print(msg)
-            para = para[np.argsort(para[:, 2])]
-        else:
-            para = para[np.argsort(para[:, 3])]
-
-    elif order == 'damp1':
-        if dim == 1:
-            msg = f'{O}Order label \'damp1\' is not valid with 1D data.' \
-                  + f' Ordering with respect to damp{END}'
-            print(msg)
-            para = para[np.argsort(para[:, 3])]
-        else:
-            para = para[np.argsort(para[:, 4])]
-
-    elif order == 'damp2':
-        if dim == 1:
-            msg = f'{O}Order label \'damp2\' is not valid with 1D data.' \
-                  + f' Ordering with respect to damp{END}'
-            print(msg)
-            para = para[np.argsort(para[:, 3])]
-        else:
-            para = para[np.argsort(para[:, 5])]
-
-    elif order == None:
-        if dim == 1:
-            order = 'freq'
-        elif dim == 2:
-            order = 'freq1'
-        _order_para(para, order, dim)
-
-    else:
-        msg = f'{O}order was not understood. Reverting to' \
-              + f' default ordering{END}'
-        print(msg)
-        order = None
-        _order_para(para, order, dim)
-
-    return para
 
 
 def _constr_datatable(res, sfo, integrals, sf, sci_lims, dim):
