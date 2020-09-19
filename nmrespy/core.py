@@ -1408,7 +1408,6 @@ class NMREsPyBruker:
             delta.append(sw / n_)
 
         for m, osc in enumerate(res):
-            print(osc)
             f = self.make_fid(resname, oscs=[m])
             s = np.absolute(np.real(fftshift(fft(f))))
             # inegrate successively over each dimension

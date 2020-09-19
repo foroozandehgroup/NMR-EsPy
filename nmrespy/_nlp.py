@@ -821,8 +821,6 @@ def _h_2d(para_act, *args):
             hess[_diag_indices(hess, k=0)[0][:M],
                  _diag_indices(hess, k=0)[1][:M]] += 2 / M
 
-    print(hess.shape)
-
     return hess
 
 

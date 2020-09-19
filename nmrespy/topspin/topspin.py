@@ -33,71 +33,69 @@ import nmrespy._misc as _misc
 
 
 class NMREsPyGUI:
-    def __init__(self, master, finfo, pinfo):
+    def __init__(self, master, info):
 
         self.master = master
-        self.master.configure(background='white')
         self.master.title('NMR-ESPY')
 
-        # spectra from pdata and raw FID
-        self.p_spec = pinfo.get_data(pdata_key='1r')
-        self.f_spec = np.real(fftshift(fft(finfo.get_data())))
+        # acquire data
+        self.info = info
+        self.dtype = self.info.get_dtype()
+
+        if self.dtype == 'raw':
+            self.spec = np.flip(fftshift(fft(self.info.get_data())))
+        elif self.dtype == 'pdata':
+            self.spec = self.info.get_data(pdata_key='1r') \
+                        + 1j * self.info.get_data(pdata_key='1i')
 
         # basic info
-        self.shifts_p = pinfo.get_shifts(unit='ppm')[0]
-        self.shifts_f = finfo.get_shifts(unit='ppm')[0]
-        self.sw_p = finfo.get_sw(unit='ppm')[0]
-        self.off_p = finfo.get_offset(unit='ppm')[0]
-        self.n_f = self.f_spec.shape[0]
-        self.n_p = self.p_spec.shape[0]
+        self.shifts = info.get_shifts(unit='ppm')[0]
+        self.sw_p = info.get_sw(unit='ppm')[0]
+        self.off_p = info.get_offset(unit='ppm')[0]
+        self.n = self.spec.shape[0]
+        self.n = self.spec.shape[0]
 
-        # left and right bounds (idx and ppm)
-        self.lb = int(np.floor(7 * self.n_p / 16))
-        self.rb = int(np.floor(9 * self.n_p / 16))
-        self.lnb = int(np.floor(1 * self.n_p / 16))
-        self.rnb = int(np.floor(2 * self.n_p / 16))
-
+        # initialsie left and right bounds (idx and ppm)
+        self.lb = int(np.floor(7 * self.n / 16))
+        self.rb = int(np.floor(9 * self.n / 16))
+        self.lnb = int(np.floor(1 * self.n / 16))
+        self.rnb = int(np.floor(2 * self.n / 16))
         self.lb_ppm = _misc.conv_ppm_idx(self.lb, self.sw_p, self.off_p,
-                                         self.n_p, direction='idx->ppm')
-
+                                         self.n, direction='idx->ppm')
         self.rb_ppm = _misc.conv_ppm_idx(self.rb, self.sw_p, self.off_p,
-                                         self.n_p, direction='idx->ppm')
-
+                                         self.n, direction='idx->ppm')
         self.lnb_ppm = _misc.conv_ppm_idx(self.lnb, self.sw_p, self.off_p,
-                                          self.n_p, direction='idx->ppm')
-
+                                          self.n, direction='idx->ppm')
         self.rnb_ppm = _misc.conv_ppm_idx(self.rnb, self.sw_p, self.off_p,
-                                          self.n_p, direction='idx->ppm')
+                                          self.n, direction='idx->ppm')
 
-        # get GUI images
-        self.espypath = os.path.dirname(nmrespy.__file__)
-        self.nmrespy_image = Image.open(os.path.join(self.espypath,
-                                        'topspin/images/nmrespy_full.png'))
-        self.regsel_image = Image.open(os.path.join(self.espypath,
-                                       'topspin/images/region_selection.png'))
-        self.adset_image = Image.open(os.path.join(self.espypath,
-                                      'topspin/images/advanced_settings.png'))
+        # initialise phase parameters
+        self.pivot = int(np.floor(self.n / 2))
+        self.pivot_ppm = _misc.conv_ppm_idx(self.pivot, self.sw_p, self.off_p,
+                                            self.n, direction='idx->ppm')
+        self.p0 = 0.
+        self.p1 = 0.
 
-        # ======
-        # FRAMES
-        # ======
-
+        # constant padding value
         self.pad = 10
 
-        # leftframe -> spectrum plot and region sliders
-        self.leftframe = ttk.Frame(self.master)
+        # --- FRAMES ----------------------------------------------------------
+        # leftframe -> spectrum plot and region scales
+        self.leftframe = tk.Frame(self.master)
 
         self.leftframe.grid(column=0,
                             row=0,
                             sticky='nsew')
 
-        self.rightframe = ttk.Frame(self.master)
+        # rightframe -> logo, advbanced settings, save/quit buttons,
+        #               contact info.
+        self.rightframe = tk.Frame(self.master)
 
         self.rightframe.grid(column=1,
                              row=0,
                              sticky='nsew')
 
-        self.plotframe = ttk.Frame(self.leftframe)
+        self.plotframe = tk.Frame(self.leftframe)
 
         self.plotframe.grid(column=0,
                             row=0,
@@ -105,7 +103,8 @@ class NMREsPyGUI:
                             pady=(self.pad, 0),
                             sticky='nsew')
 
-        self.scaleframe = ttk.Frame(self.leftframe)
+        # scaleframe -> tabs for region selection and phase correction
+        self.scaleframe = ttk.Notebook(self.leftframe)
 
         self.scaleframe.grid(column=0,
                              row=1,
@@ -113,7 +112,22 @@ class NMREsPyGUI:
                              pady=(self.pad, self.pad),
                              sticky='ew')
 
-        self.logoframe = ttk.Frame(self.rightframe)
+        self.regionframe = ttk.Frame(self.scaleframe)
+        self.regionframe.columnconfigure(1, weight=1)
+        self.phaseframe = ttk.Frame(self.scaleframe)
+        self.phaseframe.columnconfigure(1, weight=1)
+
+        self.scaleframe.bind('<<NotebookTabChanged>>', self.update_plot)
+
+        self.scaleframe.add(self.regionframe,
+                            text='Region Selection',
+                            sticky='ew')
+
+        self.scaleframe.add(self.phaseframe,
+                            text='Phase Correction',
+                            sticky='ew')
+
+        self.logoframe = tk.Frame(self.rightframe)
 
         self.logoframe.grid(column=0,
                             row=0,
@@ -121,7 +135,7 @@ class NMREsPyGUI:
                             pady=(self.pad, 0),
                             sticky='ew')
 
-        self.adsetframe = ttk.Frame(self.rightframe)
+        self.adsetframe = tk.Frame(self.rightframe)
 
         self.adsetframe.grid(column=0,
                              row=1,
@@ -129,7 +143,7 @@ class NMREsPyGUI:
                              pady=(self.pad, 0),
                              sticky='new')
 
-        self.buttonframe = ttk.Frame(self.rightframe)
+        self.buttonframe = tk.Frame(self.rightframe)
 
         self.buttonframe.grid(column=0,
                               row=2,
@@ -137,7 +151,7 @@ class NMREsPyGUI:
                               pady=(self.pad, 0),
                               sticky='se')
 
-        self.contactframe = ttk.Frame(self.rightframe)
+        self.contactframe = tk.Frame(self.rightframe)
 
         self.contactframe.grid(column=0,
                                row=3,
@@ -145,7 +159,7 @@ class NMREsPyGUI:
                                pady=(self.pad, self.pad),
                                sticky='sw')
 
-        # make frames expandable
+        # --- FRAME CONFIGURATION ---------------------------------------------
         self.master.grid_columnconfigure(0, weight=1)
         self.master.grid_rowconfigure(0, weight=1)
 
@@ -160,10 +174,10 @@ class NMREsPyGUI:
         self.logoframe.grid_columnconfigure(0, weight=1)
         self.logoframe.grid_rowconfigure(0, weight=1)
 
-
-        # =============
-        # NMR-ESPY LOGO
-        # =============
+        # --- NMR-EsPy LOGO ---------------------------------------------------
+        self.espypath = os.path.dirname(nmrespy.__file__)
+        self.nmrespy_image = Image.open(os.path.join(self.espypath,
+                                        'topspin/images/nmrespy_full.png'))
 
         scale = 0.08
         [w, h] = self.nmrespy_image.size
@@ -173,24 +187,21 @@ class NMREsPyGUI:
                                                        Image.ANTIALIAS)
         self.nmrespy_img = ImageTk.PhotoImage(self.nmrespy_image)
 
-        self.nmrespy_logo = ttk.Label(self.logoframe,
+        self.nmrespy_logo = tk.Label(self.logoframe,
                                       image=self.nmrespy_img)
 
         self.nmrespy_logo.pack()
 
-        # =============
-        # SPECTRUM PLOT
-        # =============
-
+        # --- SPECTRUM PLOT ---------------------------------------------------
         # create plot
         self.fig = Figure(figsize=(6,3.5), dpi=170)
         self.ax = self.fig.add_subplot(111)
-        self.specplot = self.ax.plot(self.shifts_p,
-                                     self.p_spec,
+        self.specplot = self.ax.plot(self.shifts,
+                                     np.real(self.spec),
                                      color='k',
                                      lw=0.6)[0]
 
-        self.xlim = (self.shifts_p[0], self.shifts_p[-1])
+        self.xlim = (self.shifts[0], self.shifts[-1])
         self.ax.set_xlim(self.xlim)
         self.ylim = self.ax.get_ylim()
 
@@ -203,20 +214,24 @@ class NMREsPyGUI:
         self.ylimit_history.append(self.ylim_init)
 
         # highlight the spectral region to be filtered
-        self.filtregion = Rectangle((self.rb_ppm, -2*self.ylim_init[1]),
+        self.filtregion = Rectangle((self.rb_ppm, -10*self.ylim_init[1]),
                                      self.lb_ppm - self.rb_ppm,
-                                     4*self.ylim_init[1],
+                                     20*self.ylim_init[1],
                                      facecolor='#7fd47f')
 
         self.ax.add_patch(self.filtregion)
 
         # highlight the noise region
-        self.noiseregion = Rectangle((self.rnb_ppm, -2*self.ylim_init[1]),
+        self.noiseregion = Rectangle((self.rnb_ppm, -10*self.ylim_init[1]),
                                       self.lnb_ppm - self.rnb_ppm,
-                                      4*self.ylim_init[1],
+                                      20*self.ylim_init[1],
                                       facecolor='#66b3ff')
 
         self.ax.add_patch(self.noiseregion)
+
+        x = np.linspace(self.pivot_ppm, self.pivot_ppm, 1000)
+        y = np.linspace(-10*self.ylim_init[1], 10*self.ylim_init[1], 1000)
+        self.pivotplot = self.ax.plot(x, y, color='r', alpha=0)[0]
 
         self.ax.set_ylim(self.ylim)
         self.ax.tick_params(axis='x', which='major', labelsize=6)
@@ -298,177 +313,286 @@ class NMREsPyGUI:
         self.canvas.callbacks.connect('button_press_event', on_click)
         self.canvas.callbacks.connect('button_release_event', on_release)
 
-
-        # ================
-        # REGION SELECTION
-        # ================
-
-        # scale 'Region Selction' title image and place into app
-        scale = 0.42
-        [w, h] = self.regsel_image.size
-        new_w = int(w * scale)
-        new_h = int(h * scale)
-        self.regsel_image = self.regsel_image.resize((new_w, new_h),
-                                                     Image.ANTIALIAS)
-        self.regsel_img = ImageTk.PhotoImage(self.regsel_image)
-        self.regsel_logo = ttk.Label(self.scaleframe,
-                                    image=self.regsel_img)
-
-        self.regsel_logo.grid(row=1,
-                              column=0,
-                              columnspan=3,
-                              sticky='nsw')
-
+        # --- REGION SELECTION ------------------------------------------------
         # Left bound
-        self.lb_title = ttk.Label(self.scaleframe,
+        self.lb_title = tk.Label(self.regionframe,
                                  text='left bound')
 
-        self.lb_title.grid(row=2,
+        self.lb_title.grid(row=0,
                            column=0,
+                           padx=(self.pad/2, 0),
                            pady=(self.pad/2, 0),
                            sticky='nsw')
 
-        self.lb_slide = ttk.Scale(self.scaleframe,
+        self.lb_scale = tk.Scale(self.regionframe,
                                   from_=1,
-                                  to=self.n_p,
+                                  to=self.n,
                                   orient=tk.HORIZONTAL,
-                                  command=self.update_lb)
+                                  command=self.update_lb_scale,
+                                  showvalue=0)
 
-        self.lb_slide.set(self.lb)
+        self.lb_scale.set(self.lb)
 
-        self.lb_slide.grid(row=2,
+        self.lb_scale.grid(row=0,
                            column=1,
                            padx=(self.pad/2, 0),
                            pady=(self.pad/2, 0),
                            sticky='nsew')
 
+        self.lb_label = tk.StringVar()
+        self.lb_label.set(f'{self.lb_ppm:.3f}')
 
-        self.lb_label = ttk.Label(self.scaleframe,
-                                  text=f'{self.lb_ppm:.3f}')
-
-        self.lb_label.grid(row=2,
+        self.lb_entry = tk.Entry(self.regionframe,
+                           textvariable=self.lb_label,
+                           width=6)
+        self.lb_entry.bind('<Return>', (lambda event: self.update_lb_entry()))
+        self.lb_entry.grid(row=0,
                            column=2,
                            padx=(self.pad/2, self.pad/2),
                            pady=(self.pad/2, 0),
                            sticky='nsw')
 
         # right bound
-        self.rb_title = ttk.Label(self.scaleframe,
+        self.rb_title = tk.Label(self.regionframe,
                                  text='right bound')
 
-        self.rb_title.grid(row=3,
+        self.rb_title.grid(row=1,
                            column=0,
+                           padx=(self.pad/2, 0),
                            pady=(self.pad/2, 0),
                            sticky='nsw')
 
-        self.rb_slide = ttk.Scale(self.scaleframe,
+        self.rb_scale = tk.Scale(self.regionframe,
                                  from_=1,
-                                 to=self.n_p,
+                                 to=self.n,
                                  orient=tk.HORIZONTAL,
-                                 command=self.update_rb)
+                                 command=self.update_rb_scale,
+                                 showvalue=0)
 
-        self.rb_slide.set(self.rb)
-
-        self.rb_slide.grid(row=3,
+        self.rb_scale.set(self.rb)
+        self.rb_scale.grid(row=1,
                            column=1,
                            padx=(self.pad/2, 0),
                            pady=(self.pad/2, 0),
                            sticky='nsew')
 
 
-        self.rb_label = ttk.Label(self.scaleframe,
-                                 text=f'{self.rb_ppm:.3f}')
+        self.rb_label = tk.StringVar()
+        self.rb_label.set(f'{self.rb_ppm:.3f}')
 
-        self.rb_label.grid(row=3,
+        self.rb_entry = tk.Entry(self.regionframe,
+                                 textvariable=self.rb_label,
+                                 width=6)
+        self.rb_entry.bind('<Return>', (lambda event: self.update_rb_entry()))
+        self.rb_entry.grid(row=1,
                            column=2,
                            padx=(self.pad/2, self.pad/2),
                            pady=(self.pad/2, 0),
                            sticky='nsw')
 
         # left noise bound
-        self.lnb_title = ttk.Label(self.scaleframe,
+        self.lnb_title = tk.Label(self.regionframe,
                                   text='left noise bound')
 
-        self.lnb_title.grid(row=4,
+        self.lnb_title.grid(row=2,
                             column=0,
+                            padx=(self.pad/2, 0),
                             pady=(self.pad/2, 0),
                             sticky='nsw')
 
-        self.lnb_slide = ttk.Scale(self.scaleframe,
+        self.lnb_scale = tk.Scale(self.regionframe,
                                    from_=1,
-                                   to=self.n_p,
+                                   to=self.n,
                                    orient=tk.HORIZONTAL,
-                                   command=self.update_lnb)
+                                   command=self.update_lnb_scale,
+                                   showvalue=0,
+                                   resolution=-1)
 
-        self.lnb_slide.set(self.lnb)
+        self.lnb_scale.set(self.lnb)
 
-        self.lnb_slide.grid(row=4,
+        self.lnb_scale.grid(row=2,
                             column=1,
                             padx=(self.pad/2, 0),
                             pady=(self.pad/2, 0),
                             sticky='nsew')
 
 
-        self.lnb_label = ttk.Label(self.scaleframe,
-                                   text=f'{self.lnb_ppm:.3f}')
+        self.lnb_label = tk.StringVar()
+        self.lnb_label.set(f'{self.lnb_ppm:.3f}')
 
-        self.lnb_label.grid(row=4,
-                            column=2,
-                            padx=(self.pad/2, self.pad/2),
-                            pady=(self.pad/2, 0),
-                            sticky='nsw')
+        self.lnb_entry = tk.Entry(self.regionframe,
+                                 textvariable=self.lnb_label,
+                                 width=6)
+        self.lnb_entry.bind('<Return>', (lambda event: self.update_lnb_entry()))
+        self.lnb_entry.grid(row=2,
+                           column=2,
+                           padx=(self.pad/2, self.pad/2),
+                           pady=(self.pad/2, 0),
+                           sticky='nsw')
 
         # right noise bound
-        self.rnb_title = ttk.Label(self.scaleframe,
+        self.rnb_title = tk.Label(self.regionframe,
                                   text='right noise bound')
 
-        self.rnb_title.grid(row=5,
+        self.rnb_title.grid(row=3,
                             column=0,
+                            padx=(self.pad/2, 0),
                             pady=(self.pad/2, 0),
                             sticky='nsw')
 
-        self.rnb_slide = ttk.Scale(self.scaleframe,
+        self.rnb_scale = tk.Scale(self.regionframe,
                                   from_=1,
-                                  to=self.n_p,
+                                  to=self.n,
                                   orient=tk.HORIZONTAL,
-                                  command=self.update_rnb)
+                                  command=self.update_rnb_scale,
+                                  showvalue=0)
 
-        self.rnb_slide.set(self.rnb)
+        self.rnb_scale.set(self.rnb)
 
-        self.rnb_slide.grid(row=5,
+        self.rnb_scale.grid(row=3,
                             column=1,
                             padx=(self.pad/2, 0),
                             pady=(self.pad/2, 0),
                             sticky='nsew')
 
 
-        self.rnb_label = tk.Label(self.scaleframe,
-                                  text=f'{self.rnb_ppm:.3f}')
+        self.rnb_label = tk.StringVar()
+        self.rnb_label.set(f'{self.rnb_ppm:.3f}')
 
-        self.rnb_label.grid(row=5,
-                            column=2,
-                            padx=(self.pad/2, self.pad/2),
-                            pady=(self.pad/2, 0),
-                            sticky='nsw')
+        self.rnb_entry = tk.Entry(self.regionframe,
+                                 textvariable=self.rnb_label,
+                                 width=6)
+        self.rnb_entry.bind('<Return>', (lambda event: self.update_rnb_entry()))
+        self.rnb_entry.grid(row=3,
+                           column=2,
+                           padx=(self.pad/2, self.pad/2),
+                           pady=(self.pad/2, 0),
+                           sticky='nsw')
 
-        self.scaleframe.columnconfigure(1, weight=1)
+        # --- PHASE CORRECTION ------------------------------------------------
+        # Pivot
+        self.pivot_title = tk.Label(self.phaseframe,
+                                    text='pivot')
 
-        # =================
-        # ADVANCED SETTINGS
-        # =================
+        self.pivot_title.grid(row=0,
+                              column=0,
+                              padx=(self.pad/2, 0),
+                              pady=(self.pad/2, 0),
+                              sticky='nsw')
 
-        scale = 0.42
-        [w, h] = self.adset_image.size
-        new_w = int(w * scale)
-        new_h = int(h * scale)
-        self.adset_image = self.adset_image.resize((new_w, new_h),
-                                                   Image.ANTIALIAS)
-        self.adset_img = ImageTk.PhotoImage(self.adset_image)
+        self.pivot_scale = tk.Scale(self.phaseframe,
+                                    from_=1,
+                                    to=self.n,
+                                    orient=tk.HORIZONTAL,
+                                    command=self.update_pivot_scale,
+                                    showvalue=0)
 
-        self.adset_logo = ttk.Label(self.adsetframe,
-                                    image=self.adset_img)
+        self.pivot_scale.set(self.pivot)
 
-        self.adset_logo.grid(row=0,
+        self.pivot_scale.grid(row=0,
+                              column=1,
+                              padx=(self.pad/2, 0),
+                              pady=(self.pad/2, 0),
+                              sticky='nsew')
+
+        self.pivot_label = tk.StringVar()
+        self.pivot_label.set(f'{self.pivot_ppm:.3f}')
+
+        self.pivot_entry = tk.Entry(self.phaseframe,
+                                    textvariable=self.pivot_label,
+                                    width=6)
+        self.pivot_entry.bind('<Return>',
+                              (lambda event: self.update_pivot_entry()))
+        self.pivot_entry.grid(row=0,
+                              column=2,
+                              padx=(self.pad/2, self.pad/2),
+                              pady=(self.pad/2, 0),
+                              sticky='nsw')
+
+        # zero-order phase
+        self.p0_title = tk.Label(self.phaseframe,
+                                 text='p0')
+
+        self.p0_title.grid(row=1,
+                           column=0,
+                           padx=(self.pad/2, 0),
+                           pady=(self.pad/2, 0),
+                           sticky='nsw')
+
+        self.p0_scale = tk.Scale(self.phaseframe,
+                                 from_=-np.pi,
+                                 to=np.pi,
+                                 orient=tk.HORIZONTAL,
+                                 command=self.update_p0_scale,
+                                 showvalue=0,
+                                 resolution=0.0001)
+
+        self.p0_scale.set(self.p0)
+        self.p0_scale.grid(row=1,
+                           column=1,
+                           padx=(self.pad/2, 0),
+                           pady=(self.pad/2, 0),
+                           sticky='nsew')
+
+
+        self.p0_label = tk.StringVar()
+        self.p0_label.set(f'{self.p0:.3f}')
+
+        self.p0_entry = tk.Entry(self.phaseframe,
+                                 textvariable=self.p0_label,
+                                 width=6)
+        self.p0_entry.bind('<Return>', (lambda event: self.update_p0_entry()))
+        self.p0_entry.grid(row=1,
+                           column=2,
+                           padx=(self.pad/2, self.pad/2),
+                           pady=(self.pad/2, 0),
+                           sticky='nsw')
+
+        # first-order phase
+        self.p1_title = tk.Label(self.phaseframe,
+                                 text='p1')
+
+        self.p1_title.grid(row=2,
+                           column=0,
+                           padx=(self.pad/2, 0),
+                           pady=(self.pad/2, 0),
+                           sticky='nsw')
+
+        self.p1_scale = tk.Scale(self.phaseframe,
+                                 from_=-4*np.pi,
+                                 to=4*np.pi,
+                                 orient=tk.HORIZONTAL,
+                                 command=self.update_p1_scale,
+                                 showvalue=0,
+                                 resolution=0.0001)
+
+        self.p1_scale.set(self.p1)
+        self.p1_scale.grid(row=2,
+                           column=1,
+                           padx=(self.pad/2, 0),
+                           pady=(self.pad/2, 0),
+                           sticky='nsew')
+
+
+        self.p1_label = tk.StringVar()
+        self.p1_label.set(f'{self.p1:.3f}')
+
+        self.p1_entry = tk.Entry(self.phaseframe,
+                                 textvariable=self.p1_label,
+                                 width=6)
+        self.p1_entry.bind('<Return>', (lambda event: self.update_p1_entry()))
+        self.p1_entry.grid(row=2,
+                           column=2,
+                           padx=(self.pad/2, self.pad/2),
+                           pady=(self.pad/2, 0),
+                           sticky='nsw')
+
+        # --- ADVANCED SETTINGS -----------------------------------------------
+        self.adset_title = tk.Label(self.adsetframe,
+                                    text='Advanced Settings',
+                                    font=('Helvetica', 14))
+
+        self.adset_title.grid(row=0,
                              column=0,
                              columnspan=3,
                              padx=(self.pad/2, 0),
@@ -476,7 +600,7 @@ class NMREsPyGUI:
                              sticky='w')
 
         # number of points to consider in ITMPM
-        self.mpm_label = ttk.Label(self.adsetframe,
+        self.mpm_label = tk.Label(self.adsetframe,
                                    text='Points for MPM:')
 
         self.mpm_label.grid(row=1,
@@ -485,11 +609,11 @@ class NMREsPyGUI:
                             pady=(self.pad, 0),
                             sticky='nsw')
 
-        self.n_mpm = ttk.Entry(self.adsetframe,
+        self.n_mpm = tk.Entry(self.adsetframe,
                                width=12)
 
-        if self.n_p <= 4096:
-            self.n_mpm.insert(0, str(self.n_p))
+        if self.n <= 4096:
+            self.n_mpm.insert(0, str(self.n))
         else:
             self.n_mpm.insert(0, 4096)
 
@@ -500,9 +624,9 @@ class NMREsPyGUI:
                         pady=(self.pad, 0),
                         sticky='w')
 
-        val = int(np.floor(self.n_p/2))
+        val = int(np.floor(self.n/2))
 
-        self.mpm_max_label = ttk.Label(self.adsetframe,
+        self.mpm_max_label = tk.Label(self.adsetframe,
                                       text=f'Max. value: {val}')
 
         self.mpm_max_label.grid(row=2,
@@ -513,7 +637,7 @@ class NMREsPyGUI:
                                 sticky='nw')
 
         # number of points to consider in NLP
-        self.nlp_label = ttk.Label(self.adsetframe,
+        self.nlp_label = tk.Label(self.adsetframe,
                                   text='Points for NLP:')
 
         self.nlp_label.grid(row=3,
@@ -522,11 +646,11 @@ class NMREsPyGUI:
                             pady=(self.pad, 0),
                             sticky='w')
 
-        self.n_nlp = ttk.Entry(self.adsetframe,
+        self.n_nlp = tk.Entry(self.adsetframe,
                                  width=12)
 
-        if self.n_p <= 8192:
-            self.n_nlp.insert(0, str(self.n_p))
+        if self.n <= 8192:
+            self.n_nlp.insert(0, str(self.n))
         else:
             self.n_nlp.insert(0, 8192)
 
@@ -537,7 +661,7 @@ class NMREsPyGUI:
                         pady=(self.pad, 0),
                         sticky='w')
 
-        self.nlp_max_label = ttk.Label(self.adsetframe,
+        self.nlp_max_label = tk.Label(self.adsetframe,
                                       text=f'Max. value: {val}')
 
         self.nlp_max_label.grid(row=4,
@@ -548,7 +672,7 @@ class NMREsPyGUI:
                                 sticky='nw')
 
         # maximum number of NLP iterations
-        self.maxit_label = ttk.Label(self.adsetframe,
+        self.maxit_label = tk.Label(self.adsetframe,
                                      text='Max. Iterations:')
 
         self.maxit_label.grid(row=5,
@@ -557,7 +681,7 @@ class NMREsPyGUI:
                               pady=(self.pad, 0),
                               sticky='w')
 
-        self.maxiter = ttk.Entry(self.adsetframe,
+        self.maxiter = tk.Entry(self.adsetframe,
                                  width=12)
 
         self.maxiter.insert(0, str(100))
@@ -570,7 +694,7 @@ class NMREsPyGUI:
                           sticky='w')
 
         # NLP algorithm
-        self.alg_label = ttk.Label(self.adsetframe,
+        self.alg_label = tk.Label(self.adsetframe,
                                    text='NLP Method:')
 
         self.alg_label.grid(row=6,
@@ -582,7 +706,7 @@ class NMREsPyGUI:
         self.algorithm = tk.StringVar(self.adsetframe)
         self.algorithm.set('Trust Region')
 
-        self.algoptions = ttk.OptionMenu(self.adsetframe,
+        self.algoptions = tk.OptionMenu(self.adsetframe,
                                          self.algorithm,
                                          'Trust Region',
                                          'L-BFGS')
@@ -593,28 +717,28 @@ class NMREsPyGUI:
                              padx=(self.pad/2, 0),
                              pady=(self.pad, 0))
 
-        self.phase_label = ttk.Label(self.adsetframe,
+        self.phasevar_label = tk.Label(self.adsetframe,
                                      text='Inc. Phase Variance:')
 
-        self.phase_label.grid(row=7,
+        self.phasevar_label.grid(row=7,
                               column=0,
                               padx=(self.pad/2, 0),
                               pady=(self.pad, 0),
                               sticky='w')
 
-        self.phase_var = tk.StringVar()
-        self.phase_var.set('1')
-        self.phase_box = ttk.Checkbutton(self.adsetframe,
-                                         variable=self.phase_var)
+        self.phasevar = tk.StringVar()
+        self.phasevar.set('1')
+        self.phasevar_box = tk.Checkbutton(self.adsetframe,
+                                         variable=self.phasevar)
 
-        self.phase_box.grid(row=7,
+        self.phasevar_box.grid(row=7,
                             column=1,
                             columnspan=2,
                             padx=(self.pad/2, 0),
                             pady=(self.pad, 0),
                             sticky='w')
 
-        self.descrip_label = ttk.Label(self.adsetframe,
+        self.descrip_label = tk.Label(self.adsetframe,
                                        text='Description:')
 
         self.descrip_label.grid(row=8,
@@ -634,7 +758,7 @@ class NMREsPyGUI:
                           pady=(self.pad, 0),
                           sticky='w')
 
-        self.fname_label = ttk.Label(self.adsetframe,
+        self.fname_label = tk.Label(self.adsetframe,
                                      text='Filename:')
 
         self.fname_label.grid(row=9,
@@ -643,7 +767,7 @@ class NMREsPyGUI:
                               pady=(self.pad, 0),
                               sticky='w')
 
-        self.fname = ttk.Entry(self.adsetframe,
+        self.fname = tk.Entry(self.adsetframe,
                                width=16)
 
         self.fname.insert(0, 'NMREsPy_result')
@@ -655,7 +779,7 @@ class NMREsPyGUI:
                         pady=(self.pad, 0),
                         sticky='w')
 
-        self.dir_label = ttk.Label(self.adsetframe,
+        self.dir_label = tk.Label(self.adsetframe,
                                    text='Directory:')
 
         self.dir_label.grid(row=10,
@@ -666,7 +790,7 @@ class NMREsPyGUI:
 
         self.dir = tk.StringVar()
 
-        self.dir_bar = ttk.Entry(self.adsetframe,
+        self.dir_bar = tk.Entry(self.adsetframe,
                                  width=16)
 
         self.dir_bar.grid(row=10,
@@ -675,7 +799,7 @@ class NMREsPyGUI:
                           pady=(self.pad, 0),
                           sticky='w')
 
-        self.dir_button = ttk.Button(self.adsetframe,
+        self.dir_button = tk.Button(self.adsetframe,
                                      command=self.browse,
                                      width=1)
 
@@ -684,7 +808,7 @@ class NMREsPyGUI:
                              pady=(self.pad, 0),
                              column=2)
 
-        self.txtfile_label = ttk.Label(self.adsetframe,
+        self.txtfile_label = tk.Label(self.adsetframe,
                                        text='Save Textfile:')
 
         self.txtfile_label.grid(row=11,
@@ -696,7 +820,7 @@ class NMREsPyGUI:
         self.txtfile = tk.StringVar()
         self.txtfile.set('1')
 
-        self.txt_box = ttk.Checkbutton(self.adsetframe,
+        self.txt_box = tk.Checkbutton(self.adsetframe,
                                        variable=self.txtfile)
 
         self.txt_box.grid(row=11,
@@ -706,7 +830,7 @@ class NMREsPyGUI:
                           pady=(self.pad, 0),
                           sticky='w')
 
-        self.pdffile_label = ttk.Label(self.adsetframe,
+        self.pdffile_label = tk.Label(self.adsetframe,
                                        text='Save PDF:')
 
         self.pdffile_label.grid(row=12,
@@ -718,7 +842,7 @@ class NMREsPyGUI:
         self.pdffile = tk.StringVar()
         self.pdffile.set('0')
 
-        self.pdf_box = ttk.Checkbutton(self.adsetframe,
+        self.pdf_box = tk.Checkbutton(self.adsetframe,
                                        variable=self.pdffile)
 
         self.pdf_box.grid(row=12,
@@ -736,7 +860,7 @@ class NMREsPyGUI:
         # SAVE/HELP/QUIT BUTTONS
         # ======================
 
-        self.cancel_button = ttk.Button(self.buttonframe,
+        self.cancel_button = tk.Button(self.buttonframe,
                                         text='Cancel',
                                         command=self.cancel,
                                         width=6)
@@ -744,7 +868,7 @@ class NMREsPyGUI:
         self.cancel_button.grid(row=0,
                                 column=0)
 
-        self.help_button = ttk.Button(self.buttonframe,
+        self.help_button = tk.Button(self.buttonframe,
                                       text='Help',
                                       command=self.load_help,
                                       width=6)
@@ -753,7 +877,7 @@ class NMREsPyGUI:
                               column=1,
                               padx=(self.pad, 0))
 
-        self.save_button = ttk.Button(self.buttonframe,
+        self.save_button = tk.Button(self.buttonframe,
                                       text='Save',
                                       command=self.save,
                                       width=6)
@@ -762,14 +886,14 @@ class NMREsPyGUI:
                               column=2,
                               padx=(self.pad, 0))
 
-        self.feedback = ttk.Label(self.contactframe,
+        self.feedback = tk.Label(self.contactframe,
                                   text='For queries/feedback, contact')
 
         self.feedback.grid(row=0,
                            column=0,
                            sticky='w')
 
-        self.email = ttk.Label(self.contactframe,
+        self.email = tk.Label(self.contactframe,
                               text='simon.hulse@chem.ox.ac.uk',
                               font='Courier')
 
@@ -777,94 +901,243 @@ class NMREsPyGUI:
                         column=0,
                         sticky='w')
 
+    #TODO: these functions feel a bit longwinded. Could probably
+    # achieve the same behaviour with fewer, more general ones
+    # not particularly high priority though...
 
-    def update_lb(self, lb):
+    def update_lb_scale(self, lb):
         lb = int(lb.split('.')[0])
         if lb < self.rb:
             self.lb = lb
             self.lb_ppm = _misc.conv_ppm_idx(self.lb, self.sw_p, self.off_p,
-                                             self.n_p, direction='idx->ppm')
+                                             self.n, direction='idx->ppm')
             self.filtregion.set_bounds(self.rb_ppm,
                                        -2*self.ylim_init[1],
                                        self.lb_ppm - self.rb_ppm,
                                        4*self.ylim_init[1])
-            self.lb_label.config(text=f'{self.lb_ppm:.3f}')
+            self.lb_label.set(f'{self.lb_ppm:.3f}')
             self.canvas.draw_idle()
         else:
             self.lb = self.rb - 1
             self.lb_ppm = _misc.conv_ppm_idx(self.lb, self.sw_p, self.off_p,
-                                             self.n_p, direction='idx->ppm')
-            self.lb_slide.set(self.lb_ppm)
+                                             self.n, direction='idx->ppm')
+            self.lb_scale.set(self.lb)
             self.canvas.draw_idle()
 
-    def update_rb(self, rb):
-        rb = int(rb.split('.')[0])
-        if rb > self.lb:
-            self.rb = rb
-            self.rb_ppm = _misc.conv_ppm_idx(self.rb, self.sw_p, self.off_p,
-                                             self.n_p, direction='idx->ppm')
+    def update_lb_entry(self):
+        lb_ppm = float(self.lb_label.get())
+        lb = _misc.conv_ppm_idx(lb_ppm, self.sw_p, self.off_p, self.n,
+                                direction='ppm->idx')
+
+        if lb < self.rb:
+            self.lb = lb
+            self.lb_ppm = lb_ppm
             self.filtregion.set_bounds(self.rb_ppm,
                                        -2*self.ylim_init[1],
                                        self.lb_ppm - self.rb_ppm,
                                        4*self.ylim_init[1])
-            self.rb_label.config(text=f'{self.rb_ppm:.3f}')
+            self.lb_scale.set(self.lb)
+            self.canvas.draw_idle()
+        else:
+            self.lb_label.set(f'{self.lb_ppm:.3f}')
+
+    def update_rb_scale(self, rb):
+        rb = int(rb.split('.')[0])
+        if rb > self.lb:
+            self.rb = rb
+            self.rb_ppm = _misc.conv_ppm_idx(self.rb, self.sw_p, self.off_p,
+                                             self.n, direction='idx->ppm')
+            self.filtregion.set_bounds(self.rb_ppm,
+                                       -2*self.ylim_init[1],
+                                       self.lb_ppm - self.rb_ppm,
+                                       4*self.ylim_init[1])
+            self.rb_label.set(f'{self.rb_ppm:.3f}')
             self.canvas.draw_idle()
         else:
             self.rb = self.lb + 1
             self.rb_ppm = _misc.conv_ppm_idx(self.rb, self.sw_p, self.off_p,
-                                             self.n_p, direction='idx->ppm')
-            self.rb_slide.set(self.rb_ppm)
+                                             self.n, direction='idx->ppm')
+            self.rb_scale.set(self.rb)
             self.canvas.draw_idle()
 
-    def update_lnb(self, lnb):
+    def update_rb_entry(self):
+        rb_ppm = float(self.rb_label.get())
+        rb = _misc.conv_ppm_idx(rb_ppm, self.sw_p, self.off_p, self.n,
+                                direction='ppm->idx')
+        if rb > self.lb:
+            self.rb = rb
+            self.rb_ppm = rb_ppm
+            self.filtregion.set_bounds(self.rb_ppm,
+                                       -2*self.ylim_init[1],
+                                       self.lb_ppm - self.rb_ppm,
+                                       4*self.ylim_init[1])
+            self.rb_scale.set(self.rb)
+            self.canvas.draw_idle()
+        else:
+            self.rb_label.set(f'{self.rb_ppm:.3f}')
+
+    def update_lnb_scale(self, lnb):
         lnb = int(lnb.split('.')[0])
         if lnb < self.rnb:
             self.lnb = lnb
             self.lnb_ppm = _misc.conv_ppm_idx(self.lnb, self.sw_p, self.off_p,
-                                              self.n_p, direction='idx->ppm')
+                                             self.n, direction='idx->ppm')
             self.noiseregion.set_bounds(self.rnb_ppm,
-                                        -2*self.ylim_init[1],
-                                        self.lnb_ppm - self.rnb_ppm,
-                                        4*self.ylim_init[1])
-            self.lnb_label.config(text=f'{self.lnb_ppm:.3f}')
+                                       -2*self.ylim_init[1],
+                                       self.lnb_ppm - self.rnb_ppm,
+                                       4*self.ylim_init[1])
+            self.lnb_label.set(f'{self.lnb_ppm:.3f}')
             self.canvas.draw_idle()
         else:
             self.lnb = self.rnb - 1
             self.lnb_ppm = _misc.conv_ppm_idx(self.lnb, self.sw_p, self.off_p,
-                                              self.n_p, direction='idx->ppm')
-            self.lnb_slide.set(self.lnb_ppm)
+                                             self.n, direction='idx->ppm')
+            self.lnb_scale.set(self.lnb)
             self.canvas.draw_idle()
 
-    def update_rnb(self, rnb):
+    def update_lnb_entry(self):
+        lnb_ppm = float(self.lnb_label.get())
+        lnb = _misc.conv_ppm_idx(lnb_ppm, self.sw_p, self.off_p, self.n,
+                                direction='ppm->idx')
+        if lnb < self.rnb:
+            self.lnb = lnb
+            self.lnb_ppm = lnb_ppm
+            self.noiseregion.set_bounds(self.rnb_ppm,
+                                       -2*self.ylim_init[1],
+                                       self.lnb_ppm - self.rnb_ppm,
+                                       4*self.ylim_init[1])
+            self.lnb_scale.set(self.lnb)
+            self.canvas.draw_idle()
+        else:
+            self.lnb_label.set(f'{self.lnb_ppm:.3f}')
+
+    def update_rnb_scale(self, rnb):
         rnb = int(rnb.split('.')[0])
         if rnb > self.lnb:
             self.rnb = rnb
             self.rnb_ppm = _misc.conv_ppm_idx(self.rnb, self.sw_p, self.off_p,
-                                              self.n_p, direction='idx->ppm')
+                                             self.n, direction='idx->ppm')
             self.noiseregion.set_bounds(self.rnb_ppm,
-                                        -2*self.ylim_init[1],
-                                        self.lnb_ppm - self.rnb_ppm,
-                                        4*self.ylim_init[1])
-            self.rnb_label.config(text=f'{self.rnb_ppm:.3f}')
+                                       -2*self.ylim_init[1],
+                                       self.lnb_ppm - self.rnb_ppm,
+                                       4*self.ylim_init[1])
+            self.rnb_label.set(f'{self.rnb_ppm:.3f}')
             self.canvas.draw_idle()
         else:
             self.rnb = self.lnb + 1
             self.rnb_ppm = _misc.conv_ppm_idx(self.rnb, self.sw_p, self.off_p,
-                                              self.n_p, direction='idx->ppm')
-            self.rnb_slide.set(self.rnb_ppm)
+                                             self.n, direction='idx->ppm')
+            self.rnb_scale.set(self.rnb)
             self.canvas.draw_idle()
+
+    def update_rnb_entry(self):
+        rnb_ppm = float(self.rnb_label.get())
+        rnb = _misc.conv_ppm_idx(rnb_ppm, self.sw_p, self.off_p, self.n,
+                                direction='ppm->idx')
+        if rnb > self.lb:
+            self.rnb = rnb
+            self.rnb_ppm = rnb_ppm
+            self.noiseregion.set_bounds(self.rnb_ppm,
+                                       -2*self.ylim_init[1],
+                                       self.lnb_ppm - self.rnb_ppm,
+                                       4*self.ylim_init[1])
+            self.rnb_scale.set(self.rnb)
+            self.canvas.draw_idle()
+        else:
+            self.rnb_label.set(f'{self.rnb_ppm:.3f}')
+
+    def update_pivot_scale(self, pivot):
+
+        self.pivot = int(pivot)
+        self.pivot_ppm = _misc.conv_ppm_idx(self.pivot, self.sw_p, self.off_p,
+                                            self.n, direction='idx->ppm')
+        self.pivot_label.set(f'{self.pivot_ppm:.3f}')
+        self.update_phase()
+        x = np.linspace(self.pivot_ppm, self.pivot_ppm, 1000)
+        self.pivotplot.set_xdata(x)
+
+        self.canvas.draw_idle()
+
+
+    def update_pivot_entry(self):
+
+        try:
+            self.pivot_ppm = float(self.pivot_label.get())
+            self.pivot = _misc.conv_ppm_idx(self.pivot_ppm,
+                                            self.sw_p,
+                                            self.off_p,
+                                            self.n,
+                                            direction='ppm->idx')
+            self.update_phase()
+            x = np.linspace(self.pivot_ppm, self.pivot_ppm, 1000)
+            self.pivotplot.set_xdata(x)
+            self.pivot_scale.set(self.pivot)
+            self.canvas.draw_idle()
+
+        except:
+            self.pivot_label.set(f'{self.pivot_ppm:.3f}')
+
+    def update_p0_scale(self, p0):
+        self.p0 = float(p0)
+        self.p0_label.set(f'{self.p0:.3f}')
+        self.update_phase()
+
+    def update_p0_entry(self):
+        try:
+            self.p0 = float(self.p0_label.get())
+            self.p0_scale.set(self.p0)
+            self.update_phase()
+
+        except:
+            self.p0_label.set(f'{self.p0:.3f}')
+
+    def update_p1_scale(self, p1):
+        self.p1 = float(p1)
+        self.p1_label.set(f'{self.p1:.3f}')
+        self.update_phase()
+
+    def update_p1_entry(self):
+        try:
+            self.p1 = float(self.p1_label.get())
+            self.p1_scale.set(self.p1)
+            self.update_phase()
+
+        except:
+            self.p1_label.set(f'{self.p1:.3f}')
+
+
+    def update_phase(self):
+
+        newspec = np.real(self.spec * np.exp(1j * (self.p0 + (self.p1 * \
+        np.arange(-self.pivot, -self.pivot + self.n, 1) / self.n))))
+
+        self.specplot.set_ydata(newspec)
+        self.canvas.draw_idle()
+
+    def update_plot(self, _):
+        tab = self.scaleframe.index(self.scaleframe.select())
+
+        # region selection tab selected
+        if tab == 0:
+            self.filtregion.set_alpha(1)
+            self.noiseregion.set_alpha(1)
+            self.pivotplot.set_alpha(0)
+
+        # phase correction tab selected
+        elif tab == 1:
+            self.filtregion.set_alpha(0)
+            self.noiseregion.set_alpha(0)
+            self.pivotplot.set_alpha(1)
+
+        self.canvas.draw_idle()
 
     def browse(self):
         self.dir = filedialog.askdirectory()
         self.dir_bar.insert(0, self.dir)
 
-    def untick_csv(self):
-        self.csvfile.set('0')
-
     def load_help(self):
         import webbrowser
-        path = os.path.join(self.path, 'topspin/docs/help.pdf')
-        webbrowser.open_new(path)
+        webbrowser.open('http://foroozandeh.chem.ox.ac.uk/home')
 
     def save(self):
         self.lb = int(np.floor(self.lb))
@@ -875,7 +1148,7 @@ class NMREsPyGUI:
         self.nlp_points = int(self.n_nlp.get())
         self.maxiter = int(self.maxiter.get())
         self.alg = self.algorithm.get()
-        self.pv = self.phase_var.get()
+        self.pv = self.phasevar.get()
         self.descrip = self.descrip.get('1.0', tk.END)
         self.file = self.fname.get()
         self.dir = self.dir_bar.get()
@@ -887,6 +1160,172 @@ class NMREsPyGUI:
         self.master.destroy()
         print("NMR-ESPY Cancelled :'(")
         exit()
+
+
+class ResultGUI:
+
+    def __init__(self, master, info):
+
+        self.master = master
+        self.info = info
+
+        self.fig, self.ax, self.lines, self.labels = self.info.plot_result()
+        self.fig.set_dpi(170)
+        self.fig.set_size_inches(6, 3.5)
+
+        # place figure into canvas
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.master)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack()
+
+
+class dtypeGUI:
+
+    def __init__(self, master, fidpath, pdatapath):
+
+        self.master = master
+        self.master.resizable(0, 0)
+
+        self.logoframe = tk.Frame(self.master)
+        self.logoframe.grid(row=0,
+                            column=0,
+                            rowspan=2)
+
+        self.mainframe = tk.Frame(self.master)
+        self.mainframe.grid(row=0,
+                            column=1)
+
+        self.buttonframe = tk.Frame(self.master)
+        self.buttonframe.grid(row=1,
+                              column=1,
+                              sticky='e')
+
+        self.pad = 10
+
+        self.espypath = os.path.dirname(nmrespy.__file__)
+        self.nmrespy_image = Image.open(os.path.join(self.espypath,
+                                        'topspin/images/nmrespy_full.png'))
+
+        scale = 0.07
+        [w, h] = self.nmrespy_image.size
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+        self.nmrespy_image = self.nmrespy_image.resize((new_w, new_h),
+                                                       Image.ANTIALIAS)
+        self.nmrespy_img = ImageTk.PhotoImage(self.nmrespy_image)
+
+        self.nmrespy_logo = tk.Label(self.logoframe,
+                                      image=self.nmrespy_img)
+
+        self.nmrespy_logo.pack(padx=(self.pad, self.pad),
+                               pady=self.pad)
+
+        self.message = tk.Label(self.mainframe,
+                                 text='Which data would you like to analyse?',
+                                 font=('Helvetica', '14'))
+        self.message.grid(column=0,
+                          row=0,
+                          columnspan=2,
+                          padx=self.pad,
+                          pady=(self.pad, 0))
+
+        self.pdata_label = tk.Label(self.mainframe,
+                                     text='Processed Data')
+        self.pdata_label.grid(column=0,
+                              row=1,
+                              padx=(self.pad, 0),
+                              pady=(self.pad, 0),
+                              sticky='w')
+
+        self.pdatapath = tk.Label(self.mainframe,
+                                   text=f'{pdatapath}/1r',
+                                   font='Courier')
+        self.pdatapath.grid(column=0,
+                            row=2,
+                            padx=(self.pad, 0),
+                            sticky='w')
+
+        self.pdata = tk.IntVar()
+        self.pdata.set(1)
+        self.pdata_box = tk.Checkbutton(self.mainframe,
+                                         variable=self.pdata,
+                                         command=self.click_pdata)
+        self.pdata_box.grid(column=1,
+                            row=1,
+                            rowspan=2,
+                            padx=self.pad,
+                            sticky='nsw')
+
+        self.fid_label = tk.Label(self.mainframe,
+                                     text='Raw FID')
+        self.fid_label.grid(column=0,
+                              row=3,
+                              padx=(self.pad, 0),
+                              pady=(self.pad, 0),
+                              sticky='w')
+
+        self.fidpath = tk.Label(self.mainframe,
+                                   text=f'{fidpath}/fid',
+                                   font='Courier')
+        self.fidpath.grid(column=0,
+                            row=4,
+                            padx=(self.pad, 0),
+                            sticky='w')
+
+        self.fid = tk.IntVar()
+        self.fid.set(0)
+        self.fid_box = tk.Checkbutton(self.mainframe,
+                                       variable=self.fid,
+                                       command=self.click_fid)
+        self.fid_box.grid(column=1,
+                          row=3,
+                          rowspan=2,
+                          padx=self.pad,
+                          sticky='nsw')
+
+        self.confirmbutton = tk.Button(self.buttonframe,
+                                        text='Confirm',
+                                        command=self.confirm)
+
+        self.confirmbutton.grid(column=1,
+                                row=0,
+                                padx=(self.pad/2, self.pad),
+                                pady=(self.pad, self.pad),
+                                sticky='e')
+
+        self.confirmbutton = tk.Button(self.buttonframe,
+                                        text='Cancel',
+                                        command=self.cancel)
+        self.confirmbutton.grid(column=0,
+                                row=0,
+                                pady=(self.pad, self.pad),
+                                sticky='e')
+
+    def click_fid(self):
+        fidval = self.fid.get()
+        if fidval == 1:
+            self.pdata.set(0)
+        elif fidval == 0:
+            self.pdata.set(1)
+
+    def click_pdata(self):
+        fidval = self.pdata.get()
+        if fidval == 1:
+            self.fid.set(0)
+        elif fidval == 0:
+            self.fid.set(1)
+
+    def cancel(self):
+        self.master.destroy()
+        print('NMR-EsPy Cancelled :\'(')
+        exit()
+
+    def confirm(self):
+        if self.fid.get() == 1:
+            self.dtype = 'fid'
+        elif self.pdata.get() == 1:
+            self.dtype = 'pdata'
+        self.master.destroy()
 
 
 if __name__ == '__main__':
@@ -906,359 +1345,76 @@ if __name__ == '__main__':
     fidpath = from_topspin[0]
     pdatapath = from_topspin[1]
 
-    fidinfo = load.import_bruker_fid(fidpath, ask_convdta=False)
-    pdatainfo = load.import_bruker_pdata(pdatapath)
-
     root = tk.Tk()
-    app = NMREsPyGUI(root, fidinfo, pdatainfo)
+    dtype_app = dtypeGUI(root, fidpath, pdatapath)
     root.mainloop()
 
-    lb_ppm = app.lb_ppm,
-    rb_ppm = app.rb_ppm,
-    lnb_ppm = app.lnb_ppm,
-    rnb_ppm = app.rnb_ppm,
-    mpm_points = app.mpm_points,
-    nlp_points = app.nlp_points,
-    maxit = app.maxiter
-    alg = app.alg
+    dtype = dtype_app.dtype
+    if dtype == 'fid':
+        info = load.import_bruker_fid(fidpath, ask_convdta=False)
+    elif dtype == 'pdata':
+        info = load.import_bruker_pdata(pdatapath)
+
+    print(info.get_n())
+    root = tk.Tk()
+    main_app = NMREsPyGUI(root, info)
+    root.mainloop()
+
+    lb_ppm = main_app.lb_ppm,
+    rb_ppm = main_app.rb_ppm,
+    lnb_ppm = main_app.lnb_ppm,
+    rnb_ppm = main_app.rnb_ppm,
+    mpm_points = main_app.mpm_points,
+    nlp_points = main_app.nlp_points,
+    maxit = main_app.maxiter
+    alg = main_app.alg
 
     if alg == 'Trust Region':
         alg = 'trust_region'
     elif alg == 'L-BFGS':
         alg = 'lbfgs'
 
-    pv = app.pv
+    pv = main_app.pv
     if pv == '1':
         pv = True
     else:
         pv = False
 
-    descrip = app.descrip
-    file = app.file
-    dir = app.dir
+    descrip = main_app.descrip
+    file = main_app.file
+    dir = main_app.dir
 
-    txt = app.txt
+    txt = main_app.txt
     if txt == '1':
         txt = True
     else:
         txt = False
 
-    pdf = app.pdf
+    pdf = main_app.pdf
     if pdf == '1':
         pdf = True
     else:
         pdf = False
 
-    pdatainfo.virtual_echo(highs=lb_ppm,
-                           lows=rb_ppm,
-                           highs_n=lnb_ppm,
-                           lows_n=rnb_ppm)
+    info.virtual_echo(highs=lb_ppm,
+                      lows=rb_ppm,
+                      highs_n=lnb_ppm,
+                      lows_n=rnb_ppm)
 
-    pdatainfo.matrix_pencil(trim=mpm_points)
+    info.matrix_pencil(trim=mpm_points)
 
-    pdatainfo.nonlinear_programming(trim=nlp_points,
-                                    maxit=maxit,
-                                    method=alg,
-                                    phase_variance=pv)
+    info.nonlinear_programming(trim=nlp_points,
+                               maxit=maxit,
+                               method=alg,
+                               phase_variance=pv)
 
     if txt:
-        pdatainfo.write_result(descrip=descrip, fname=file, dir=dir,
+        info.write_result(descrip=descrip, fname=file, dir=dir,
                                force_overwrite=True)
     if pdf:
-        pdatainfo.write_result(descrip=descrip, fname=file, dir=dir,
+        info.write_result(descrip=descrip, fname=file, dir=dir,
                                force_overwrite=True, format='pdf')
 
-    pdatainfo.plot_result()
-
-
-    io.save_info(info, fname=file, dir=dir)
-    """
-    if txt:
-        descr = "NMR-ESPY - MPM result"
-        io.write_para(x0, sw_hz, offset_hz, sfo, mpm_points, descr,
-                      filename=file+'_mpm', dir=dir, order='freq')
-
-        descr = "NMR-ESPY - NLP result"
-        io.write_para(x, sw_hz, offset_hz, sfo, nlp_points, descr,
-                      filename=file+'_nlp', dir=dir, order='freq')
-
-    if pdf:
-        descr = "NMR-ESPY result"
-        io.write_para(x, sw_hz, offset_hz, sfo, nlp_points, descr,
-                      filename=fname, order='freq', format='pdf')
-
-    if csv:
-        descr = "NMR-ESPY - NLP result"
-        io.write_para(x, sw_hz, offset_hz, sfo, nlp_points, descr,
-                      filename='nlp_result', order='freq', format='csv')
-    """
-    fig = plt.figure(figsize=(8,6))
-    ax = fig.add_axes([0.05, 0.05, 0.9, 0.9])
-    ax.plot(info['shifts'], info['1r'], color='k')
-    M = info['x'].shape[0]
-    cols = cm.viridis(np.linspace(0, 1, M))
-    for m, c in zip(range(M), cols):
-        i = copy(info)
-        i['p'] = i['x'][m]
-        i = core.make_fid(i, parakey='p')
-        s = fftshift(fft(i['synthetic_signal']))
-        ax.plot(info['shifts'], np.real(s), color=c)
-    ax.set_xlim(info['left_bound_ppm'], info['right_bound_ppm'])
-    plt.show()
-    exit()
-
-    """
-    # unpack parameters
-    lb = params[0]
-    rb = params[1]
-    lnb = params[2]
-    rnb = params[3]
-
-    mpm_trunc = ad_params[0]
-    nlp_trunc = ad_params[1]
-    mit = ad_params[2]
-    alg = ad_params[3]
-    pc = ad_params[4]
-    txt = ad_params[5]
-    pdf = ad_params[6]
-    csv = ad_params[7]
-    fn = ad_params[8]
-    """
-    if alg == 'Trust Region':
-        alg = 'trust-region'
-    elif alg == 'L-BFGS':
-        alg = 'lbfgs'
-    else:
-        print('HUH!?')
-        exit()
-
-    for param in [pc, txt, pdf, csv]:
-        if param == 1:
-            param = True
-        else:
-            param = False
-
-    # checks to ensure bounds make sense
-    if lb is not None and rb is not None:
-        if lb <= rb:
-            errmsg = 'The left bound (%s ppm) should be larger than the' %str(lb) \
-                     + ' right bound (%s ppm).' %str(rb)
-            root = tk.Tk()
-            app = warnGUI(root, espypath, errmsg)
-            root.mainloop()
-            exit()
-
-        if lb > dict['shifts'][0]:
-            ls = round(dict['shifts'][0], 4)
-            rs = round(dict['shifts'][-1], 4)
-            errmsg = 'The left bound (%s ppm) and right bound' %str(lb) \
-                     + '  (%s ppm) shoudld lie within the range' %str(rb) \
-                     + ' %s to %s ppm.' %(ls, rs)
-            root = tk.Tk()
-            app = warnGUI(root, espypath, errmsg)
-            root.mainloop()
-            exit()
-
-        if rb < dict['shifts'][-1]:
-            ls = round(dict['shifts'][0], 4)
-            rs = round(dict['shifts'][-1], 4)
-            errmsg = 'The left bound (%s ppm) and right bound' %str(lb) \
-                     + '  (%s ppm) shoudld lie within the range' %str(rb) \
-                     + ' %s to %s ppm.' %(ls, rs)
-            root = tk.Tk()
-            app = warnGUI(root, espypath, errmsg)
-            root.mainloop()
-            exit()
-
-    if lnb is not None and rnb is not None:
-        if lnb <= rnb:
-            errmsg = 'The left noise bound (%s ppm) should be larger' %str(lnb) \
-                     + ' than the right noise bound (%s ppm).' %str(rnb)
-            root = tk.Tk()
-            app = warnGUI(root, espypath, errmsg)
-            root.mainloop()
-            exit()
-
-        if lnb > dict['shifts'][0]:
-            ls = round(dict['shifts'][0], 4)
-            rs = round(dict['shifts'][-1], 4)
-            errmsg = 'The left noise bound (%s ppm) and right noise' %str(lnb) \
-                     + ' bound (%s ppm) should lie within the range' %str(rnb) \
-                     + ' %s to %s ppm.' %(ls, rs)
-            root = tk.Tk()
-            app = warnGUI(root, espypath, errmsg)
-            root.mainloop()
-            exit()
-
-        if rnb < dict['shifts'][-1]:
-            ls = round(dict['shifts'][0], 4)
-            rs = round(dict['shifts'][-1], 4)
-            errmsg = 'The left noise bound (%s ppm) and right noise' %str(lnb) \
-                     + ' bound (%s ppm) should lie within the range' %str(rnb) \
-                     + ' %s to %s ppm.' %(ls, rs)
-            root = tk.Tk()
-            app = warnGUI(root, espypath, errmsg)
-            root.mainloop()
-            exit()
-
-    if mpm_trunc == None:
-        pass
-
-    elif mpm_trunc > si:
-        errmsg = 'The number of points specified for consideration in the' \
-                 + ' Matrix Pencil Method (%s) is larger ' %str(mpm_trunc) \
-                 + ' than the number of signal points (%s).' %str(si)
-        root = tk.Tk()
-        app = warnGUI(root, espypath, errmsg)
-        root.mainloop()
-        exit()
-
-    if nlp_trunc == None:
-        pass
-
-    elif nlp_trunc > si:
-        errmsg = 'The number of points specified for consideration durring' \
-                 + ' Nonlinear Programming (%s) is larger ' %str(nlp_trunc) \
-                 + ' than the number of signal points (%s).' %str(si)
-        root = tk.Tk()
-        app = warnGUI(root, espypath, errmsg)
-        root.mainloop()
-        exit()
-
-    # derive the virtual echo and analyse
-    if lb is None and rb is None and lnb is None and rnb is None:
-        ve = ne.virtual_echo_1d(pdata_path, bound='None', noise_bound='None')
-
-    elif lnb is None and rnb is None:
-        ve = ne.virtual_echo_1d(pdata_path, bound=(lb, rb), noise_bound=None)
-
-    else:
-        ve = ne.virtual_echo_1d(pdata_path, bound=(lb, rb), noise_bound=(lnb, rnb))
-
-    I_in = 0
-    x0 = ne.matrix_pencil(ve[:mpm_trunc], 0, dict['sw_hz'])
-
-    x = ne.nonlinear_programming(ve[:nlp_trunc], dict['sw_hz'], x0,
-                                 method=alg, maxit=mit, phase_correct=pc)
-
-    fid = ne.make_fid(x, dict['sw_hz'], N=dict['si'])
-
-    twoup = os.path.dirname(os.path.dirname(pdata_path))
-    # path of new directory
-    for i in range(100):
-        res_path = '%s00%s' %(twoup,  str(i))
-        if os.path.exists(res_path):
-            continue
-        else:
-            break
-
-    shutil.copytree(src=twoup, dst=res_path)
-    descr = 'Estimation of signal parameters using NMR-EsPy'
-
-    if txt:
-        io.write_para(x, descr, dir=res_path)
-    if pdf:
-        io.write_para(x, descr, dir=res_path, format='pdf')
-
-    #========================================================
-    # TODO
-    # if csv:
-    #     io.write_para(x, descr, dir=res_path, format='csv')
-    #========================================================
-
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    from numpy.fft import fftshift, fft
-
-    l = int(np.ceil((((dict['offset_ppm'] + (dict['sw_ppm'] / 2) - lb) / dict['sw_ppm']) * dict['si'])))
-    r = int(np.floor((((dict['offset_ppm'] + (dict['sw_ppm'] / 2) - rb) / dict['sw_ppm']) * dict['si'])))
-
-    fig, ax = plt.subplots()
-    ax.plot(dict['shifts'], np.real(dict['spec']), color='k')
-    cols = cm.viridis(np.linspace(0, 1, x.shape[0]))
-    for i, c in zip(np.arange(x.shape[0]), cols):
-        f = ne.make_fid(x[i], dict['sw_hz'], N=dict['si'])
-        ax.plot(dict['shifts'], np.real(fftshift(fft(f))), color=c)
-
-    ax.invert_xaxis()
-    ax.set_xlim(lb, rb)
-    ax.set_ylim(0, np.amax(dict['spec'][l:r]) * 1.1)
-
-    plt.show()
-
     root = tk.Tk()
-    app = completeGUI(root, res_path)
+    res_app = ResultGUI(root, info)
     root.mainloop()
-    exit()
-
-
-
-    # os.remove(f'{res_path}/fid')
-    # pdata_num = pdata_path.split('/')[-1]
-    # os.remove(f'{res_path}/pdata/{pdata_num}')
-    #
-    # exit()
-    #
-    # ############################################
-    # # 3) Set-up directory for estimated spectrum
-    #
-    # # directory number
-    # dir_num = path.split('/')[-1]
-    #
-    # # parent directory
-    # par_path = path[:-(len(dir_num) + 1)]
-    #
-    # # determine path of new directory
-    # for i in range(100):
-    #     npath = '%s/%s00%s' %(par_path, dir_num, str(i))
-    #
-    #     # check if the path already exists
-    #     if os.path.exists('%s' %npath):
-    #         continue
-    #
-    #     else:
-    #         break
-    #
-    # # copy original data directory to new directory
-    # shutil.copytree(src=path, dst=npath)
-    #
-    # # delete files that will be overwritten
-    # os.remove('%s/fid' %npath)
-    # os.remove('%s/acqus' %npath)
-    # os.remove('%s/acqu' %npath)
-    # os.remove('%s/pulseprogram' %npath)
-    #
-    # ##################################################################
-    # # 4) Construct estimated FID using TD and SW specified by the user
-    #
-    # fid_est = ne.make_fid_1d(x, sw_h, td_user/2)
-    #
-    # ##################
-    # # 5) Write results
-    #
-    # print('\033[92mSpectral Estimation complete\033[0m')
-    # print()
-    #
-    # print('Estimated FID can be found in the following directory:')
-    # print('%s/fid' %npath)
-    # print()
-    #
-    # descr_txt = 'Parameters determined by application of spectral estimation\n\nData path: %s/fid\n' %path
-    #
-    # path_string = ('%s/fid' %path).replace('_', r'\_')
-    #
-    # descr_tex = r'Parameters determined by application of spectral estimation on' \
-    #             + r' data in path:\\' + r'\texttt{' + path_string + '}'
-    #
-    # # write x to textfile and latex pdf
-    # misc.write_para(x, descr_txt, filename='PARA', dir=npath, format='textfile')
-    # misc.write_para(x, descr_tex, filename='PARA', dir=npath, format='latex')
-    #
-    # f = open('%s/pdata/%s/title' %(npath, ppath.split('/')[-1]), 'a')
-    #
-    # f.write('\n')
-    # f.write('SPECTRUM ESTIMATED USING NMR-EsPy')
-    #
-    # f.close()
-    #
-    # ng.bruker.write(dir=npath, dic=dict, data=fid_est)
