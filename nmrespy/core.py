@@ -110,6 +110,14 @@ class NMREsPyBruker:
         is contained within the filter region specified using
         :py:meth:`virtual_echo`, in each dimension.
 
+    p0 : float or None, default: `None`
+        The zero order phase correction applied to the frequency domain data
+        during :py:meth:`virtual_echo`.
+
+    p1 : float or None, default: `None`
+        The first order phase correction applied to the frequency domain data 
+        during :py:meth:`virtual_echo`.
+
     theta0 : numpy.ndarray or None, default: `None`
         The parameter estimate derived using :py:meth:`matrix_pencil`
 
@@ -120,7 +128,8 @@ class NMREsPyBruker:
     def __init__(self, dtype, data, path, sw, off, n, sfo, nuc, endian,
                  intfloat, dim, filt_spec=None, virt_echo=None,
                  half_echo=None, ve_n=None, ve_sw=None, ve_off=None,
-                 highs=None, lows=None, theta0=None, theta=None):
+                 highs=None, lows=None, p0=None, p1=None, theta0=None,
+                 theta=None):
 
         self.dtype = dtype # type of data ('raw' or 'pdata')
         self.data = data
@@ -141,6 +150,8 @@ class NMREsPyBruker:
         self.ve_off = ve_off # offset of virtual echo if cut
         self.highs = highs # idx values corresponding to highest ppms of region
         self.lows = lows # idx values corresponding to lowest ppms of region
+        self.p0 = p0 # zero-order phase correction for virtual echo
+        self.p1 = p1 # first-order phase correction for virtual echo
         self.theta0 = theta0 # mpm result
         self.theta = theta # nlp result
 
@@ -567,6 +578,7 @@ class NMREsPyBruker:
         else:
             raise InvalidUnitError('idx', 'Hz', 'ppm')
 
+
     def get_lows(self, unit='idx', kill=True):
         """Return the value of the point with the lowest ppm value that
         is contained within the filter region specified using
@@ -604,6 +616,73 @@ class NMREsPyBruker:
             return self._indices_to_ppm(lows)
         else:
             raise InvalidUnitError('idx', 'Hz', 'ppm')
+
+    def get_p0(self, unit='rad', kill=True):
+        """Return the zero-order phase correction specified using
+        :py:meth:`virtual_echo`.
+
+        Parameters
+        ----------
+        unit : 'rad', 'deg', default: 'rad'
+            The unit to set p0 to. ``'rad'`` corresponds to radians,
+            ``'deg'`` corresonds to degress.
+
+        kill : bool, default: True
+            If p0 is `None` exists, `kill` specifies how to act. If `True`,
+            an error is raised. If `False`, None is returned.
+
+        Returns
+        -------
+        p0 : float or None
+
+        Raises
+        ------
+        AttributeIsNoneError
+            Raised if ``p0`` is ``None``, and ``kill = True``
+        InvalidUnitError
+            If `unit` is not ``'rad'`` or ``'deg'``
+        """
+        p0 = self._get_nondefault_param('p0', 'virtual_echo()', kill)
+        if unit == 'rad':
+            return p0
+        elif unit == 'deg':
+            return p0 * (180 / np/pi)
+        else:
+            raise InvalidUnitError('rad', 'deg')
+
+
+    def get_p1(self, unit='rad', kill=True):
+        """Return the first-order phase correction specified using
+        :py:meth:`virtual_echo`.
+
+        Parameters
+        ----------
+        unit : 'rad', 'deg', default: 'rad'
+            The unit to set p1 to. ``'rad'`` corresponds to radians,
+            ``'deg'`` corresonds to degress.
+
+        kill : bool, default: True
+            If p1 is ``None``, `kill` specifies how to act. If ``True``,
+            an error is raised. If ``False``, None is returned.
+
+        Returns
+        -------
+        p1 : float or None
+
+        Raises
+        ------
+        AttributeIsNoneError
+            Raised if ``p1`` is ``None``, and ``kill = True``
+        InvalidUnitError
+            If `unit` is not ``'rad'`` or ``'deg'``
+        """
+        p1 = self._get_nondefault_param('p1', 'virtual_echo()', kill)
+        if unit == 'rad':
+            return p1
+        elif unit == 'deg':
+            return p1 * (180 / np/pi)
+        else:
+            raise InvalidUnitError('rad', 'deg')
 
     def get_filt_spec(self, kill=True):
         """Return the filtered spectral data generated using
@@ -917,10 +996,10 @@ class NMREsPyBruker:
 
         if self.dtype == 'raw':
             dtype = 'raw'
-            data = fftshift(fft(self.data))
+            data = np.flip(fftshift(fft(self.data)))
         elif self.dtype == 'pdata':
             dtype = 'pdata'
-            data = self.data['1r']
+            data = self.get_data(pdata_key='1i') + 1j * self.get_data(pdata_key='1i')
 
         # convert floats to tuples if user didn't follow my documentation...
         # (1D case)
@@ -937,7 +1016,7 @@ class NMREsPyBruker:
             lows_n_idx = self._ppm_to_indices(lows_n)
 
         # phase data
-        data = _ve.phase(data, p0, p1)
+        data = np.real(_ve.phase(data, p0, p1))
         # generate super gaussian filter
         superg = _ve.super_gaussian(n, highs_idx, lows_idx)
 
@@ -965,6 +1044,8 @@ class NMREsPyBruker:
         self.half_echo = 2 * self.virt_echo[half]
         self.highs = highs_idx
         self.lows = lows_idx
+        self.p0 = p0
+        self.p1 = p1
 
     def matrix_pencil(self, M_in=0, trim=None, func_print=True):
         """Implementation of the 1D Matrix Pencil Method [1]_ [2]_ or 2D
@@ -1574,12 +1655,17 @@ class NMREsPyBruker:
         res = self._check_res(resname)
 
         if self.dtype == 'raw':
-            data = fftshift(fft(self.data))
+            data = np.flip(fftshift(fft(self.data)))
         elif self.dtype == 'pdata':
             data = self.data['1r']
 
-        if 'p0' in self.__dict__ and 'p1' in self.__dict__:
-            data = ve.phase(data, self.p0, self.p1)
+        p0 = self.get_p0(kill=False)
+        p1 = self.get_p1(kill=False)
+
+        if p0 is None:
+            pass
+        else:
+            data = _ve.phase(data, p0, p1)
 
         # FTs of FIDs generated from individual oscillators in result array
         peaks = []

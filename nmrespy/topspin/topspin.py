@@ -22,15 +22,52 @@ import matplotlib.cm as cm
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from matplotlib.backend_bases import MouseEvent
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 import nmrespy
 import nmrespy.load as load
 import nmrespy._misc as _misc
 
 
+class CustomNavigationToolbar(NavigationToolbar2Tk):
 
+    def __init__(self, canvas_, parent_):
+        self.toolitems = self.toolitems[:6]
+        NavigationToolbar2Tk.__init__(self, canvas_, parent_)
 
+    def set_message(self, msg):
+        pass
+
+# https://stackoverflow.com/questions/48709873/restricting-panning-range-in-matplotlib-plots
+class Restrictor():
+
+    def __init__(self, ax, x=lambda x: True, y=lambda x: True):
+        self.res = [x,y]
+        self.ax =ax
+        self.limits = self.get_lim()
+        self.ax.callbacks.connect('xlim_changed', lambda evt: self.lims_change(axis=0))
+        self.ax.callbacks.connect('ylim_changed', lambda evt: self.lims_change(axis=1))
+
+    def get_lim(self):
+        return [self.ax.get_xlim(), self.ax.get_ylim()]
+
+    def set_lim(self, axis, lim):
+        if axis==0:
+            self.ax.set_xlim(lim)
+        else:
+            self.ax.set_ylim(lim)
+        self.limits[axis] = self.get_lim()[axis]
+
+    def lims_change(self, event=None, axis=0):
+        curlim = np.array(self.get_lim()[axis])
+        if self.limits[axis] != self.get_lim()[axis]:
+            # avoid recursion
+            if not np.all(self.res[axis](curlim)):
+                # if limits are invalid, reset them to previous state
+                self.set_lim(axis, self.limits[axis])
+            else:
+                # if limits are valid, update previous stored limits
+                self.limits[axis] = self.get_lim()[axis]
 
 class NMREsPyGUI:
     def __init__(self, master, info):
@@ -50,6 +87,7 @@ class NMREsPyGUI:
 
         # basic info
         self.shifts = info.get_shifts(unit='ppm')[0]
+        print(self.shifts)
         self.sw_p = info.get_sw(unit='ppm')[0]
         self.off_p = info.get_offset(unit='ppm')[0]
         self.n = self.spec.shape[0]
@@ -102,6 +140,11 @@ class NMREsPyGUI:
                             padx=(self.pad, 0),
                             pady=(self.pad, 0),
                             sticky='nsew')
+
+        self.toolbarframe = tk.Frame(self.plotframe)
+        self.toolbarframe.grid(row=1,
+                               column=0,
+                               sticky='e')
 
         # scaleframe -> tabs for region selection and phase correction
         self.scaleframe = ttk.Notebook(self.leftframe)
@@ -243,75 +286,20 @@ class NMREsPyGUI:
 
         # place figure into canvas
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.plotframe)
+        self.canvas.get_tk_widget().grid(row=0,
+                                         column=0,
+                                         sticky='nsew')
         self.canvas.draw()
-        self.canvas.get_tk_widget().grid(row=0, column=0, sticky='nsew')
 
-        # function for when mouse is clicked inside plot
-        def on_click(event):
-            # left click
-            if event.button == 1:
-                if event.inaxes is not None:
-                    # get x and y values of click location
-                    # this will be one vertex of the zoom region
-                    self.click = (event.xdata, event.ydata)
+        # custom mpl toolar, lacking save button and figure geometry manager
+        self.toolbar = CustomNavigationToolbar(self.canvas, self.toolbarframe)
 
-            # right click
-            elif event.button == 3:
-                # if no limit adjustment has already been made, ignore
-                if len(self.xlimit_history) == 1:
-                    pass
-                # if limit adjustment has been made, go back...
-                else:
-                    # if double click, go back to original
-                    if event.dblclick:
-                        self.xlimit_history = [self.xlimit_history[0]]
-                        self.ylimit_history = [self.ylimit_history[0]]
-                        self.xlim = self.xlimit_history[0]
-                        self.ylim = self.ylimit_history[0]
-                        self.ax.set_xlim(self.xlim)
-                        self.ax.set_ylim(self.ylim)
-                        self.canvas.draw_idle()
+        # restrict zooming and panning into regions beyond the spectral window
+        self.restrict1 = Restrictor(self.ax,
+                                   x=lambda x: x<= self.shifts[0])
+        self.restrict2 = Restrictor(self.ax,
+                                   x=lambda x: x>= self.shifts[-1])
 
-                    # if single click, go back to previous view
-                    else:
-                        del self.xlimit_history[-1]
-                        del self.ylimit_history[-1]
-                        self.xlim = self.xlimit_history[-1]
-                        self.ylim = self.ylimit_history[-1]
-                        self.ax.set_xlim(self.xlim)
-                        self.ax.set_ylim(self.ylim)
-                        self.canvas.draw_idle()
-
-        def on_release(event):
-            if event.button == 1:
-                if event.inaxes is not None:
-                    update = True
-                    # determine the x co-ordindates of the zoomed region
-                    self.release = (event.xdata, event.ydata)
-                    if self.click[0] > self.release[0]:
-                        self.xlim = (self.click[0], self.release[0])
-                    elif self.click[0] < self.release[0]:
-                        self.xlim = (self.release[0], self.click[0])
-                    else:
-                        update = False
-
-                    # determine the y co-ordindates of the zoomed region
-                    if self.click[1] < self.release[1]:
-                        self.ylim = (self.click[1], self.release[1])
-                    elif self.click[1] > self.release[1]:
-                        self.ylim = (self.release[1], self.click[1])
-                    else:
-                        update = False
-
-                    if update:
-                        self.xlimit_history.append(self.xlim)
-                        self.ylimit_history.append(self.ylim)
-                        self.ax.set_xlim(self.xlim)
-                        self.ax.set_ylim(self.ylim)
-                        self.canvas.draw_idle()
-
-        self.canvas.callbacks.connect('button_press_event', on_click)
-        self.canvas.callbacks.connect('button_release_event', on_release)
 
         # --- REGION SELECTION ------------------------------------------------
         # Left bound
@@ -1132,7 +1120,7 @@ class NMREsPyGUI:
         self.canvas.draw_idle()
 
     def browse(self):
-        self.dir = filedialog.askdirectory()
+        self.dir = filedialog.askdirectory(initialdir=os.path.expanduser('~'))
         self.dir_bar.insert(0, self.dir)
 
     def load_help(self):
@@ -1140,10 +1128,7 @@ class NMREsPyGUI:
         webbrowser.open('http://foroozandeh.chem.ox.ac.uk/home')
 
     def save(self):
-        self.lb = int(np.floor(self.lb))
-        self.rb = int(np.ceil(self.rb))
-        self.lnb = int(np.floor(self.lnb))
-        self.rnb = int(np.ceil(self.rnb))
+        self.p0 = self.p0 - (self.p1 * self.pivot / self.n)
         self.mpm_points = int(self.n_mpm.get())
         self.nlp_points = int(self.n_nlp.get())
         self.maxiter = int(self.maxiter.get())
@@ -1364,6 +1349,8 @@ if __name__ == '__main__':
     rb_ppm = main_app.rb_ppm,
     lnb_ppm = main_app.lnb_ppm,
     rnb_ppm = main_app.rnb_ppm,
+    p0 = main_app.p0
+    p1 = main_app.p1
     mpm_points = main_app.mpm_points,
     nlp_points = main_app.nlp_points,
     maxit = main_app.maxiter
@@ -1399,7 +1386,9 @@ if __name__ == '__main__':
     info.virtual_echo(highs=lb_ppm,
                       lows=rb_ppm,
                       highs_n=lnb_ppm,
-                      lows_n=rnb_ppm)
+                      lows_n=rnb_ppm,
+                      p0=p0,
+                      p1=p1)
 
     info.matrix_pencil(trim=mpm_points)
 

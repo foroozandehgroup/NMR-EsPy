@@ -31,8 +31,8 @@ def phase(spec, p0, p1):
         Phased version of spec
     """
 
-    N = spec.shape[0]
-    p = np.exp(1j * p0) * np.exp(1j * p1 * np.arange(N) / N)
+    n = spec.shape[0]
+    p = np.exp(1j * p0) * np.exp(1j * p1 * np.arange(n) / n)
     spec_phased = spec * p
     return spec_phased
 
