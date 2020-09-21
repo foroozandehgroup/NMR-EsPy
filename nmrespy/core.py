@@ -115,7 +115,7 @@ class NMREsPyBruker:
         during :py:meth:`virtual_echo`.
 
     p1 : float or None, default: `None`
-        The first order phase correction applied to the frequency domain data 
+        The first order phase correction applied to the frequency domain data
         during :py:meth:`virtual_echo`.
 
     theta0 : numpy.ndarray or None, default: `None`
@@ -999,7 +999,8 @@ class NMREsPyBruker:
             data = np.flip(fftshift(fft(self.data)))
         elif self.dtype == 'pdata':
             dtype = 'pdata'
-            data = self.get_data(pdata_key='1i') + 1j * self.get_data(pdata_key='1i')
+            data = self.get_data(pdata_key='1r') + \
+                   1j * self.get_data(pdata_key='1i')
 
         # convert floats to tuples if user didn't follow my documentation...
         # (1D case)
