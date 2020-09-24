@@ -38,7 +38,8 @@ def plotres_1d(data, peaks, shifts, region, nuc, data_col,
     data_col = _color_checker(data_col, default='#808080')
     osc_cols = _get_osc_cols(osc_col, M)
     # generate figure and axis attributes
-    fig, ax = plt.subplots()
+    fig = plt.figure()
+    ax = fig.add_axes([0.02, 0.15, 0.96, 0.83])
 
     # store each plot (mpl.lines.Line2D objects)
     lines = {}

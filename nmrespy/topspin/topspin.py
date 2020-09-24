@@ -265,6 +265,8 @@ class Restrictor():
                 # if limits are valid, update previous stored limits
                 self.limits[axis] = self.get_lim()[axis]
 
+
+
 class NMREsPyGUI:
     """Main GUI: Phasing and region selection + configuration of routine"""
     def __init__(self, master, info):
@@ -407,10 +409,22 @@ class NMREsPyGUI:
         self.phaseframe.columnconfigure(1, weight=1)
 
         # --- NMR-EsPy LOGO ---------------------------------------------------
-        self.nmrespy_img = nmrespy_image(0.08)
+        self.espypath = os.path.dirname(nmrespy.__file__)
+        self.nmrespy_image = Image.open(os.path.join(self.espypath,
+                                        'topspin/images/nmrespy_full.png'))
+
+        scale = 0.08
+        [w, h] = self.nmrespy_image.size
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+        self.nmrespy_image = self.nmrespy_image.resize((new_w, new_h),
+                                                       Image.ANTIALIAS)
+        self.nmrespy_img = ImageTk.PhotoImage(self.nmrespy_image)
+
         self.nmrespy_logo = tk.Label(self.logoframe, image=self.nmrespy_img,
                                      bg='white')
-        self.nmrespy_logo.pack(pady=(0, self.pad))
+
+        self.nmrespy_logo.pack(padx=self.pad, pady=self.pad)
 
         # --- SPECTRUM PLOT ---------------------------------------------------
         self.fig = Figure(figsize=(6,3.5), dpi=170)
@@ -1131,7 +1145,7 @@ class ResultGUI:
 
         self.edit_lines = tk.Button(self.editframe,
                                      text='Edit Lines',
-                                     command=lambda x: print('TODO'),
+                                     command=self.gotoLineEdit,
                                      width=12,
                                      bg='#e0e0e0',
                                      highlightbackground='black')
@@ -1392,6 +1406,13 @@ class ResultGUI:
                         column=0,
                         sticky='w')
 
+    def gotoLineEdit(self):
+        root2 = tk.Toplevel(self.master)
+        lineedit = LineEdit(root2, self.lines)
+        self.master.wait_window()
+        self.lines = lineedit.lines
+        print(self.lines)
+
     def browse(self):
         self.dir = filedialog.askdirectory(initialdir=os.path.expanduser('~'))
         self.dir_bar.insert(0, self.dir)
@@ -1410,10 +1431,10 @@ class ResultGUI:
         self.txt = self.txtfile.get()
         self.pdf = self.pdffile.get()
         self.pickle = self.picklefile.get()
-        self.master.destroy()
+        self.master.quit()
 
     def cancel(self):
-        self.master.destroy()
+        self.master.quit()
         print("NMR-ESPY Cancelled :'(")
         exit()
 
@@ -1433,83 +1454,91 @@ def get_logo(scale):
     return ImageTk.PhotoImage(nmrespy_image)
 
 
+class LineEdit:
+
+    def __init__(self, master, lines):
+
+        self.master = master
+        self.master.title('NMR-EsPy - Edit Lines')
+        self.master['bg'] = 'white'
+
+        self.lines = lines
+
+        tk.Label(self.master, text='hello').pack()
+        tk.Button(self.master, text='quit', command=self.destroy).pack()
+
 
 
 if __name__ == '__main__':
+    # # path to nmrespy directory
+    # espypath = os.path.dirname(nmrespy.__file__)
+    #
+    # # extract path information
+    # infopath = os.path.join(espypath, 'topspin/tmp/info.txt')
+    # try:
+    #     with open(infopath, 'r') as fh:
+    #         from_topspin = fh.read().split(' ')
+    # except:
+    #     raise IOError(f'No file of path {infopath} found')
+    #
+    # # import dictionary of spectral info
+    # fidpath = from_topspin[0]
+    # pdatapath = from_topspin[1]
+    #
+    # # determine the data type to consider (FID or pdata)
+    # root = tk.Tk()
+    # dtype_app = dtypeGUI(root, fidpath, pdatapath)
+    # root.mainloop()
+    #
+    # dtype = dtype_app.dtype
+    # if dtype == 'fid':
+    #     info = load.import_bruker_fid(fidpath, ask_convdta=False)
+    # elif dtype == 'pdata':
+    #     info = load.import_bruker_pdata(pdatapath)
+    #
+    # root = tk.Tk()
+    # main_app = NMREsPyGUI(root, info)
+    # root.mainloop()
+    #
+    # lb_ppm = main_app.lb_ppm,
+    # rb_ppm = main_app.rb_ppm,
+    # lnb_ppm = main_app.lnb_ppm,
+    # rnb_ppm = main_app.rnb_ppm,
+    # p0 = main_app.p0
+    # p1 = main_app.p1
+    # mpm_points = main_app.mpm_points,
+    # nlp_points = main_app.nlp_points,
+    # maxit = main_app.maxiter
+    # alg = main_app.alg
+    #
+    # if alg == 'Trust Region':
+    #     alg = 'trust_region'
+    # elif alg == 'L-BFGS':
+    #     alg = 'lbfgs'
+    #
+    # pv = main_app.pv
+    # if pv == '1':
+    #     pv = True
+    # else:
+    #     pv = False
+    #
+    #
+    # info.virtual_echo(highs=lb_ppm, lows=rb_ppm, highs_n=lnb_ppm,
+    #                   lows_n=rnb_ppm, p0=p0, p1=p1)
+    #
+    # info.matrix_pencil(trim=mpm_points)
+    #
+    # info.nonlinear_programming(trim=nlp_points, maxit=maxit, method=alg,
+    #                            phase_variance=pv)
 
-    # path to nmrespy directory
-    espypath = os.path.dirname(nmrespy.__file__)
+    info = load.pickle_load('result', dir=os.path.expanduser('~'))
 
-    # extract path information
-    infopath = os.path.join(espypath, 'topspin/tmp/info.txt')
-    try:
-        with open(infopath, 'r') as fh:
-            from_topspin = fh.read().split(' ')
-    except:
-        raise IOError(f'No file of path {infopath} found')
-
-    # import dictionary of spectral info
-    fidpath = from_topspin[0]
-    pdatapath = from_topspin[1]
-
+    # load the result GUI
     root = tk.Tk()
-    dtype_app = dtypeGUI(root, fidpath, pdatapath)
+    res_app = ResultGUI(root, info)
     root.mainloop()
 
-    dtype = dtype_app.dtype
-    if dtype == 'fid':
-        info = load.import_bruker_fid(fidpath, ask_convdta=False)
-    elif dtype == 'pdata':
-        info = load.import_bruker_pdata(pdatapath)
-
-    root = tk.Tk()
-    main_app = NMREsPyGUI(root, info)
-    root.mainloop()
-
-    lb_ppm = main_app.lb_ppm,
-    rb_ppm = main_app.rb_ppm,
-    lnb_ppm = main_app.lnb_ppm,
-    rnb_ppm = main_app.rnb_ppm,
-    p0 = main_app.p0
-    p1 = main_app.p1
-    mpm_points = main_app.mpm_points,
-    nlp_points = main_app.nlp_points,
-    maxit = main_app.maxiter
-    alg = main_app.alg
-
-    if alg == 'Trust Region':
-        alg = 'trust_region'
-    elif alg == 'L-BFGS':
-        alg = 'lbfgs'
-
-    pv = main_app.pv
-    if pv == '1':
-        pv = True
-    else:
-        pv = False
-
-
-    info.virtual_echo(highs=lb_ppm,
-                      lows=rb_ppm,
-                      highs_n=lnb_ppm,
-                      lows_n=rnb_ppm,
-                      p0=p0,
-                      p1=p1)
-
-    info.matrix_pencil(trim=mpm_points)
-
-    info.nonlinear_programming(trim=nlp_points,
-                               maxit=maxit,
-                               method=alg,
-                               phase_variance=pv)
-
-    # info = load.pickle_load('result', dir=os.path.expanduser('~'))
-
-
-    root2 = tk.Tk()
-    res_app = ResultGUI(root2, info)
-    root2.mainloop()
-
+    # construct save files
     descrip = res_app.descrip
     file = res_app.file
     dir = res_app.dir
@@ -1527,4 +1556,3 @@ if __name__ == '__main__':
                                force_overwrite=True, format='pdf')
     if pickle == '1':
         info.pickle_save(fname=file, dir=dir, force_overwrite=True)
-    exit()

@@ -1,5 +1,5 @@
 # FIGURE
-figure.autolayout:     True
+figure.autolayout:     False
 
 # SAVEFIG
 savefig.dpi:           600
