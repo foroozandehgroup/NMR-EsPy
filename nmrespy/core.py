@@ -1351,6 +1351,8 @@ class NMREsPyBruker:
 
         path = os.path.join(dir, fname)
 
+        print(path)
+
         if os.path.isfile(path):
             if force_overwrite:
                 os.remove(path)

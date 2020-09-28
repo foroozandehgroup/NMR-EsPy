@@ -18,9 +18,6 @@ axes.formatter.limits: -99, 99
 # LINES
 lines.linewidth:       1.2
 
-# FONT
-font.family:           serif
-
 # TICKS
 xtick.labelsize:       small
 ytick.left:            False

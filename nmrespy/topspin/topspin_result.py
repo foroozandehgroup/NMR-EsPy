@@ -68,7 +68,7 @@ class Restrictor():
 
 
 
-class Main(tk.Frame):
+class MainResult(tk.Frame):
     def __init__(self, master, info):
         tk.Frame.__init__(self, master)
         self.grid(row=0, column=0, sticky='nsew')
@@ -82,8 +82,12 @@ class Main(tk.Frame):
         self.fig.set_size_inches(6, 3.5)
 
         self.xlim = self.ax.get_xlim()
-        restrict1 = Restrictor(self.ax, x=lambda x: x<= self.xlim[0])
-        restrict2 = Restrictor(self.ax, x=lambda x: x>= self.xlim[-1])
+        self.ylim = self.ax.get_ylim()
+
+        restrict_left = Restrictor(self.ax, x=lambda x: x<= self.xlim[0])
+        restrict_right = Restrictor(self.ax, x=lambda x: x>= self.xlim[1])
+        restrict_up = Restrictor(self.ax, y=lambda y: y>= self.ylim[0])
+        restrict_down = Restrictor(self.ax, y=lambda y: y<= self.ylim[1])
 
 
         # self.rightframe contains everything other than the plot
@@ -94,7 +98,8 @@ class Main(tk.Frame):
         # --- RESULT PLOT ------------------------------------------------------
         self.plotframe = PlotFrame(self, self.fig)
         self.logoframe = LogoFrame(self.rightframe)
-        self.editframe = EditFrame(self.rightframe, self.lines, self.labels, self.plotframe.canvas)
+        self.editframe = EditFrame(self.rightframe, self.lines, self.labels,
+                                   self.ax, self.plotframe.canvas)
         self.saveframe = SaveFrame(self.rightframe)
         self.buttonframe = ButtonFrame(self.rightframe, self.saveframe, self.info)
         self.contactframe = ContactFrame(self.rightframe)
@@ -151,11 +156,12 @@ class LogoFrame(tk.Frame):
 
 
 class EditFrame(tk.Frame):
-    def __init__(self, master, lines, labels, figcanvas):
+    def __init__(self, master, lines, labels, ax, figcanvas):
         tk.Frame.__init__(self, master)
         self.master = master
         self.lines = lines
         self.labels = labels
+        self.ax = ax
         self.figcanvas = figcanvas
 
         self.config(bg='white')
@@ -165,13 +171,13 @@ class EditFrame(tk.Frame):
         self.editoptions = tk.Label(self, text='Edit Options', bg='white',
                                     font=('Helvetica', 14))
         self.edit_params = tk.Button(self, text='Edit Parameters',
-                                     command=print('TODO'), width=12,
+                                     command=self.config_params, width=12,
                                      bg='#e0e0e0', highlightbackground='black')
         self.edit_lines = tk.Button(self, text='Edit Lines',
                                     command=self.config_lines, width=12,
                                     bg='#e0e0e0', highlightbackground='black')
         self.edit_labels = tk.Button(self, text='Edit Labels',
-                                     command=print('TODO'), width=12,
+                                     command=self.config_labels, width=12,
                                      bg='#e0e0e0', highlightbackground='black')
 
         self.editoptions.grid(row=0, column=0, sticky='w')
@@ -179,10 +185,14 @@ class EditFrame(tk.Frame):
         self.edit_lines.grid(row=2, column=0)
         self.edit_labels.grid(row=3, column=0)
 
+    def config_params(self):
+        print('TODO')
 
     def config_lines(self):
-        cfg = ConfigLines(self, self.lines, self.figcanvas)
-        # print(cfg.val)
+        ConfigLines(self, self.lines, self.figcanvas)
+
+    def config_labels(self):
+        ConfigLabels(self, self.labels, self.ax, self.figcanvas)
 
 
 class SaveFrame(tk.Frame):
@@ -331,36 +341,25 @@ class ContactFrame(tk.Frame):
 class ConfigLines(tk.Toplevel):
     def __init__(self, master, lines, figcanvas):
         tk.Toplevel.__init__(self, master)
-
+        self.resizable(True, False)
         self.lines = lines
         self.figcanvas = figcanvas
 
         self.config(bg='white')
 
-        opts = ['All Oscillators']
+        options = ['All Oscillators']
         keys = self.lines.keys()
         for key in keys:
-            key = key.replace('osc', 'Oscillator ').replace('data', 'Data')
-            opts.append(key)
+            opt = key.replace('osc', 'Oscillator ').replace('data', 'Data')
+            options.append(opt)
 
         self.leftframe = tk.Frame(self, bg='white')
         self.rightframe = tk.Frame(self, bg='white')
         self.customframe = tk.Frame(self.rightframe, bg='white')
         self.buttonframe = tk.Frame(self.rightframe, bg='white')
 
-        self.leftframe.grid(row=0, column=0, sticky='nsew')
-        self.rightframe.grid(row=0, column=1, sticky='nsew')
-        self.customframe.grid(row=0, column=0, sticky='new')
-        self.buttonframe.grid(row=1, column=0, sticky='ew')
-
-        self.columnconfigure(1, weight=1)
-        self.leftframe.rowconfigure(0, weight=1)
-        self.rightframe.columnconfigure(0, weight=1)
-        self.rightframe.rowconfigure(0, weight=1)
-        self.buttonframe.columnconfigure(0, weight=1)
-
-        self.list = tk.Listbox(self.leftframe)
-        for opt in opts:
+        self.list = tk.Listbox(self.leftframe, height=14, width=14)
+        for opt in options:
             self.list.insert(tk.END, opt)
 
         self.list.bind('<Double-Button-1>', (lambda entry: self.showlineeditor()))
@@ -368,12 +367,26 @@ class ConfigLines(tk.Toplevel):
         self.list.activate(0)
         self.list.selection_set(0)
 
-        self.list.grid(row=0, column=0, sticky='new')
+
 
         self.close_but = tk.Button(self.buttonframe, text='Close', width=8,
                                    bg='#ff9894', highlightbackground='black',
                                    command=self.close)
-        self.close_but.grid(row=0, column=0, sticky='w')
+
+        self.list.grid(row=0, column=0, sticky='nsew')
+        self.close_but.grid(row=0, column=0, sticky='e')
+
+        self.leftframe.grid(row=0, column=0, sticky='nsew', padx=(10,0), pady=10)
+        self.rightframe.grid(row=0, column=1, sticky='ew')
+        self.customframe.grid(row=0, column=0, sticky='ew')
+        self.buttonframe.grid(row=1, column=0, sticky='e', padx=10, pady=(0,10))
+
+        self.columnconfigure(1, weight=1)
+        self.leftframe.rowconfigure(0, weight=1)
+        self.rightframe.columnconfigure(0, weight=1)
+        self.rightframe.rowconfigure(0, weight=1)
+        self.customframe.columnconfigure(0, weight=1)
+        self.buttonframe.columnconfigure(0, weight=1)
 
         self.showlineeditor()
 
@@ -388,26 +401,27 @@ class ConfigLines(tk.Toplevel):
 
         if 'Oscillator ' in name:
             number = int(name.strip('Oscillator '))
-            self.osceditframe = OscEdit(self.customframe, self.lines, number,
-                                        self.figcanvas)
+            self.lineeditframe = LineEdit(self.customframe, self.lines, number,
+                                          self.figcanvas)
 
         elif name == 'Data':
-            self.osceditframe = OscEdit(self.customframe, self.lines, 0,
-                                        self.figcanvas)
+            self.lineeditframe = LineEdit(self.customframe, self.lines, 0,
+                                          self.figcanvas)
 
         elif name == 'All Oscillators':
-            self.osceditframe = OscMultiEdit(self.customframe, self.lines,
+            self.lineeditframe = LineMultiEdit(self.customframe, self.lines,
                                              self.figcanvas)
 
     def close(self):
         self.destroy()
 
 
-class OscEdit(tk.Frame):
+class LineEdit(tk.Frame):
     def __init__(self, master, lines, number, figcanvas):
         tk.Frame.__init__(self, master)
 
-        self.grid(row=0, column=0, sticky='nsew')
+        self['bg'] = 'white'
+        self.grid(row=0, column=0, sticky='ew')
 
         self.lines = lines
         self.figcanvas = figcanvas
@@ -426,40 +440,34 @@ class OscEdit(tk.Frame):
         self.lsframe = tk.Frame(self, bg='white') # linestyle optionbox
 
         self.colorframe.grid(row=0, column=0, sticky='ew')
-        self.lwframe.grid(row=1, column=0, sticky='ew')
-        self.lsframe.grid(row=2, column=0, sticky='ew')
+        self.lwframe.grid(row=1, column=0, sticky='ew', padx=10, pady=5)
+        self.lsframe.grid(row=2, column=0, sticky='ew', padx=10, pady=5)
+
+        self.columnconfigure(0, weight=1)
 
         # tweak scale and entry commands to dynamically change plot
         scales = [self.colorframe.r_scale, self.colorframe.g_scale,
                   self.colorframe.b_scale]
         commands = [lambda r: self.colorframe.ud_r_sc(r, dynamic=True,
-                                     line=self.line, figcanvas=self.figcanvas),
+                                     object=self.line, figcanvas=self.figcanvas),
                     lambda g: self.colorframe.ud_g_sc(g, dynamic=True,
-                                     line=self.line, figcanvas=self.figcanvas),
+                                     object=self.line, figcanvas=self.figcanvas),
                     lambda b: self.colorframe.ud_b_sc(b, dynamic=True,
-                                     line=self.line, figcanvas=self.figcanvas)]
+                                     object=self.line, figcanvas=self.figcanvas)]
+
         for scale, command in zip(scales, commands):
             scale['command'] = command
-
-
-
-
-
-
-
-
-
 
 
         # --- FRAME 3: Linewidth ----------------------------------------------
         self.lw_ttl = tk.Label(self.lwframe, text='Linewidth', bg='white',
                                font=('Helvetica', 12))
 
-        self.lw_scale = tk.Scale(self.lwframe, from_=0, to=5, orient=tk.HORIZONTAL,
+        self.lw_scale = tk.Scale(self.lwframe, from_=0, to=2.5,
+                                 orient=tk.HORIZONTAL,
                                  showvalue=0, bg='white', sliderlength=15, bd=0,
-                                 troughcolor=f'#808080', length=200,
-                                 highlightthickness=0, command=self.ud_lw_sc,
-                                 resolution=0.001)
+                                 troughcolor=f'#808080', highlightthickness=0,
+                                 command=self.ud_lw_sc, resolution=0.001)
         self.lw_scale.set(self.lw)
 
         self.lw_ent = tk.Entry(self.lwframe, bg='white', text=f'{self.lw:.3f}',
@@ -467,9 +475,11 @@ class OscEdit(tk.Frame):
 
         self.lw_ent.bind('<Return>', (lambda event: self.ud_lw_ent()))
 
-        self.lw_ttl.grid(row=1, column=0, sticky='w', columnspan=2)
-        self.lw_scale.grid(row=2, column=0, sticky='ew')
-        self.lw_ent.grid(row=2, column=1, sticky='w')
+        self.lw_ttl.grid(row=0, column=0, sticky='w')
+        self.lw_scale.grid(row=0, column=1, sticky='ew', padx=(10,0))
+        self.lw_ent.grid(row=0, column=2, sticky='w', padx=(10,0))
+
+        self.lwframe.columnconfigure(1, weight=1)
 
         # --- FRAME 4: Linestyle Optionmenu -----------------------------------
         self.ls_ttl = tk.Label(self.lsframe, text='Linestyle', bg='white',
@@ -482,7 +492,7 @@ class OscEdit(tk.Frame):
                                         command=self.ud_ls)
 
         self.ls_ttl.grid(row=0, column=0, sticky='w')
-        self.ls_optmenu.grid(row=0, column=1, sticky='w')
+        self.ls_optmenu.grid(row=0, column=1, sticky='w', padx=(10,0))
 
     def ud_lw_sc(self, lw):
         self.lw = float(lw)
@@ -522,9 +532,10 @@ class OscEdit(tk.Frame):
         self.master.destroy()
 
 
-class OscMultiEdit(tk.Frame):
+class LineMultiEdit(tk.Frame):
     def __init__(self, master, lines, figcanvas):
         tk.Frame.__init__(self, master)
+        self['bg'] = 'white'
 
         self.grid(row=0, column=0, sticky='nsew')
 
@@ -546,29 +557,38 @@ class OscMultiEdit(tk.Frame):
         self.lwframe = tk.Frame(self, bg='white') # linewidths
         self.lsframe = tk.Frame(self, bg='white') # linestyles
 
-        self.colorframe.grid(row=0, column=0, sticky='ew')
-        self.lwframe.grid(row=1, column=0, sticky='ew')
-        self.lsframe.grid(row=2, column=0, sticky='ew')
+        self.colorframe.grid(row=0, column=0, sticky='ew', padx=10, pady=(10,0))
+        self.lwframe.grid(row=1, column=0, sticky='ew', padx=10, pady=(10,0))
+        self.lsframe.grid(row=2, column=0, sticky='ew', padx=10, pady=10)
 
         # --- FRAME 1: Color List  --------------------------------------------
-        self.color_ttl = tk.Label(self.colorframe, text='Color List', bg='white',
-                                  font=('Helvetica', 12))
-        self.colorlist = tk.Listbox(self.colorframe)
+        self.colortopframe = tk.Frame(self.colorframe, bg='white')
+        self.colorbotframe = tk.Frame(self.colorframe, bg='white')
+
+        self.colortopframe.grid(row=0, column=0, sticky='w')
+        self.colorbotframe.grid(row=1, column=0, sticky='ew')
+
+        self.colorbotframe.rowconfigure(1, weight=1)
+
+        self.color_ttl = tk.Label(self.colortopframe, text='Color Cycle',
+                                  bg='white', font=('Helvetica', 12))
+        self.color_ttl.grid(row=0, column=0)
+
+        self.colorlist = tk.Listbox(self.colorbotframe)
         for i, color in enumerate(self.colors):
             self.colorlist.insert(tk.END, color)
             self.colorlist.itemconfig(i, foreground=color)
 
-        self.add_but = tk.Button(self.colorframe, text='Add', width=8,
+        self.add_but = tk.Button(self.colorbotframe, text='Add', width=8,
                                  bg='#9eda88', highlightbackground='black',
                                  command=self.add_color)
-        self.rm_but = tk.Button(self.colorframe, text='Remove', width=8,
+        self.rm_but = tk.Button(self.colorbotframe, text='Remove', width=8,
                                  bg='#ff9894', highlightbackground='black',
                                  command=self.rm_color)
 
-        self.color_ttl.grid(row=0, column=0, columnspan=3, sticky='w')
-        self.colorlist.grid(row=1, column=0, rowspan=3)
-        self.add_but.grid(row=0, column=1, sticky='w')
-        self.rm_but.grid(row=1, column=1, sticky='w')
+        self.colorlist.grid(row=0, column=0, rowspan=2, sticky='nsew')
+        self.add_but.grid(row=0, column=1, sticky='nw', padx=(10,0))
+        self.rm_but.grid(row=1, column=1, sticky='nw', padx=(10,0), pady=(10,0))
 
         # --- FRAME 2: Linewidth ----------------------------------------------
         self.lw_ttl = tk.Label(self.lwframe, text='Linewidth', bg='white',
@@ -576,7 +596,7 @@ class OscMultiEdit(tk.Frame):
 
         self.lw_scale = tk.Scale(self.lwframe, from_=0, to=5, orient=tk.HORIZONTAL,
                                  showvalue=0, bg='white', sliderlength=15, bd=0,
-                                 troughcolor=f'#808080', length=200,
+                                 troughcolor=f'#808080', length=500,
                                  highlightthickness=0, command=self.ud_lw_sc,
                                  resolution=0.001)
         self.lw_scale.set(self.lw)
@@ -586,9 +606,9 @@ class OscMultiEdit(tk.Frame):
 
         self.lw_ent.bind('<Return>', (lambda event: self.ud_lw_ent()))
 
-        self.lw_ttl.grid(row=0, column=0, sticky='w', columnspan=2)
-        self.lw_scale.grid(row=1, column=0, sticky='ew')
-        self.lw_ent.grid(row=1, column=1, sticky='w')
+        self.lw_ttl.grid(row=0, column=0, sticky='w')
+        self.lw_scale.grid(row=0, column=1, sticky='ew')
+        self.lw_ent.grid(row=0, column=2, sticky='w')
 
         # --- FRAME 4: Linestyle Optionmenu -----------------------------------
         self.ls_ttl = tk.Label(self.lsframe, text='Linestyle', bg='white',
@@ -606,7 +626,8 @@ class OscMultiEdit(tk.Frame):
 
     def add_color(self):
         self.colorwindow = tk.Toplevel(self)
-
+        self.colorwindow['bg'] = 'white'
+        self.colorwindow.resizable(True, False)
         # generate random hex color
         r = lambda: random.randint(0,255)
         color = '#{:02x}{:02x}{:02x}'.format(r(), r(), r())
@@ -614,7 +635,10 @@ class OscMultiEdit(tk.Frame):
         self.buttonframe = tk.Frame(self.colorwindow, bg='white')
 
         self.colorpicker.grid(row=0, column=0, sticky='ew')
-        self.buttonframe.grid(row=1, column=0, sticky='ew')
+        self.buttonframe.grid(row=1, column=0, sticky='e', padx=10, pady=10)
+
+        self.colorwindow.columnconfigure(0, weight=1)
+        self.colorpicker.columnconfigure(0, weight=1)
 
         self.save_but = tk.Button(self.buttonframe, text='Confirm', width=8,
                                   bg='#9eda88', highlightbackground='black',
@@ -625,7 +649,7 @@ class OscMultiEdit(tk.Frame):
                                   command=self.cancel)
 
         self.cancel_but.grid(row=2, column=0, sticky='e')
-        self.save_but.grid(row=2, column=1, sticky='e')
+        self.save_but.grid(row=2, column=1, sticky='e', padx=(10,0))
 
     def confirm(self):
         color = self.colorpicker.color
@@ -699,6 +723,8 @@ class ColorPicker(tk.Frame):
     def __init__(self, master, init_color):
         tk.Frame.__init__(self, master)
 
+        self['bg'] = 'white'
+
         self.color = init_color
         self.r = self.color[1:3] # red hex
         self.g = self.color[3:5] # green hex
@@ -706,8 +732,9 @@ class ColorPicker(tk.Frame):
 
         self.topframe = tk.Frame(self, bg='white')
         self.botframe = tk.Frame(self, bg='white')
-        self.topframe.grid(row=0, column=0, sticky='ew')
-        self.botframe.grid(row=1, column=0, sticky='ew')
+        self.topframe.grid(row=0, column=0, sticky='ew', padx=10, pady=(5,0))
+        self.botframe.grid(row=1, column=0, sticky='e', padx=10, pady=(10,0))
+        self.columnconfigure(0, weight=1)
 
         # --- FRAME 1: Color scales and entries  ------------------------------
         self.color_ttl = tk.Label(self.topframe, text='Color', bg='white',
@@ -719,20 +746,20 @@ class ColorPicker(tk.Frame):
         self.r_scale = tk.Scale(self.topframe, from_=0, to=255,
                                 orient=tk.HORIZONTAL, showvalue=0, bg='white',
                                 sliderlength=15, bd=0,
-                                troughcolor=f'#{self.r}0000', length=200,
+                                troughcolor=f'#{self.r}0000', length=500,
                                 highlightthickness=0,
                                 command=lambda r: self.ud_r_sc(r))
 
         self.g_scale = tk.Scale(self.topframe, from_=0, to=255,
                                 orient=tk.HORIZONTAL, showvalue=0, bg='white',
                                 sliderlength=15, bd=0,
-                                troughcolor=f'#00{self.g}00', length=200,
+                                troughcolor=f'#00{self.g}00', length=500,
                                 highlightthickness=0, command=self.ud_g_sc)
 
         self.b_scale = tk.Scale(self.topframe, from_=0, to=255,
                                 orient=tk.HORIZONTAL, showvalue=0, bg='white',
                                 sliderlength=15, bd=0,
-                                troughcolor=f'#0000{self.b}', length=200,
+                                troughcolor=f'#0000{self.b}', length=500,
                                 highlightthickness=0,
                                 command=self.ud_b_sc)
 
@@ -751,20 +778,22 @@ class ColorPicker(tk.Frame):
         self.g_ent.bind('<Return>', (lambda event: self.ud_g_ent()))
         self.b_ent.bind('<Return>', (lambda event: self.ud_b_ent()))
 
-        self.swatch = tk.Canvas(self.topframe, width=40, height=40)
+        self.swatch = tk.Canvas(self.topframe, width=40, height=40, bg='white')
         self.rect = self.swatch.create_rectangle(0, 0, 40, 40, fill=self.color)
 
         self.color_ttl.grid(row=0, column=0, columnspan=4, sticky='w')
-        self.r_lab.grid(row=1, column=0, sticky='w')
-        self.g_lab.grid(row=2, column=0, sticky='w')
-        self.b_lab.grid(row=3, column=0, sticky='w')
-        self.r_scale.grid(row=1, column=1, sticky='ew')
-        self.g_scale.grid(row=2, column=1, sticky='ew')
-        self.b_scale.grid(row=3, column=1, sticky='ew')
-        self.r_ent.grid(row=1, column=2, sticky='w')
-        self.g_ent.grid(row=2, column=2, sticky='w')
-        self.b_ent.grid(row=3, column=2, sticky='w')
-        self.swatch.grid(row=1, rowspan=3, column=3)
+        self.r_lab.grid(row=1, column=0, sticky='w', pady=(5,0))
+        self.g_lab.grid(row=2, column=0, sticky='w', pady=(5,0))
+        self.b_lab.grid(row=3, column=0, sticky='w', pady=(5,0))
+        self.r_scale.grid(row=1, column=1, sticky='ew', padx=(10,0), pady=(5,0))
+        self.g_scale.grid(row=2, column=1, sticky='ew', padx=(10,0), pady=(5,0))
+        self.b_scale.grid(row=3, column=1, sticky='ew', padx=(10,0), pady=(5,0))
+        self.r_ent.grid(row=1, column=2, sticky='w', padx=(10,0), pady=(5,0))
+        self.g_ent.grid(row=2, column=2, sticky='w', padx=(10,0), pady=(5,0))
+        self.b_ent.grid(row=3, column=2, sticky='w', padx=(10,0), pady=(5,0))
+        self.swatch.grid(row=1, rowspan=3, column=3, padx=(10,0))
+
+        self.topframe.columnconfigure(1, weight=1)
 
         # --- FRAME 2: Matplotlib color entry ---------------------------------
         self.mplcol_lab = tk.Label(self.botframe, text='Matplotlib color:',
@@ -773,11 +802,11 @@ class ColorPicker(tk.Frame):
                                    highlightthickness=0)
         self.mplcol_ent.bind('<Return>', (lambda event: self.ud_mplcol_ent()))
 
-        self.mplcol_lab.grid(row=0, column=0, sticky='w')
-        self.mplcol_ent.grid(row=0, column=1, sticky='w')
+        self.mplcol_lab.grid(row=0, column=0, sticky='e')
+        self.mplcol_ent.grid(row=0, column=1, sticky='e', padx=(10,0))
 
 
-    def ud_r_sc(self, r, dynamic=False, line=None, figcanvas=None):
+    def ud_r_sc(self, r, dynamic=False, object=None, figcanvas=None):
         self.r = '{:02x}'.format(int(r))
         self.color = '#' + self.r + self.g + self.b
         self.r_scale['troughcolor'] = f'#{self.r}0000'
@@ -786,11 +815,11 @@ class ColorPicker(tk.Frame):
         self.swatch.itemconfig(self.rect, fill=self.color)
 
         if dynamic:
-            line.set_color(self.color)
+            object.set_color(self.color)
             figcanvas.draw_idle()
 
 
-    def ud_g_sc(self, g, dynamic=False, line=None, figcanvas=None):
+    def ud_g_sc(self, g, dynamic=False, object=None, figcanvas=None):
         self.g = '{:02x}'.format(int(g))
         self.color = '#' + self.r + self.g + self.b
         self.g_scale['troughcolor'] = f'#00{self.g}00'
@@ -799,10 +828,10 @@ class ColorPicker(tk.Frame):
         self.swatch.itemconfig(self.rect, fill=self.color)
 
         if dynamic:
-            line.set_color(self.color)
+            object.set_color(self.color)
             figcanvas.draw_idle()
 
-    def ud_b_sc(self, b, dynamic=False, line=None, figcanvas=None):
+    def ud_b_sc(self, b, dynamic=False, object=None, figcanvas=None):
         self.b = '{:02x}'.format(int(b))
         self.color = '#' + self.r + self.g + self.b
         self.b_scale['troughcolor'] = f'#0000{self.b}'
@@ -811,7 +840,7 @@ class ColorPicker(tk.Frame):
         self.swatch.itemconfig(self.rect, fill=self.color)
 
         if dynamic:
-            line.set_color(self.color)
+            object.set_color(self.color)
             figcanvas.draw_idle()
 
     def ud_r_ent(self):
@@ -901,21 +930,301 @@ class ColorPicker(tk.Frame):
             pass
 
 
+class ConfigLabels(tk.Toplevel):
+    def __init__(self, master, labels, ax, figcanvas):
+        tk.Toplevel.__init__(self, master)
+
+        self.labels = labels
+        self.ax = ax
+        self.figcanvas = figcanvas
+
+        self.config(bg='white')
+
+        options = ['All Labels']
+        keys = self.labels.keys()
+        for key in keys:
+            opt = key.replace('osc', 'Label ')
+            options.append(opt)
+
+        print(options)
+
+        self.leftframe = tk.Frame(self, bg='white')
+        self.rightframe = tk.Frame(self, bg='white')
+        self.customframe = tk.Frame(self.rightframe, bg='white')
+        self.buttonframe = tk.Frame(self.rightframe, bg='white')
+
+        self.leftframe.grid(row=0, column=0, sticky='nsew')
+        self.rightframe.grid(row=0, column=1, sticky='nsew')
+        self.customframe.grid(row=0, column=0, sticky='new')
+        self.buttonframe.grid(row=1, column=0, sticky='ew')
+
+        self.columnconfigure(1, weight=1)
+        self.leftframe.rowconfigure(0, weight=1)
+        self.rightframe.columnconfigure(0, weight=1)
+        self.rightframe.rowconfigure(0, weight=1)
+        self.buttonframe.columnconfigure(0, weight=1)
+
+        self.list = tk.Listbox(self.leftframe)
+        for opt in options:
+            self.list.insert(tk.END, opt)
+
+        self.list.bind('<Double-Button-1>', (lambda entry: self.showlabeleditor()))
+
+        self.list.activate(0)
+        self.list.selection_set(0)
+
+        self.list.grid(row=0, column=0, sticky='new')
+
+        self.close_but = tk.Button(self.buttonframe, text='Close', width=8,
+                                   bg='#ff9894', highlightbackground='black',
+                                   command=self.close)
+        self.close_but.grid(row=0, column=0, sticky='w')
+
+        # self.showlabeleditor()
 
 
+    def showlabeleditor(self):
+
+        index = self.list.curselection()
+        name = self.list.get(index)
+
+        for widget in self.customframe.winfo_children():
+            widget.destroy()
+
+        if 'Label ' in name:
+            number = int(name.strip('Label '))
+            self.labeleditframe = LabelEdit(self.customframe, self.labels,
+                                            number, self.ax, self.figcanvas)
+
+        elif name == 'All Labels':
+            self.labeleditframe = LabelMultiEdit(self.customframe, self.lines,
+                                                 self.figcanvas)
+
+    def close(self):
+        self.destroy()
 
 
+class LabelEdit(tk.Frame):
+    def __init__(self, master, labels, number, ax, figcanvas):
+        tk.Frame.__init__(self, master)
 
-def main():
-    info = load.pickle_load('result', dir=os.path.expanduser('~'))
-    root = tk.Tk()
-    root.title('NMR-EsPy - Result')
-    root.rowconfigure(0, weight=1)
-    root.columnconfigure(0, weight=1)
-    window = Main(root, info)
-    root.mainloop()
+        self.grid(row=0, column=0, sticky='nsew')
+
+        self.labels = labels
+        self.ax = ax
+        self.figcanvas = figcanvas
+
+        self.label = self.labels[f'osc{number}']
+
+        init_color = mcolors.to_hex(self.label.get_color())
+        self.txt = self.label.get_text()
+        self.x, self.y = self.label.get_position() # label position
+        self.size = self.label.get_fontsize()
+
+        self.txtframe = tk.Frame(self, bg='white') # text string
+        self.colorframe = ColorPicker(self, init_color) # color title, colors scales and entries
+        self.sizeframe = tk.Frame(self, bg='white') # text size scale and entry
+        self.posframe = tk.Frame(self, bg='white') # position scale and entry
+
+        self.txtframe.grid(row=0, column=0, sticky='ew')
+        self.colorframe.grid(row=1, column=0, sticky='ew')
+        self.sizeframe.grid(row=2, column=0, sticky='ew')
+        self.posframe.grid(row=3, column=0, sticky='ew')
+
+        # tweak scale and entry commands to dynamically change plot
+        scales = [self.colorframe.r_scale, self.colorframe.g_scale,
+                  self.colorframe.b_scale]
+        commands = [lambda r: self.colorframe.ud_r_sc(r, dynamic=True,
+                                     object=self.label, figcanvas=self.figcanvas),
+                    lambda g: self.colorframe.ud_g_sc(g, dynamic=True,
+                                     object=self.label, figcanvas=self.figcanvas),
+                    lambda b: self.colorframe.ud_b_sc(b, dynamic=True,
+                                     object=self.label, figcanvas=self.figcanvas)]
+
+        for scale, command in zip(scales, commands):
+            scale['command'] = command
 
 
+        # --- LABEL TEXT ----------------------------------------------
+        self.txt_ttl = tk.Label(self.txtframe, text='Label Text', bg='white',
+                                font=('Helvetica', 12))
 
-if __name__ == '__main__':
-    main()
+        self.txt_ent = tk.Entry(self.txtframe, bg='white', width=10,
+                                highlightthickness=0)
+        self.txt_ent.insert(0, self.txt)
+
+        self.txt_ent.bind('<Return>', (lambda event: self.ud_txt_ent()))
+
+        self.txt_ttl.grid(row=0, column=0, sticky='w')
+        self.txt_ent.grid(row=0, column=1, sticky='w')
+
+        # --- LABEL SIZE ----------------------------------------------
+        self.size_ttl = tk.Label(self.sizeframe, text='Label Size', bg='white',
+                                font=('Helvetica', 12))
+
+        self.size_scale = tk.Scale(self.sizeframe, from_=1, to=48,
+                                   orient=tk.HORIZONTAL, showvalue=0,
+                                   bg='white', sliderlength=15, bd=0,
+                                   troughcolor=f'#808080', length=500,
+                                   highlightthickness=0,
+                                   command=self.ud_size_sc,
+                                   resolution=0.001)
+        self.size_scale.set(self.size)
+
+        self.size_ent = tk.Entry(self.sizeframe, bg='white',
+                                 text=f'{self.size:.3f}',
+                                 width=6, highlightthickness=0)
+
+        self.size_ent.bind('<Return>', (lambda event: self.ud_size_ent()))
+
+        self.size_ttl.grid(row=1, column=0, sticky='w', columnspan=2)
+        self.size_scale.grid(row=2, column=0, sticky='ew')
+        self.size_ent.grid(row=2, column=1, sticky='w')
+
+        # --- LABEL POSITION ----------------------------------------------
+        self.postopframe = tk.Frame(self.posframe, bg='white')
+        self.posbotframe = tk.Frame(self.posframe, bg='white')
+
+        self.postopframe.grid(row=0, column=0, sticky='ew')
+        self.posbotframe.grid(row=1, column=0, sticky='ew')
+
+        self.pos_ttl = tk.Label(self.postopframe, text='Label Position',
+                                bg='white', font=('Helvetica', 12))
+
+        xlim = self.ax.get_xlim()
+        ylim = self.ax.get_ylim()
+
+        self.x_ttl = tk.Label(self.posbotframe, text='x', bg='white')
+
+        self.x_scale = tk.Scale(self.posbotframe, from_=xlim[0], to=xlim[1],
+                                orient=tk.HORIZONTAL, showvalue=0,
+                                bg='white', sliderlength=15, bd=0,
+                                troughcolor=f'#808080', length=500,
+                                highlightthickness=0,
+                                command=self.ud_x_sc,
+                                resolution=0.0001)
+        self.x_scale.set(self.x)
+
+        self.x_ent = tk.Entry(self.posbotframe, bg='white',
+                              width=10, highlightthickness=0)
+        self.x_ent.insert(0, f'{self.x:.4f}')
+
+        self.x_ent.bind('<Return>', (lambda event: self.ud_x_ent()))
+
+        self.y_ttl = tk.Label(self.posbotframe, text='y', bg='white')
+
+        self.y_scale = tk.Scale(self.posbotframe, from_=ylim[0], to=ylim[1],
+                                orient=tk.HORIZONTAL, showvalue=0,
+                                bg='white', sliderlength=15, bd=0,
+                                troughcolor=f'#808080', length=500,
+                                highlightthickness=0,
+                                command=self.ud_y_sc,
+                                resolution=1)
+        self.y_scale.set(self.y)
+
+        self.y_ent = tk.Entry(self.posbotframe, bg='white',
+                              width=10, highlightthickness=0)
+        self.y_ent.insert(0, f'{self.y:.4E}')
+
+        self.y_ent.bind('<Return>', (lambda event: self.ud_y_ent()))
+
+        self.pos_ttl.grid(row=0, column=0, sticky='w')
+        self.x_ttl.grid(row=0, column=0, sticky='w')
+        self.x_scale.grid(row=0, column=1, sticky='ew')
+        self.x_ent.grid(row=0, column=2, sticky='w')
+        self.y_ttl.grid(row=1, column=0, sticky='w')
+        self.y_scale.grid(row=1, column=1, sticky='ew')
+        self.y_ent.grid(row=1, column=2, sticky='w')
+
+
+    def ud_txt_ent(self):
+        txt = self.txt_ent.get()
+        try:
+            self.label.set_text(txt)
+            self.txt = txt
+            self.figcanvas.draw_idle()
+        except:
+            self.txt_ent.delete(0, tk.END)
+            self.txt_ent.insert(0, self.txt)
+
+    def ud_size_sc(self, size):
+        self.size = float(size)
+        self.size_ent.delete(0, tk.END)
+        self.size_ent.insert(0, f'{self.size:.3f}')
+        self.label.set_size(self.size)
+        self.figcanvas.draw_idle()
+
+    def ud_size_ent(self):
+        value = self.size_ent.get()
+        valid_size = self.check_size(value)
+
+        if valid_size:
+            self.size = float(value)
+            self.size_scale.set(self.size)
+
+        else:
+            self.size_ent.delete(0, tk.END)
+            self.size_ent.insert(0, self.size)
+
+    @staticmethod
+    def check_size(value):
+        try:
+            size = float(value)
+            return 0 <= size <= 48
+        except:
+            return False
+
+    def ud_x_sc(self, x):
+        self.x = float(x)
+        self.x_ent.delete(0, tk.END)
+        self.x_ent.insert(0, f'{self.x:.4f}')
+        self.label.set_x(self.x)
+        self.figcanvas.draw_idle()
+
+    def ud_x_ent(self):
+        value = self.x_ent.get()
+        valid_x = self.check_x(value)
+
+        if valid_x:
+            self.x = float(value)
+            self.x_scale.set(self.x)
+
+        else:
+            self.x_ent.delete(0, tk.END)
+            self.x_ent.insert(0, self.x)
+
+    def check_x(self, value):
+        try:
+            size = float(value)
+            return self.xlim[1] <= size <= self.xlim[0]
+        except:
+            return False
+
+    def ud_y_sc(self, y):
+        self.y = float(y)
+        self.y_ent.delete(0, tk.END)
+        self.y_ent.insert(0, f'{self.y:.4E}')
+        self.label.set_y(self.y)
+        self.figcanvas.draw_idle()
+
+    def ud_y_ent(self):
+        value = self.y_ent.get()
+        valid_y = self.check_y(value)
+
+        if valid_y:
+            self.y = float(value)
+            self.y_scale.set(self.y)
+
+        else:
+            self.y_ent.delete(0, tk.END)
+            self.y_ent.insert(0, self.y)
+
+    def check_y(self, value):
+        try:
+            size = float(value)
+            return self.ylim[0] <= size <= self.ylim[1]
+        except:
+            return False
+
+    def close(self):
+        self.master.destroy()

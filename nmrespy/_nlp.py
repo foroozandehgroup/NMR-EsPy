@@ -146,6 +146,15 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
                        options={'maxiter': maxit, 'iprint': fp})
 
     theta_act = res['x'] # extract solution from result dict
+
+    # # derive estimation errors
+    # func = cf['f'](theta_act, data_n, tp, M, theta0_pas, idx_act, False)
+    # inv_hess = inv(cf['h'](theta_act, data_n, tp, M, theta0_pas, idx_act, False))
+    # se = np.sqrt(func) * np.sqrt(np.diag(inv_hess) / (np.prod(n)-1))
+    # se[:M] = se[:M] * nm
+    # theta_act[:M] = theta_act[:M] * nm
+
+
     theta_act = np.reshape(theta_act, (M, p_act), order='F')
     theta0_pas = np.reshape(theta0_pas, (M, p_pas), order='F')
 
@@ -317,7 +326,7 @@ def _g_1d(para_act, *args):
     deriv = np.hstack(comps)
 
     diff = data - np.sum(model, axis=1)
-    grad = -2*np.real(np.matmul(deriv.conj().T, diff))
+    grad = -2 * np.real(np.matmul(deriv.conj().T, diff))
 
     if phase_variance:
         # amplitudes are being optimised (phases between M and 2M)
@@ -441,7 +450,7 @@ def _h_1d(para_act, *args):
     deriv2 = np.hstack(comps2)
 
     diff = data - np.sum(model, axis=1)
-    diags = -2*np.real(np.matmul(deriv2.conj().T, diff))
+    diags = -2 * np.real(np.matmul(deriv2.conj().T, diff))
 
     p = len(idx) # number of parameter types
 

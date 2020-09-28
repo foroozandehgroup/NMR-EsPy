@@ -49,7 +49,7 @@ def plotres_1d(data, peaks, shifts, region, nuc, data_col,
     # plot original data
     # N.B. |plt.plot| always produces a list, so need to access the
     # 0 element
-    lines['data'] = ax.plot(shifts, data, color=data_col)[0]
+    lines['data'] = ax.plot(shifts, np.real(data), color=data_col)[0]
 
     # plot oscillators and label
     for m, peak in enumerate(peaks):
@@ -63,7 +63,7 @@ def plotres_1d(data, peaks, shifts, region, nuc, data_col,
             x = shifts[np.argmax(peak)]
             # y-value of peak maximum
             y = np.amax(peak)
-            labs[f'osc{m+1}'] = ax.text(x, y, f'{m+1}')
+            labs[f'osc{m+1}'] = ax.text(x, y, f'{m+1}', fontsize=8)
 
     # change x-axis limits if a specific region was studied
     if region:
@@ -83,7 +83,6 @@ def plotres_1d(data, peaks, shifts, region, nuc, data_col,
     # x-axis label, of form $^{1}H$ or $^{13}C$ etc.
     # depending on nucleus
     xlab = _generate_xlabel(nuc[0])
-    print(xlab)
     ax.set_xlabel(xlab)
 
     return fig, ax, lines, labs
