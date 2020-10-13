@@ -1,14 +1,10 @@
 #!/usr/bin/python3
-# nlp.py
-# Simon Hulse
-# simon.hulse@chem.ox.ac.uk
-
-# module to support the NMRespyInfo.nonlinear_programming() method
 
 from copy import deepcopy
 import time
 
 import numpy as np
+from numpy.fft import fft, fftshift
 from numpy.linalg import norm, inv
 from scipy.optimize import minimize
 
@@ -21,62 +17,73 @@ from ._timing import _print_time
 def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
         amp_thold, freq_thold, fprint, first_call, start):
     """
-    nlp.nlp(data, dim, theta0, sw, offset, trim, phase_variance, method, mode, bound,
-            maxit, amp_thold, freq_thold, fprint, first_call)
-
-    Description
-    ———————————
-    A nonlinear programming routine to generate signal parameter estimates.
+    nonlinear programming for determination of spectral parameter estimation
 
     Parameters
-    ——————————
-    data - numpy.ndarray
+    ----------
+    data : numpy.ndarray
         The data to analyse (not normalised).
-    dim - int
-        The signal dimension. Will be 1 or 2.
-    theta0 - numpy.ndarray
-        Initial parameter guess, with shape (M, 4) for 1D data or (M, 6)
-        for 2D data.
-    sw - tuple
+
+    dim : int
+        The signal dimension. Should be 1 or 2.
+
+    theta0 : numpy.ndarray
+        Initial parameter guess. ``theta0.shape = (M, 4)``, and ``theta0.shape
+        = (M, 6)`` for 2D data.
+
+    sw : (float,) or (float, float)
         The sweep width (Hz) in each dimension.
-    off - tuple
+
+    off : (float,) or (float, float)
         The transmitter offset frequency (Hz) in each dimension.
-    trim - tuple
+
+    trim : None, (int,), or (int, int)
         Specifies the number of initial data points to consider in
         each dimension.
-    phase_variance - Bool
+
+    phase_variance : Bool
         Specifies whether or not to include the variance of oscillator
-        phases into the NLP routine
-    method - str
-        Optimisation routine. Should be 'trust_region' or 'lbfgs'
-    mode - str
+        phases into the NLP routine.
+
+    method : 'trust_region' or 'lbfgs'
+        Optimisation algorithm to use.
+
+    mode : str
         String composed of any combination of characters 'a', 'p', 'f', 'd'.
         Used to determine which parameter types to optimise, and which to
         fix.
-    bound - Bool
+
+    bound : Bool
         Specifies whether or not to bound the parameters during optimisation.
-    maxit - int
+
+    maxit : int
         A value specifiying the number of iterations the routine may run
-        through before it is terminated. The estimate a termination will be
-        returned.
-    amp_thold - float or None
-        A threshold such that any oscillators have amplitudes lower than
-        this, they will be deleted. See _rm_negligible_amps() for more
-        information.
-    freq_thold - float or None
-        A threshold such that any pair of oscillators that have frequencies
+        through before it is terminated.
+
+    amp_thold : float or None
+        A threshold that imposes a threshold for deleting oscillators of
+        negligible ampltiude.
+
+    freq_thold : float or None
+        A threshold such that if any pair of oscillators that have frequencies
         with a difference smaller than it, they will be merged.
-    first_call - Bool
+
+    first_call : Bool
         Specifies whether nlp() has been called for the first time in a
         recursive loop. Used just for printing terminal output.
-    start - float or None
-        Time at which 1st call to nlp() started.
+
+    start : float or None
+        Time at which 1st call to nlp() was made.
 
     Returns
-    ———————
-    x - numpy.ndarray
-        The result of the NLP routine, with shape (M_new, 4) for 1D data or
-        (M_new, 6) for 2D data, where M_new ≤ M.
+    -------
+    x : numpy.ndarray
+        The result of the NLP routine, with shape ``(M_new, 4)`` for 1D data or
+        ``(M_new, 6)`` for 2D data, where ``M_new<= M``.
+
+    errors : numpy.ndarray
+        An array with the same shape as ``x``, with elements corresponding to
+        errors for each parameter
     """
 
     if first_call:
@@ -148,15 +155,20 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
     theta_act = res['x'] # extract solution from result dict
 
     # # derive estimation errors
-    # func = cf['f'](theta_act, data_n, tp, M, theta0_pas, idx_act, False)
-    # inv_hess = inv(cf['h'](theta_act, data_n, tp, M, theta0_pas, idx_act, False))
-    # se = np.sqrt(func) * np.sqrt(np.diag(inv_hess) / (np.prod(n)-1))
-    # se[:M] = se[:M] * nm
-    # theta_act[:M] = theta_act[:M] * nm
+    func = cf['f'](theta_act, data_n, tp, M, theta0_pas, idx_act,
+                   phase_variance)
+    inv_hess = inv(cf['h'](theta_act, data_n, tp, M, theta0_pas, idx_act,
+                   phase_variance))
+    errors = np.sqrt(func) * np.sqrt(np.diag(inv_hess) / (np.prod(n)-1))
 
-
+    # scale amplitudes
     theta_act = np.reshape(theta_act, (M, p_act), order='F')
     theta0_pas = np.reshape(theta0_pas, (M, p_pas), order='F')
+
+
+    errors = np.reshape(errors, (M, p_act), order='F')
+    if 0 in idx_act:
+        errors[...,0] = errors[...,0] * nm
 
     # construct array
     p = p_act + p_pas # total number of parameters per oscillator
@@ -182,7 +194,7 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
                   f'==============================')
             _print_time(finish-start)
 
-        return theta[np.argsort(theta[..., 2])]
+        return theta[np.argsort(theta[..., 2])], errors
 
     else:
         # Re-run nlp recusively until solution has no -ve amps
@@ -193,39 +205,26 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
 
 def _f_1d(para_act, *args):
     """
-    _f_1d(para, *args)
-
-    Decription
-    ———————————
-    Determines the cost function to be minimised for non-linear
-    optimisation (1D signal)
-    Given by:
-    (y - x(θ))†(y - x(θ)) + Var(φ)
-    where y is the (normalised) data, and x is the model, θ is the
-    parameter array, and φ is the oscillator phases.
+    Cost function for 1D data
 
     Parameters
-    ——————————
-    para_act - numpy.ndarray
-        Array of active parameters (paramters to be optimised).
-    args - list_iterator
-        Additional arguments, with entries:
-        data: ndarray - Array of the original FID data.
-        tp: ndarray - Array of time-points the FID was sampled at.
-        M: int - Number of oscillations.
-        para_pas - Passive parameters (not to be optimised)
-        idx: list - List indicating the types of parameters are present in the
-                    active oscillators (para_act).
-                    0 - amplitudes
-                    1 - phases
-                    2 - frequencies
-                    3 - damping factors
-        phase_vairance: Bool - If True, include the oscillator phase variance
-                               to the cost function.
+    ----------
+    para_act : numpy.ndarray
+        Array of active parameters (parameters to be optimised).
+    args : list_iterator
+        * **data:** `numpy.ndarray.` Array of the original FID data.
+        * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
+        * **M:** `int.` Number of oscillators
+        * **para_pas:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **idx:** `list.` Indicates the types of parameters are present in the
+          active oscillators (para_act): ``0`` - amplitudes, ``1`` - phases,
+          ``2`` - frequencies, ``3`` - damping factors.
+        * **phase_variance:** `Bool.` If True, include the oscillator phase
+          variance to the cost function.
 
     Returns
-    ———————
-    func - float
+    -------
+    func : float
         Value of the cost function
     """
 
@@ -260,40 +259,27 @@ def _f_1d(para_act, *args):
 
 def _g_1d(para_act, *args):
     """
-    _g_1d(para, *args)
-
-    Decription
-    ———————————
-    Determines the gradient of the cost function to be minimised for
-    non-linear optimisation (1D signal).
-    i-th element given by:
-    2Re[(y - x(θ))† dx(θ)/∂ᵢ] + ∂Var(φ)/∂θᵢ
-    where y is the (normalised) data, and x is the model, θ is the
-    parameter array, and φ is the oscillator phases.
+    Gradient of cost function for 1D data
 
     Parameters
-    ——————————
-    para_act - numpy.ndarray
-        Array of active parameters (paramters to be optimised).
-    args - list_iterator
-        Additional arguments, with entries:
-        data: ndarray - Array of the original FID data.
-        tp: ndarray - Array of time-points the FID was sampled at.
-        M: int - Number of oscillations.
-        para_pas - Passive parameters (not to be optimised)
-        idx: list - List indicating the types of parameters are present in the
-                    active oscillators (para_act).
-                    0 - amplitudes
-                    1 - phases
-                    2 - frequencies
-                    3 - damping factors
-        phase_vairance: Bool - If True, include the oscillator phase variance
-                               to the cost function.
+    ----------
+    para_act : numpy.ndarray
+        Array of active parameters (parameters to be optimised).
+    args : list_iterator
+        * **data:** `numpy.ndarray.` Array of the original FID data.
+        * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
+        * **M:** `int.` Number of oscillators
+        * **para_pas:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **idx:** `list.` Indicates the types of parameters are present in the
+          active oscillators (para_act): ``0`` - amplitudes, ``1`` - phases,
+          ``2`` - frequencies, ``3`` - damping factors.
+        * **phase_variance:** `Bool.` If True, include the oscillator phase
+          variance to the cost function.
 
     Returns
-    ———————
-    grad - numpy.ndarray
-        Gradient of the cost function.
+    -------
+    grad : numpy.ndarray
+        Gradient of cost function, with ``grad.shape = (4*M,)``.
     """
 
     # unpack arguments
@@ -343,41 +329,27 @@ def _g_1d(para_act, *args):
 
 def _h_1d(para_act, *args):
     """
-    _h_1d(para, *args)
-
-    Decription
-    ———————————
-    Determines the Hessian of the cost function to be minimised for
-    non-linear optimisation (1D signal)
-    i,j-th element given by:
-    2Re[(y - x(θ))† ∂²x(θ)/∂θᵢ∂θⱼ - ∂x(θ)†/∂θᵢ ∂x(θ)/∂θⱼ] + ∂²Var(φ)/∂θᵢ∂θⱼ
-    where y is the (normalised) data, and x is the model, θ is the
-    parameter array, and φ is the oscillator phases.
+    Hessian of cost function for 1D data
 
     Parameters
-    ——————————
-    para_act - numpy.ndarray
-        Array of active parameters (paramters to be optimised).
-    args - list_iterator
-        Additional arguments, with entries:
-        data: ndarray - Array of the original FID data.
-        tp: ndarray - Array of time-points the FID was sampled at.
-        M: int - Number of oscillations.
-        para_pas - Passive parameters (not to be optimised)
-        idx: list - List indicating the types of parameters are present in the
-                    active oscillators (para_act).
-                    0 - amplitudes
-                    1 - phases
-                    2 - frequencies
-                    3 - damping factors
-        phase_vairance: Bool - If True, include the oscillator phase variance
-                               to the cost function.
-
+    ----------
+    para_act : numpy.ndarray
+        Array of active parameters (parameters to be optimised).
+    args : list_iterator
+        * **data:** `numpy.ndarray.` Array of the original FID data.
+        * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
+        * **M:** `int.` Number of oscillators
+        * **para_pas:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **idx:** `list.` Indicates the types of parameters are present in the
+          active oscillators (para_act): ``0`` - amplitudes, ``1`` - phases,
+          ``2`` - frequencies, ``3`` - damping factors.
+        * **phase_variance:** `Bool.` If True, include the oscillator phase
+          variance to the cost function.
 
     Returns
-    ———————
-    hess - numpy.ndarray
-        Hessian of the cost function.
+    -------
+    hess : numpy.ndarray
+        Hessian of cost function, with ``hess.shape = (4*M,4*M)``.
     """
 
     # unpack arguments
@@ -484,41 +456,28 @@ def _h_1d(para_act, *args):
 
 def _f_2d(para_act, *args):
     """
-    _f_2d(para, *args)
-
-    Decription
-    ———————————
-    Determines the cost function to be minimised for
-    non-linear optimisation (2D signal)
-    Given by:
-    ‖Y - X(θ)‖² + Var(φ)
-    where Y is the (normalised) data, X is the model, θ is the
-    parameter array, and φ is the oscillator phases.
+    Cost function for 2D data
 
     Parameters
-    ——————————
-    para_act - numpy.ndarray
-        Array of active parameters (paramters to be optimised).
-    args - list_iterator
-        Additional arguments, with entries:
-        data: ndarray - Array of the original FID data.
-        tp: tuple - Contains 2 numpy.ndarrays with time-points the FID was
-                    sampled at, in each dimesnion
-        M: int - Number of oscillations.
-        para_pas - Passive parameters (not to be optimised)
-        idx: list - List indicating the types of parameters are present in the
-                    active oscillators (para_act).
-                    0 - amplitudes
-                    1 - phases
-                    2 & 3 - frequencies
-                    4 & 5 - damping factors
-        phase_vairance: Bool - If True, include the oscillator phase variance
-                               to the cost function.
+    ----------
+    para_act : numpy.ndarray
+        Array of active parameters (parameters to be optimised).
+    args : list_iterator
+        * **data:** `numpy.ndarray.` Array of the original FID data.
+        * **tp:** `(numpy.ndarray, numpy.ndarray).` The time-points the signal
+          was sampled, in both dimensions.
+        * **M:** `int.` Number of oscillators.
+        * **para_pas:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **idx:** `list.` Indicates the types of parameters are present in the
+          active oscillators (para_act): ``0`` - amplitudes, ``1`` - phases,
+          ``2`` & ``3`` - frequencies, ``4`` & ``5`` - damping factors.
+        * **phase_variance:** `Bool.` If True, include the oscillator phase
+          variance to the cost function.
 
     Returns
-    ———————
-    func - float
-        Value of the cost function
+    -------
+    func : float
+        Value of the cost function.
     """
 
     # unpack arguments
@@ -553,41 +512,28 @@ def _f_2d(para_act, *args):
 
 def _g_2d(para_act, *args):
     """
-    _g_2d(para, *args)
-
-    Decription
-    ———————————
-    Determines the grad function of cost function to be minimised for
-    non-linear optimisation (2D signal)
-    i-th element Given by:
-    2Re[Tr[(Y - X(θ))† dX(θ)/∂θᵢ]] + ∂Var(φ)/∂θᵢ
-    where Y is the (normalised) data, X is the model, θ is the
-    parameter array, and φ is the oscillator phases.
+    Gradient of cost function for 2D data
 
     Parameters
-    ——————————
-    para_act - numpy.ndarray
-        Array of active parameters (paramters to be optimised).
-    args - list_iterator
-        Additional arguments, with entries:
-        data: ndarray - Array of the original FID data.
-        tp: tuple - Contains 2 numpy.ndarrays with time-points the FID was
-                    sampled at, in each dimesnion
-        M: int - Number of oscillations.
-        para_pas - Passive parameters (not to be optimised)
-        idx: list - List indicating the types of parameters are present in the
-                    active oscillators (para_act).
-                    0 - amplitudes
-                    1 - phases
-                    2 & 3 - frequencies
-                    4 & 5 - damping factors
-        phase_vairance: Bool - If True, include the oscillator phase variance
-                               to the cost function.
+    ----------
+    para_act : numpy.ndarray
+        Array of active parameters (parameters to be optimised).
+    args : list_iterator
+        * **data:** `numpy.ndarray.` Array of the original FID data.
+        * **tp:** `(numpy.ndarray, numpy.ndarray).` The time-points the signal
+          was sampled, in both dimensions.
+        * **M:** `int.` Number of oscillators.
+        * **para_pas:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **idx:** `list.` Indicates the types of parameters are present in the
+          active oscillators (para_act): ``0`` - amplitudes, ``1`` - phases,
+          ``2`` & ``3`` - frequencies, ``4`` & ``5`` - damping factors.
+        * **phase_variance:** `Bool.` If True, include the oscillator phase
+          variance to the cost function.
 
     Returns
-    ———————
-    grad - numpy.ndarray
-        Gradient of the cost function
+    -------
+    grad : numpy.ndarray
+        Gradient of cost function, with ``grad.shape = (6*M,)``.
     """
 
     # unpack arguments
@@ -640,41 +586,28 @@ def _g_2d(para_act, *args):
 
 def _h_2d(para_act, *args):
     """
-    _h_2d(para, *args)
-
-    Description
-    ———————————
-    Determines the Hessian function of cost function to be minimised for
-    non-linear optimisation (2D signal)
-    i,j-th element Given by:
-    2Re[Tr[(Y - X(θ))† ∂²X(θ)/∂θᵢ∂θⱼ - ∂X(θ)†/∂θᵢ ∂X(θ)/∂θⱼ]] + ∂²Var(φ)/∂θᵢ∂θⱼ
-    where Y is the (normalised) data, X is the model, θ is the
-    parameter array, and φ is the oscillator phases.
+    Hessian of cost function for 2D data
 
     Parameters
-    ——————————
-    para_act - numpy.ndarray
-        Array of active parameters (paramters to be optimised).
-    args - list_iterator
-        Additional arguments, with entries:
-        data: ndarray - Array of the original FID data.
-        tp: tuple - Contains 2 numpy.ndarrays with time-points the FID was
-                    sampled at, in each dimesnion
-        M: int - Number of oscillations.
-        para_pas - Passive parameters (not to be optimised)
-        idx: list - List indicating the types of parameters are present in the
-                    active oscillators (para_act).
-                    0 - amplitudes
-                    1 - phases
-                    2 & 3 - frequencies
-                    4 & 5 - damping factors
-        phase_vairance: Bool - If True, include the oscillator phase variance
-                               to the cost function.
+    ----------
+    para_act : numpy.ndarray
+        Array of active parameters (parameters to be optimised).
+    args : list_iterator
+        * **data:** `numpy.ndarray.` Array of the original FID data.
+        * **tp:** `(numpy.ndarray, numpy.ndarray).` The time-points the signal
+          was sampled, in both dimensions.
+        * **M:** `int.` Number of oscillators.
+        * **para_pas:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **idx:** `list.` Indicates the types of parameters are present in the
+          active oscillators (para_act): ``0`` - amplitudes, ``1`` - phases,
+          ``2`` & ``3`` - frequencies, ``4`` & ``5`` - damping factors.
+        * **phase_variance:** `Bool.` If True, include the oscillator phase
+          variance to the cost function.
 
     Returns
-    ———————
-    hess - numpy.ndarray
-        Hessian of the cost function.
+    -------
+    hess : numpy.ndarray
+        Hessian of cost function, with ``hess.shape = (6*M,6*M)``.
     """
     # TODO: Consider ways to improve performance
 
@@ -835,60 +768,56 @@ def _h_2d(para_act, *args):
 
 def _correct_freqs(para, offset):
     """
-    _correct_freqs(para, offset, dim)
-
-    Decription
-    ———————————
-    Alter frequencies from those that correspond to the correct
-    spectral values to those that will create the correct corresponding
-    FID.
+    Centre frequencies at zero offset
 
     Parameters
-    ——————————
-    para - numpy.ndarray
-        Parameter array of shape (M, 4) or (M, 6)
-    offset - tuple
+    ----------
+    para : numpy.ndarray
+        Parameter array of with ``para.shape = (M, 4)`` or
+        ``para.shape = (M, 6)``.
+
+    offset : (float,), or (float, float)
         Transmitter offset frequency (Hz) in each dimension.
-    dim - int
-        Signal dimension. Will be 1 or 2.
+
+    dim : int
+        Signal dimension. Should be 1 or 2.
 
     Returns
-    ———————
-    para_cor - numpy.ndarray
-        Parameter array with corrected frequencies (same shape as para).
+    -------
+    para_cor : numpy.ndarray
+        Parameter array with centered frequencies.
     """
-    para_cor = deepcopy(para)
+    para_cent = deepcopy(para)
     dim = (para_cor.shape[1]/2) - 1
     for i, off in enumerate(offset):
-        para_cor[..., i+2] = -para_cor[..., i+2] + off
+        para_cent[..., i+2] = -para_cent[..., i+2] + off
 
-    return para_cor
+    return para_cent
 
 
 def _get_mode_indices(mode, dim):
     """
-    _get_mode_indices(mode, dim)
-
-    Description
-    ———————————
-    Determine which columns of theta0 to retain when mode is not 'all'
+    Determines which columns of theta0 to optimise, and which to fix.
 
     Parameters
-    ——————————
-    mode - str
+    ----------
+    mode : str
         A string whose characters dictate which parameter types to keep.
-        Will be any permutation of any number of 'a', 'p', 'f', and 'd'
-    dim - int
-        Signal dimesnion
+        Will be any permutation of any number of ``'a'``, ``'p'``, ``'f'``, and
+        ``'d'``.
+
+    dim : int
+        Signal dimesnion.
 
     Returns
-    ———————
+    -------
     idx_act - list
         Indices of columns (i.e axis-1 elements) containing parameters that
         will be optimised (active).
+
     idx_pas - list
-        Indices of columns (i.e axis-1 elements) containing parameters that
-        will not be optimised (passive).
+        Indices of columns containing parameters that will not be optimised
+        (passive).
     """
 
     idx_act = []
@@ -913,36 +842,35 @@ def _get_mode_indices(mode, dim):
 
 def _get_bounds(M, sw, offset, idx):
     """
-    _get_bounds(M, sw, offset, idx)
-
-    Decription
-    ———————————
     Constructs a list of bounding constraints to set for each parameter,
     if bounds are desired in the NLP routine.
-    Bounds are as follows:
-    * amplitudes: 0 < a < ∞
-    * phases: -π < φ < π
-    * frequencies: offset - sw/2 < f < offset + sw/2
-    * damping: 0 < η < ∞
 
     Parameters
-    ——————————
-    M - int
-        Number of oscillators
-    sw - tuple
+    ----------
+    M : int
+        Number of oscillators.
+    sw : (float,) or (float, float)
         Sweep width (Hz) in each dimension.
-    offset - tuple
+    offset : (float,) or (float, float)
         Transmitter offset frequency (Hz) in each dimension.
-    idx - list
+    idx : list
         List of indices corresponding to elements along axis-1 of theta0
         to consider.
 
     Returns
-    ———————
+    -------
     bounds - list
-        List of 4*M (dim = 1) or 6*M (dim = 2) elements. Each element
-        is a tuple specifying the lower and upper bounds of an
-        individual parameter.
+        Elements are tuples specifying the lower and upper bounds for each
+        parameter.
+
+    Notes
+    -----
+    Bounds are as follows:
+
+    * amplitudes: 0 < a < ∞
+    * phases: -π < φ < π
+    * frequencies: offset - sw/2 < f < offset + sw/2
+    * damping: 0 < η < ∞
     """
 
     # constuct a list of all bounds, and then trim at the end if
@@ -965,28 +893,27 @@ def _get_bounds(M, sw, offset, idx):
 
 def _construct_para(para_act, para_pas, M, idx):
     """
-    _construct_para(para_act, para_pas, M, idx)
-
-    Decription
-    ———————————
-    Constructs the full parameter vector from active and passive
-    sub-vectors.
+    Constructs the full parameter vector from active and passive sub-vectors.
 
     Parameters
-    ——————————
-    para_act - numpy.ndarray
-        Active parameters.
-    para_pas - numpy.ndarray
-        Passive parameters.
-    M - int
-        Number of oscillators
-    idx - list
+    ----------
+    para_act : numpy.ndarray
+        Active parameter vector.
+
+    para_pas : numpy.ndarray
+        Passive parameter vector.
+
+    M : int
+        Number of oscillators.
+
+    idx : list
         Indicates the relative locations of active parameter blocks.
 
     Returns
-    ———————
+    -------
     para - numpy.ndarray
-        Full parameter vector with correct ordering (i.e. [a, φ, f, η])
+        Full parameter vector with correct ordering, i.e. [amps, phases, freqs,
+        damps].
     """
 
     p = int((para_act.shape[0] + para_pas.shape[0]) / M)
@@ -1003,26 +930,23 @@ def _construct_para(para_act, para_pas, M, idx):
 
 def _generate_diag_indices(p, M):
     """
-    _generate_diag_indices(p, M)
-
-    Decription
-    ———————————
     Determines all array indicies that correspond to positions in which
     non-zero second derivatives reside, in the top right half of the Hessian.
 
     Parameters
-    ——————————
-    p - int
-        The number of parameter types (i.e. a, φ, f, η → p = 4). For an ND
-        signal it will be 2N + 2
-    M - int
+    ----------
+    p : int
+        The number of parameter 'types'. For an ND signal this will be 2N + 2
+    M : int
         Number of oscillators in parameter estimate
 
     Returns
-    ———————
-    diag_idx_0 - numpy.ndarray
+    -------
+
+    diag_idx_0 : numpy.ndarray
         0-axis coordinates of indices.
-    diag_idx_1
+
+    diag_idx_1 : numpy.ndarray
         1-axis coordinates of indices.
     """
 
@@ -1039,28 +963,24 @@ def _generate_diag_indices(p, M):
 
 def _diag_indices(a, k=0):
     """
-    _diag_indices(a, k=0)
-
-    Decription
-    ———————————
     Returns the indices of an array's kth diagonal. A generalisation of
     numpy.diag_indices_from(), which can only be used to obtain the indices
-    along the main diagonal of an array. Used in calculation of the Hessian;
-    see _h_1d() and _h_2d().
+    along the main diagonal of an array.
 
     Parameters
-    ——————————
-    a - numpy.ndarray
+    ----------
+    a : numpy.ndarray
         Square array (Hessian matrix)
-    k - int
+    k : int
         Displacement from the main diagonal
 
     Returns
-    ———————
-    rows - numpy.ndarray
-        Row elements of diagonal indices
-    cols - numpy.ndarray
-        Column elements of diagonal indices
+    -------
+    rows : numpy.ndarray
+        0-axis coordinates of indices.
+
+    cols : numpy.ndarray
+        1-axis coordinates of indices.
     """
 
     rows, cols = np.diag_indices_from(a)
@@ -1074,29 +994,28 @@ def _diag_indices(a, k=0):
 
 def _rm_negligible_amps(x, amp_thold, fprint):
     """
-    _rm_negligible_amps(x, amp_thold, fprint)
-
-    Decription
-    ———————————
     Determines which oscillators (if any) have amplitudes which are
     smaller than a threshold, and removes these from the parameter array
 
     Parameters
-    ——————————
-    x - numpy.ndarray
-        Parameter array, with shape (M, 4) or (M, 6).
-    amp_thold - float or None
-        Specifies threshold. Any oscillators satisfying:
-        amplitudes ≤ amp_thold ✕ ‖amps‖
-        will be removed. If None, will simply return x
-    fprint - Bool
+    ----------
+    x : numpy.ndarray
+        Parameter array.
+
+    amp_thold : float or None
+        Specifies threshold. Any oscillators satisfying
+        :math:`a_m \\leq a_{\\mathrm{thold}} \\lVert \\boldsymbol{a} \\rVert`
+        will be removed, where :math:`\\boldsymbol{a}` is the vector of all
+        amplitudes in the parameter array. If None, will simply return x
+
+    fprint : Bool
         Dictates whether or not to print information to the terminal
 
     Returns
-    ———————
-    x_new - numpy.ndarray
-        Parameter array, with shape (M_new, 4) or (M_new, 6), with
-        M_new ≤ M
+    -------
+    x_new : numpy.ndarray
+        Parameter array, with ``n_new.shape = (M_new, 4)`` or ``n_new.shape =
+        (M_new, 6)``, with ``M_new <= M``
     """
     if amp_thold is None:
         return x
@@ -1116,28 +1035,28 @@ def _rm_negligible_amps(x, amp_thold, fprint):
 
 def _rm_negative_amps(x, fprint):
     """
-    _rm_negative_amps(x, fprint)
-
-    Decription
-    ———————————
     Determines which oscillators (if any) have negative amplitudes, and
     removes these from the parameter array. Also returns a Boolean used
-    by nlp() to decide whether to re-run the optimisation routine.
+    by ``nlp()`` to decide whether to re-run the optimisation routine.
 
     Parameters
-    ——————————
-    x - numpy.ndarray
-        Parameter array, with shape (M, 4) or (M, 6).
-    fprint - Bool
-        Dictates whether or not to print information to the terminal
+    ----------
+    x : numpy.ndarray
+        Parameter array, with ``x.shape = (M, 4)`` or ``x.shape = (M, 6)``.
+
+    fprint : Bool
+        Dictates whether or not to print information to the terminal.
 
     Returns
-    ———————
-    x_new - numpy.ndarray
-        Parameter array, with shape (M_new, 4) or (M_new, 6), with
-        M_new ≤ M.
-    term - Bool
-        If True, nlp() will terminate. If False, nlp() will run again.
+    -------
+    x_new : numpy.ndarray
+        Parameter array, with ``n_new.shape = (M_new, 4)`` or ``n_new.shape =
+        (M_new, 6)``, with ``M_new <= M``
+
+    term : Bool
+        A flag indicating whether any negative amplitudes were present. Used
+        by ``nlp()`` to determine whether to re-run the optimisation or to
+        terminate.
     """
 
     rm_ind = np.nonzero(x[:, 0] < 0.0) # indices of -ve amp. oscillators

@@ -77,7 +77,8 @@ class MainResult(tk.Frame):
         self['bg'] = 'white'
 
         self.info = info
-        self.fig, self.ax, self.lines, self.labels = self.info.plot_result()
+
+        self.fig, self.ax, self.lines, self.labels = self.info.plot_result(osccols='#1063e0')
         self.fig.set_dpi(170)
         self.fig.set_size_inches(6, 3.5)
 
@@ -99,14 +100,13 @@ class MainResult(tk.Frame):
         self.plotframe = PlotFrame(self, self.fig)
         self.logoframe = LogoFrame(self.rightframe)
         self.editframe = EditFrame(self.rightframe, self.lines, self.labels,
-                                   self.ax, self.plotframe.canvas)
+                                   self.ax, self.plotframe.canvas, self.info)
         self.saveframe = SaveFrame(self.rightframe)
-        self.buttonframe = ButtonFrame(self.rightframe, self.saveframe, self.info)
+        self.buttonframe = ButtonFrame(self.rightframe, self.saveframe,
+                                       self.info)
         self.contactframe = ContactFrame(self.rightframe)
 
         self.logoframe.columnconfigure(0, weight=1)
-
-
 
 
 
@@ -156,13 +156,14 @@ class LogoFrame(tk.Frame):
 
 
 class EditFrame(tk.Frame):
-    def __init__(self, master, lines, labels, ax, figcanvas):
+    def __init__(self, master, lines, labels, ax, figcanvas, info):
         tk.Frame.__init__(self, master)
         self.master = master
         self.lines = lines
         self.labels = labels
         self.ax = ax
         self.figcanvas = figcanvas
+        self.info = info
 
         self.config(bg='white')
         self.grid(row=1, column=0, sticky='ew')
@@ -186,7 +187,7 @@ class EditFrame(tk.Frame):
         self.edit_labels.grid(row=3, column=0)
 
     def config_params(self):
-        print('TODO')
+        ConfigParams(self, self.info, self.figcanvas, self.ax, self.lines, self.labels)
 
     def config_lines(self):
         ConfigLines(self, self.lines, self.figcanvas)
@@ -336,6 +337,185 @@ class ContactFrame(tk.Frame):
 
         self.msg1.grid(row=0, column=0, sticky='w')
         self.msg2.grid(row=1, column=0, sticky='w')
+
+
+class ConfigParams(tk.Toplevel):
+    def __init__(self, master, info, figcanvas, ax, lines, labels):
+        tk.Toplevel.__init__(self, master)
+        self.resizable(False, False)
+        self.info = info
+        self.figcanvas = figcanvas
+        self.ax = ax
+        self.lines = lines
+        self.labels = labels
+
+        self.table = tk.Frame(self, bg='white')
+        self.table.grid(row=0, column=0, columnspan=4)
+
+        self.construct_table()
+
+        self.closebutton = tk.Button(self, text='Close', command=self.close)
+        self.splitbutton = tk.Button(self, text='Split Oscillator',
+                                     state='disabled')
+        self.mergebutton = tk.Button(self, text='Merge Oscillators',
+                                     state='disabled', command=self.merge)
+        self.manualbutton = tk.Button(self, text='Edit Manually',
+                                     state='disabled')
+
+        self.closebutton.grid(row=1, column=0)
+        self.splitbutton.grid(row=1, column=1)
+        self.mergebutton.grid(row=1, column=2)
+        self.manualbutton.grid(row=1, column=3)
+
+
+    def construct_table(self):
+        self.osc_ttl = tk.Label(self.table, bg='white', text='Osc. #')
+        self.amp_ttl = tk.Label(self.table, bg='white', text='Amplitude')
+        self.phase_ttl = tk.Label(self.table, bg='white', text='Phase')
+        self.freq_ttl = tk.Label(self.table, bg='white', text='Frequency')
+        self.damp_ttl = tk.Label(self.table, bg='white', text='Damping')
+
+        self.osc_ttl.grid(row=0, column=0)
+        self.amp_ttl.grid(row=0, column=1)
+        self.phase_ttl.grid(row=0, column=2)
+        self.freq_ttl.grid(row=0, column=3)
+        self.damp_ttl.grid(row=0, column=4)
+
+        self.theta = self.info.get_theta()
+
+        self.osc_labels = []
+        self.osc_entries = []
+        self.param_vars = []
+
+        for i, oscillator in enumerate(self.theta):
+            print(i)
+            osc_lab = tk.Label(self.table, bg='white', text=f'{i + 1}')
+            osc_lab.bind('<Button-1>', lambda entry, i=i: self.left_click(i))
+            osc_lab.bind('<Shift-Button-1>',
+                         lambda entry, i=i: self.shift_left_click(i))
+            osc_lab.grid(row=i+1, column=0, sticky='ew')
+            self.osc_labels.append(osc_lab)
+
+            ent_row = []
+            param_row = []
+            for j, parameter in enumerate(oscillator):
+                param_var = tk.StringVar()
+                param_var.set(f'{parameter:.5f}')
+                param_row.append(param_var)
+
+                ent_row.append(tk.Entry(self.table, textvariable=param_var,
+                                        state='disabled', readonlybackground='white'))
+                ent_row[j].grid(row=i+1, column=j+1)
+
+            self.param_vars.append(param_row)
+            self.osc_entries.append(ent_row)
+
+    def left_click(self, number):
+        for i, label in enumerate(self.osc_labels):
+            if i == number:
+                pass
+            else:
+                if label['bg'] == 'blue':
+                    label['bg'] = 'white'
+                    label['fg'] = 'black'
+                    for entry in self.osc_entries[i]:
+                        entry['state'] = 'disabled'
+
+        self.shift_left_click(number)
+
+    def shift_left_click(self, number):
+        fg = 'white'
+        bg = 'blue'
+        state = 'readonly'
+
+        if self.osc_labels[number]['fg'] == 'white':
+            fg = 'black'
+            bg = 'white'
+            state = 'disabled'
+
+        self.osc_labels[number]['fg'] = fg
+        self.osc_labels[number]['bg'] = bg
+        for entry in self.osc_entries[number]:
+            entry['state'] = state
+
+        self.activate_buttons()
+
+    def activate_buttons(self):
+        activated_number = 0
+        for label in self.osc_labels:
+            if label['bg'] == 'blue':
+                activated_number += 1
+
+        if activated_number == 0:
+            self.splitbutton['state'] = 'disabled'
+            self.mergebutton['state'] = 'disabled'
+            self.manualbutton['state'] = 'disabled'
+
+        if activated_number == 1:
+            self.splitbutton['state'] = 'normal'
+            self.mergebutton['state'] = 'disabled'
+            self.manualbutton['state'] = 'normal'
+
+        if activated_number > 1:
+            self.splitbutton['state'] = 'disabled'
+            self.mergebutton['state'] = 'normal'
+            self.manualbutton['state'] = 'disabled'
+
+    def close(self):
+        self.destroy()
+
+    def merge(self):
+        # get oscillator numbers
+        indices = []
+        for i, label in enumerate(self.osc_labels):
+            if label['bg'] == 'blue':
+                indices.append(i)
+        # number of oscillatros to be merged
+        n = len(indices)
+
+        new_osc = np.sum(self.theta[indices], axis=0)
+        new_osc[1:] = new_osc[1:] / n
+        theta = np.delete(self.theta, indices, axis=0)
+        theta = np.insert(theta, 0, new_osc, axis=0)
+        theta = theta[np.argsort(theta[:, 2])]
+        self.info.theta = theta
+
+        _, _, lines, labs = self.info.plot_result(osccols='#1063e0')
+
+        self.ax.lines = []
+        self.ax.texts = []
+        self.lines = {}
+        self.labels = {}
+
+        # plot data
+        x = lines['data'].get_xdata()
+        y = lines['data'].get_ydata()
+        color = lines['data'].get_color()
+        lw = lines['data'].get_lw()
+
+        self.lines['data'] = self.ax.plot(x, y, color=color, lw=lw)
+
+        for i, (line, lab) in enumerate(zip(list(lines.values())[1:], list(labs.values()))):
+
+            key = f'osc{i+1}'
+            x = line.get_xdata()
+            y = line.get_ydata()
+            color = line.get_color()
+            lw = line.get_lw()
+
+            self.lines[key] = self.ax.plot(x, y, color=color, lw=lw)
+
+            text = lab.get_text()
+            x, y = lab.get_position()
+
+            self.labels[key] = self.ax.text(x, y, text)
+
+        self.figcanvas.draw_idle()
+
+        for widget in self.table.winfo_children():
+            widget.destroy()
+
+        self.construct_table()
 
 
 class ConfigLines(tk.Toplevel):

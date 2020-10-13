@@ -129,7 +129,7 @@ class NMREsPyBruker:
                  intfloat, dim, filt_spec=None, virt_echo=None,
                  half_echo=None, ve_n=None, ve_sw=None, ve_off=None,
                  highs=None, lows=None, p0=None, p1=None, theta0=None,
-                 theta=None):
+                 theta=None, errors=None):
 
         self.dtype = dtype # type of data ('raw' or 'pdata')
         self.data = data
@@ -154,6 +154,7 @@ class NMREsPyBruker:
         self.p1 = p1 # first-order phase correction for virtual echo
         self.theta0 = theta0 # mpm result
         self.theta = theta # nlp result
+        self.errors = errors # errors assocaitesd with nlp result
 
         # TODO add checks here
 
@@ -180,7 +181,8 @@ class NMREsPyBruker:
         msg += f'{self.highs}, '
         msg += f'{self.lows}, '
         msg += f'{self.theta0}, '
-        msg += f'{self.theta})'
+        msg += f'{self.theta}, '
+        msg += f'{self.errors})'
 
         return msg
 
@@ -1296,9 +1298,9 @@ class NMREsPyBruker:
         trim = self._check_trim(trim, data)
         data = data[tuple([np.s_[0:int(t)] for t in trim])]
 
-        self.theta = _nlp.nlp(data, dim, theta0, sw, off, phase_variance, method,
-                         mode, bound, maxit, amp_thold, freq_thold, fprint,
-                         True, None)
+        self.theta, self.errors = _nlp.nlp(data, dim, theta0, sw, off,
+                phase_variance, method, mode, bound, maxit, amp_thold,
+                freq_thold, fprint, True, None)
 
 
     def pickle_save(self, fname='NMREsPy_result.pkl', dir='.',
@@ -1350,8 +1352,6 @@ class NMREsPyBruker:
             fname += '.pkl'
 
         path = os.path.join(dir, fname)
-
-        print(path)
 
         if os.path.isfile(path):
             if force_overwrite:
