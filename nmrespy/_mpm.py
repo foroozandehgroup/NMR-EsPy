@@ -1,9 +1,4 @@
 #!/usr/bin/python3
-# mpm.py
-# Simon Hulse
-# simon.hulse@chem.ox.ac.uk
-
-# 1d and 2d matrix pencil routines.
 
 from copy import deepcopy
 import time
@@ -46,17 +41,17 @@ def mpm_1d(data, M_in, sw, offset, fprint):
     Returns
     -------
     para : numpy.ndarray
-        Array of oscillators parameters.
+        Array of oscillator parameters.
 
-    Referecnes
+    References
     ----------
-    [1] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
-    parameters of exponentially damped/undamped sinusoids in noise”. In:
-    IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
+    .. [1] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
+       parameters of exponentially damped/undamped sinusoids in noise”. In:
+       IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
 
-    [2] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy NMR
-    signals: applications to delayed acquisition data”. In: J. Magn. Reson.
-    128.1 (1997), pp. 30–41.
+    .. [2] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy NMR
+       signals: applications to delayed acquisition data”. In: J. Magn. Reson.
+       128.1 (1997), pp. 30–41.
     """
 
     if fprint:
@@ -110,51 +105,45 @@ def mpm_1d(data, M_in, sw, offset, fprint):
 
 def mpm_2d(data, M_in, sw, offset, fprint):
     """
-    mpm_2d(data, M_in, sw, offset, fprint)
-
-    ———Description—————————————————————————————
     Modified Matrix Enhancement Matrix Pencil Method for 2D time-domain
     signal analysis.
 
-    ———Parameters——————————————————————————————
-    data - ndarray
-        2D data array to be considered (unnormalised)
+    Parameters
+    ----------
+    data : numpy.ndarray
+        2D data array to be considered (unnormalised).
 
-    M_in - int
-        The number of oscillators. If 0, the number of oscilators will
+    M_in : int
+        The number of oscillators. If ``0``, the number of oscilators will
         be estimated using the MDL on the first dataslice through the
-        direct dimension
+        direct dimension.
 
-    sw - tuple
-        The experiment sweep width for both dimensions, in Hz. sw should
-        be a tuple of two floats.
+    sw : (float, float)
+        The experiment sweep width for both dimensions, in Hz.
 
-    offset - tuple
+    offset : (float, float)
         The experiment transmitter offset frequencies for both dimensions,
-        in Hz. offset should be a tuple of two floats.
+        in Hz.
 
-    fprint - bool
+    fprint : bool
         Flag specifiying whether to print infomation to the terminal as
         the method runs.
 
-    ———Returns—————————————————————————————————
-    para - ndarray
-        Array of oscillators parameters. If M_in is 0, the shape of para
-        will be (MDL, 6), where MDL is the result of using the minimum
-        description length. If M_in > 0, the shape of para will be
-        (M_in, 6).
-        Each element along axis-0 will have elements ordered as follows:
-        [amplitude, phase, frequency 1, frequency 2, damping 1, damping 2]
+    Returns
+    -------
+    para : ndarray
+        Array of oscillator parameters.
 
-    ———Referecnes——————————————————————————————
-    [1] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
-    enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
-    International Conference on Acoustics, Speech, and Signal Processing.
-    IEEE. 1991, pp. 3073–3076.
+    References
+    ----------
+    .. [1] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
+       enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
+       International Conference on Acoustics, Speech, and Signal Processing.
+       IEEE. 1991, pp. 3073–3076.
 
-    [2] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
-    using modified matrix pencil method”. In: IEEE Trans. Signal Process.
-    55.2 (2007), pp. 718–724.
+    .. [2] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
+       using modified matrix pencil method”. In: IEEE Trans. Signal Process.
+       55.2 (2007), pp. 718–724.
     """
 
     if fprint:
@@ -212,20 +201,25 @@ def mpm_2d(data, M_in, sw, offset, fprint):
 
 def _pencil_parameter(N, fprint):
     """
-    _pencil_parameter(N, fprint)
+    Determines the pencil parameter(s) for the MPM/MMEMPM
 
-    ———Description—————————————————————————————
-    Determines the pencil parameter(s), for the MPM/MMEMPM
-
-    ———Parameters——————————————————————————————
-    N - int or tuple
+    Parameters
+    ----------
+    N : int or (int, int)
         The number of data points in each dimension.
-    fprint - Bool
+
+    fprint : Bool
         Flag specifiying whether to print infomation to the terminal.
 
-    ———Returns—————————————————————————————————
-    pen_par - int or tuple
+    Returns
+    -------
+    pen_par : int or (int, int)
         Pencil parameter(s)
+
+    Notes
+    -----
+    The pencil parameters are set to be :math:`\\lfloor N_d / 3 \\rfloor`,
+    where :math:`N_d` is the number of data points in dimension :math:`d`.
     """
 
     if type(N) is int:
@@ -247,23 +241,28 @@ def _pencil_parameter(N, fprint):
 
 def _hankel(column, row, fprint):
     """
-    _hankel(column, row, fprint)
-
-    ———Description—————————————————————————————
-    Wrapper around scipy.linalg.hankel(). Constructs Hankel matrix,
+    Wrapper around ``scipy.linalg.hankel()``. Constructs Hankel matrix,
     and prints information if fprint is True.
 
-    ———Parameters——————————————————————————————
-    column - numpy.ndarray
+    Parameters
+    ----------
+    column : numpy.ndarray
         First column of the matrix.
-    row - numpy.ndarray
+
+    row : numpy.ndarray
         Last row of the matrix
-    fprint - Bool
+
+    fprint : Bool
         Flag specifiying whether to print infomation to the terminal.
 
-    ———Returns—————————————————————————————————
-    H - numpy.ndarry
-        Hankel matrix with shape (len(column), len(row))
+    Returns
+    -------
+    H : numpy.ndarry
+        Hankel matrix with ``H.shape = (len(column), len(row))``
+
+    References
+    ----------
+    .. [1] https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.hankel.html
     """
 
     H = hankel(column, row)
@@ -278,24 +277,29 @@ def _hankel(column, row, fprint):
 
 def _svd(array, fprint):
     """
-    _svd(array, fprint)
-
-    ———Description—————————————————————————————
-    Wrapper around numpy.linalg.svd(). Computes svd, and gives time.
+    Wrapper around ``numpy.linalg.svd()``. Computes SVD, and gives time.
     Also neglects left singular vectors which are not needed.
 
-    ———Parameters——————————————————————————————
-    array - numpy.ndarray
+    Parameters
+    ----------
+    array : numpy.ndarray
         Matrix to consider
-    fprint - Bool
+
+    fprint : Bool
         Flag specifiying whether to print infomation (inc. time taken)
         to the terminal.
 
-    ———Returns—————————————————————————————————
-    s - ndarry
+    Returns
+    -------
+    s : ndarry
         Array of singular values
-    Vh - ndarray
+
+    Vh : ndarray
         Hermitian conjuage array of right singular vectors
+
+    References
+    ----------
+    .. [1] https://numpy.org/doc/stable/reference/generated/numpy.linalg.svd.html
     """
 
     if fprint:
@@ -313,28 +317,38 @@ def _svd(array, fprint):
 
 def _mdl(M_in, N, L, s, fprint):
     """
-    _mdl(M_in, N, L, s, fprint)
-
-    ———Description—————————————————————————————
     Computes the MDL, with the option of printing information to the
     terminal.
 
-    ———Parameters——————————————————————————————
-    M_in - int
-        If 0, the MDL is computed, if >0, the MDL is not computed
-    N - int
+    Parameters
+    ----------
+    M_in : int
+        If 0, the MDL is computed, if >0, the MDL is not computed.
+
+    N : int
         Number of data points
-    L - int
+
+    L : int
         Pencil parameter
-    s - numpy.ndarray
+
+    s : numpy.ndarray
         Array of singular values
-    fprint - Bool
+
+    fprint : Bool
         Flag specifiying whether to print infomation to the terminal.
 
-    ———Returns—————————————————————————————————
-    M - int
-        The number of oscillations. If M_in is 0, M will be determined
-        using the MDL. If M_in is >0, M will be set to M_in.
+    Returns
+    -------
+    M : int
+        The number of oscillations. If ``M_in`` is set to ``0``, the model
+        order is determined using the MDL. If ``M_in`` is greater than ``0``,
+        the order will be set to ``M_in``.
+
+    References
+    ----------
+    .. [1] M. Wax, T. Kailath, Detection of signals by information theoretic
+       criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
+       33 (2) (1985) 387–392.
     """
 
     if M_in == 0:
@@ -362,25 +376,26 @@ def _mdl(M_in, N, L, s, fprint):
 
 def _signal_poles_1d(V, M, fprint):
     """
-    _signal_poles_1d(V, M, fprint)
-
-    ———Description—————————————————————————————
-    Computes the signal poles of a 1D signal, given a matrix of singular
+    Computes the poles of a 1D signal, given a matrix of singular
     values and the number of poles, with the option of printing information
     to the terminal.
 
-    ———Parameters——————————————————————————————
-    V - numpy.ndarray
-        Matrix of right singular vectors, obtained from _svd()
-    M - int
-        Number of oscillations
-    fprint - Bool
+    Parameters
+    ----------
+    V : numpy.ndarray
+        Matrix of right singular vectors, obtained from :py:func:`_svd`
+
+    M : int
+        Number of oscillations.
+
+    fprint : Bool
         Flag specifiying whether to print infomation (inc. time taken)
         to the terminal.
 
-    ———Returns—————————————————————————————————
-    z - numpy.ndarray
-        Array of signal poles, of shape (M,)
+    Returns
+    -------
+    z : numpy.ndarray
+        Array of signal poles, with ``z.shape = (M,)``
     """
 
     if fprint:
@@ -404,23 +419,23 @@ def _signal_poles_1d(V, M, fprint):
 
 def _permutation_matrix(K, L):
     """
-    _permutation_matrix(K, L)
+    Computation of the permutation matrix for use in MEMMPM.
 
-    ———Description—————————————————————————————
-    Computation of the permutation matrix P for use in MMEMPM.
-
-    ———Parameters——————————————————————————————
-    K - int
+    Parameters
+    ----------
+    K : int
         Pencil parameter corresponding to dimension 1
-    L - int
+
+    L : int
         Pencil parameter corresponding to dimension 2
 
-    ———Returns—————————————————————————————————
-    P - numpy.ndarray
-        Permutation matrix of shape (K*L, K*L)
+    Returns
+    -------
+    P : numpy.ndarray
+        Permutation matrix of with ``P.shape = (K*L, K*L)``
     """
 
-    # create first row of matrrix: [1, 0, 0, ..., 0]
+    # create first row of matrix: [1, 0, 0, ..., 0]
     first = sparse.lil_matrix((1,K*L))
     first[0,0] = 1
 
@@ -449,29 +464,31 @@ def _permutation_matrix(K, L):
 
 def _signal_poles_2d(U, M, K, L, fprint):
     """
-    _signal_poles_2d(U, M, K, L, fprint)
-
-    ———Description—————————————————————————————
-    Computes the signal poles of a 2D signal, given a matrix of singular
-    values, the number of poles, and pencil parameters,with the option of
+    Computes the poles of a 2D signal, with the option of
     printing information (inc. time taken) to the terminal.
 
-    ———Parameters——————————————————————————————
-    U - numpy.ndarray
-        Matrix of left singular vectors, obtained from _svds()
-    M - int
-        Number of oscillations
-    K - int
-        Pencil parameter corresponding to dimension 1
-    L - int
-        Pencil parameter corresponding to dimension 2
-    fprint - Bool
+    Parameters
+    ----------
+    U : numpy.ndarray
+        Matrix of left singular vectors, obtained from :py:func:`_svds`.
+
+    M : int
+        Number of oscillations.
+
+    K : int
+        Pencil parameter corresponding to dimension 1.
+
+    L : int
+        Pencil parameter corresponding to dimension 2.
+
+    fprint : Bool
         Flag specifiying whether to print infomation (inc. time taken)
         to the terminal.
 
-    ———Returns—————————————————————————————————
-    z - numpy.ndarray
-        Array of signal poles, of shape (M,)
+    Returns
+    -------
+    z : numpy.ndarray
+        Array of signal poles, with ``z.shape = (M,)``.
     """
 
     if fprint:
@@ -505,25 +522,25 @@ def _signal_poles_2d(U, M, K, L, fprint):
 
 def _complex_amplitudes_1d(z, data, fprint):
     """
-    _complex_amplitudes_1d(z, data, N, fprint)
+    Computes the complex amplitudes of a 1D signal, with the option of printing
+    information (inc. time taken) to the terminal.
 
-    ———Description—————————————————————————————
-    Computes the complex amplitudes of a 1D signal, given the signal poles
-    and data, with the option of printing information (inc. time taken) to
-    the terminal.
-
-    ———Parameters——————————————————————————————
-    z - numpy.ndarray
+    Parameters
+    ----------
+    z : numpy.ndarray
         Array of signal poles, of shape (M,)
-    data - numpy.ndarray
+
+    data : numpy.ndarray
         Signal of interest
-    fprint - Bool
+
+    fprint : Bool
         Flag specifiying whether to print infomation (inc. time taken)
         to the terminal.
 
-    ———Returns—————————————————————————————————
-    alpha - numpy.ndarray
-        Array of complex amplitudes, of shape (M,)
+    Returns
+    -------
+    alpha : numpy.ndarray
+        Array of complex amplitudes, with ``alpha.shape = (M,)``
     """
 
     if fprint:
@@ -543,30 +560,28 @@ def _complex_amplitudes_1d(z, data, fprint):
 
 def _complex_amplitudes_2d(poles, data, Xe, K, L, fprint):
     """
-    _complex_amplitudes_2d(poles, Xe, K, L, fprint)
-
-    ———Description—————————————————————————————
-    Computes the complex amplitudes of a 2D signal, given the signal poles,
-    enhanced matrix, and pencil parameters, with the option of printing
+    Computes the complex amplitudes of a 2D signal, with the option of printing
     information (inc. time taken) to the terminal.
 
-    ———Parameters——————————————————————————————
-    poles - numpy.ndarray
-        Array of signal poles, of shape (M, 2), where M is the number
-        of oscillations.
-    Xe - numpy.ndarray
-        Enchanced block hankel matrix
-    K - int
-        Pencil parameter corresponding to dimension 1
-    L - int
-        Pencil parameter corresponding to dimension 2
-    fprint - Bool
+    Parameters
+    ----------
+    poles : numpy.ndarray
+        Array of signal poles, with ``poles.shape = (M, 2)``, where M is the
+        number of oscillations.
+    Xe : numpy.ndarray
+        Enchanced block hankel matrix.
+    K : int
+        Pencil parameter corresponding to dimension 1.
+    L : int
+        Pencil parameter corresponding to dimension 2.
+    fprint : Bool
         Flag specifiying whether to print infomation (inc. time taken)
         to the terminal.
 
-    ———Returns—————————————————————————————————
-    alpha - numpy.ndarray
-        Array of signal poles, of shape (M,), where M is poles.shape[0]
+    Returns
+    -------
+    alpha : numpy.ndarray
+        Array of signal poles, with ``alpha.shape = (M,)``.
     """
 
     if fprint:
@@ -598,28 +613,30 @@ def _complex_amplitudes_2d(poles, data, Xe, K, L, fprint):
 
 def _negative_damping(para, fprint):
     """
-    _negative_damping(para, fprint)
-
-    ———Description—————————————————————————————
     Determines any oscillators with negative damping factors in the
     parameter array, and removes these from the array.
 
-    ———Parameters——————————————————————————————
-    para - numpy.ndarray
-        Array of signal oscillators, of shape (M, 4) or (M, 6)
-    fprint - Bool
+    Parameters
+    ----------
+    para : numpy.ndarray
+        Array of signal parameters, with para.shape = (M, 4) for a 1D signal,
+        and para.shape = (M, 6) for a 2D signal.
+
+    fprint : Bool
         Flag specifiying whether to print infomation to the terminal.
 
-    ———Returns—————————————————————————————————
-    alpha - numpy.ndarray
-        Array of signal poles, of shape (M,), where M is poles.shape[0]
+    Returns
+    -------
+    para_cor : numpy.ndarray
+        Array of signal parameters after removal of any oscillators with
+        negative damping.
     """
 
     M_init = para.shape[0]
     # indices of oscillators with negative damping factors
     neg_damp = np.nonzero(para[:, 3] < 0.0)[0]
-    para = np.delete(para, neg_damp, axis=0)
-    M = para.shape[0]
+    para_cor = np.delete(para, neg_damp, axis=0)
+    M = para_cor.shape[0]
 
     if M < M_init:
         if fprint:
@@ -627,33 +644,33 @@ def _negative_damping(para, fprint):
                   f' factors detected. These have been deleted.\n'
                   f'Corrected number of oscillations: {M}{END}')
 
-    return para
+    return para_cor
 
 
 def _enhanced_matrix(data, K, L, fprint):
     """
-    _enhanced_matrix(data, K, L, fprint)
+    Constructs the enhanced matrix for the MEMMPM.
 
-    ———Description—————————————————————————————
-    Constructs an enhanced matrix Xe from signal data, and pencil
-    parameters, with the option of printing information (inc. time taken)
-    to the terminal. The final result is a sparse (CSR) matrix.
-
-    ———Parameters——————————————————————————————
-    data - numpy.ndarray
+    Parameters
+    ----------
+    data : numpy.ndarray
         Signal of interest.
-    K - int
-        Pencil parameter corresponding to dimension 1
-    L - int
-        Pencil parameter corresponding to dimension 2
-    fprint - Bool
+
+    K : int
+        Pencil parameter corresponding to dimension 1.
+
+    L : int
+        Pencil parameter corresponding to dimension 2.
+
+    fprint : Bool
         Flag specifiying whether to print infomation (inc. time taken)
         to the terminal.
 
-    ———Returns—————————————————————————————————
-    sparse_Xe - scipy.sparse.cst_matrix
-        Enhanced matrix with shape (K*L, (N[0]-K+1)*N[1]-L+1)), where N
-        is data.shape
+    Returns
+    -------
+    Xe : scipy.sparse.csr_matrix
+        Enhanced matrix with ``sparse_Xe.shape = (K*L, (N[0]-K+1)*(N[1]-L+1))``,
+        where ``N`` is ``data.shape``
     """
 
     #construct enhanced matrix, Xe
@@ -690,26 +707,30 @@ def _enhanced_matrix(data, K, L, fprint):
 
 def _svds(Xe, M, fprint):
     """
-    _svd(array, fprint)
-
-    ———Description—————————————————————————————
-    Wrapper around scipy.sparse.linalg.svds() Computes svd of a sparse
+    Wrapper around ``scipy.sparse.linalg.svds()`` [1]_. Computes svd of a sparse
     matrix, and returns the left singular vectors corresponding to the
-    M most significant singular values. Provides option of printing
-    information (inc. time taken) to the terminal.
+    M most significant singular values.
 
-    ———Parameters——————————————————————————————
-    Xe - scipy.sparse.cst_matrix
+    Parameters
+    ----------
+    Xe : scipy.sparse.csr_matrix
         Enhanced matrix.
-    M - int
+
+    M : int
         Number of singular vectors to obtain.
-    fprint - Bool
+
+    fprint : Bool
         Flag specifiying whether to print infomation (inc. time taken)
         to the terminal.
 
-    ———Returns—————————————————————————————————
-    U - ndarry
+    Returns
+    -------
+    U - numpy.ndarry
         Array of right singular vectors.
+
+    References
+    ----------
+    .. [1] https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.svds.html
     """
 
     if fprint:

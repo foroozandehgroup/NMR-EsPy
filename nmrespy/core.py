@@ -156,8 +156,6 @@ class NMREsPyBruker:
         self.theta = theta # nlp result
         self.errors = errors # errors assocaitesd with nlp result
 
-        # TODO add checks here
-
 
     def __repr__(self):
         msg = f'nmrespy.core.NMREsPyBruker('
@@ -193,18 +191,27 @@ class NMREsPyBruker:
         msg = ''
         cats.append(f'\n{MA}<NMREsPyBruker object at {hex(id(self))}>{END}\n')
         vals.append('')
+
+        # --- Basic experiment information ---
         cats.append(f'{MA}───Basic Info───{END}')
         vals.append('')
+
+        # path to data
         cats.append('Path:')
         vals.append(self.get_datapath())
+
+        # type of data
+        dtype = self.get_dtype()
         cats.append('Type:')
-        vals.append(self.get_dtype())
+        vals.append(dtype)
+
+        # number of dimensions
         cats.append('Dimension:')
         vals.append(str(self.get_dim()))
 
+        # the data (shape is given)
         data = self.get_data()
-        dtype = self.get_dtype()
-        if  type == 'raw':
+        if dtype == 'raw':
             cats.append('Data:')
             vals.append(f'numpy.ndarray of shape {data.shape}\n')
 
@@ -217,6 +224,7 @@ class NMREsPyBruker:
                     cats.append('')
                     vals.append(f'{k}, numpy.ndarray of shape {v.shape}')
 
+        # sweep widths in each dimension (Hz and ppm)
         sw_h = self.get_sw()
         sw_p = self.get_sw(unit='ppm')
 
@@ -229,7 +237,7 @@ class NMREsPyBruker:
             s = f'{sh:.4f}Hz ({sp:.4f}ppm) (F{i+1})'
             vals.append(s)
 
-
+        # offsets in each dimension (Hz and ppm)
         off_h = self.get_offset()
         off_p = self.get_offset(unit='ppm')
 
@@ -242,6 +250,7 @@ class NMREsPyBruker:
             s = f'{oh:.4f}Hz ({op:.4f}ppm) (F{i+1})'
             vals.append(s)
 
+        # basic transmitter frequency for each channel
         bf = self.get_bf()
         for i, b in enumerate(bf):
             if i == 0:
@@ -252,6 +261,7 @@ class NMREsPyBruker:
             s = f'{b:.4f}MHz (F{i+1})'
             vals.append(s)
 
+        # transmitter offset for each channel
         sfo = self.get_sfo()
         for i, sf in enumerate(sfo):
             if i == 0:
@@ -262,6 +272,7 @@ class NMREsPyBruker:
             s = f'{sf:.4f}MHz (F{i+1})'
             vals.append(s)
 
+        # nucleus of each channel
         nuc = self.get_nuc()
         for i, n in enumerate(nuc):
             if i == 0:
@@ -271,12 +282,12 @@ class NMREsPyBruker:
 
             vals.append(f'{n} (F{i+1})')
 
-        # Virtual echo information
+        # --- Frequency filtered signal information ---
         virt_echo = self.get_virt_echo(kill=False)
         if virt_echo is None:
             pass
         else:
-            cats.append(f'\n{MA}───Virtual Echo Info───{END}')
+            cats.append(f'\n{MA}───Frequency Filter Info───{END}')
             vals.append('')
             half_echo = self.get_half_echo()
             filt_spec = self.get_filt_spec()
@@ -285,13 +296,19 @@ class NMREsPyBruker:
                          self.get_lows(unit='Hz'),
                          self.get_lows(unit='ppm'))
 
+            # virtual echo
             cats.append('Virtual Echo:')
             vals.append(f'numpy.ndarray of shape {virt_echo.shape}')
+
+            # halved virtual echo (the signal actually processed)
             cats.append('Half Echo:')
             vals.append(f'numpy.ndarray of shape {half_echo.shape}')
+
+            # the filtered spectrum from which the virtual echo is derived
             cats.append('Filtered Spectrum:')
             vals.append(f'numpy.ndarray of shape {filt_spec.shape}')
 
+            # upper and lower bounds of spectral region in each dimension
             for i, (hi, hi_p, lo, lo_p) in enumerate(bounds):
                 if i == 0:
                     cats.append('Region:')
@@ -909,7 +926,7 @@ class NMREsPyBruker:
         fid : numpy.ndarray
             The generated FID.
         """
-        res = self._check_res(resname)
+        res, _ = self._check_res(resname)
 
         if oscs:
             res = res[oscs]
@@ -1051,7 +1068,8 @@ class NMREsPyBruker:
         self.p1 = p1
 
     def matrix_pencil(self, M_in=0, trim=None, func_print=True):
-        """Implementation of the 1D Matrix Pencil Method [1]_ [2]_ or 2D
+        """Implementation of the 1D Matrix Pencil Method [1]_
+        [2]_ or 2D
         Modified Matrix Enchancement and Matrix Pencil (MMEMP) method [3]_
         [4]_ with the option of Model Order Selection using Minumum
         Descrition Length (MDL).
@@ -1461,7 +1479,7 @@ class NMREsPyBruker:
         If a pathname appears, the package is installed.
         """
 
-        res = self._check_res(resname)
+        res, _ = self._check_res(resname)
 
         # check format is sensible
         if format in ['txt', 'pdf']:
@@ -1525,7 +1543,7 @@ class NMREsPyBruker:
 
     def plot_result(self, resname=None, datacol=None, osccols=None,
                     labels=True, stylesheet=None):
-        """ Generates a figure with the result of an estimation routine.
+        """Generates a figure with the result of an estimation routine.
         A spectrum of the original data is plotted, along with each
         individual oscillator that makes up the estimation result.
 
@@ -1655,7 +1673,7 @@ class NMREsPyBruker:
         if dim == 2:
             raise TwoDimUnsupportedError()
 
-        res = self._check_res(resname)
+        res, resname = self._check_res(resname)
 
         if self.dtype == 'raw':
             data = np.flip(fftshift(fft(self.data)))
@@ -1687,6 +1705,145 @@ class NMREsPyBruker:
         if dim == 1:
             return _plot.plotres_1d(data, peaks, shifts, region, nuc, datacol,
                                    osccols, labels, stylesheet)
+
+
+    def merge_oscillators(self, indices, resname=None):
+        """Removes the oscillators corresponding to the indices given, and
+        constructs a single new oscillator with a cumulative amplitude, and
+        averaged phase, frequency and damping factor.
+
+        Parameters
+        ----------
+        indices : list, tuple or numpy.ndarray
+            A list of indices corresponding to the oscillators to be merged.
+
+        resname : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If `None`, `self.theta` will be used
+            if it exists. If not, `self.theta0` will be used if it exists.
+            Otherwise, an error will be raised.
+
+        Notes
+        -----
+        Assuming that an estimation result contains a subset of oscillators
+        denoted by indices :math:`\{m_1, m_2, \cdots, m_J\}`, where
+        :math:`J \leq M`, the new oscillator formed by the merging of the
+        oscillator subset will possess the follwing parameters:
+
+
+            * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`
+            * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\phi_{m_i}`
+            * :math:`f_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J f_{m_i}`
+            * :math:`\\eta_{\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\eta_{m_i}`
+        """
+
+        # determine number of elements in indices
+        # if fewer than 2 elements, return without doing anything
+        if isinstance(indices, (tuple, list, np.ndarray)):
+            number = len(indices)
+            if number < 2:
+                msg = f'\n{O}indices should contain at least two elements.' \
+                      + f'No merging will hpappen.{END}'
+                return
+        else:
+            raise TypeError(f'\n{R}indices does not have a suitable type{END}')
+
+        res, resname = self._check_res(resname)
+
+        to_merge = res[indices]
+        new_osc = np.sum(to_merge, axis=0, keepdims=True)
+
+        # get mean for phase, frequency and damping
+        new_osc[:, 1:] = new_osc[:, 1:] / number
+
+        res = np.delete(res, indices, axis=0)
+        res = np.append(res, new_osc, axis=0)
+        self.__dict__[resname] = res[np.argsort(res[..., 2])]
+
+
+    def split_oscillator(self, index, resname=None, frequency_sep=2.,
+                         unit='Hz', split_number=2, amp_ratio='same'):
+        """Removes the oscillator corresponding to ``index``. Incorporates two
+        or more oscillators whose cumulative amplitudes match that of the
+        removed oscillator.
+
+        Parameters
+        ----------
+        index : int
+            Array index of the oscilator to be split.
+
+        resname : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If `None`, `self.theta` will be used
+            if it exists. If not, `self.theta0` will be used if it exists.
+            Otherwise, an error will be raised.
+
+        frequency_sep : float, default: 2.
+            The frequency separation given to adjacent oscillators formed from
+            splitting.
+
+        unit : 'Hz' or 'ppm', default: 'Hz'
+            The unit of ``frequency_sep``.
+
+        split_number: int, default: 2
+            The number of peaks to split the oscillator into
+
+        amp_ratio: list, tuple, numpy.ndarray or 'same', default: 'same'
+            The ratio of amplitudes to be fulfilled by the newly formed peaks.
+            If an iterable, its ``len(amp_ratio) == split_number`` must be
+            ``True``. The first element will relate to the lowest frequency
+            oscillator constructed (furthest to the right in a conventional
+            spectrum), and the last element will relate to the highest
+            frequency oscillator constructed. If ``'same'``, all oscillators
+            will be given the same amplitude.
+        """
+        # get frequency_Sep in correct units
+        assert unit in ['Hz', 'ppm'], \
+        f'{R}unit should be \'Hz\' or \'ppm\'{END}'
+
+        if unit == 'Hz':
+            pass
+        elif unit == 'ppm':
+            frequency_sep = frequency_sep * self.get_sfo()
+
+        res, resname = self._check_res(resname)
+
+        try:
+            osc = res[index]
+        except:
+            raise ValueError(f'{R}index should be an integer in'
+                             f' range({res.shape[0]}){END}')
+
+        # lowest frequency of all the new oscillators
+        min_freq = osc[2] - ((split_number + -1) * frequency_sep / 2)
+        # array of all frequencies (lowest to highest)
+        freqs = [min_freq + (i*frequency_sep) for i in range(split_number)]
+
+        # determine amplitudes of new oscillators
+        if amp_ratio == 'same':
+            amp_ratio = [1] * split_number
+
+        assert isinstance(amp_ratio, (list, tuple, np.ndarray)), \
+        f'{R}amp_ratio should be \'same\', a list, a tuple, or a' \
+        + f' numpy.ndarray{END}'
+
+        assert len(amp_ratio) == split_number, \
+        f'{R}len(amp_ratio) should equal split_number{END}'
+
+        # scale amplitude ratio values such that their sum is 1
+        amp_ratio = np.array(amp_ratio)
+        amp_ratio = amp_ratio / np.sum(amp_ratio)
+
+        # obtain amplitude values
+        amps = osc[0] * amp_ratio
+
+        new_oscs = np.zeros((split_number, 4))
+        new_oscs[:, 0] = amps
+        new_oscs[:, 2] = freqs
+        new_oscs[:, 1] = [osc[1]] * split_number
+        new_oscs[:, 3] = [osc[3]] * split_number
+
+        res = np.delete(res, index, axis=0)
+        res = np.append(res, new_oscs, axis=0)
+        self.__dict__[resname] = res[np.argsort(res[..., 2])]
 
 
     # ---Internal use methods---
@@ -1768,26 +1925,25 @@ class NMREsPyBruker:
 
     def _check_res(self, resname):
         if resname is None:
-            res = None
             for att in ['theta', 'theta0']:
-                try:
-                    res = getattr(self, att)
-                    return res
-                except AttributeError:
-                    pass
-            if res is None:
-                raise NoParameterEstimateError()
+                res = getattr(self, att)
+                if isinstance(res, np.ndarray):
+                    return res, att
 
-        if resname in self.__dict__:
-            if resname in ['theta', 'theta0']:
-                return getattr(self, resname)
+            raise NoParameterEstimateError()
+
+        elif resname in ['theta', 'theta0']:
+            res = getattr(self, resname)
+            if isinstance(res, np.ndarray):
+                return res, resname
             else:
-                raise ValueError(f'{R}resname should be \'theta\' or'
-                                 f' \'x0\'. \'{resname}\' does not'
-                                 f' correspond to an estimation result{END}')
+                raise ValueError(f'{R}{resname} does not correspond to a valid'
+                                 f' estimation result (it should be a numpy'
+                                 f' array). Perhaps you have forgotten a step'
+                                 f' in generating the parameter estimate?{END}')
         else:
-            raise ValueError(f'{R}resname dones not refer to an attribute'
-                             f'in the class!{END}')
+            raise ValueError(f'{R}resname should be None, \'theta\', or'
+                             f' \'theta0\'{END}')
 
     def _check_trim(self, trim, data):
         if trim is not None:

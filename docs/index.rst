@@ -43,8 +43,7 @@ Welcome to NMR-EsPy's documentation!
 
 NMR-EsPy (**N**\ uclear **M**\ agnetic **R**\ esonance **Es**\ timation in
 **Py**\ thon) is a Python package for the estimation of parameters that
-describe NMR signals. As well as a striaght-forward object-oriented
-programming API, a GUI is available for direct use within
+describe NMR signals. A GUI is available for direct use within
 Bruker's TopSpin software.
 
 As with the majority of packages that do a lot of number crunching in Python,
@@ -72,7 +71,7 @@ obtained by using it:
    walkthrough
    topspin_gui
    user_modules
-   full_docs
+   hidden_modules
 
 
 

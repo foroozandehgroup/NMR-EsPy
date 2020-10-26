@@ -22,6 +22,73 @@ from ._misc import *
 
 def plotres_1d(data, peaks, shifts, region, nuc, data_col,
                osc_col, labels, stylesheet):
+    """
+    Produces a figure of an estimation result (1D data).
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Fourier transform of estimated signal.
+
+    peaks : list
+        List with each element being a `numpy.ndarray`. These arrays
+        correspond to Fourier transforms of synthetic signals assocaited
+        with each oscillator.
+
+    shifts : numpy.ndarray
+        Chemical shifts sampled.
+
+    region : (float, float),
+        The highest and lowest ppm values of the region considered in
+        the estimation routine.
+
+    nuc : str
+        Identity of the nucleus, in the form ``'<M><E>'``, where ``<M>`` is the
+        elements mass number, and ``<E>`` is the element symbol.
+
+    data_col : matplotlib color or None
+        The color used to plot the original data. See
+        :py:meth:`~nmrespy.core.NMREsPyBruker.plot_result` for details.
+
+    osc_col : matplotlib color, matplotlib colormap, list, numpy.ndarray, or None
+        Describes how to colour individual oscillators. See
+        :py:meth:`~nmrespy.core.NMREsPyBruker.plot_result` for details.
+
+    labels : Bool
+        If `True`, each oscillator will be given a numerical label
+        in the plot, if `False`, no labels will be produced.
+
+    stylesheet : None or str
+        The name of/path to a matplotlib stylesheet for further
+        customaisation of the plot. See
+        :py:meth:`~nmrespy.core.NMREsPyBruker.plot_result` for details.
+
+    Returns
+    -------
+    fig : `matplotlib.figure.Figure <https://matplotlib.org/3.3.1/\
+    api/_as_gen/matplotlib.figure.Figure.html>`_
+        The resulting figure.
+
+    ax : `matplotlib.axes._subplots.AxesSubplot <https://matplotlib.org/\
+    3.3.1/api/axes_api.html#the-axes-class>`_
+        The resulting set of axes.
+
+    lines : dict
+        A dictionary containing a series of
+        `matplotlib.lines.Line2D <https://matplotlib.org/3.3.1/\
+        api/_as_gen/matplotlib.lines.Line2D.html>`_
+        instances. The data plot is given the key ``'data'``, and the
+        individual oscillator plots are given the keys ``'osc1'``,
+        ``'osc2'``, ``'osc3'``, ..., ``'osc<M>'`` where ``<M>`` is the number of
+        oscillators in the parameter estimate.
+
+    labs : dict
+        If ``labels`` is ``True``, this dictionary will contain a series
+        of `matplotlib.text.Text <https://matplotlib.org/3.1.1/\
+        api/text_api.html#matplotlib.text.Text>`_ instances, with the
+        keys ``'osc1'``, ``'osc2'``, etc. If ``labels`` is ``False``, the dict
+        will be empty.
+    """
 
     # get mpl stylesheet
     if stylesheet is None:
@@ -62,7 +129,7 @@ def plotres_1d(data, peaks, shifts, region, nuc, data_col,
             # x-value of peak maximum (in ppm)
             x = shifts[np.argmax(peak)]
             # y-value of peak maximum
-            y = np.amax(peak)
+            y = peak[np.argmax(np.absolute(peak))]
             labs[f'osc{m+1}'] = ax.text(x, y, f'{m+1}', fontsize=8)
 
     # change x-axis limits if a specific region was studied
@@ -91,7 +158,26 @@ def plotres_1d(data, peaks, shifts, region, nuc, data_col,
 def _get_ymaxmin(lines, left, right):
     """
     Out of original data plot, and oscillator plots, determine largest
-    and smallest values
+    and smallest values. Used for determine the y-axis limits
+
+    Parameters
+    ----------
+    lines : dict
+        Dictionary of plots.
+
+    left : int
+        Index of leftmost point in the region of interest.
+
+    right : int
+        Index of rightmost point in the region of interest.
+
+    Returns
+    -------
+    max : float
+        Higest value in the region of interest, amongst all plotlines.
+
+    min : float
+        Lowest value in the region of interest, amongst all plotlines.
     """
     # initialise max and min to be values that are certain to be
     # overwritten (anything is bigger than -∞, everything is smaller
@@ -117,6 +203,27 @@ def _get_ymaxmin(lines, left, right):
 
 
 def _color_checker(inp, default='k', kill=True):
+    """
+    Determines whether a given input can is recognised as a valid color in
+    matplotlib, and returns the color.
+
+    Parameters
+    ----------
+    inp : any type
+        Input to check.
+    default : matplotlib color, default: 'k'
+        The default color, returned if ``inp`` is ``None``
+    kill : Bool, default: True
+        Determines what to do if ``inp`` is not a valid matplotlib color, or
+        ``None``. If ``True``, a ValueError is raised. If ``False``, ``None``
+        is returned.
+
+    Returns
+    -------
+    col - matplotlib color or None
+        A valid color, recognised by matplotlib, or None, if ``inp`` wasn't
+        recognised as a maplotlib color, and ``kill`` is set to ``False``.
+    """
     if inp is None:
         return default
     return _check_valid_mpl_color(inp, kill)
@@ -137,6 +244,23 @@ def _check_valid_mpl_color(col, kill):
 
 
 def _get_osc_cols(inp, M):
+    """
+    Constructs and iterator for coloring individual oscillator plots.
+
+    Parameters
+    ----------
+    inp : any type
+        An input which describes how to color the oscillators. See
+        :py:meth:`~nmrespy.core.NMREsPyBruker.plot_result` for details.
+
+    M : int
+        The number of oscillators.
+
+    Returns
+    -------
+    osc_cols : itertools.cycle
+        A cyclic iterator of color arguments.
+    """
     if inp is None:
         # default: cycle through blue, orange, green, red
         return cycle(['#1063e0', '#eb9310', '#2bb539', '#d4200c'])
@@ -166,8 +290,19 @@ def _get_osc_cols(inp, M):
 
 def _generate_xlabel(nuc):
     """
-    Generate an xlabel for the plot, of the form: $^{M}E$ (ppm), where M
-    is mass number of nucleus, and E is the element.
+    Generates an xlabel for the plot, of the form: ``'$^{M}$E'`` (ppm), where M
+    is mass number of nucleus, and E is the element symbol.
+
+    Parameters
+    ----------
+    nuc : str
+        Identity of the nucleus, in the form ``'<M><E>'``, where ``<M>`` is the
+        mass number, and ``<E>`` is the element symbol.
+
+    Returns
+    -------
+    xlab : str
+        Formatted string for x-axis of figure.
     """
     # comps: [mass number, element symbol]
     # seem to get empty string as first arg, so filter any NoneTypes

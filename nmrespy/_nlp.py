@@ -194,7 +194,7 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
                   f'==============================')
             _print_time(finish-start)
 
-        return theta[np.argsort(theta[..., 2])], errors
+        return theta[np.argsort(theta[..., 2])], errors[np.argsort(theta[..., 2])]
 
     else:
         # Re-run nlp recusively until solution has no -ve amps
@@ -788,7 +788,7 @@ def _correct_freqs(para, offset):
         Parameter array with centered frequencies.
     """
     para_cent = deepcopy(para)
-    dim = (para_cor.shape[1]/2) - 1
+    dim = (para_cent.shape[1]/2) - 1
     for i, off in enumerate(offset):
         para_cent[..., i+2] = -para_cent[..., i+2] + off
 
