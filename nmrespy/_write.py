@@ -387,9 +387,14 @@ def _write_pdf(info, table, path, descrip, timestamp):
         f.write(msg)
 
     try:
-        run_latex = subprocess.run(['pdflatex', '-halt-on-error', f'{tmp_texpath}'],
-                                   stdout=subprocess.DEVNULL,
-                                   check=True)
+        # -halt-on-error flag is vital. If any error arises in running
+        # pdflatex, the program would just get stuck
+        run_latex = subprocess.run([
+            'pdflatex',
+            '-halt-on-error',
+            f'{tmp_texpath}'],
+            stdout=subprocess.DEVNULL,
+            check=True)
 
         os.remove(tmp_texpath[:-3] + 'out')
         os.remove(tmp_texpath[:-3] + 'aux')

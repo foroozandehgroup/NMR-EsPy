@@ -3,35 +3,6 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. raw:: html
-
-   <style> .grey {color:#808080} </style>
-   <style> .red {color:#ff0000} </style>
-   <style> .green {color:#008000} </style>
-   <style> .blue {color:#0000ff} </style>
-   <style> .oscblue {color:#1063e0} </style>
-   <style> .oscorange {color:#eb9310} </style>
-   <style> .oscgreen {color:#2bb539} </style>
-   <style> .oscred {color:#d4200c} </style>
-
-.. role:: grey
-
-.. role:: red
-
-.. role:: green
-
-.. role:: blue
-
-.. role:: oscblue
-
-.. role:: oscorange
-
-.. role:: oscgreen
-
-.. role:: oscred
-
-
-
 Welcome to NMR-EsPy's documentation!
 ====================================
 
@@ -69,6 +40,7 @@ obtained by using it:
    theory_overview
    getting_started
    walkthrough
+   examples
    topspin_gui
    user_modules
    hidden_modules

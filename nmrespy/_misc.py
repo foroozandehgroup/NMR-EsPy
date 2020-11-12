@@ -169,12 +169,12 @@ def mkfid(para, n, sw, offset, dim):
         tp = np.linspace(0, float(n[0]-1) / sw[0], int(n[0]))
 
         para_new = deepcopy(para)
-        # adjust based on transmitter offset
+        # shift to have centre frequency at zero
         para_new[..., 2] = -para_new[..., 2] + offset[0]
         Z = np.exp(np.outer(tp, (1j * 2 * np.pi * para_new[..., 2] -
                    para_new[..., 3])))
         alpha = para_new[..., 0] * np.exp(1j * para[..., 1])
-        fid = np.matmul(Z, alpha)
+        fid = np.matmul(Z, alpha).flatten()
 
     if dim == 2:
         # time points

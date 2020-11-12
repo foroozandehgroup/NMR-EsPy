@@ -59,14 +59,14 @@ def import_bruker_fid(dir, ask_convdta=True):
     # |convdta| applied to it. Prompts user to proceed or quit
     if ask_convdta:
         prompt = f'{O}WARNING: It is necessary that the raw data you' \
-                 + ' import has been digitally filtered, using the |convdta|' \
+                 + ' import has been digitally filtered, using the <convdta>' \
                  + ' command in TopSpin. If you have not done this, please do' \
                  + ' so before proceeding\nIf you wish to still proceed,' \
                  + f' enter [y]\nIf you wish to quit, enter [n]:{END} '
 
         get_yn(prompt)
 
-    if os.path.isdir(dir) is not True:
+    if not os.path.isdir(dir):
         raise IOError(f'\n{R}directory {dir} doesn\'t exist!{END}')
 
     # paths to binary files and acquisition parameter files
@@ -125,7 +125,6 @@ def import_bruker_fid(dir, ask_convdta=True):
         fmt = '<f8'
     elif bytorda == 0 and dtypa == 0:
         fmt = '<i4'
-    # Should not be possible if anything else...
 
     # import binary file as numpy array and append to info
     with open(binf, 'rb') as fh:

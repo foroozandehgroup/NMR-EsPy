@@ -15,7 +15,7 @@ from ._timing import _print_time
 
 
 def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
-        amp_thold, freq_thold, fprint, first_call, start):
+        amp_thold, freq_thold, negative_amps, fprint, first_call, start):
     """
     nonlinear programming for determination of spectral parameter estimation
 
@@ -68,6 +68,10 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
         A threshold such that if any pair of oscillators that have frequencies
         with a difference smaller than it, they will be merged.
 
+    negative_amps : 'remove' or 'flip_phase'
+        Determines how to treat oscillators with negative amplitudes after
+        nonlinear programming.
+
     first_call : Bool
         Specifies whether nlp() has been called for the first time in a
         recursive loop. Used just for printing terminal output.
@@ -112,8 +116,8 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
     idx_act, idx_pas = _get_mode_indices(mode, dim)
     theta0_act = theta0_cor[..., idx_act]
     theta0_pas = theta0_cor[..., idx_pas]
-    p_act = len(idx_act) # number of active paraemters per oscillator
-    p_pas = len(idx_pas) # number of passive paraemters per oscillator
+    p_act = len(idx_act) # number of active parameters per oscillator
+    p_pas = len(idx_pas) # number of passive parameters per oscillator
 
     # reshape passive and active parameter arrays as veectors
     # Fortran (columnwise) style ordering
@@ -176,14 +180,23 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
     theta[..., idx_act] = theta_act
     theta[..., idx_pas] = theta0_pas
     theta[..., 0] = theta[..., 0] * nm # rescale amps
-    theta[..., 1] = (theta[..., 1] + np.pi) % (2 * np.pi) - np.pi # wrap phases
+    theta = _wrap(theta)
 
     # removal of negligibale amplitude oscillators
     theta = _rm_negligible_amps(theta, amp_thold, fprint)
-    # correct freqs (move offset back to original position)
+    # move offset back to original position
     theta = _correct_freqs(theta, off)
-    # removal of -ve amp oscillators
-    theta, term = _rm_negative_amps(theta, fprint)
+
+    # termination flag
+    term = True
+
+    if negative_amps == 'remove':
+        # removal of -ve amp oscillators
+        theta, term = _rm_negative_amps(theta, fprint)
+
+    elif negative_amps == 'flip_phase':
+        # set -ve amps positive, and shift phases by 180 degrees
+        theta = _flip_negative_amp_phase(theta)
 
     if term:
         # error estimate
@@ -197,9 +210,10 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
         return theta[np.argsort(theta[..., 2])], errors[np.argsort(theta[..., 2])]
 
     else:
-        # Re-run nlp recusively until solution has no -ve amps
+        # Re-run nlp recursively until solution has no -ve amps
         return nlp(data, dim, theta, sw, off, phase_variance, method, mode,
-                   bound, maxit, amp_thold, freq_thold, fprint, False, start)
+                   bound, maxit, amp_thold, freq_thold, fprint, negative_amps,
+                   False, start)
 
 
 
@@ -1072,6 +1086,28 @@ def _rm_negative_amps(x, fprint):
                   f'Updated no. of oscillators: {x_new.shape[0]}')
 
     return x_new, term
+
+
+def _flip_negative_amps(theta):
+    """Determines which oscillators (if any) have negative amplitudes. For
+    those that do, the amplitudes are set to their inversion about 0 on the
+    real axis, and the phases are shifted by π radians.
+    """
+
+    # nonzero returns tuple. Access zero element for numpy array.
+    flip_ind = np.nonzero(theta[:, 0] < 0.0)[0]
+    for i in flip_ind:
+        theta[i, 0] = -theta[i, 0]
+        theta[i, 1] = theta[i, 1] + np.pi
+
+    return _wrap(theta)
+
+
+def _wrap(theta):
+    """Ensures phases satisfy :math:`\\phi \\in \\left[-\\pi, \\pi \\right)`
+    """
+    theta[..., 1] = (theta[..., 1] + np.pi) % (2 * np.pi) - np.pi
+    return theta
 
 # “Some men are born mediocre, some men achieve mediocrity,
 # and some men have mediocrity thrust upon them.”

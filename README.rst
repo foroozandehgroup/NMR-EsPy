@@ -3,4 +3,3 @@
    :width: 3599px
    :scale: 10 %
    :align: center
-   

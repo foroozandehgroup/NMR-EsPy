@@ -321,22 +321,21 @@ class NMREsPyBruker:
 
                 vals.append(s)
 
+        # Parameter arrays (inital guess and NLP result)
         theta0 = self.get_theta0(kill=False)
         if theta0 is None:
             pass
         else:
-            cats.append(f'\n{MA}───Matrix Pencil Info───{END}')
+            cats.append(f'\n{MA}───Estimates───{END}')
             vals.append('')
-            cats.append('Result (theta0):')
+            cats.append('Inital guess (theta0):')
             vals.append(f'numpy.ndarray with shape {theta0.shape}')
 
         theta = self.get_theta(kill=False)
         if theta is None:
             pass
         else:
-            cats.append(f'\n{MA}───Nonlinear Programming Info───{END}')
-            vals.append('')
-            cats.append('Result (theta):')
+            cats.append('Newton\'s Method Result (theta):')
             vals.append(f'numpy.ndarray with shape {theta.shape}')
 
         # string with consistent padding
@@ -375,9 +374,9 @@ class NMREsPyBruker:
         Parameters
         ----------
         pdata_key : None or str, default: None
-            If `self.dtype` is 'pdata', this specifices which component of
-            data you wish to obtain. If `None`, the entire dictionary will
-            be returned. If it is a string that matches a key in the
+            If ``self.dtype == 'pdata'``, this specifices which component of
+            the data you wish to return. If ``None``, the entire dictionary
+            will be returned. If it is a string that matches a key in the
             dictionary, the matching data will be returned.
 
         Returns
@@ -387,11 +386,12 @@ class NMREsPyBruker:
         Raises
         ------
         ValueError
-            If pdata_key is not `None`, and does not match a key in
-            `self.data`
+            If ``pdata_key`` is not ``None``, and does not match a key in
+            ``self.data``
         """
         if self.dtype == 'raw':
             return self.data
+
         elif self.dtype == 'pdata':
             if pdata_key is None:
                 return self.data
@@ -399,8 +399,8 @@ class NMREsPyBruker:
                 try:
                     return self.data[pdata_key]
                 except KeyError:
-                    msg = f'\n{R}pdata_key does not match a dataset. The' \
-                          + f' available datasets are: '
+                    msg = f'{R}pdata_key does not match a valid data string.' \
+                          f' The valid values for pdata_key are: '
                     msg += ', '.join([repr(k) for k in self.data.keys()]) + END
                     raise ValueError(msg)
 
@@ -434,11 +434,12 @@ class NMREsPyBruker:
         Returns
         -------
         sw : (float,) or (float, float)
+            The sweep width(s) in the specified unit.
 
         Raises
         ------
         InvalidUnitError
-            If `unit` is not 'Hz' or 'ppm'
+            If ``unit`` is not ``'Hz'`` or ``'ppm'``
         """
         if unit == 'Hz':
             return self.sw
@@ -465,7 +466,7 @@ class NMREsPyBruker:
         Raises
         ------
         InvalidUnitError
-            If `unit` is not 'Hz' or 'ppm'
+            If ``unit`` is not ``'Hz'`` or ``'ppm'``
         """
         if unit == 'Hz':
             return self.off
@@ -478,7 +479,7 @@ class NMREsPyBruker:
             raise InvalidUnitError('Hz', 'ppm')
 
     def get_sfo(self):
-        """Return transmitter frequency in each dimension (MHz).
+        """Return transmitter frequency for each channel (MHz).
 
         Returns
         -------
@@ -487,7 +488,7 @@ class NMREsPyBruker:
         return self.sfo
 
     def get_bf(self):
-        """Return the transmitter's basic frequency in each dimesnion (MHz).
+        """Return the transmitter's basic frequency for each channel (MHz).
 
         Returns
         -------
@@ -499,7 +500,7 @@ class NMREsPyBruker:
         return bf
 
     def get_nuc(self):
-        """Return the nucelus of each channel.
+        """Return the target nucleus of each channel.
 
         Returns
         -------
@@ -524,7 +525,7 @@ class NMREsPyBruker:
         Raises
         ------
         InvalidUnitError
-            If `unit` is not 'Hz' or 'ppm'
+            If ``unit`` is not ``'Hz'`` or ``'ppm'``
         """
         if unit == 'ppm':
             sw = self.get_sw(unit='ppm')
@@ -572,9 +573,11 @@ class NMREsPyBruker:
             Hertz.
 
         kill : bool, default: True
-            If no attribute called `highs` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.highs`` is ``None``, ``kill`` specifies
+            how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -582,10 +585,15 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `highs` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            If ``self.highs`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
-            If `unit` is not 'idx', 'Hz', or 'ppm'
+            If ``unit`` is not ``'idx'``, ``'Hz'``, or ``'ppm'``.
+
+        Notes
+        -----
+        If ``self.highs`` is ``None``, it is likely that :py:meth:`virtual_echo`
+        is yet to be called on the class instance.
         """
         highs = self._get_nondefault_param('highs', 'virtual_echo()', kill)
         if unit == 'idx':
@@ -611,9 +619,10 @@ class NMREsPyBruker:
             Hertz.
 
         kill : bool, default: True
-            If no attribute called `highs` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.low`` is ``None``, ``kill`` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -621,10 +630,15 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `highs` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            If ``self.lows`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
             If `unit` is not 'idx', 'Hz', or 'ppm'
+
+        Notes
+        -----
+        If ``self.lows`` is ``None``, it is likely that :py:meth:`virtual_echo`
+        is yet to be called on the class instance.
         """
         lows = self._get_nondefault_param('lows', 'virtual_echo()', kill)
         if unit == 'idx':
@@ -643,12 +657,14 @@ class NMREsPyBruker:
         Parameters
         ----------
         unit : 'rad', 'deg', default: 'rad'
-            The unit to set p0 to. ``'rad'`` corresponds to radians,
-            ``'deg'`` corresonds to degress.
+            The unit the phase is expressed in. ``'rad'`` corresponds to
+            radians, ``'deg'`` corresonds to degress.
 
         kill : bool, default: True
-            If p0 is `None` exists, `kill` specifies how to act. If `True`,
-            an error is raised. If `False`, None is returned.
+            If ``self.p0`` is ``None``, ``kill`` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -657,9 +673,14 @@ class NMREsPyBruker:
         Raises
         ------
         AttributeIsNoneError
-            Raised if ``p0`` is ``None``, and ``kill = True``
+            Raised if ``p0`` is ``None``, and ``kill`` is ``True``
         InvalidUnitError
-            If `unit` is not ``'rad'`` or ``'deg'``
+            If ``unit`` is not ``'rad'`` or ``'deg'``
+
+        Notes
+        -----
+        If ``self.p0`` is ``None``, it is likely that :py:meth:`virtual_echo`
+        is yet to be called on the class instance.
         """
         p0 = self._get_nondefault_param('p0', 'virtual_echo()', kill)
         if unit == 'rad':
@@ -677,12 +698,14 @@ class NMREsPyBruker:
         Parameters
         ----------
         unit : 'rad', 'deg', default: 'rad'
-            The unit to set p1 to. ``'rad'`` corresponds to radians,
-            ``'deg'`` corresonds to degress.
+            The unit the phase is expressed in. ``'rad'`` corresponds to
+            radians, ``'deg'`` corresonds to degress.
 
         kill : bool, default: True
-            If p1 is ``None``, `kill` specifies how to act. If ``True``,
-            an error is raised. If ``False``, None is returned.
+            If ``self.p1`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -691,9 +714,14 @@ class NMREsPyBruker:
         Raises
         ------
         AttributeIsNoneError
-            Raised if ``p1`` is ``None``, and ``kill = True``
+            Raised if ``self.p1`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
-            If `unit` is not ``'rad'`` or ``'deg'``
+            If ``unit`` is not ``'rad'`` or ``'deg'``
+
+        Notes
+        -----
+        If ``self.p1`` is ``None``, it is likely that :py:meth:`virtual_echo`
+        is yet to be called on the class instance.
         """
         p1 = self._get_nondefault_param('p1', 'virtual_echo()', kill)
         if unit == 'rad':
@@ -705,14 +733,15 @@ class NMREsPyBruker:
 
     def get_filt_spec(self, kill=True):
         """Return the filtered spectral data generated using
-        :py:meth:`virtual_echo`
+        :py:meth:`virtual_echo`.
 
         Parameters
         ----------
         kill : bool, default: True
-            If no attribute called `filt_spec` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.filt_spec`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -720,8 +749,13 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `filt_spec` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            Raised if ``self.filt_spec`` is ``None``, and ``kill`` is ``True``.
+
+        Notes
+        -----
+        If ``self.filt_spec`` is ``None``, it is likely that
+        :py:meth:`virtual_echo` is yet to be called on the class instance.
         """
         return self._get_nondefault_param('filt_spec', 'virtual_echo()', kill)
 
@@ -732,9 +766,10 @@ class NMREsPyBruker:
         Parameters
         ----------
         kill : bool, default: True
-            If no attribute called `virt_echo` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.virt_echo`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -742,21 +777,27 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `virt_echo` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            Raised if ``self.virt_echo`` is ``None``, and ``kill`` is ``True``.
+
+        Notes
+        -----
+        If ``self.virt_echo`` is ``None``, it is likely that
+        :py:meth:`virtual_echo` is yet to be called on the class instance.
         """
         return self._get_nondefault_param('virt_echo', 'virtual_echo()', kill)
 
     def get_half_echo(self, kill=True):
         """Return the halved virtual echo data generated using
-        :py:meth:`virtual_echo`
+        :py:meth:`virtual_echo`.
 
         Parameters
         ----------
         kill : bool, default: True
-            If no attribute called `half_echo` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.half_echo`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -764,10 +805,16 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `virt_echo` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            Raised if ``self.half_echo`` is ``None``, and ``kill`` is ``True``.
+
+        Notes
+        -----
+        If ``self.half_echo`` is ``None``, it is likely that
+        :py:meth:`virtual_echo` is yet to be called on the class instance.
         """
         return self._get_nondefault_param('half_echo', 'virtual_echo()', kill)
+
 
     def get_ve_sw(self, unit='Hz', kill=True):
         """Return the sweep width of the signal generated using
@@ -779,9 +826,10 @@ class NMREsPyBruker:
             The unit of the value(s).
 
         kill : bool, default: True
-            If no attribute called `ve_sw` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.ve_sw`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -789,10 +837,16 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `ve_sw` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            Raised if ``self.ve_sw`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
-            If `unit` is not 'Hz' or 'ppm'
+            If ``unit`` is not ``'Hz'`` or ``'ppm'``.
+
+        Notes
+        -----
+        If ``self.ve_sw`` is ``None``, it is likely that
+        :py:meth:`virtual_echo`, with ``cut = True`` has not been called on the
+        class instance.
         """
         ve_sw =  self._get_nondefault_param('ve_sw',
                                             'virtual_echo() with cut=True',
@@ -818,9 +872,10 @@ class NMREsPyBruker:
             The unit of the value(s).
 
         kill : bool, default: True
-            If no attribute called `ve_off` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.ve_off`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -828,10 +883,16 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `ve_off` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            Raised if ``self.ve_off`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
             If `unit` is not 'Hz' or 'ppm'
+
+        Notes
+        -----
+        If ``self.ve_off`` is ``None``, it is likely that
+        :py:meth:`virtual_echo`, with ``cut = True`` has not been called on the
+        class instance.
         """
         ve_off =  self._get_nondefault_param('ve_off',
                                              'virtual_echo() with cut=True',
@@ -853,9 +914,10 @@ class NMREsPyBruker:
         Parameters
         ----------
         kill : bool, default: True
-            If no attribute called `theta0` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.theta0`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -865,10 +927,16 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `theta0` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            Raised if ``self.theta0`` is ``None``, and ``kill`` is ``True``.
+
+        Notes
+        -----
+        If ``self.theta0`` is ``None``, it is likely that
+        :py:meth:`matrix_pencil` has not been called on the class instance.
         """
         return self._get_nondefault_param('theta0', 'matrix_pencil()', kill)
+
 
     def get_theta(self, kill=True):
         """Return the parameter estimate derived using
@@ -877,9 +945,10 @@ class NMREsPyBruker:
         Parameters
         ----------
         kill : bool, default: True
-            If no attribute called `theta` exists, `kill` specifies
-            how to act. If `True`, an error is raised. If `False`, None
-            is returned.
+            If ``self.theta`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
@@ -889,15 +958,22 @@ class NMREsPyBruker:
 
         Raises
         ------
-        AttributeNotFoundError
-            If no attribute called `theta` exists, and `kill` is `True`.
+        AttributeIsNoneError
+            Raised if ``self.theta`` is ``None``, and ``kill`` is ``True``.
+
+        Notes
+        -----
+        If ``self.theta`` is ``None``, it is likely that
+        :py:meth:`nonlinear_programming` has not been called on the class
+        instance.
         """
         return self._get_nondefault_param('theta', 'nonlinear_programming()',
                                           kill)
 
+
     def _get_nondefault_param(self, name, method, kill):
-        """Retrieve attributes that may be assigned the value None. Warn user/
-        raise error depending on the value of ``kill``"""
+        """Retrieve attributes that may be assigned the value ``None``. Warn
+        user/raise error depending on the value of ``kill``"""
         if self.__dict__[name] is not None: # determine if attribute is not None
             return self.__dict__[name]
         else:
@@ -906,37 +982,55 @@ class NMREsPyBruker:
             else:
                 return None
 
-    def make_fid(self, resname=None, oscs=None):
-        """Constructs a synthetic FID using a parameter estimate.
+
+    def make_fid(self, result_name=None, oscillators=None, n=None):
+        """Constructs a synthetic FID using a parameter estimate and
+        experiment parameters.
 
         Parameters
         ----------
-        resname : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If `None`, `self.theta` will be used
-            if it exists. If not, `self.theta0` will be used if it exists.
-            Otherwise, an error will be raised.
+        result_name : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If ``None``, the parameter estimate
+            to use will be determined in the following order of priority:
 
-        oscs : None or list of ints, default: None
-            Which oscillators to include in result. If None, all oscillators
-            will be included. If a list of ints, the subset of oscillators
-            corresponding to these indices will be used.
+            1. ``self.theta`` will be used if it is not ``None``.
+            2. ``self.theta0`` will be used if it is not ``None``.
+            3. Otherwise, an error will be raised.
+
+        oscillators : None or list, default: None
+            Which oscillators to include in result. If ``None``, all
+            oscillators will be included. If a list of ints, the subset of
+            oscillators corresponding to these indices will be used.
+
+        n : None, (int,), or (int, int) default: None
+            Determines the number of points to construct the FID with. If
+            ``None``, the value of :py:meth:`get_n` will be used.
 
         Returns
         -------
         fid : numpy.ndarray
             The generated FID.
         """
-        res, _ = self._check_res(resname)
+        result, _ = self._check_result(result_name)
 
-        if oscs:
-            res = res[oscs]
+        if oscillators or oscillators == 0:
+            result = result[[oscillators],:]
 
-        n = self.get_n()
+        dim = self.get_dim()
+
+        n = self._check_int_float(n)
+        if not n:
+            n = self.get_n()
+        elif isinstance(n, tuple) and len(n) == dim:
+            pass
+        else:
+            raise TypeError(f'{R}n should be None or a tuple of int{END}')
+
         sw = self.get_sw()
         off = self.get_offset()
         dim = self.get_dim()
 
-        return _misc.mkfid(res, n, sw, off, dim)
+        return _misc.mkfid(result, n, sw, off, dim)
 
     def virtual_echo(self, highs, lows, highs_n, lows_n, p0=0.0, p1=0.0,
                      cut=False):
@@ -955,15 +1049,15 @@ class NMREsPyBruker:
 
         highs_n : (float,), (float, float,) or None
             The highest ppm value of a region of the signal that doesn't
-            contain any noticeable signals, in each dimesion. If `cut`
-            is set to `True`, it will not be considered. Set `highs_n`
-            to `None` in this case.
+            contain any noticeable signals, in each dimesion. If ``cut``
+            is set to ``True``, the value of ``highs_n`` will be of no
+            consequence.
 
         lows_n : (float,), (float, float,) or None
             The lowest ppm value of a region of the signal that doesn't
-            contain any noticeable signals, in each dimesion. If `cut`
-            is set to `True`, it will not be considered. Set `lows_n` to
-            `None` in this case.
+            contain any noticeable signals, in each dimesion. If ``cut``
+            is set to ``True``, the value of ``lows_n`` will be of no
+            consequence.
 
         p0 : float, default: 0.0
             Zero order phase correction to apply to the data (radians).
@@ -972,43 +1066,51 @@ class NMREsPyBruker:
             First order phase correction to apply to the data (radians).
 
         cut : bool, default: False
-            If `False`, the final virtual echo will comprise the
+            If ``False``, the final virtual echo will comprise the
             same number of data points as the original data. Noise will
-            be added to regions that are set to zero via super-Gaussian
-            filtration. If `True`, the signal will be sliced, so that
-            only the spectral region specified by high and low will be
-            retained.
+            be added to regions that are diminised in magnitude via
+            super-Gaussian filtration. If ``True``, the signal will be sliced,
+            so that only the spectral region specified by ``highs`` and
+            ``lows`` will be retained.
+
+        Raises
+        ------
+        TwoDimUnsupportedError
+            Raised if the class instance containes 2-dimensional data.
 
         Notes
         -----
-        The class gains the following attributes following successful
-        running of this method:
+        The values of the class' following attributes will be updated following
+        the successful running of this method:
 
-        * `filt_spec` - The frequency-filtered spectrum used to generate the
+        * ``filt_spec`` - The frequency-filtered spectrum used to generate the
           resultant time domin data
-        * `virt_echo` - Virtual echo, the inverse FT of `filt_spec`. This
+        * ``virt_echo`` - Virtual echo, the inverse FT of ``filt_spec``. This
           signal is conjugate symmetric.
-        * `half_echo` - The first half of `virt_echo`. This is the signal that
-          is subsequently analysed by default by :py:meth:`matrix_pencil`
+        * ``half_echo`` - The first half of ``virt_echo``. This is the signal
+          that is subsequently analysed by default by :py:meth:`matrix_pencil`
           and :py:meth:`nonlinear_programming`.
-        * `highs` - The value of `highs` input to the method, converted to
+        * ``highs`` - The value of ``highs`` input to the method, converted to
           the unit of array indices.
-        * `lows` - The value of `lows` input to the method, converted to the
-          unit of array indices.
-        * `p0` - The value of `p0` input to the method.
-        * `p1` - The value of `p1` input to the method.
+        * ``lows`` - The value of ``lows`` input to the method, converted to
+          the unit of array indices.
+        * ``p0`` - The value of ``p0`` input to the method.
+        * ``p1`` - The value of ``p1`` input to the method.
 
-        If `cut` is set to `True`, the following are additional attributes
-        that are gained by the class:
+        If ``cut`` is set to ``True``, the following additional attributes
+        are also updated:
 
-        * `ve_sw` - The sweep width of the sliced signal, in Hz
-        * `ve_off` - The transmitter offset frequency of the sliced signal,
-          in Hz
+        * ``ve_sw`` - The sweep width of the sliced signal, in Hz
+        * ``ve_off`` - The transmitter offset frequency of the sliced signal,
+          in Hz.
+
+        Unfortunately, 2-dimensional frequency filtration isn't supported yet.
         """
 
-        n = self.n
-        dim = self.dim
-        sfo = self.sfo
+        n = self.get_n()
+        dim = self.get_dim()
+        sfo = self.get_sfo()
+
         # check dim is valid (only 1D data supported so far)
         if dim == 2:
             raise TwoDimUnsupportedError()
@@ -1016,6 +1118,7 @@ class NMREsPyBruker:
         if self.dtype == 'raw':
             dtype = 'raw'
             data = np.flip(fftshift(fft(self.data)))
+
         elif self.dtype == 'pdata':
             dtype = 'pdata'
             data = self.get_data(pdata_key='1r') + \
@@ -1031,28 +1134,29 @@ class NMREsPyBruker:
         # convert bounds from ppm values to indices
         highs_idx = self._ppm_to_indices(highs)
         lows_idx = self._ppm_to_indices(lows)
-        if cut is False:
+        if not cut:
             highs_n_idx = self._ppm_to_indices(highs_n)
             lows_n_idx = self._ppm_to_indices(lows_n)
 
         # phase data
         data = np.real(_ve.phase(data, p0, p1))
+
         # generate super gaussian filter
         superg = _ve.super_gaussian(n, highs_idx, lows_idx)
 
         if cut is True:
-            # remove spectral region outside bounds
+            # TODO check this implementation works (will be crucial for 2D)
+            # remove data outside bounds
             slice_ = tuple(np.s_[hi:lo] for hi, lo in zip(highs_idx, lows_idx))
             self.filt_spec = (np.real(data) * superg)[slice_]
             self.ve_n = self.filt_spec.shape
+
             # get sweep width and offset of cut signal
-            ve_sw, ve_off = [], []
-            for hi, lo, s in zip(highs, lows, sfo):
-                ve_sw.append((hi - lo) * s)
-                ve_off.append((lo + hi) * (s / 2))
-            self.ve_sw, self.ve_off = tuple(ve_sw), tuple(ve_off)
+            ve_sw = tuple((hi-lo)*s for hi, lo, s in zip(highs, lows, sfo))
+            ve_off = tuple((hi+lo)*(s/2) for hi, lo, s in zip(highs, lows, sfo))
+
         else:
-            # keep regions outside the bounds, but add synthetic noise
+            # keep data outside the bounds, but add synthetic noise
             slice_ = tuple(np.s_[hi:lo] for hi, lo in zip(highs_n_idx, lows_n_idx))
             noise_region = np.real(data[slice_])
             var = np.var(noise_region)
@@ -1068,10 +1172,9 @@ class NMREsPyBruker:
         self.p1 = p1
 
     def matrix_pencil(self, M_in=0, trim=None, func_print=True):
-        """Implementation of the 1D Matrix Pencil Method [1]_
-        [2]_ or 2D
+        """Implementation of the 1D Matrix Pencil Method [1]_ [2]_ or 2D
         Modified Matrix Enchancement and Matrix Pencil (MMEMP) method [3]_
-        [4]_ with the option of Model Order Selection using Minumum
+        [4]_ with the option of Model Order Selection using the Minumum
         Descrition Length (MDL).
 
         Parameters
@@ -1082,36 +1185,34 @@ class NMREsPyBruker:
             estimated using the MDL.
 
         trim : None, (int,), or (int, int), default: None
-            If trim is a tuple, the analysed data will be sliced such that
+            If ``trim`` is a tuple, the analysed data will be sliced such that
             its shape matches trim, with the initial points in the signal
-            being retained. If trim is `None`, the data will not be
+            being retained. If ``trim`` is ``None``, the data will not be
             sliced. Consider using this in cases where the full signal is
             large, such that the method takes a very long time, or your PC
             has insufficient memory to process it.
 
         func_print : bool, deafult: True
-            If True (default), the method provides information on progress
-            to the terminal as it runs. If False, the method will run
-            silently.
+            If ``True`` (default), the method provides information on
+            progress to the terminal as it runs. If ``False``, the method
+            will run silently.
 
         Notes
         -----
-        The method requires - and will search for - appropriate time-domain
-        data to run. If frequency-filtered data has been
-        generated by :py:meth:`virtual_echo` (stored in the attribute
-        `half_echo`), prior to calling this method, this will be analysed.
-        If no such data is found, but the original data is a raw
-        FID (i.e. ``self.get_dtype() = 'raw'``), that will analysed. If the
-        original data is processed data (i.e. ``self.get_dtype() = 'pdata'``),
-        and no signal has been generated using :py:meth:`virtual_echo`, an
-        error will be raised.
+        The method requires appropriate time-domain data to run. If
+        frequency-filtered data has been generated by :py:meth:`virtual_echo`
+        (stored in the attribute ``half_echo``), prior to calling this method,
+        this will be analysed. If no such data is found, but the original data
+        is a raw FID (i.e. ``self.get_dtype()`` is ``'raw'``), that will
+        analysed. If the original data is processed data (i.e.
+        ``self.get_dtype()`` is ``'pdata'``), and no signal has been generated
+        using :py:meth:`virtual_echo`, an error will be raised.
 
-        The class gains an attribute called `theta0`; the parameter estimate
-        determined by nonlinear programming. If the  data is 1D,
-        ``self.theta0.shape[1] = 4``, whilst if the data is 2D,
-        ``self.theta0.shape[1] = 6``. Elements along axis 0 of `theta0`
-        contain the parameters associated with each individual oscillator,
-        with parameters ordered as follows:
+        The class attribute ``theta0`` will be updated upon successful running
+        of this method. If the  data is 1D, ``self.theta0.shape[1] = 4``,
+        whilst if the data is 2D, ``self.theta0.shape[1] = 6``. Elements along
+        axis 0 of ``theta0`` contain the parameters associated with each
+        individual oscillator, with parameters ordered as follows:
 
         * :math:`[a_m, \phi_m, f_m, \eta_m]` (1D)
         * :math:`[a_m, \phi_m, f_{1,m}, f_{2,m}, \eta_{1,m}, \eta_{2,m}]` (2D)
@@ -1144,6 +1245,7 @@ class NMREsPyBruker:
 
         # look for appropriate data to analyse (see Notes in docstring)
         data = self._check_data()
+
         # slice data if user provided a tuple
         trim = self._check_trim(trim, data)
         data = data[tuple([np.s_[0:int(t)] for t in trim])]
@@ -1160,16 +1262,16 @@ class NMREsPyBruker:
     def nonlinear_programming(self, trim=None, method='trust_region',
                               mode=None, bound=False, phase_variance=False,
                               maxit=None, amp_thold=None, freq_thold=None,
-                              fprint=True):
+                              negative_amps='remove', fprint=True):
         """Estimation of signal parameters using nonlinear programming, given
-        an inital guess generated using the :py:meth:`matrix_pencil`.
+        an inital guess.
 
         Parameters
         ----------
         trim : None, (int,), or (int, int), default: None
-            If trim is a tuple, the analysed data will be sliced such that
-            its shape matches trim, with the initial points in the signal
-            being retained. If trim is `None`, the data will not be
+            If ``trim`` is a tuple, the analysed data will be sliced such that
+            its shape matches ``trim``, with the initial points in the signal
+            being retained. If ``trim`` is ``None``, the data will not be
             sliced. Consider using this in cases where the full signal is
             large, such that the method takes a very long time, or your PC
             has insufficient memory to process it.
@@ -1178,110 +1280,114 @@ class NMREsPyBruker:
             The optimization method to be used. Both options use
             the ``scipy.optimize.minimize`` function [5]_
 
-            * `'trust_region'` sets ``method='trust-constr'``
-            * `'lbfgs'`, sets ``method='L-BFGS-B'``.
+            * ``'trust_region'`` sets ``method='trust-constr'``
+            * ``'lbfgs'`` sets ``method='L-BFGS-B'``.
 
-            See the Notes below for advice on choosing `method`.
+            See the Notes below for advice on choosing ``method``.
 
         mode : None or str, default: None
-            Sprecifies which parameters to optimize. If `None`,
+            Specifies which parameters to optimize. If ``None``,
             all parameters in the initial guess are subjected to the
             optimization. If a string containing a combination of the letters
-            `'a'`, `'p'`, `'f'`, and `'d'` is used, then only the parameters
-            specified will be considered. For example ``mode='af'`` would make
-            the routine only consider amplitudes and frequencies.
+            ``'a'``, ``'p'``, ``'f'``, and ``'d'`` is used, then only the
+            parameters specified will be considered. For example ``mode='af'``
+            would make the routine optimise amplitudes and frequencies,
+            while leaving phases and damping factors fixed.
 
         bound : bool, default: False
             Specifies whether or not to carry out an optimisation where
-            the parameters are bounded. If `False`, the optimsation
-            will be unconstrained. If `True`, the following bounds
-            are set:
+            the parameters are bounded. If ``False``, the optimsation
+            will be unconstrained. If ``True``, the following bounds
+            are set on the parameters:
 
             * amplitudes: :math:`0 < a_m < \infty`
             * phases: :math:`- \pi < \phi_m \leq \pi`
-            * frequencies: :math:`f_{\\mathrm{off}} - \\frac{f_{\\mathrm{sw}}}{2} \\leq f_m \\leq f_{\\mathrm{off}} + \\frac{f_{\\mathrm{sw}}}{2}`
+            * frequencies: :math:`f_{\\mathrm{off}} -
+              \\frac{f_{\\mathrm{sw}}}{2} \\leq f_m \\leq f_{\\mathrm{off}} +
+              \\frac{f_{\\mathrm{sw}}}{2}`
             * damping: :math:`0 < \eta_m < \infty`
 
         phase_variance : bool, default: False
             Specifies whether or not to include the variance of phase in
-            the cost function under consideration. It is advised this is
-            set to `True` if the data is well phased.
+            the cost function under consideration.
 
         maxit : int or None, default: None
             The maximum number of iterations the routine will carry out
-            before being formced to terminate. If None, the default number of
-            maximum iterations is set (100 if ``method='trust_region'``, and
-            500 if ``method='lbfgs'``).
+            before being forced to terminate. If ``None``, the default number
+            of maximum iterations is set (``100`` if ``method='trust_region'``,
+            and ``500`` if ``method='lbfgs'``).
 
         amp_thold : float or None, default: None
-            If `None`, does nothing. If a float, oscillators with
-            amplitudes satisfying :math:`a_m < a_{\\mathrm{thold}} \\times \\lVert \\boldsymbol{a} \\rVert`` will be
-            removed from the parameter array, where
-            :math:`\\lVert \\boldsymbol{a} \\rVert`
-            is the norm of all the oscillator amplitudes. This should be
-            comfortably lower than 1.
+            If ``None``, does nothing. If a float, oscillators with
+            amplitudes satisfying :math:`a_m < a_{\\mathrm{thold}}
+            \\lVert \\boldsymbol{a} \\rVert`` will be removed from the
+            parameter array, where :math:`\\lVert \\boldsymbol{a} \\rVert`
+            is the norm of the vector of all the oscillator amplitudes. It is
+            advised to set ``amp_thold`` at least a couple of orders of
+            magnitude below 1.
 
         freq_thold : float or None, default: None
             .. warning::
 
                NOT IMPLEMENTED YET
 
-            If `None`, does nothing. If a float, oscillator pairs with
+            If ``None``, does nothing. If a float, oscillator pairs with
             frequencies satisfying
             :math:`\\lvert f_m - f_p \\rvert < f_{\\mathrm{thold}}` will be
             removed from the parameter array. A new oscillator will be included
-            to the array, with parameters:
+            in the array, with parameters:
 
             * amplitude: :math:`a = a_m + a_p`
             * phase: :math:`\phi = \\frac{\phi_m + \phi_p}{2}`
             * frequency: :math:`f = \\frac{f_m + f_p}{2}`
             * damping: :math:`\eta = \\frac{\eta_m + \eta_p}{2}`
 
+        negative_amps : 'remove' or 'flip_phase', default: 'remove'
+            Indicates how to treat oscillators which have gained negative
+            amplitudes during the optimisation. ``'remove'`` will result
+            in such oscillators being purged from the parameter estimate.
+            The optimisation routine will the be re-run recursively until
+            no oscillators have a negative amplitude. ``'flip_phase'`` will
+            retain oscillators with negative amplitudes, but the the amplitudes
+            will be turned positive, and a π radians phase shift will be
+            applied to the oscillator.
+
         fprint : bool, default: True
-            If `True`, the method provides information on progress to
-            the terminal as it runs. If `False`, the method will run silently.
+            If ``True``, the method provides information on progress to
+            the terminal as it runs. If ``False``, the method will run silently.
 
         Raises
         ------
         NoSuitableDataError
-            Raisd when this method is called on an instance that does not
-            possess appropriate time-domain data for analysis (see Notes).
+            Raisd when this method is called on an class instance that does
+            not possess appropriate time-domain data for analysis (see Notes).
 
         PhaseVarianceAmbiguityError
-            Raised when `phase_variance` is set to `True`, but the user
+            Raised when ``phase_variance`` is set to ``True``, but the user
             has specified that they do not wish to optimise phases using the
-            `mode` argument.
+            ``mode`` argument.
 
         NoParameterEstimateError
-            Raised if no attribute called `theta0` exitst in the class
-            instance.
-
-        References
-        ----------
-        .. [5] https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
-
-        .. [6] My paper when* published
-
-        *if....
+            Raised when the attribute ``theta0`` is ``None``.
 
         Notes
         -----
-        The method requires - and will search for - appropriate time-domain
+        The method requires appropriate time-domain
         data to run. If frequency-filtered data has been
         generated by :py:meth:`virtual_echo` (stored in the attribute
-        `half_echo`), prior to calling this method, this will be analysed.
+        ``half_echo``) prior to calling this method, this will be analysed.
         If no such data is found, but the original data is a raw
-        FID (i.e. ``self.get_dtype() = 'raw'``), that will analysed. If the
-        original data is processed data (i.e. ``self.get_dtype() = 'pdata'``),
-        and no signal has been generated using :py:meth:`virtual_echo`, an
-        error will be raised.
+        FID (i.e. :py:meth:`get_dtype` returns ``'raw'``), the original FID will
+        analysed. If the original data is processed data (i.e.
+        :py:meth:`get_dtype` returns ``'pdata'``), and no signal has been
+        generated using :py:meth:`virtual_echo`, an error will be raised.
 
         The method also requires an initial guess, stored in the attribute
-        `theta0`. To generate this initial guess, you first need to apply
+        ``theta0``. To generate this initial guess, you first need to apply
         the :py:meth:`matrix_pencil` method.
 
-        The class gains an attribute called `theta`; the parameter estimate
-        determined by nonlinear programming. If the  data is 1D,
+        The class attribute ``theta`` will be updated upon successful running
+        of this method. If the  data is 1D,
         ``self.theta.shape[1] = 4``, whilst if the data is 2D,
         ``self.theta.shape[1] = 6``. Elements along axis 0 of `theta`
         contain the parameters associated with each individual oscillator,
@@ -1291,39 +1397,76 @@ class NMREsPyBruker:
         * :math:`[a_m, \phi_m, f_{1,m}, f_{2,m}, \eta_{1,m}, \eta_{2,m}]` (2D)
 
         The two optimisation algorithms primarily differ in how they treat
-        calculation of the Hessian. `'trust_region'` will calculate the
-        Hessian explicitely at every iteration, whilst `'lbfgs'` uses an
+        the calculation of the matrix of cost function second derivatives
+        (called the Hessian). ``'trust_region'`` will calculate the
+        Hessian explicitly at every iteration, whilst ``'lbfgs'`` uses an
         update formula based on gradient information to estimate the Hessian.
         The upshot of this is that the convergence rate (the number of
         iterations needed to reach convergence) is typically better for
-        `'trust_region'`, though each iteration typically takes longer to
-        generate. By default, it is advised to use `'trust_region'`, however
-        if your guess has a large number of signals (as a rule of thmub,
-        > 50), you may find `'lbfgs'` to performs more effectively.
+        ``'trust_region'``, though each iteration typically takes longer to
+        generate. By default, it is advised to use ``'trust_region'``, however
+        if your guess has a large number of signals (as a rule of thumb,
+        ``theta0.shape[0] > 50``), you may find ``'lbfgs'`` performs more
+        effectively.
+
+        References
+        ----------
+        .. [5] https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
         """
 
         # TODO: include freq threshold
 
+        # unpack parameters
         dim = self.get_dim()
         theta0 = self.get_theta0()
         sw = self.get_sw()
         off = self.get_offset()
 
+        # check inputs are valid
+
+        # types of parameters to be optimised
         mode = self._check_mode(mode, phase_variance)
-        self._check_method(method)
-        maxit = self._check_maxit(maxit, method)
+        # retrieve data to be analysed
         data = self._check_data()
+        # trimmed data tuple
         trim = self._check_trim(trim, data)
+        # trim data
         data = data[tuple([np.s_[0:int(t)] for t in trim])]
+
+        # nonlinear programming method
+        if method in ['trust_region', 'lbfgs']:
+            pass
+        else:
+            raise ValueError(f'\n{R}method should be \'trust_region\''
+                             f' or \'lbfgs\'.{END}')
+
+        # maximum iterations
+        if maxit is None:
+            if method == 'trust_region':
+                maxit = 100
+            elif method == 'lbfgs':
+                maxit = 500
+        elif isinstance(maxit, int):
+            pass
+        else:
+            raise TypeError(f'\n{R}maxit should be an int or None.{END}')
+
+        # treatment of negative amplitudes
+        if negative_amps in ['remove', 'flip_phase']:
+            pass
+        else:
+            raise ValueError(f'{R}negative_amps should be \'remove\' or'
+                             f' \'flip_phase\'{END}')
+
 
         self.theta, self.errors = _nlp.nlp(data, dim, theta0, sw, off,
                 phase_variance, method, mode, bound, maxit, amp_thold,
-                freq_thold, fprint, True, None)
+                freq_thold, negative_amps, fprint, True, None)
 
 
     def pickle_save(self, fname='NMREsPy_result.pkl', dir='.',
                     force_overwrite=False):
-        """Converts the class instance of to a byte stream using Python's
+        """Converts the class instance to a byte stream using Python's
         "Pickling" protocol, and saves it to a .pkl file.
 
         Parameters
@@ -1333,21 +1476,14 @@ class NMREsPyBruker:
             an extension or with a '.pkl' extension are permitted.
 
         dir : str, default: '.'
-            Path of the desried directory to save the .pkl file to. Default
+            Path of the desried directory to save the file to. Default
             is the current working directory.
 
         force_overwrite : bool, default: False
-            If `False`, if a file with the desired path already
+            If ``False``, if a file with the desired path already
             exists, the user will be prompted to confirm whether they wish
-            to overwrite the file. If `True`, the file will be overwritten
+            to overwrite the file. If ``True``, the file will be overwritten
             without prompt.
-
-        Raises
-        ------
-        IOError
-            When the path specified by `dir` doesn't exist.
-        ValueError
-            When `fname` is invalid (contains an extension that isn't '.pkl')
 
         Notes
         -----
@@ -1359,7 +1495,7 @@ class NMREsPyBruker:
         if os.path.isdir(dir):
             pass
         else:
-            raise IOError(f'\n{R}directory {dir} doesn\'t exist')
+            raise IOError(f'{R}directory {dir} doesn\'t exist{END}')
 
         if fname[-4:] == '.pkl':
             pass
@@ -1380,92 +1516,89 @@ class NMREsPyBruker:
                 _misc.get_yn(prompt)
                 os.remove(path)
 
-        with open(path, 'wb') as file:
-            pickle.dump(self, file, pickle.HIGHEST_PROTOCOL)
+        with open(path, 'wb') as fh:
+            pickle.dump(self, fh, pickle.HIGHEST_PROTOCOL)
         print(f'{G}Saved instance of NMREsPyBruker to {path}{END}')
 
 
-    def write_result(self, descrip=None, fname='NMREsPy_result', dir='.',
-                     resname=None, sf=5, sci_lims=(-2,3), format='txt',
+    def write_result(self, description=None, fname='NMREsPy_result', dir='.',
+                     result_name=None, sf=5, sci_lims=(-2,3), format='txt',
                      force_overwrite=False):
         """Saves an estimation result to a file in a human-readable format
         (either a textfile or a PDF).
 
         Parameters
         ----------
-        descrip : str or None, default: None
+        description : str or None, default: None
             A description of the result, which is appended at the top of the
             file. If `None`, no description is added.
 
         fname : str, default: 'NMREsPy_result'
-            The name of the result file. If `format` is 'txt', either a name
-            with no extension or the extension '.txt' will be accepted. If
-            `format` is 'pdf', either a name with no extension or the
-            extension '.pdf' will be accepted. Default is 'NMREsPy_result.txt',
-            or 'NMREsPy_result.pdf', depending on `format`.
+            The name of the result file.
+
+            * If ``format`` is ``'txt'``, either a name with no extension or
+              the extension '.txt' will be accepted.
+            * If `format` is 'pdf', either a name with no extension or the
+              extension '.pdf' will be accepted.
 
         dir : str, default: '.'
-            Path to the desried directory to save the file to. Default
-            is the current working directory.
+            Path to the desried directory to save the file to.
 
-        resname : None, 'theta', or 'theta0', default: None
-            The name of the attribute corresponding to the estimation result
-            to be presented. The feasible string options are:
+        result_name : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If ``None``, the parameter estimate
+            to use will be determined in the following order of priority:
 
-            * `'theta'` - The result derived using
-              :py:meth:`nonlinear_programming`
-            * `'theta0'` - The result derived using :py:meth:`matrix_pencil`
-
-            If `resname` is `None`, `self.theta` will be used if it exists.
-            If it doesn't exist, `self.theta0` will be used. If neither exist,
-            an error will be thrown.
+            1. ``self.theta`` will be used if it is not ``None``.
+            2. ``self.theta0`` will be used if it is not ``None``.
+            3. Otherwise, an error will be raised.
 
         sf : int, default: 5
             The number of significant figures used.
 
         sci_lims : (int, int), default: (-2, 3)
-            Specifies the smallest negative and positive powers which values
-            need to possess in order to be presented using scientific notaiton.
-            If ``abs(value) <= 10 ** sci_lims[0]``
-            or ``abs(value) >= 10 ** sci_lims[1]``,
-            then the value will be displayed using scientific notation. For
-            example, ``1234.56`` would be displayed as ``1.23456E3``
+            Specifies the smallest magnitdue negative and positive orders of
+            magnitude which values need to possess in order to be presented
+            using scientific notaiton. A certain value will be displayed
+            using scientific notation if if satisfies one of the following:
+
+            * ``abs(value) <= 10 ** sci_lims[0]``
+            * ``abs(value) >= 10 ** sci_lims[1]``
 
         format : 'txt' or 'pdf', default: 'txt'
             Specifies the format of the file. To produce a pdf, a LaTeX
             installation is required. See the Notes below for details.
 
         force_overwrite : bool, default: False
-            If `False`, if a file with the desired path already
+            If ``False``, if a file with the desired path already
             exists, the user will be prompted to confirm whether they wish
-            to overwrite the file. If True, the file will be overwritten
+            to overwrite the file. If ``True``, the file will be overwritten
             without any prompt.
 
         Raises
         ------
         LaTeXFailedError
-            With `format` set to `'pdf'`, this will be raised if an error
-            was encountered in trying to run ``pdflatex``.
+            With ``format`` set to ``'pdf'``, this will be raised if an error
+            was encountered in running ``pdflatex``.
 
         Notes
         -----
-        The be able to generate pdf files of NMR-EsPy results, it is
-        necessary to have a LaTeX installation set up on your system.
-        For a simple to set up implementation that is supported on most
+        To generate pdf files of NMR-EsPy results, it is necessary to have a
+        LaTeX installation set up on your system.
+        For a simple to set up implementation that is supported on all
         major operating systems, consider
         `TexLive <https://www.tug.org/texlive/>`_. To ensure that
-        you have a functioning LaTeX installation, open a command prompt/
-        terminal type ``pdflatex``.
+        you have a functioning LaTeX installation, open a command
+        prompt/terminal and type ``pdflatex``.
 
         The following is a full list of packages that your LaTeX installation
         will need to successfully compile the .tex file generated by
         :py:meth:`write_result`:
 
         * amsmath
-        * geometry
-        * cmbright
         * booktabs
+        * cmbright
         * enumitem
+        * geometry
         * graphicx
         * hyperref
         * longtable
@@ -1476,10 +1609,11 @@ class NMREsPyBruker:
         even with lightweight LaTeX installations. If you wish to check the
         packages are available, run::
             $ kpsewhich <package-name>.sty
-        If a pathname appears, the package is installed.
+        If a pathname appears, the package is installed to that path.
         """
 
-        res, _ = self._check_res(resname)
+        # retrieve result
+        result, _ = self._check_result(result_name)
 
         # check format is sensible
         if format in ['txt', 'pdf']:
@@ -1489,7 +1623,7 @@ class NMREsPyBruker:
 
         # basic info
         info = []
-        info.append(res)
+        info.append(result)
         info.append(self.get_datapath()) # data path
         info.append(self.get_dim()) # signal dimension
         info.append(self.get_sw()) # sweep width (Hz)
@@ -1498,19 +1632,20 @@ class NMREsPyBruker:
         info.append(self.get_offset(unit='ppm')) # offset (Hz)
         info.append(self.get_sfo()) # transmitter frequency
         info.append(self.get_bf()) # basic frequency
-        info.append(self.get_nuc()) # channels
+        info.append(self.get_nuc()) # nuclei
 
-        # ==============
         # peak integrals
-        # ==============
         integrals = []
         # dx in each dimension (gap between successive points in Hz)
-        delta = []
-        for sw, n_ in zip(self.get_sw(), self.get_n()):
-            delta.append(sw / n_)
+        delta = [(sw, n) for sw, n in zip(self.get_sw(), self.get_n())]
 
+        # integrate each oscillator numerically
+        # constructs absolute real spectrum for each oscillator and
+        # uses Simpson's rule
+        # TODO: Perhaps this could be done analytically?
         for m, osc in enumerate(res):
             f = self.make_fid(resname, oscs=[m])
+            # absolute real spectrum
             s = np.absolute(np.real(fftshift(fft(f))))
             # inegrate successively over each dimension
             if self.get_dim() == 1:
@@ -1519,47 +1654,53 @@ class NMREsPyBruker:
                 integrals.append(simps(simps(s, dx=delta[1]), dx=delta[0]))
         info.append(integrals)
 
-        # ===================
         # virtual echo region
-        # ===================
-        region_h, region_p = None, None # will contain region in Hz and ppm
-        if 'highs' in self.__dict__ and 'lows' in self.__dict__:
-            highs_h = self.get_highs(unit='Hz')
-            highs_p = self.get_highs(unit='ppm')
-            lows_h = self.get_lows(unit='Hz')
-            lows_p = self.get_lows(unit='ppm')
-            region_h = []
-            region_p = []
+        # These 4 varaibles could be tuples or Nonetypes
+        highs_h = self.get_highs(unit='Hz', kill=False)
+        highs_p = self.get_highs(unit='ppm', kill=False)
+        lows_h = self.get_lows(unit='Hz', kill=False)
+        lows_p = self.get_lows(unit='ppm', kill=False)
+
+        if highs_h:
+            # pack filter region (ppm and Hz) - Each is a list containing
+            # tuples of length 2 for each dimension
+            region_h, region_p = [], []
             for hi_h, lo_h, hi_p, lo_p in zip(highs_h, lows_h, highs_p, lows_p):
                 region_h.append((hi_h, lo_h))
                 region_p.append((hi_p, lo_p))
+
+        else:
+            # No frequency filtering has been carried out
+            region_h, region_p = None, None
+
         info.append(region_h)
         info.append(region_p)
 
-        _write.write_file(info, descrip, fname, dir, sf, sci_lims, format,
+        _write.write_file(info, description, fname, dir, sf, sci_lims, format,
                          force_overwrite)
 
 
 
-    def plot_result(self, resname=None, datacol=None, osccols=None,
+    def plot_result(self, result_name=None, datacol=None, osccols=None,
                     labels=True, stylesheet=None):
         """Generates a figure with the result of an estimation routine.
-        A spectrum of the original data is plotted, along with each
-        individual oscillator that makes up the estimation result.
+        A spectrum of the original data is plotted, along with the
+        Fourier transform of each individual oscillator that makes up the
+        estimation result.
+
+        .. note::
+            Currently, this method is only compatible with 1-dimesnional
+            data.
 
         Parameters
         ----------
-        resname : None, 'theta', or 'theta0', default: None
-            The name of the attribute corresponding to the estimation result
-            to be presented. The feasible string options are:
+        result_name : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If ``None``, the parameter estimate
+            to use will be determined in the following order of priority:
 
-            * `'theta'` - The result derived using
-              :py:meth:`nonlinear_programming`
-            * `'theta0'` - The result derived using :py:meth:`matrix_pencil`
-
-            If `resname` is `None`, `self.theta` will be used if it exists.
-            If it doesn't exist, `self.theta0` will be used. If neither exist,
-            an error will be thrown.
+            1. ``self.theta`` will be used if it is not ``None``.
+            2. ``self.theta0`` will be used if it is not ``None``.
+            3. Otherwise, an error will be raised.
 
         datacol : matplotlib color or None, default: None
             The color used to plot the original data. Any value that is
@@ -1567,12 +1708,11 @@ class NMREsPyBruker:
 
             https://matplotlib.org/3.1.0/tutorials/colors/colors.html
 
-            If `None`, the default color :grey:`#808080` will be used
-            (exactly halfway between black and white).
+            If ``None``, the default color :grey:`#808080` will be used.
 
         osccols : matplotlib color, matplotlib colormap, list, or None,\
         default: None
-            Describes how to colour individual oscillators. The following
+            Describes how to color individual oscillators. The following
             is a complete list of options:
 
             * If the value denotes a matplotlib color, all oscillators will
@@ -1583,15 +1723,15 @@ class NMREsPyBruker:
               For all valid colormaps, see:
 
               https://matplotlib.org/3.3.1/tutorials/colors/colormaps.html
-            * If a list/numpy array containing valid matplotlib colors is
-              given, these colours will be cycled.
+            * If a list or NumPy array containing valid matplotlib colors is
+              given, these colors will be cycled.
               For example, if ``osccols=['r', 'g', 'b']``:
 
-              + Oscillators 1, 4, 7, ... would be :red:`red` (#FF0000)
-              + Oscillators 2, 5, 8, ... would be :green:`green` (#008000)
-              + Oscillators 3, 6, 9, ... would be :blue:`blue` (#0000FF)
+              + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
+              + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
+              + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
 
-            * If `None`, the default colouring method will be applied,
+            * If ``None``, the default colouring method will be applied,
               which involves cycling through the following colors:
 
               + :oscblue:`#1063E0`
@@ -1599,18 +1739,21 @@ class NMREsPyBruker:
               + :oscgreen:`#2BB539`
               + :oscred:`#D4200C`
 
-        labels : bool, default: True
-            If `True`, each oscillator will be given a numerical label
-            in the plot, if `False`, no labels will be produced.
+        labels : Bool, default: True
+            If ``True``, each oscillator will be given a numerical label
+            in the plot, if ``False``, no labels will be produced.
 
         stylesheet : None or str, default: None
             The name of/path to a matplotlib stylesheet for further
-            customaisation of the plot. Note that all the features of the
-            styleshet will be adhered to, except for the colors, which are
-            overwritten by datacol and osccols. If `None`, a custom
-            stylesheet, found in
-            `/path/to/NMR-EsPy/nmrespy/config/nmrespy_custom.mplstyle`
-            is used. To see built-in stylesheets that are available, enter
+            customisation of the plot. Note that all the features of the
+            stylesheet will be adhered to, except for the colors, which are
+            overwritten by whatever is specified by ``datacol`` and
+            ``osccols``. If ``None``, a custom stylesheet, found in the
+            follwing path is used:
+
+            ``/path/to/NMR-EsPy/nmrespy/config/nmrespy_custom.mplstyle``
+
+            To see built-in stylesheets that are available, enter
             the following into a python interpreter: ::
                 >>> import matplotlib.pyplot as plt
                 >>> print(plt.style.available)
@@ -1630,33 +1773,33 @@ class NMREsPyBruker:
             A dictionary containing a series of
             `matplotlib.lines.Line2D <https://matplotlib.org/3.3.1/\
             api/_as_gen/matplotlib.lines.Line2D.html>`_
-            instances. The data plot is given the key `'data'`, and the
-            individual oscillator plots are given the keys `'osc1'`,
-            `'osc2'`, `'osc3'`, ..., `'osc<M>'` where `<M>` is the number of
-            oscillators in the parameter estimate.
+            instances. The data plot is given the key ``'data'``, and the
+            individual oscillator plots are given the keys ``'osc1'``,
+            ``'osc2'``, ``'osc3'``, ..., ``'osc<M>'`` where ``<M>`` is the
+            number of oscillators in the parameter estimate.
 
         labs : dict
-            If `labels` is True, this dictionary will contain a series
+            If ``labels`` is True, this dictionary will contain a series
             of `matplotlib.text.Text <https://matplotlib.org/3.1.1/\
             api/text_api.html#matplotlib.text.Text>`_ instances, with the
-            keys `'osc1'`, `'osc2'`, etc. as is the case with the `lines`
-            dictionary. If `labels` is False, the dict will be empty.
+            keys ``'osc1'``, ``'osc2'``, etc. as is the case with the
+            ``lines`` dictionary. If ``labels`` is False, ``labs`` will be
+            and empty dictionary.
 
         Raises
         ------
         TwoDimUnsupportedError
-            If `self.dim` is 2.
+            If ``self.dim`` is 2.
 
         NoParameterEstimateError
-            If `resname` is `None`, and neither `theta0` nor `theta` are
-            attributes of `self`.
+            If ``result_name`` is ``None``, and both ``self.theta0`` and
+            ``self.theta`` are ``None``.
 
         Notes
         -----
-        The `fig`, `ax`, `lines` and `labels` objects that are returned give
-        you the ability to customise virtually anything you wish about the plot
-        after running :py:meth:`plot_result`. If you wish to edit a particular
-        line or label after running plot_result, simply use the following
+        The ``fig``, ``ax``, ``lines`` and ``labels`` objects that are returned
+        provide the ability to customise virtually any feature of the plot. If
+        you wish to edit a particular line or label, simply use the following
         syntax: ::
             >>> fig, ax, lines, labs = example.plot_result()
             >>> lines['osc7'].set_lw(1.6) # set oscillator 7's linewith to 2
@@ -1668,18 +1811,19 @@ class NMREsPyBruker:
             >>> fig.savefig('example_figure.pdf', format='pdf')
         """
 
-        dim = self.dim
+        dim = self.get_dim()
         # check dim is valid (only 1D data supported so far)
         if dim == 2:
             raise TwoDimUnsupportedError()
 
-        res, resname = self._check_res(resname)
+        result, result_name = self._check_result(result_name)
 
         if self.dtype == 'raw':
             data = np.flip(fftshift(fft(self.data)))
         elif self.dtype == 'pdata':
             data = self.data['1r']
 
+        # phase data
         p0 = self.get_p0(kill=False)
         p1 = self.get_p1(kill=False)
 
@@ -1690,37 +1834,41 @@ class NMREsPyBruker:
 
         # FTs of FIDs generated from individual oscillators in result array
         peaks = []
-        for m, osc in enumerate(res):
-            f = self.make_fid(resname, oscs=[m])
+        for m, osc in enumerate(result):
+            f = self.make_fid(result_name, oscillators=[m])
             peaks.append(np.real(fftshift(fft(f))))
 
-        if 'highs' in self.__dict__ and 'lows' in self.__dict__:
-            region = [self.get_highs(), self.get_lows()]
-        else:
-            region = None
+        # left and right boundaries of filter region
+        region = [self.get_highs(kill=False), self.get_lows(kill=False)]
 
         nuc = self.get_nuc()
         shifts = self.get_shifts(unit='ppm')
 
-        if dim == 1:
-            return _plot.plotres_1d(data, peaks, shifts, region, nuc, datacol,
-                                   osccols, labels, stylesheet)
+        return _plot.plotres_1d(data, peaks, shifts, region, nuc, datacol,
+                                osccols, labels, stylesheet)
 
 
-    def merge_oscillators(self, indices, resname=None):
-        """Removes the oscillators corresponding to the indices given, and
+    def merge_oscillators(self, indices, result_name=None):
+        """Removes the oscillators corresponding to ``indices``, and
         constructs a single new oscillator with a cumulative amplitude, and
         averaged phase, frequency and damping factor.
+
+        .. note::
+            Currently, this method is only compatible with 1-dimesnional
+            data.
 
         Parameters
         ----------
         indices : list, tuple or numpy.ndarray
             A list of indices corresponding to the oscillators to be merged.
 
-        resname : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If `None`, `self.theta` will be used
-            if it exists. If not, `self.theta0` will be used if it exists.
-            Otherwise, an error will be raised.
+        result_name : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If ``None``, the parameter estimate
+            to use will be determined in the following order of priority:
+
+            1. ``self.theta`` will be used if it is not ``None``.
+            2. ``self.theta0`` will be used if it is not ``None``.
+            3. Otherwise, an error will be raised.
 
         Notes
         -----
@@ -1742,39 +1890,46 @@ class NMREsPyBruker:
             number = len(indices)
             if number < 2:
                 msg = f'\n{O}indices should contain at least two elements.' \
-                      + f'No merging will hpappen.{END}'
+                      + f'No merging will happen.{END}'
                 return
         else:
             raise TypeError(f'\n{R}indices does not have a suitable type{END}')
 
-        res, resname = self._check_res(resname)
+        result, result_name = self._check_result(result_name)
 
-        to_merge = res[indices]
+        to_merge = result[indices]
         new_osc = np.sum(to_merge, axis=0, keepdims=True)
 
         # get mean for phase, frequency and damping
         new_osc[:, 1:] = new_osc[:, 1:] / number
 
-        res = np.delete(res, indices, axis=0)
-        res = np.append(res, new_osc, axis=0)
-        self.__dict__[resname] = res[np.argsort(res[..., 2])]
+        result = np.delete(result, indices, axis=0)
+        result = np.append(result, new_osc, axis=0)
+        self.__dict__[result_name] = result[np.argsort(result[..., 2])]
 
 
-    def split_oscillator(self, index, resname=None, frequency_sep=2.,
+    def split_oscillator(self, index, result_name=None, frequency_sep=2.,
                          unit='Hz', split_number=2, amp_ratio='same'):
         """Removes the oscillator corresponding to ``index``. Incorporates two
         or more oscillators whose cumulative amplitudes match that of the
         removed oscillator.
+
+        .. note::
+            Currently, this method is only compatible with 1-dimesnional
+            data.
 
         Parameters
         ----------
         index : int
             Array index of the oscilator to be split.
 
-        resname : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If `None`, `self.theta` will be used
-            if it exists. If not, `self.theta0` will be used if it exists.
-            Otherwise, an error will be raised.
+        result_name : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If ``None``, the parameter estimate
+            to use will be determined in the following order of priority:
+
+            1. ``self.theta`` will be used if it is not ``None``.
+            2. ``self.theta0`` will be used if it is not ``None``.
+            3. Otherwise, an error will be raised.
 
         frequency_sep : float, default: 2.
             The frequency separation given to adjacent oscillators formed from
@@ -1784,49 +1939,52 @@ class NMREsPyBruker:
             The unit of ``frequency_sep``.
 
         split_number: int, default: 2
-            The number of peaks to split the oscillator into
+            The number of peaks to split the oscillator into.
 
-        amp_ratio: list, tuple, numpy.ndarray or 'same', default: 'same'
+        amp_ratio: list or 'same', default: 'same'
             The ratio of amplitudes to be fulfilled by the newly formed peaks.
-            If an iterable, its ``len(amp_ratio) == split_number`` must be
-            ``True``. The first element will relate to the lowest frequency
-            oscillator constructed (furthest to the right in a conventional
-            spectrum), and the last element will relate to the highest
+            If a list, ``len(amp_ratio) == split_number`` must be
+            ``True``. The first element will relate to the highest frequency
+            oscillator constructed (furthest to the left in a conventional
+            spectrum), and the last element will relate to the lowest
             frequency oscillator constructed. If ``'same'``, all oscillators
-            will be given the same amplitude.
+            will be given equal amplitudes.
         """
         # get frequency_Sep in correct units
-        assert unit in ['Hz', 'ppm'], \
-        f'{R}unit should be \'Hz\' or \'ppm\'{END}'
-
         if unit == 'Hz':
             pass
         elif unit == 'ppm':
             frequency_sep = frequency_sep * self.get_sfo()
+        else:
+            raise InvalidUnitError('Hz', 'ppm')
 
-        res, resname = self._check_res(resname)
+        result, result_name = self._check_result(result_name)
 
         try:
-            osc = res[index]
+            osc = result[index]
         except:
-            raise ValueError(f'{R}index should be an integer in'
-                             f' range({res.shape[0]}){END}')
+            raise ValueError(f'{R}index should be an int in'
+                             f' range({result.shape[0]}){END}')
 
         # lowest frequency of all the new oscillators
-        min_freq = osc[2] - ((split_number + -1) * frequency_sep / 2)
+        max_freq = osc[2] + ((split_number - 1) * frequency_sep / 2)
         # array of all frequencies (lowest to highest)
-        freqs = [min_freq + (i*frequency_sep) for i in range(split_number)]
+        freqs = [max_freq - (i*frequency_sep) for i in range(split_number)]
 
         # determine amplitudes of new oscillators
         if amp_ratio == 'same':
             amp_ratio = [1] * split_number
 
-        assert isinstance(amp_ratio, (list, tuple, np.ndarray)), \
-        f'{R}amp_ratio should be \'same\', a list, a tuple, or a' \
-        + f' numpy.ndarray{END}'
+        if isinstance(amp_ratio, list):
+            pass
+        else:
+            raise TypeError(f'{R}amp_ratio should be \'same\' or a list{END}')
 
-        assert len(amp_ratio) == split_number, \
-        f'{R}len(amp_ratio) should equal split_number{END}'
+        if len(amp_ratio) == split_number:
+            pass
+        else:
+            raise ValueError(f'{R}len(amp_ratio) should equal'
+                             f' split_number{END}')
 
         # scale amplitude ratio values such that their sum is 1
         amp_ratio = np.array(amp_ratio)
@@ -1841,16 +1999,16 @@ class NMREsPyBruker:
         new_oscs[:, 1] = [osc[1]] * split_number
         new_oscs[:, 3] = [osc[3]] * split_number
 
-        res = np.delete(res, index, axis=0)
-        res = np.append(res, new_oscs, axis=0)
-        self.__dict__[resname] = res[np.argsort(res[..., 2])]
+        result = np.delete(result, index, axis=0)
+        result = np.append(result, new_oscs, axis=0)
+        self.__dict__[result_name] = result[np.argsort(result[..., 2])]
 
 
     # ---Internal use methods---
     @staticmethod
     def _check_int_float(param):
         """Check if param is a float or int. If it is, convert to a tuple"""
-        if isinstance(param, float) or isinstance(param, int):
+        if isinstance(param, (float, int)):
             return param,
         return param
 
@@ -1864,15 +2022,19 @@ class NMREsPyBruker:
 
     @staticmethod
     def _check_mode(mode, phase_var):
+
+        errmsg = f'\n{R}mode should be None or a string containing' \
+                 + f' only the characters \'a\', \'p\', \'f\', and' \
+                 + f' \'d\'. NO character should be repeated{END}'
+
         if mode is None:
             return 'apfd'
+
         elif isinstance(mode, str):
             # could use regex here, but I haven't looked into it enough
             # to know what I'm doing...
             if any(c not in 'apfd' for c in mode):
-                raise ValueError(f'\n{R}mode should only contain'
-                                 f' the characters \'a\', \'p\', \'f\', and'
-                                 f' \'d\'.{END}')
+                raise ValueError(errmsg)
             else:
                 # check each character doesn't appear more than once
                 count = {}
@@ -1884,46 +2046,22 @@ class NMREsPyBruker:
 
                 for key in count:
                     if count[key] > 1:
-                        raise ValueError(f'\n{R}mode should not contain any'
-                                         f' repeated characters!{END}')
+                        raise ValueError(errmsg)
 
                 # gets upset when phase variance is switched on, but phases
                 # are not to be optimised (the user is being unclear about
-                # their purpose)
-                if phase_var is True:
-                    if 'p' not in mode:
-                        raise PhaseVarianceAmbiguityError(mode)
+                # their purpose and I don't like uncertainty)
+                if phase_var is True and 'p' not in mode:
+                    raise PhaseVarianceAmbiguityError(mode)
 
                 return mode
 
-            raise TypeError(f'\n{R}mode should be None or a string containing'
-                            f' only the characters \'a\', \'p\', \'f\', and'
-                            f' \'d\'.{END}')
+            raise ValueError(errmsg)
+
+        raise TypeError(errmsg)
 
 
-    @staticmethod
-    def _check_method(method):
-        if method == 'trust_region':
-            pass
-        elif method == 'lbfgs':
-            pass
-        else:
-            raise ValueError(f'\n{R}method should be \'trust_region\''
-                             f' or \'lbfgs\'.{END}')
-
-    @staticmethod
-    def _check_maxit(maxit, method):
-        if maxit is None:
-            if method == 'trust_region':
-                return 100
-            elif method == 'lbfgs':
-                return 500
-        elif type(maxit) is int:
-            return maxit
-        else:
-            raise TypeError(f'\n{R}maxit should be an int.{END}')
-
-    def _check_res(self, resname):
+    def _check_result(self, resname):
         if resname is None:
             for att in ['theta', 'theta0']:
                 res = getattr(self, att)
