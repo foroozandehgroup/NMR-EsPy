@@ -30,8 +30,26 @@ import nmrespy.load as load
 import nmrespy._misc as _misc
 from nmrespy._plot import _generate_xlabel
 
+# path to image directory
+imgpath = os.path.join(os.path.dirname(nmrespy.__file__), 'topspin/images')
 
-def get_PhotoImage(path, scale):
+def get_PhotoImage(path, scale=1.0):
+    """Generate a TKinter-compatible photo image, given a path, and a scaling
+    factor.
+
+    Parameters
+    ----------
+    path : str
+        Path to the image file.
+    scale : float, default: 1.0
+        Scaling factor.
+
+    Returns
+    -------
+    img : `PIL.ImageTk.PhotoImage <https://pillow.readthedocs.io/en/4.2.x/reference/ImageTk.html#PIL.ImageTk.PhotoImage>`_
+        Tkinter-compatible image. This can be incorporated into a GUI using
+        tk.Label(parent, image=img)
+    """
 
     image = Image.open(path)
     [w, h] = image.size
@@ -43,25 +61,22 @@ def get_PhotoImage(path, scale):
 class WarnFrame(tk.Toplevel):
     """A window in case the user does something silly."""
 
-    def __init__(self, master, msg):
-        tk.Toplevel.__init__(self, master)
+    def __init__(self, parent, msg):
+        tk.Toplevel.__init__(self, parent)
         self['bg'] = 'white'
         self.resizable(False, False)
 
-        # warning icon
-        path = os.path.join(os.path.dirname(nmrespy.__file__),
-                            'topspin/images/warning.png')
-        self.img = get_PhotoImage(path, 0.08)
-        warn_icon = tk.Label(self, image=self.img, bg='white')
-        warn_icon.grid(row=0, column=0, padx=(10,0), pady=10)
+        # warning image
+        self.img = get_PhotoImage(os.path.join(imgpath, 'warning.png'), 0.08)
+        self.warn_sign = tk.Label(self, image=self.img, bg='white')
+        self.warn_sign.grid(row=0, column=0, padx=(10,0), pady=10)
 
         # add text explaining the issue
-        msg_label = tk.Label(self, text=msg, wraplength=400, bg='white')
-        msg_label.grid(row=0, column=1, padx=10, pady=10)
+        text = tk.Label(self, text=msg, wraplength=400, bg='white')
+        text.grid(row=0, column=1, padx=10, pady=10)
 
         # close button
-        close_button = tk.Button(self, text='Close', width=8,
-                                 bg='#ff9894',
+        close_button = tk.Button(self, text='Close', width=8, bg='#ff9894',
                                  highlightbackground='black',
                                  command=self.destroy)
         close_button.grid(row=1, column=1, padx=10, pady=(0,10))
@@ -72,15 +87,24 @@ class CustomNavigationToolbar(NavigationToolbar2Tk):
     and save buttons. Also remove co-ordiantes as cursor goes over plot"""
     def __init__(self, canvas_, parent_):
         self.toolitems = self.toolitems[:6]
-        NavigationToolbar2Tk.__init__(self, canvas_, parent_, pack_toolbar=False)
+        NavigationToolbar2Tk.__init__(self, canvas_, parent_,
+                                      pack_toolbar=False)
+
+        self['bg'] = 'white'
+        self._message_label['bg'] = 'white'
+        for button in self.winfo_children():
+            button['bg'] = 'white'
 
     def set_message(self, msg):
         pass
 
-# https://stackoverflow.com/questions/48709873/restricting-panning-range-in-matplotlib-plots
+
 class Restrictor():
     """Resict naivgation within a defined range (used to prevent
-    panning/zooming) outside spectral window on x-axis"""
+    panning/zooming) outside spectral window on x-axis.
+    Inspiration from
+    `here <https://stackoverflow.com/questions/48709873/restricting-panning-range-in-matplotlib-plots>`_"""
+
     def __init__(self, ax, x=lambda x: True, y=lambda x: True):
         self.res = [x,y]
         self.ax =ax
@@ -112,13 +136,13 @@ class Restrictor():
 
 class DataType(tk.Toplevel):
     """GUI for asking user whether they want to analyse the raw FID or
-    pdata assocaited with the opened data"""
-    def __init__(self, master, fidpath, pdatapath):
-        tk.Toplevel.__init__(self, master)
+    pdata"""
 
+    def __init__(self, parent, fidpath, pdatapath):
+        tk.Toplevel.__init__(self, parent)
         self.title('NMR-EsPy - Choose Data')
         self.resizable(False, False)
-        self.master = master
+        self.parent = parent
         self['bg'] = 'white'
 
         # --- FRAMES ----------------------------------------------------------
@@ -133,15 +157,9 @@ class DataType(tk.Toplevel):
         self.pad = 10
 
         # -- logoframe --------------------------------------------------------
-        path = os.path.dirname(nmrespy.__file__)
-        image = Image.open(os.path.join(path, 'topspin/images/nmrespy_full.png'))
-        scale = 0.07
-        [w, h] = image.size
-        new_w = int(w * scale)
-        new_h = int(h * scale)
-        image = image.resize((new_w, new_h), Image.ANTIALIAS)
-        img = ImageTk.PhotoImage(image)
-        self.logo = tk.Label(self.logoframe, image=img, bg='white')
+        self.img = get_PhotoImage(os.path.join(imgpath, 'nmrespy_full.png'),
+                                  0.08)
+        self.logo = tk.Label(self.logoframe, image=self.img, bg='white')
         self.logo.grid(row=0, column=0, padx=self.pad, pady=self.pad)
 
         # --- mainframe --------------------------------------------------------
@@ -193,7 +211,7 @@ class DataType(tk.Toplevel):
         self.cancelbutton.grid(column=0, row=0, pady=(self.pad, self.pad),
                                sticky='e')
 
-        self.master.wait_window(self)
+        self.parent.wait_window(self)
 
     # --- COMMANDS ------------------------------------------------------------
     # click_fid and click_pdata ensure only one checkbutton is selected at
@@ -219,93 +237,120 @@ class DataType(tk.Toplevel):
 
     def confirm(self):
         if self.fid.get() == 1:
-            self.master.dtype = 'fid'
+            self.parent.dtype = 'fid'
         elif self.pdata.get() == 1:
-            self.master.dtype = 'pdata'
-        self.master.master.deiconify()
+            self.parent.dtype = 'pdata'
+        self.parent.deiconify()
         self.destroy()
 
 # -----------------------------
 # GUI FOR SETTING UP ESTIMATION
 # -----------------------------
 
-class Setup(tk.Frame):
-    def __init__(self, master, fidpath, pdatapath):
+class SetupApp(tk.Tk):
+    """App for setting up NMR-EsPy calculation. Enables user to select
+    spectral region, phase data, and tweak MPM/NLP parameters.
 
-        tk.Frame.__init__(self, master)
-        self['bg'] = 'white'
+    Parameters
+    ----------
+    fidpath : str
+        Path to fid file.
 
-        # --- PADDING VALUE ---------------------------------------------------
-        self.pad = 10
+    pdatapath : str
+        Path to pdata directory.
+    """
 
-        # --- DETERMINE DATA-TYPE TO USE --------------------------------------
-        self.fidpath = fidpath
-        self.pdatapath = pdatapath
-        self.dtype_popup()
+    def __init__(self, fidpath, pdatapath):
 
+        tk.Tk.__init__(self)
+        # main container: everything goes into here
+        container = tk.Frame(self, bg='white')
+        container.pack(side='top', fill='both', expand=True)
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        # left frame will contain the plot, and navigation toolbar, and
+        # region/phase scale notebook
+        leftframe = tk.Frame(container, bg='white')
+        leftframe.grid(column=0, row=0, sticky='nsew')
+        # leftframe expands/contracts if user adjusts window size
+        leftframe.rowconfigure(0, weight=1)
+        leftframe.columnconfigure(0, weight=1)
+
+        # right frame contains logo, advanced setting widgets,
+        # cancel/help/save buttons, and contact details
+        rightframe = tk.Frame(container, bg='white')
+        rightframe.grid(column=1, row=0, sticky='nsew')
+
+        # open window to ask user for data type (fid or pdata)
+        # acquires dtype attribute
+        self.ask_dtype(fidpath, pdatapath)
+
+        # FID data - transform to frequency domain
         if self.dtype == 'fid':
-            self.info = load.import_bruker_fid(self.fidpath, ask_convdta=False)
+            self.info = load.import_bruker_fid(fidpath, ask_convdta=False)
             self.spec = np.flip(fftshift(fft(self.info.get_data())))
+
+        # pdata - combine real and imaginary components
         elif self.dtype == 'pdata':
-            self.info = load.import_bruker_pdata(self.pdatapath)
+            self.info = load.import_bruker_pdata(pdatapath)
             self.spec = self.info.get_data(pdata_key='1r') \
                         + 1j * self.info.get_data(pdata_key='1i')
 
-        # --- EXTRACT BASIC EXPERIMENT INFO -----------------------------------
-        self.shifts = self.info.get_shifts(unit='ppm')[0]
-        self.sw_p = self.info.get_sw(unit='ppm')[0]
-        self.off_p = self.info.get_offset(unit='ppm')[0]
-        self.n = self.spec.shape[0]
-        self.nuc = self.info.get_nuc()
+        # unpack useful parameters into attributes
+        self.shifts = self.info.get_shifts(unit='ppm')[0] # shifts for plot
+        self.sw_p = self.info.get_sw(unit='ppm')[0] # sweep width (ppm)
+        self.off_p = self.info.get_offset(unit='ppm')[0] # transmitter offset
+        self.n = self.spec.shape[0] # number of points
+        self.nuc = self.info.get_nuc() # nucleus
 
-        # --- LEFT AND RIGHT BOUNDS -------------------------------------------
-        # values in array indices
-        self.lb = int(np.floor(7 * self.n / 16))
-        self.rb = int(np.floor(9 * self.n / 16))
-        self.lnb = int(np.floor(1 * self.n / 16))
-        self.rnb = int(np.floor(2 * self.n / 16))
+        # initialise region of interest and noise region boundaries
+        # (values in array indices)
+        self.lb = int(np.floor(7 * self.n / 16)) # left bound
+        self.rb = int(np.floor(9 * self.n / 16)) # right bound
+        self.lnb = int(np.floor(1 * self.n / 16)) # left noise bound
+        self.rnb = int(np.floor(2 * self.n / 16)) # right noise bound
 
-        # values in ppm
-        self.lb_ppm = _misc.conv_ppm_idx(self.lb, self.sw_p, self.off_p,
-                                         self.n, direction='idx->ppm')
-        self.rb_ppm = _misc.conv_ppm_idx(self.rb, self.sw_p, self.off_p,
-                                         self.n, direction='idx->ppm')
-        self.lnb_ppm = _misc.conv_ppm_idx(self.lnb, self.sw_p, self.off_p,
-                                          self.n, direction='idx->ppm')
-        self.rnb_ppm = _misc.conv_ppm_idx(self.rnb, self.sw_p, self.off_p,
-                                          self.n, direction='idx->ppm')
-
-        # --- PHASE PARAMETERS ------------------------------------------------
+        # phase correction parameters
         self.pivot = int(np.floor(self.n / 2))
-        self.pivot_ppm = _misc.conv_ppm_idx(self.pivot, self.sw_p, self.off_p,
-                                            self.n, direction='idx->ppm')
-        self.p0 = 0.
-        self.p1 = 0.
+        self.p0 = 0. # zero-order phase
+        self.p1 = 0. # first-order phase
 
-        # --- CONSTRUCT SPECTRUM PLOT -----------------------------------------
+        # convert boundaries and pivot to ppm
+        # (forms attributes called: lb_ppm, rb_ppm, lnb_ppm, rnb_ppm,
+        # pivot_ppm)
+        for s in ['lb', 'rb', 'lnb', 'rnb', 'pivot']:
+            self.__dict__[f'{s}_ppm'] = _misc.conv_ppm_idx(
+                    self.__dict__[s], self.sw_p, self.off_p, self.n,
+                    direction='idx->ppm'
+                    )
+
+        # plot spectrum
         self.fig = Figure(figsize=(6,3.5), dpi=170)
         self.ax = self.fig.add_subplot(111)
-        self.specplot = self.ax.plot(self.shifts, np.real(self.spec), color='k',
-                                     lw=0.6)[0]
-        self.xlim = (self.shifts[0], self.shifts[-1])
+        self.specplot = self.ax.plot(self.shifts, np.real(self.spec),
+                                     color='k', lw=0.6)[0]
 
+        # set x-limits as edges of spectral window
+        self.xlim = (self.shifts[0], self.shifts[-1])
         self.ax.set_xlim(self.xlim)
+        # get current y-limit. Will reset y-limits to this value after the
+        # very tall region rectangles have been added to the plot
         self.ylim_init = self.ax.get_ylim()
 
-        # highlight the spectral region to be filtered
+        # highlight the spectral region to be filtered (green)
+        # Rectangle's first 3 args: bottom left coords, width, height
         self.filtregion = Rectangle((self.rb_ppm, -20*self.ylim_init[1]),
                                      self.lb_ppm - self.rb_ppm,
                                      40*self.ylim_init[1],
                                      facecolor='#7fd47f')
-
         self.ax.add_patch(self.filtregion)
 
-        # highlight the noise region
+        # highlight the noise region (blue)
         self.noiseregion = Rectangle((self.rnb_ppm, -20*self.ylim_init[1]),
                                       self.lnb_ppm - self.rnb_ppm,
                                       40*self.ylim_init[1],
                                       facecolor='#66b3ff')
-
         self.ax.add_patch(self.noiseregion)
 
         # plot pivot line (alpha=0 to make invisible initially)
@@ -313,6 +358,7 @@ class Setup(tk.Frame):
         y = np.linspace(-20*self.ylim_init[1], 20*self.ylim_init[1], 1000)
         self.pivotplot = self.ax.plot(x, y, color='r', alpha=0, lw=1)[0]
 
+        # aesthetic tweaks to plot
         self.ax.set_ylim(self.ylim_init)
         self.ax.tick_params(axis='x', which='major', labelsize=8)
         self.ax.set_yticks([])
@@ -325,587 +371,423 @@ class Setup(tk.Frame):
         self.restrict_left = Restrictor(self.ax, x=lambda x: x<= self.xlim[0])
         self.restrict_right = Restrictor(self.ax, x=lambda x: x>= self.xlim[1])
 
-        # --- LEFT AND RIGHT FRAMES -------------------------------------------
-        # leftframe: spectrum plot, navi. toolbar and region scales
-        self.leftframe = tk.Frame(self, bg='white')
 
-        # rightframe: logo, ad. settings, save/help/quit butts, contact info.
-        self.rightframe = tk.Frame(self, bg='white')
-
-        # --- CANVAS FOR PLOT -------------------------------------------------
-        # place figure into canvas
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.leftframe)
-        self.canvas.draw()
-
-        # --- NAVIGATION TOOLBAR ----------------------------------------------
-        self.toolbar = CustomNavigationToolbar(self.canvas, self.leftframe)
-        self.toolbar['bg'] = 'white'
-        self.toolbar._message_label['bg'] = 'white'
-        for button in self.toolbar.winfo_children():
-            button['bg'] = 'white'
-
-        # --- NOTEBOOK FOR REGION/PHASE SCALES --------------------------------
-        # customise notebook style
-        style = ttk.Style()
-        style.theme_create('notebook', parent='alt',
-            settings={
-                'TNotebook': {
-                    'configure': {
-                        'tabmargins': [2, 5, 2, 0],
-                        'background': 'white',
-                        'bordercolor': 'black'}},
-                'TNotebook.Tab': {
-                    'configure': {
-                        'padding': [5, 1],
-                        'background': '#d0d0d0'},
-                    'map': {
-                        'background': [('selected', 'black')],
-                        'foreground': [('selected', 'white')],
-                        'expand': [("selected", [1, 1, 1, 0])]}}})
-
-        style.theme_use("notebook")
-
-        # scaleframe -> tabs for region selection and phase correction
-        self.notebook = ttk.Notebook(self.leftframe)
-        self.notebook.bind('<<NotebookTabChanged>>',
-                             (lambda event: self.ud_plot()))
-
-        # --- TAB FOR REGION SELECTION ----------------------------------------
-        self.regionframe = tk.Frame(self.notebook, bg='white')
-
-        # Bound titles
-        lb_title = tk.Label(self.regionframe, text='left bound', bg='white')
-        rb_title = tk.Label(self.regionframe, text='right bound', bg='white')
-        lnb_title = tk.Label(self.regionframe, text='left noise bound', bg='white')
-        rnb_title = tk.Label(self.regionframe, text='right noise bound', bg='white')
-
-        # Scales
-        self.lb_scale = tk.Scale(self.regionframe, troughcolor='#cbedcb',
-                                 command=self.ud_lb_scale)
-        self.rb_scale = tk.Scale(self.regionframe, troughcolor='#cbedcb',
-                                 command=self.ud_rb_scale)
-        self.lnb_scale = tk.Scale(self.regionframe, troughcolor='#cde6ff',
-                                  command=self.ud_lnb_scale)
-        self.rnb_scale = tk.Scale(self.regionframe, troughcolor='#cde6ff',
-                                  command=self.ud_rnb_scale)
-
-        for scale in [self.lb_scale, self.rb_scale, self.lnb_scale, self.rnb_scale]:
-            scale['from'] = 1
-            scale['to'] = self.n
-            scale['orient'] = tk.HORIZONTAL,
-            scale['showvalue'] = 0,
-            scale['bg'] = 'white',
-            scale['sliderlength'] = 15,
-            scale['bd'] = 0,
-            scale['highlightthickness'] = 0
-
-        self.lb_scale.set(self.lb)
-        self.rb_scale.set(self.rb)
-        self.lnb_scale.set(self.lnb)
-        self.rnb_scale.set(self.rnb)
-
-        # current values
-        self.lb_label = tk.StringVar()
-        self.lb_label.set(f'{self.lb_ppm:.3f}')
-        self.rb_label = tk.StringVar()
-        self.rb_label.set(f'{self.rb_ppm:.3f}')
-        self.lnb_label = tk.StringVar()
-        self.lnb_label.set(f'{self.lnb_ppm:.3f}')
-        self.rnb_label = tk.StringVar()
-        self.rnb_label.set(f'{self.rnb_ppm:.3f}')
-
-        self.lb_entry = tk.Entry(self.regionframe, textvariable=self.lb_label)
-        self.rb_entry = tk.Entry(self.regionframe, textvariable=self.rb_label)
-        self.lnb_entry = tk.Entry(self.regionframe, textvariable=self.lnb_label)
-        self.rnb_entry = tk.Entry(self.regionframe, textvariable=self.rnb_label)
-
-        self.lb_entry.bind('<Return>', (lambda event: self.ud_lb_entry()))
-        self.rb_entry.bind('<Return>', (lambda event: self.ud_rb_entry()))
-        self.lnb_entry.bind('<Return>', (lambda event: self.ud_lnb_entry()))
-        self.rnb_entry.bind('<Return>', (lambda event: self.ud_rnb_entry()))
-
-        for entry in [self.lb_entry, self.rb_entry, self.lnb_entry, self.rnb_entry]:
-            entry['width'] = 6
-            entry['highlightthickness'] = 0
-
-        # organise region selection frame elements
-        lb_title.grid(row=0, column=0, padx=(self.pad/2, 0),
-                      pady=(self.pad/2, 0), sticky='nsw')
-        rb_title.grid(row=1, column=0, padx=(self.pad/2, 0),
-                      pady=(self.pad/2, 0), sticky='nsw')
-        lnb_title.grid(row=2, column=0, padx=(self.pad/2, 0),
-                       pady=(self.pad/2, 0), sticky='nsw')
-        rnb_title.grid(row=3, column=0, padx=(self.pad/2, 0),
-                       pady=self.pad/2, sticky='nsw')
-        self.lb_scale.grid(row=0, column=1, padx=(self.pad/2, 0),
-                           pady=(self.pad/2, 0), sticky='ew')
-        self.rb_scale.grid(row=1, column=1, padx=(self.pad/2, 0),
-                           pady=(self.pad/2, 0), sticky='ew')
-        self.lnb_scale.grid(row=2, column=1, padx=(self.pad/2, 0),
-                            pady=(self.pad/2, 0), sticky='ew')
-        self.rnb_scale.grid(row=3, column=1, padx=(self.pad/2, 0),
-                            pady=self.pad/2, sticky='ew')
-        self.lb_entry.grid(row=0, column=2, padx=self.pad/2,
-                           pady=(self.pad/2, 0), sticky='nsw')
-        self.rb_entry.grid(row=1, column=2, padx=self.pad/2,
-                           pady=(self.pad/2, 0), sticky='nsw')
-        self.lnb_entry.grid(row=2, column=2, padx=self.pad/2,
-                            pady=(self.pad/2, 0), sticky='nsw')
-        self.rnb_entry.grid(row=3, column=2, padx=self.pad/2, pady=self.pad/2,
-                            sticky='nsw')
-
-        # --- TAB FOR PHASE CORRECTION ----------------------------------------
-        self.phaseframe = tk.Frame(self.notebook, bg='white')
-
-        # Pivot and phase titles
-        pivot_title = tk.Label(self.phaseframe, text='pivot', bg='white')
-        p0_title = tk.Label(self.phaseframe, text='p0', bg='white')
-        p1_title = tk.Label(self.phaseframe, text='p1', bg='white')
-
-        # scales for pivot, zero order, and first order phases
-        self.pivot_scale = tk.Scale(self.phaseframe, troughcolor='#ffb0b0',
-                                    command=self.ud_pivot_scale, from_=1,
-                                    to=self.n)
-        self.p0_scale = tk.Scale(self.phaseframe, resolution=0.0001,
-                                 troughcolor='#e0e0e0',
-                                 command=self.ud_p0_scale, from_=-np.pi,
-                                 to=np.pi)
-        self.p1_scale = tk.Scale(self.phaseframe, resolution=0.0001,
-                                 troughcolor='#e0e0e0',
-                                 command=self.ud_p1_scale, from_=-4*np.pi,
-                                 to=4*np.pi)
-
-        for scale in [self.pivot_scale, self.p0_scale, self.p1_scale]:
-            scale['orient'] = tk.HORIZONTAL
-            scale['bg'] = 'white'
-            scale['sliderlength'] = 15
-            scale['bd'] = 0
-            scale['highlightthickness'] = 0
-            scale['relief'] = 'flat'
-            scale['showvalue'] = 0
-
-        self.pivot_scale.set(self.pivot)
-        self.p0_scale.set(self.p0)
-        self.p1_scale.set(self.p1)
-
-        self.pivot_label = tk.StringVar()
-        self.pivot_label.set(f'{self.pivot_ppm:.3f}')
-        self.p0_label = tk.StringVar()
-        self.p0_label.set(f'{self.p0:.3f}')
-        self.p1_label = tk.StringVar()
-        self.p1_label.set(f'{self.p1:.3f}')
-
-        self.pivot_entry = tk.Entry(self.phaseframe, textvariable=self.pivot_label)
-        self.p0_entry = tk.Entry(self.phaseframe, textvariable=self.p0_label)
-        self.p1_entry = tk.Entry(self.phaseframe, textvariable=self.p1_label)
-
-        self.pivot_entry.bind('<Return>', (lambda event: self.ud_pivot_entry()))
-        self.p0_entry.bind('<Return>', (lambda event: self.ud_p0_entry()))
-        self.p1_entry.bind('<Return>', (lambda event: self.ud_p1_entry()))
-
-        for entry in [self.pivot_entry, self.p0_entry, self.p1_entry]:
-            entry['width'] = 6
-            entry['highlightthickness'] = 0
-
-        # organise phase frame elements
-        pivot_title.grid(row=0, column=0, padx=(self.pad/2, 0),
-                         pady=(self.pad/2, 0), sticky='w')
-        p0_title.grid(row=1, column=0, padx=(self.pad/2, 0),
-                      pady=(self.pad/2, 0), sticky='w')
-        p1_title.grid(row=2, column=0, padx=(self.pad/2, 0),
-                      pady=self.pad/2, sticky='w')
-        self.pivot_scale.grid(row=0, column=1, padx=(self.pad/2, 0),
-                              pady=(self.pad/2, 0), sticky='ew')
-        self.p0_scale.grid(row=1, column=1, padx=(self.pad/2, 0),
-                           pady=(self.pad/2, 0), sticky='ew')
-        self.p1_scale.grid(row=2, column=1, padx=(self.pad/2, 0),
-                           pady=self.pad/2, sticky='ew')
-        self.pivot_entry.grid(row=0, column=2, padx=(self.pad/2, self.pad/2),
-                              pady=(self.pad/2, 0), sticky='w')
-        self.p0_entry.grid(row=1, column=2, padx=(self.pad/2, self.pad/2),
-                           pady=(self.pad/2, 0), sticky='w')
-        self.p1_entry.grid(row=2, column=2, padx=(self.pad/2, self.pad/2),
-                           pady=self.pad/2, sticky='w')
-
-        # --- NMR-EsPy LOGO ---------------------------------------------------
-        self.logoframe = tk.Frame(self.rightframe, bg='white')
-
-        path = os.path.dirname(nmrespy.__file__)
-        image = Image.open(os.path.join(path, 'topspin/images/nmrespy_full.png'))
-        scale = 0.08
-        [w, h] = image.size
-        new_w = int(w * scale)
-        new_h = int(h * scale)
-        image = image.resize((new_w, new_h), Image.ANTIALIAS)
-
-        # make img an attribute of the class to prevent garbage collection
-        self.img = ImageTk.PhotoImage(image)
-        self.logo = tk.Label(self.logoframe, image=self.img, bg='white')
-        self.logo.grid(row=0, column=0, padx=self.pad, pady=(self.pad, 0))
-
-        # --- ADVANCED SETTINGS FRAME -----------------------------------------
-        self.adsetframe = tk.Frame(self.rightframe, bg='white')
-
-        adset_title = tk.Label(self.adsetframe, text='Advanced Settings',
-                               font=('Helvetica', 14), bg='white')
-
-        # Oscillators in intial guess
-        mpm_osc_label = tk.Label(self.adsetframe, text='Oscillators for MPM:',
-                                  bg='white')
-
-        use_mdl_label = tk.Label(self.adsetframe, text='Use MDL:', bg='white')
-
-        self.mdl = tk.StringVar()
-        self.mdl.set('1')
-        self.mdl_box = tk.Checkbutton(self.adsetframe, variable=self.mdl,
-                                      bg='white', highlightthickness=0, bd=0,
-                                      command=self.change_mdl)
-
-        self.osc_num = tk.StringVar()
-        self.osc_num.set('')
-        self.osc_entry = tk.Entry(self.adsetframe, width=8,
-                                  highlightthickness=0,
-                                  textvariable=self.osc_num, state='disabled')
-
-        # number of MPM points
-        mpm_label = tk.Label(self.adsetframe, text='Points for MPM:',
-                             bg='white')
-        self.mpm = tk.StringVar()
-
-        if self.n <= 4096:
-            self.mpm.set(str(self.n))
-        else:
-            self.mpm.set('4096')
-
-        self.mpm_entry = tk.Entry(self.adsetframe, width=12,
-                                  highlightthickness=0, textvariable=self.mpm)
-
-        maxval = int(np.floor(self.n/2))
-        mpm_max_label = tk.Label(self.adsetframe, text=f'Max. value: {maxval}',
-                                 bg='white')
-
-        # number of NLP points
-        nlp_label = tk.Label(self.adsetframe, text='Points for NLP:', bg='white')
-        self.nlp = tk.StringVar()
-
-        if self.n <= 8192:
-            self.nlp.set(str(self.n))
-        else:
-            self.nlp.set('8192')
-
-        self.nlp_entry = tk.Entry(self.adsetframe, width=12,
-                                  highlightthickness=0, textvariable=self.nlp)
-
-        nlp_max_label = tk.Label(self.adsetframe, text=f'Max. value: {maxval}',
-                                 bg='white')
-
-        # maximum NLP iterations
-        maxit_label = tk.Label(self.adsetframe, text='Max. Iterations:',
-                               bg='white')
-
-        self.maxit_entry = tk.Entry(self.adsetframe, width=12,
-                                    highlightthickness=0)
-        self.maxit_entry.insert(0, '100')
-
-        # NLP algorithm
-        alg_label = tk.Label(self.adsetframe, text='NLP Method:', bg='white')
-
-        self.algorithm = tk.StringVar(self.adsetframe)
-        self.algorithm.set('Trust Region')
-        self.algoptions = tk.OptionMenu(self.adsetframe, self.algorithm,
-                                        'Trust Region', 'L-BFGS')
-        self.algoptions.config(bg='white', borderwidth=0)
-        self.algoptions['menu'].configure(bg='white')
-
-        # opt phase variance?
-        phasevar_label = tk.Label(self.adsetframe, text='Opt. Phase Variance:',
-                                  bg='white')
-
-        self.phasevar = tk.StringVar()
-        self.phasevar.set('1')
-
-        self.phasevar_box = tk.Checkbutton(self.adsetframe,
-                                           variable=self.phasevar, bg='white',
-                                           highlightthickness=0, bd=0)
-
-
-        adset_title.grid(row=0, column=0, columnspan=3, padx=(self.pad/2, 0),
-                         pady=(self.pad/2, 0), sticky='w')
-        mpm_osc_label.grid(row=1, column=0, padx=(self.pad/2, 0),
-                            pady=(2*self.pad, 0), sticky='w')
-        self.osc_entry.grid(row=1, column=1, padx=self.pad/2,
-                            pady=(2*self.pad, 0), sticky='w')
-        use_mdl_label.grid(row=1, column=2, padx=(self.pad/4, 0),
-                          pady=(2*self.pad, 0), sticky='w')
-        self.mdl_box.grid(row=1, column=3, padx=(0, self.pad/2),
-                          pady=(2*self.pad, 0), sticky='w')
-        mpm_label.grid(row=3, column=0, padx=(self.pad/2, 0),
-                       pady=(2*self.pad, 0), sticky='nsw')
-        self.mpm_entry.grid(row=3, column=1, columnspan=3, padx=(self.pad/2, 0),
-                            pady=(2*self.pad, 0), sticky='w')
-        mpm_max_label.grid(row=4, column=1, columnspan=3, padx=(self.pad/2, 0),
-                           pady=(self.pad/2, 0), sticky='nw')
-        nlp_label.grid(row=5, column=0, padx=(self.pad/2, 0),
-                       pady=(2*self.pad, 0), sticky='w')
-        self.nlp_entry.grid(row=5, column=1, columnspan=3, padx=(self.pad/2, 0),
-                            pady=(2*self.pad, 0), sticky='w')
-        nlp_max_label.grid(row=6, column=1, columnspan=3, padx=(self.pad/2, 0),
-                           pady=(self.pad/2, 0), sticky='nw')
-        maxit_label.grid(row=7, column=0, padx=(self.pad/2, 0),
-                         pady=(2*self.pad, 0), sticky='w')
-        self.maxit_entry.grid(row=7, column=1, columnspan=3,
-                              padx=(self.pad/2, 0), pady=(2*self.pad, 0),
-                              sticky='w')
-        alg_label.grid(row=8, column=0, padx=(self.pad/2, 0),
-                       pady=(2*self.pad, 0), sticky='w')
-        self.algoptions.grid(row=8, column=1, columnspan=3,
-                             padx=(self.pad/2, 0), pady=(2*self.pad, 0),
-                             sticky='w')
-        phasevar_label.grid(row=9, column=0, padx=(self.pad/2, 0),
-                            pady=(2*self.pad, 0), sticky='w')
-        self.phasevar_box.grid(row=9, column=1, columnspan=3,
-                               padx=(self.pad/2, 0), pady=(2*self.pad, 0),
-                               sticky='w')
-
-        # --- BUTTON FRAME ----------------------------------------------------
-        self.buttonframe = tk.Frame(self.rightframe, bg='white')
-
-        self.cancel_button = tk.Button(self.buttonframe, text='Cancel',
-                                       command=self.cancel, bg='#ff9894')
-        self.help_button = tk.Button(self.buttonframe, text='Help',
-                                     command=self.load_help, bg='#ffb861')
-        self.run_button = tk.Button(self.buttonframe, text='Run',
-                                    command=self.run, bg='#9eda88')
-
-        for button in [self.cancel_button, self.help_button, self.run_button]:
-            button['highlightbackground'] = 'black'
-            button['width'] = 6
-
-        self.cancel_button.grid(row=0, column=0, padx=(self.pad, 0))
-        self.help_button.grid(row=0, column=1, padx=(self.pad, 0))
-        self.run_button.grid(row=0, column=2, padx=self.pad)
-
-        # --- CONTACT FRAME ---------------------------------------------------
-        self.contactframe = tk.Frame(self.rightframe, bg='white')
-        feedback = tk.Label(self.contactframe,
-                            text='For queries/feedback, contact', bg='white')
-        email = tk.Label(self.contactframe, text='simon.hulse@chem.ox.ac.uk',
-                         font='Courier', bg='white')
-        feedback.grid(row=0, column=0, sticky='w', padx=(self.pad, 0),
-                      pady=(self.pad,0))
-        email.grid(row=1, column=0, sticky='w', padx=(self.pad, 0),
-                   pady=(0, self.pad))
-
-        # --- ORGANISE FRAMES -------------------------------------------------
-        # main window
-        self.grid(row=0, column=0, sticky='nsew')
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-
-        # left and right frames
-        self.leftframe.grid(column=0, row=0, sticky='nsew')
-        self.rightframe.grid(column=1, row=0, sticky='nsew')
-
-        # leftframe always fills any extra space upon scaling
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-
-        # leftframe contents
-        self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
-        self.toolbar.grid(column=0, row=1, sticky='e')
-        self.notebook.grid(column=0, row=2, padx=(self.pad,0), pady=self.pad,
-                            sticky='ew')
-
-        # add region selection and phase correction frames to notebook
-        self.notebook.add(self.regionframe, text='Region Selection',
-                            sticky='ew')
-        self.notebook.add(self.phaseframe, text='Phase Correction',
-                            sticky='ew')
-
-        # All leftframe widgets expand horizontally
-        self.leftframe.columnconfigure(0, weight=1)
-        # Only spectrum plot expands vertically
-        self.leftframe.rowconfigure(0, weight=1)
-
-        # only allow scales to expand/contract when x-dimension of GUI changed
-        self.regionframe.columnconfigure(1, weight=1)
-        self.phaseframe.columnconfigure(1, weight=1)
-
-
-        # rightframe contents
-        self.logoframe.grid(row=0, column=0, sticky='ew')
-        self.adsetframe.grid(row=1, column=0, sticky='ew')
-        self.buttonframe.grid(row=2, column=0, sticky='ew')
-        self.contactframe.grid(row=3, column=0, sticky='ew')
-
-        # ad. settings frame acquires any extra space if scaling occurs
-        # note that as sticky = 'new', spacing between ad. set. & logo will
-        # remain constant. Space will be filled between ad. set. & buttons
-        self.rightframe.rowconfigure(1, weight=1)
-
-
-    def dtype_popup(self):
-        self.master.withdraw()
-        self.dtypewindow = DataType(self, self.fidpath, self.pdatapath)
-
-    def ud_plot(self):
-        tab = self.notebook.index(self.notebook.select())
-
-        # region selection tab selected
-        if tab == 0:
-            self.filtregion.set_alpha(1)
-            self.noiseregion.set_alpha(1)
-            self.pivotplot.set_alpha(0)
-            self.canvas.draw_idle()
-
-        # phase correction tab selected
-        elif tab == 1:
-            self.filtregion.set_alpha(0)
-            self.noiseregion.set_alpha(0)
-            self.pivotplot.set_alpha(1)
-            self.canvas.draw_idle()
-
-    def ud_lb_scale(self, lb):
-        lb = int(lb.split('.')[0])
-        if lb < self.rb:
-            self.lb = lb
-            self.lb_ppm = _misc.conv_ppm_idx(self.lb, self.sw_p, self.off_p,
-                                             self.n, direction='idx->ppm')
-            self.filtregion.set_bounds(self.rb_ppm,
-                                       -20*self.ylim_init[1],
-                                       self.lb_ppm - self.rb_ppm,
-                                       40*self.ylim_init[1])
-            self.lb_label.set(f'{self.lb_ppm:.3f}')
-            self.canvas.draw_idle()
-        else:
-            self.lb = self.rb - 1
-            self.lb_ppm = _misc.conv_ppm_idx(self.lb, self.sw_p, self.off_p,
-                                             self.n, direction='idx->ppm')
-            self.lb_scale.set(self.lb)
-            self.canvas.draw_idle()
-
-    def ud_lb_entry(self):
-        lb_ppm = float(self.lb_label.get())
-        lb = _misc.conv_ppm_idx(lb_ppm, self.sw_p, self.off_p, self.n,
-                                direction='ppm->idx')
-
-        if lb < self.rb:
-            self.lb = lb
-            self.lb_ppm = lb_ppm
-            self.filtregion.set_bounds(self.rb_ppm,
-                                       -20*self.ylim_init[1],
-                                       self.lb_ppm - self.rb_ppm,
-                                       40*self.ylim_init[1])
-            self.lb_scale.set(self.lb)
-            self.canvas.draw_idle()
-        else:
-            self.lb_label.set(f'{self.lb_ppm:.3f}')
-
-    def ud_rb_scale(self, rb):
-        rb = int(rb.split('.')[0])
-        if rb > self.lb:
-            self.rb = rb
-            self.rb_ppm = _misc.conv_ppm_idx(self.rb, self.sw_p, self.off_p,
-                                             self.n, direction='idx->ppm')
-            self.filtregion.set_bounds(self.rb_ppm,
-                                       -20*self.ylim_init[1],
-                                       self.lb_ppm - self.rb_ppm,
-                                       40*self.ylim_init[1])
-            self.rb_label.set(f'{self.rb_ppm:.3f}')
-            self.canvas.draw_idle()
-        else:
-            self.rb = self.lb + 1
-            self.rb_ppm = _misc.conv_ppm_idx(self.rb, self.sw_p, self.off_p,
-                                             self.n, direction='idx->ppm')
-            self.rb_scale.set(self.rb)
-            self.canvas.draw_idle()
-
-    def ud_rb_entry(self):
-        rb_ppm = float(self.rb_label.get())
-        rb = _misc.conv_ppm_idx(rb_ppm, self.sw_p, self.off_p, self.n,
-                                direction='ppm->idx')
-        if rb > self.lb:
-            self.rb = rb
-            self.rb_ppm = rb_ppm
-            self.filtregion.set_bounds(self.rb_ppm,
-                                       -20*self.ylim_init[1],
-                                       self.lb_ppm - self.rb_ppm,
-                                       40*self.ylim_init[1])
-            self.rb_scale.set(self.rb)
-            self.canvas.draw_idle()
-        else:
-            self.rb_label.set(f'{self.rb_ppm:.3f}')
-
-    def ud_lnb_scale(self, lnb):
-        lnb = int(lnb.split('.')[0])
-        if lnb < self.rnb:
-            self.lnb = lnb
-            self.lnb_ppm = _misc.conv_ppm_idx(self.lnb, self.sw_p, self.off_p,
-                                             self.n, direction='idx->ppm')
-            self.noiseregion.set_bounds(self.rnb_ppm,
-                                        -20*self.ylim_init[1],
-                                        self.lnb_ppm - self.rnb_ppm,
-                                        40*self.ylim_init[1])
-            self.lnb_label.set(f'{self.lnb_ppm:.3f}')
-            self.canvas.draw_idle()
-        else:
-            self.lnb = self.rnb - 1
-            self.lnb_ppm = _misc.conv_ppm_idx(self.lnb, self.sw_p, self.off_p,
-                                             self.n, direction='idx->ppm')
-            self.lnb_scale.set(self.lnb)
-            self.canvas.draw_idle()
-
-    def ud_lnb_entry(self):
-        lnb_ppm = float(self.lnb_label.get())
-        lnb = _misc.conv_ppm_idx(lnb_ppm, self.sw_p, self.off_p, self.n,
-                                direction='ppm->idx')
-        if lnb < self.rnb:
-            self.lnb = lnb
-            self.lnb_ppm = lnb_ppm
-            self.noiseregion.set_bounds(self.rnb_ppm,
-                                       -20*self.ylim_init[1],
-                                       self.lnb_ppm - self.rnb_ppm,
-                                       40*self.ylim_init[1])
-            self.lnb_scale.set(self.lnb)
-            self.canvas.draw_idle()
-        else:
-            self.lnb_label.set(f'{self.lnb_ppm:.3f}')
-
-    def ud_rnb_scale(self, rnb):
-        rnb = int(rnb.split('.')[0])
-        if rnb > self.lnb:
-            self.rnb = rnb
-            self.rnb_ppm = _misc.conv_ppm_idx(self.rnb, self.sw_p, self.off_p,
-                                             self.n, direction='idx->ppm')
-            self.noiseregion.set_bounds(self.rnb_ppm,
-                                       -20*self.ylim_init[1],
-                                       self.lnb_ppm - self.rnb_ppm,
-                                       40*self.ylim_init[1])
-            self.rnb_label.set(f'{self.rnb_ppm:.3f}')
-            self.canvas.draw_idle()
-        else:
-            self.rnb = self.lnb + 1
-            self.rnb_ppm = _misc.conv_ppm_idx(self.rnb, self.sw_p, self.off_p,
-                                             self.n, direction='idx->ppm')
-            self.rnb_scale.set(self.rnb)
-            self.canvas.draw_idle()
-
-    def ud_rnb_entry(self):
-        rnb_ppm = float(self.rnb_label.get())
-        rnb = _misc.conv_ppm_idx(rnb_ppm, self.sw_p, self.off_p, self.n,
-                                direction='ppm->idx')
-        if rnb > self.lb:
-            self.rnb = rnb
-            self.rnb_ppm = rnb_ppm
-            self.noiseregion.set_bounds(self.rnb_ppm,
-                                       -20*self.ylim_init[1],
-                                       self.lnb_ppm - self.rnb_ppm,
-                                       40*self.ylim_init[1])
-            self.rnb_scale.set(self.rnb)
-            self.canvas.draw_idle()
-        else:
-            self.rnb_label.set(f'{self.rnb_ppm:.3f}')
-
+        self.frames = {}
+
+        left = 2
+        # append all frames to the window
+        for F in (PlotFrame, ScaleFrame, LogoFrame):
+            if left:
+                frame = F(parent=leftframe, ctrl=self)
+                left -= 1
+            else:
+                frame = F(parent=rightframe, ctrl=self)
+            self.frames[F.__name__] = frame
+        print(self.frames.keys())
+
+        # # --- NOTEBOOK FOR REGION/PHASE SCALES --------------------------------
+        # # customise notebook style
+        # style = ttk.Style()
+        # style.theme_create('notebook', parent='alt',
+        #     settings={
+        #         'TNotebook': {
+        #             'configure': {
+        #                 'tabmargins': [2, 5, 2, 0],
+        #                 'background': 'white',
+        #                 'bordercolor': 'black'}},
+        #         'TNotebook.Tab': {
+        #             'configure': {
+        #                 'padding': [5, 1],
+        #                 'background': '#d0d0d0'},
+        #             'map': {
+        #                 'background': [('selected', 'black')],
+        #                 'foreground': [('selected', 'white')],
+        #                 'expand': [("selected", [1, 1, 1, 0])]}}})
+        #
+        # style.theme_use("notebook")
+        #
+        # # scaleframe -> tabs for region selection and phase correction
+        # self.notebook = ttk.Notebook(self.leftframe)
+        # self.notebook.bind('<<NotebookTabChanged>>',
+        #                      (lambda event: self.ud_plot()))
+        #
+        # # --- TAB FOR REGION SELECTION ----------------------------------------
+        # self.regionframe = tk.Frame(self.notebook, bg='white')
+        #
+        # # Bound titles
+        # lb_title = tk.Label(self.regionframe, text='left bound', bg='white')
+        # rb_title = tk.Label(self.regionframe, text='right bound', bg='white')
+        # lnb_title = tk.Label(self.regionframe, text='left noise bound', bg='white')
+        # rnb_title = tk.Label(self.regionframe, text='right noise bound', bg='white')
+        #
+        # # Scales
+        # self.lb_scale = tk.Scale(self.regionframe, troughcolor='#cbedcb',
+        #                          command=self.ud_lb_scale)
+        # self.rb_scale = tk.Scale(self.regionframe, troughcolor='#cbedcb',
+        #                          command=self.ud_rb_scale)
+        # self.lnb_scale = tk.Scale(self.regionframe, troughcolor='#cde6ff',
+        #                           command=self.ud_lnb_scale)
+        # self.rnb_scale = tk.Scale(self.regionframe, troughcolor='#cde6ff',
+        #                           command=self.ud_rnb_scale)
+        #
+        # for scale in [self.lb_scale, self.rb_scale, self.lnb_scale, self.rnb_scale]:
+        #     scale['from'] = 1
+        #     scale['to'] = self.n
+        #     scale['orient'] = tk.HORIZONTAL,
+        #     scale['showvalue'] = 0,
+        #     scale['bg'] = 'white',
+        #     scale['sliderlength'] = 15,
+        #     scale['bd'] = 0,
+        #     scale['highlightthickness'] = 0
+        #
+        # self.lb_scale.set(self.lb)
+        # self.rb_scale.set(self.rb)
+        # self.lnb_scale.set(self.lnb)
+        # self.rnb_scale.set(self.rnb)
+        #
+        # # current values
+        # self.lb_label = tk.StringVar()
+        # self.lb_label.set(f'{self.lb_ppm:.3f}')
+        # self.rb_label = tk.StringVar()
+        # self.rb_label.set(f'{self.rb_ppm:.3f}')
+        # self.lnb_label = tk.StringVar()
+        # self.lnb_label.set(f'{self.lnb_ppm:.3f}')
+        # self.rnb_label = tk.StringVar()
+        # self.rnb_label.set(f'{self.rnb_ppm:.3f}')
+        #
+        # self.lb_entry = tk.Entry(self.regionframe, textvariable=self.lb_label)
+        # self.rb_entry = tk.Entry(self.regionframe, textvariable=self.rb_label)
+        # self.lnb_entry = tk.Entry(self.regionframe, textvariable=self.lnb_label)
+        # self.rnb_entry = tk.Entry(self.regionframe, textvariable=self.rnb_label)
+        #
+        # self.lb_entry.bind('<Return>', (lambda event: self.ud_lb_entry()))
+        # self.rb_entry.bind('<Return>', (lambda event: self.ud_rb_entry()))
+        # self.lnb_entry.bind('<Return>', (lambda event: self.ud_lnb_entry()))
+        # self.rnb_entry.bind('<Return>', (lambda event: self.ud_rnb_entry()))
+        #
+        # for entry in [self.lb_entry, self.rb_entry, self.lnb_entry, self.rnb_entry]:
+        #     entry['width'] = 6
+        #     entry['highlightthickness'] = 0
+        #
+        # # organise region selection frame elements
+        # lb_title.grid(row=0, column=0, padx=(self.pad/2, 0),
+        #               pady=(self.pad/2, 0), sticky='nsw')
+        # rb_title.grid(row=1, column=0, padx=(self.pad/2, 0),
+        #               pady=(self.pad/2, 0), sticky='nsw')
+        # lnb_title.grid(row=2, column=0, padx=(self.pad/2, 0),
+        #                pady=(self.pad/2, 0), sticky='nsw')
+        # rnb_title.grid(row=3, column=0, padx=(self.pad/2, 0),
+        #                pady=self.pad/2, sticky='nsw')
+        # self.lb_scale.grid(row=0, column=1, padx=(self.pad/2, 0),
+        #                    pady=(self.pad/2, 0), sticky='ew')
+        # self.rb_scale.grid(row=1, column=1, padx=(self.pad/2, 0),
+        #                    pady=(self.pad/2, 0), sticky='ew')
+        # self.lnb_scale.grid(row=2, column=1, padx=(self.pad/2, 0),
+        #                     pady=(self.pad/2, 0), sticky='ew')
+        # self.rnb_scale.grid(row=3, column=1, padx=(self.pad/2, 0),
+        #                     pady=self.pad/2, sticky='ew')
+        # self.lb_entry.grid(row=0, column=2, padx=self.pad/2,
+        #                    pady=(self.pad/2, 0), sticky='nsw')
+        # self.rb_entry.grid(row=1, column=2, padx=self.pad/2,
+        #                    pady=(self.pad/2, 0), sticky='nsw')
+        # self.lnb_entry.grid(row=2, column=2, padx=self.pad/2,
+        #                     pady=(self.pad/2, 0), sticky='nsw')
+        # self.rnb_entry.grid(row=3, column=2, padx=self.pad/2, pady=self.pad/2,
+        #                     sticky='nsw')
+        #
+        # # --- TAB FOR PHASE CORRECTION ----------------------------------------
+        # self.phaseframe = tk.Frame(self.notebook, bg='white')
+        #
+        # # Pivot and phase titles
+        # pivot_title = tk.Label(self.phaseframe, text='pivot', bg='white')
+        # p0_title = tk.Label(self.phaseframe, text='p0', bg='white')
+        # p1_title = tk.Label(self.phaseframe, text='p1', bg='white')
+        #
+        # # scales for pivot, zero order, and first order phases
+        # self.pivot_scale = tk.Scale(self.phaseframe, troughcolor='#ffb0b0',
+        #                             command=self.ud_pivot_scale, from_=1,
+        #                             to=self.n)
+        # self.p0_scale = tk.Scale(self.phaseframe, resolution=0.0001,
+        #                          troughcolor='#e0e0e0',
+        #                          command=self.ud_p0_scale, from_=-np.pi,
+        #                          to=np.pi)
+        # self.p1_scale = tk.Scale(self.phaseframe, resolution=0.0001,
+        #                          troughcolor='#e0e0e0',
+        #                          command=self.ud_p1_scale, from_=-4*np.pi,
+        #                          to=4*np.pi)
+        #
+        # for scale in [self.pivot_scale, self.p0_scale, self.p1_scale]:
+        #     scale['orient'] = tk.HORIZONTAL
+        #     scale['bg'] = 'white'
+        #     scale['sliderlength'] = 15
+        #     scale['bd'] = 0
+        #     scale['highlightthickness'] = 0
+        #     scale['relief'] = 'flat'
+        #     scale['showvalue'] = 0
+        #
+        # self.pivot_scale.set(self.pivot)
+        # self.p0_scale.set(self.p0)
+        # self.p1_scale.set(self.p1)
+        #
+        # self.pivot_label = tk.StringVar()
+        # self.pivot_label.set(f'{self.pivot_ppm:.3f}')
+        # self.p0_label = tk.StringVar()
+        # self.p0_label.set(f'{self.p0:.3f}')
+        # self.p1_label = tk.StringVar()
+        # self.p1_label.set(f'{self.p1:.3f}')
+        #
+        # self.pivot_entry = tk.Entry(self.phaseframe, textvariable=self.pivot_label)
+        # self.p0_entry = tk.Entry(self.phaseframe, textvariable=self.p0_label)
+        # self.p1_entry = tk.Entry(self.phaseframe, textvariable=self.p1_label)
+        #
+        # self.pivot_entry.bind('<Return>', (lambda event: self.ud_pivot_entry()))
+        # self.p0_entry.bind('<Return>', (lambda event: self.ud_p0_entry()))
+        # self.p1_entry.bind('<Return>', (lambda event: self.ud_p1_entry()))
+        #
+        # for entry in [self.pivot_entry, self.p0_entry, self.p1_entry]:
+        #     entry['width'] = 6
+        #     entry['highlightthickness'] = 0
+        #
+        # # organise phase frame elements
+        # pivot_title.grid(row=0, column=0, padx=(self.pad/2, 0),
+        #                  pady=(self.pad/2, 0), sticky='w')
+        # p0_title.grid(row=1, column=0, padx=(self.pad/2, 0),
+        #               pady=(self.pad/2, 0), sticky='w')
+        # p1_title.grid(row=2, column=0, padx=(self.pad/2, 0),
+        #               pady=self.pad/2, sticky='w')
+        # self.pivot_scale.grid(row=0, column=1, padx=(self.pad/2, 0),
+        #                       pady=(self.pad/2, 0), sticky='ew')
+        # self.p0_scale.grid(row=1, column=1, padx=(self.pad/2, 0),
+        #                    pady=(self.pad/2, 0), sticky='ew')
+        # self.p1_scale.grid(row=2, column=1, padx=(self.pad/2, 0),
+        #                    pady=self.pad/2, sticky='ew')
+        # self.pivot_entry.grid(row=0, column=2, padx=(self.pad/2, self.pad/2),
+        #                       pady=(self.pad/2, 0), sticky='w')
+        # self.p0_entry.grid(row=1, column=2, padx=(self.pad/2, self.pad/2),
+        #                    pady=(self.pad/2, 0), sticky='w')
+        # self.p1_entry.grid(row=2, column=2, padx=(self.pad/2, self.pad/2),
+        #                    pady=self.pad/2, sticky='w')
+        #
+        # # --- NMR-EsPy LOGO ---------------------------------------------------
+        # self.logoframe = tk.Frame(self.rightframe, bg='white')
+        #
+        # path = os.path.dirname(nmrespy.__file__)
+        # image = Image.open(os.path.join(path, 'topspin/images/nmrespy_full.png'))
+        # scale = 0.08
+        # [w, h] = image.size
+        # new_w = int(w * scale)
+        # new_h = int(h * scale)
+        # image = image.resize((new_w, new_h), Image.ANTIALIAS)
+        #
+        # # make img an attribute of the class to prevent garbage collection
+        # self.img = ImageTk.PhotoImage(image)
+        # self.logo = tk.Label(self.logoframe, image=self.img, bg='white')
+        # self.logo.grid(row=0, column=0, padx=self.pad, pady=(self.pad, 0))
+        #
+        # # --- ADVANCED SETTINGS FRAME -----------------------------------------
+        # self.adsetframe = tk.Frame(self.rightframe, bg='white')
+        #
+        # adset_title = tk.Label(self.adsetframe, text='Advanced Settings',
+        #                        font=('Helvetica', 14), bg='white')
+        #
+        # # Oscillators in intial guess
+        # mpm_osc_label = tk.Label(self.adsetframe, text='Oscillators for MPM:',
+        #                           bg='white')
+        #
+        # use_mdl_label = tk.Label(self.adsetframe, text='Use MDL:', bg='white')
+        #
+        # self.mdl = tk.StringVar()
+        # self.mdl.set('1')
+        # self.mdl_box = tk.Checkbutton(self.adsetframe, variable=self.mdl,
+        #                               bg='white', highlightthickness=0, bd=0,
+        #                               command=self.change_mdl)
+        #
+        # self.osc_num = tk.StringVar()
+        # self.osc_num.set('')
+        # self.osc_entry = tk.Entry(self.adsetframe, width=8,
+        #                           highlightthickness=0,
+        #                           textvariable=self.osc_num, state='disabled')
+        #
+        # # number of MPM points
+        # mpm_label = tk.Label(self.adsetframe, text='Points for MPM:',
+        #                      bg='white')
+        # self.mpm = tk.StringVar()
+        #
+        # if self.n <= 4096:
+        #     self.mpm.set(str(self.n))
+        # else:
+        #     self.mpm.set('4096')
+        #
+        # self.mpm_entry = tk.Entry(self.adsetframe, width=12,
+        #                           highlightthickness=0, textvariable=self.mpm)
+        #
+        # maxval = int(np.floor(self.n/2))
+        # mpm_max_label = tk.Label(self.adsetframe, text=f'Max. value: {maxval}',
+        #                          bg='white')
+        #
+        # # number of NLP points
+        # nlp_label = tk.Label(self.adsetframe, text='Points for NLP:', bg='white')
+        # self.nlp = tk.StringVar()
+        #
+        # if self.n <= 8192:
+        #     self.nlp.set(str(self.n))
+        # else:
+        #     self.nlp.set('8192')
+        #
+        # self.nlp_entry = tk.Entry(self.adsetframe, width=12,
+        #                           highlightthickness=0, textvariable=self.nlp)
+        #
+        # nlp_max_label = tk.Label(self.adsetframe, text=f'Max. value: {maxval}',
+        #                          bg='white')
+        #
+        # # maximum NLP iterations
+        # maxit_label = tk.Label(self.adsetframe, text='Max. Iterations:',
+        #                        bg='white')
+        #
+        # self.maxit_entry = tk.Entry(self.adsetframe, width=12,
+        #                             highlightthickness=0)
+        # self.maxit_entry.insert(0, '100')
+        #
+        # # NLP algorithm
+        # alg_label = tk.Label(self.adsetframe, text='NLP Method:', bg='white')
+        #
+        # self.algorithm = tk.StringVar(self.adsetframe)
+        # self.algorithm.set('Trust Region')
+        # self.algoptions = tk.OptionMenu(self.adsetframe, self.algorithm,
+        #                                 'Trust Region', 'L-BFGS')
+        # self.algoptions.config(bg='white', borderwidth=0)
+        # self.algoptions['menu'].configure(bg='white')
+        #
+        # # opt phase variance?
+        # phasevar_label = tk.Label(self.adsetframe, text='Opt. Phase Variance:',
+        #                           bg='white')
+        #
+        # self.phasevar = tk.StringVar()
+        # self.phasevar.set('1')
+        #
+        # self.phasevar_box = tk.Checkbutton(self.adsetframe,
+        #                                    variable=self.phasevar, bg='white',
+        #                                    highlightthickness=0, bd=0)
+        #
+        #
+        # adset_title.grid(row=0, column=0, columnspan=3, padx=(self.pad/2, 0),
+        #                  pady=(self.pad/2, 0), sticky='w')
+        # mpm_osc_label.grid(row=1, column=0, padx=(self.pad/2, 0),
+        #                     pady=(2*self.pad, 0), sticky='w')
+        # self.osc_entry.grid(row=1, column=1, padx=self.pad/2,
+        #                     pady=(2*self.pad, 0), sticky='w')
+        # use_mdl_label.grid(row=1, column=2, padx=(self.pad/4, 0),
+        #                   pady=(2*self.pad, 0), sticky='w')
+        # self.mdl_box.grid(row=1, column=3, padx=(0, self.pad/2),
+        #                   pady=(2*self.pad, 0), sticky='w')
+        # mpm_label.grid(row=3, column=0, padx=(self.pad/2, 0),
+        #                pady=(2*self.pad, 0), sticky='nsw')
+        # self.mpm_entry.grid(row=3, column=1, columnspan=3, padx=(self.pad/2, 0),
+        #                     pady=(2*self.pad, 0), sticky='w')
+        # mpm_max_label.grid(row=4, column=1, columnspan=3, padx=(self.pad/2, 0),
+        #                    pady=(self.pad/2, 0), sticky='nw')
+        # nlp_label.grid(row=5, column=0, padx=(self.pad/2, 0),
+        #                pady=(2*self.pad, 0), sticky='w')
+        # self.nlp_entry.grid(row=5, column=1, columnspan=3, padx=(self.pad/2, 0),
+        #                     pady=(2*self.pad, 0), sticky='w')
+        # nlp_max_label.grid(row=6, column=1, columnspan=3, padx=(self.pad/2, 0),
+        #                    pady=(self.pad/2, 0), sticky='nw')
+        # maxit_label.grid(row=7, column=0, padx=(self.pad/2, 0),
+        #                  pady=(2*self.pad, 0), sticky='w')
+        # self.maxit_entry.grid(row=7, column=1, columnspan=3,
+        #                       padx=(self.pad/2, 0), pady=(2*self.pad, 0),
+        #                       sticky='w')
+        # alg_label.grid(row=8, column=0, padx=(self.pad/2, 0),
+        #                pady=(2*self.pad, 0), sticky='w')
+        # self.algoptions.grid(row=8, column=1, columnspan=3,
+        #                      padx=(self.pad/2, 0), pady=(2*self.pad, 0),
+        #                      sticky='w')
+        # phasevar_label.grid(row=9, column=0, padx=(self.pad/2, 0),
+        #                     pady=(2*self.pad, 0), sticky='w')
+        # self.phasevar_box.grid(row=9, column=1, columnspan=3,
+        #                        padx=(self.pad/2, 0), pady=(2*self.pad, 0),
+        #                        sticky='w')
+        #
+        # # --- BUTTON FRAME ----------------------------------------------------
+        # self.buttonframe = tk.Frame(self.rightframe, bg='white')
+        #
+        # self.cancel_button = tk.Button(self.buttonframe, text='Cancel',
+        #                                command=self.cancel, bg='#ff9894')
+        # self.help_button = tk.Button(self.buttonframe, text='Help',
+        #                              command=self.load_help, bg='#ffb861')
+        # self.run_button = tk.Button(self.buttonframe, text='Run',
+        #                             command=self.run, bg='#9eda88')
+        #
+        # for button in [self.cancel_button, self.help_button, self.run_button]:
+        #     button['highlightbackground'] = 'black'
+        #     button['width'] = 6
+        #
+        # self.cancel_button.grid(row=0, column=0, padx=(self.pad, 0))
+        # self.help_button.grid(row=0, column=1, padx=(self.pad, 0))
+        # self.run_button.grid(row=0, column=2, padx=self.pad)
+        #
+        # # --- CONTACT FRAME ---------------------------------------------------
+        # self.contactframe = tk.Frame(self.rightframe, bg='white')
+        # feedback = tk.Label(self.contactframe,
+        #                     text='For queries/feedback, contact', bg='white')
+        # email = tk.Label(self.contactframe, text='simon.hulse@chem.ox.ac.uk',
+        #                  font='Courier', bg='white')
+        # feedback.grid(row=0, column=0, sticky='w', padx=(self.pad, 0),
+        #               pady=(self.pad,0))
+        # email.grid(row=1, column=0, sticky='w', padx=(self.pad, 0),
+        #            pady=(0, self.pad))
+        #
+        # # --- ORGANISE FRAMES -------------------------------------------------
+        # # main window
+        # self.grid(row=0, column=0, sticky='nsew')
+        # self.columnconfigure(0, weight=1)
+        # self.rowconfigure(0, weight=1)
+        #
+        # # left and right frames
+        # self.leftframe.grid(column=0, row=0, sticky='nsew')
+        # self.rightframe.grid(column=1, row=0, sticky='nsew')
+        #
+        # # leftframe always fills any extra space upon scaling
+        # self.columnconfigure(0, weight=1)
+        # self.rowconfigure(0, weight=1)
+        #
+        # # leftframe contents
+        # self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
+        # self.toolbar.grid(column=0, row=1, sticky='e')
+        # self.notebook.grid(column=0, row=2, padx=(self.pad,0), pady=self.pad,
+        #                     sticky='ew')
+        #
+        # # add region selection and phase correction frames to notebook
+        # self.notebook.add(self.regionframe, text='Region Selection',
+        #                     sticky='ew')
+        # self.notebook.add(self.phaseframe, text='Phase Correction',
+        #                     sticky='ew')
+        #
+        # # All leftframe widgets expand horizontally
+        # self.leftframe.columnconfigure(0, weight=1)
+        # # Only spectrum plot expands vertically
+        # self.leftframe.rowconfigure(0, weight=1)
+        #
+        # # only allow scales to expand/contract when x-dimension of GUI changed
+        # self.regionframe.columnconfigure(1, weight=1)
+        # self.phaseframe.columnconfigure(1, weight=1)
+        #
+        #
+        # # rightframe contents
+        # self.logoframe.grid(row=0, column=0, sticky='ew')
+        # self.adsetframe.grid(row=1, column=0, sticky='ew')
+        # self.buttonframe.grid(row=2, column=0, sticky='ew')
+        # self.contactframe.grid(row=3, column=0, sticky='ew')
+        #
+        # # ad. settings frame acquires any extra space if scaling occurs
+        # # note that as sticky = 'new', spacing between ad. set. & logo will
+        # # remain constant. Space will be filled between ad. set. & buttons
+        # self.rightframe.rowconfigure(1, weight=1)
+
+
+    def ask_dtype(self, fidpath, pdatapath):
+        self.withdraw()
+        self.dtypewindow = DataType(self, fidpath, pdatapath)
 
     def ud_pivot_scale(self, pivot):
 
@@ -967,14 +849,10 @@ class Setup(tk.Frame):
             self.p1_label.set(f'{self.p1:.3f}')
 
 
-    def ud_phase(self):
-
-        newspec = np.real(self.spec * np.exp(1j * (self.p0 + (self.p1 * \
-        np.arange(-self.pivot, -self.pivot + self.n, 1) / self.n))))
-
-        self.specplot.set_ydata(newspec)
-        self.canvas.draw_idle()
-
+    # def ud_phase(self):
+    #
+    #
+    #
 
     def change_mdl(self):
         if self.mdl.get() == '1':
@@ -1013,7 +891,7 @@ class Setup(tk.Frame):
         maxiter = int(self.maxit_entry.get())
         alg = self.algorithm.get()
         pv = self.phasevar.get()
-        self.master.destroy()
+        self.parent.destroy()
 
         if alg == 'Trust Region':
             alg = 'trust_region'
@@ -1045,7 +923,7 @@ def ud_plot(cnt):
     ----------
 
     cnt : nmrespy.topspin.ResultApp
-        controller
+        ctrl
     """
 
     # get new lines and labels
@@ -1055,7 +933,7 @@ def ud_plot(cnt):
     # wipe lines and text instances from the axis
     cnt.ax.lines = []
     cnt.ax.texts = []
-    # wipe lines and text labels from the controller
+    # wipe lines and text labels from the ctrl
     cnt.lines = {}
     cnt.labels = {}
 
@@ -1066,7 +944,7 @@ def ud_plot(cnt):
                                     lw=lines['data'].get_lw())
 
     # plot oscillator lines and add oscillator text labels
-    # append these to the lines and labels attributes of the controller
+    # append these to the lines and labels attributes of the ctrl
     lines_and_labels = zip(list(lines.values())[1:], list(labels.values()))
     for i, (line, label) in enumerate(lines_and_labels):
 
@@ -1097,7 +975,6 @@ class ResultApp(tk.Tk):
         container.pack(side='top', fill='both', expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
-
         # left frame will contain the PlotFrame and navigation toolbar
         leftframe = tk.Frame(container, bg='white')
         leftframe.grid(column=0, row=0, sticky='nsew')
@@ -1134,10 +1011,10 @@ class ResultApp(tk.Tk):
         for F in (PlotFrame, LogoFrame, EditFrame):
             frame_name = F.__name__
             if left:
-                frame = F(parent=leftframe, controller=self)
+                frame = F(parent=leftframe, ctrl=self)
                 left = False
             else:
-                frame = F(parent=rightframe, controller=self)
+                frame = F(parent=rightframe, ctrl=self)
 
             self.frames[frame_name] = frame
 
@@ -1155,11 +1032,11 @@ class ResultApp(tk.Tk):
 
 
 class PlotFrame(tk.Frame):
-    """Contains the result plot, along with navigation toolbar"""
+    """Contains a plot, along with navigation toolbar"""
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent, ctrl):
         tk.Frame.__init__(self, parent)
-        self.controller = controller # ResultApp instance
+        self.ctrl = ctrl
         self['bg'] = 'white'
         self.grid(row=0, column=0, sticky='nsew')
 
@@ -1168,42 +1045,468 @@ class PlotFrame(tk.Frame):
         self.columnconfigure(0, weight=1)
 
         # place figure into canvas
-        self.canvas = FigureCanvasTkAgg(self.controller.fig, master=self)
+        self.canvas = FigureCanvasTkAgg(self.ctrl.fig, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
 
         # construct navigation toolbar
         self.toolbar = CustomNavigationToolbar(self.canvas, self)
-        self.toolbar['bg'] = 'white'
-        self.toolbar._message_label['bg'] = 'white'
-        for button in self.toolbar.winfo_children():
-            button['bg'] = 'white'
         self.toolbar.grid(column=0, row=1, sticky='e')
+
+
+class ScaleFrame(tk.Frame):
+    """Contains a notebook for region selection and phase scales"""
+
+    def __init__(self, parent, ctrl):
+        tk.Frame.__init__(self, parent)
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+        self.grid(row=1, column=0, sticky='ew')
+        self.columnconfigure(0, weight=1)
+
+        # customise notebook style
+        style = ttk.Style()
+        style.theme_create('notebook', parent='alt',
+            settings={
+                'TNotebook': {
+                    'configure': {
+                        'tabmargins': [2, 5, 2, 0],
+                        'background': 'white',
+                        'bordercolor': 'black'}},
+                'TNotebook.Tab': {
+                    'configure': {
+                        'padding': [5, 1],
+                        'background': '#d0d0d0'},
+                    'map': {
+                        'background': [('selected', 'black')],
+                        'foreground': [('selected', 'white')],
+                        'expand': [("selected", [1, 1, 1, 0])]}}})
+
+        style.theme_use("notebook")
+
+        self.notebook = ttk.Notebook(self)
+        self.notebook.grid(row=0, column=0, sticky='ew', padx=10, pady=(0,10))
+        # # whenever tab clicked, change plot so that either region selection
+        # # rectangles are visible, or phase pivot, depending on tab selected
+        self.notebook.bind('<<NotebookTabChanged>>',
+                           lambda event: self.switch_region_phase())
+
+        # dictionary of notebook frames
+        self.nbframes = {}
+
+        for F, title in zip((RegionFrame, PhaseFrame),
+                                ('Region Selection', 'Phase Correction')):
+            frame = F(parent=self.notebook, ctrl=self.ctrl)
+            self.notebook.add(frame, text=title, sticky='ew')
+            self.nbframes[F.__name__] = frame
+
+
+    def switch_region_phase(self):
+        """Adjusts the appearence of the plot when a new tab is selected.
+        Hides/reveals region rectangles and pivot plot as required. Toggles
+        alpha between 1 and 0"""
+
+        # detemine the active tab (0 = region selection, 1 = phase correction)
+        tab = self.notebook.index(self.notebook.select())
+        # set alpha values for region rectangles and pivot plot
+        if tab == 0:
+            # region selection tab
+            filt = 1
+            noise = 1
+            pivot = 0
+
+        else:
+            # phase correction tab
+            filt = 0
+            noise = 0
+            pivot = 1
+
+        self.ctrl.filtregion.set_alpha(filt)
+        self.ctrl.noiseregion.set_alpha(noise)
+        self.ctrl.pivotplot.set_alpha(pivot)
+
+        # draw updated figure
+        self.ctrl.frames['PlotFrame'].canvas.draw_idle()
+
+
+class RegionFrame(tk.Frame):
+    """Frame inside SetupApp notebook - for altering region boundaries"""
+
+    def __init__(self, parent, ctrl):
+        tk.Frame.__init__(self, parent)
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+
+        # make scales expandable
+        self.columnconfigure(1, weight=1)
+
+        row = 0
+        for s in ('lb', 'rb', 'lnb', 'rnb'):
+            # construct text strings for scale titles
+            text = ''
+            for letter in s:
+                if letter == 'l':
+                    text += 'left '
+                elif letter == 'r':
+                    text += 'right '
+                elif letter == 'n':
+                    text += 'noise '
+                else:
+                    text += 'bound'
+
+            # scale titles
+            self.__dict__[f'{s}_title'] = title = \
+                tk.Label(self, text=text, bg='white')
+
+            # determine troughcolor of scale (0, 1: green; 2, 3: blue)
+            if row < 2:
+                tc = '#cbedcb'
+            else:
+                tc = '#cde6ff'
+
+            # scale atts are called: lb_scale, rb_scale, lnb_scale, rnb_scale
+            self.__dict__[f'{s}_scale'] = scale = \
+                tk.Scale(self,
+                         from_ = 0,
+                         to = self.ctrl.n - 1,
+                         orient = tk.HORIZONTAL,
+                         showvalue = 0,
+                         bg = 'white',
+                         sliderlength = 15,
+                         bd = 0,
+                         highlightthickness = 0,
+                         troughcolor = tc,
+                         command = lambda value, s=s: self.ud_scale(value, s))
+            scale.set(self.ctrl.__dict__[s])
+
+            # bound variable atts are called: lb_var, rb_var, lnb_var, rnb_var
+            self.__dict__[f'{s}_var'] = var = tk.StringVar()
+             # access initial value of bound (ppm)
+            ppm = self.ctrl.__dict__[f'{s}_ppm']
+            var.set(f'{ppm:.3f}')
+
+            # entry atts are called: lb_entry, rb_entry, lnb_entry, rnb_entry
+            self.__dict__[f'{s}_entry'] = entry = \
+                tk.Entry(self,
+                         textvariable=var,
+                         width=6,
+                         highlightthickness=0)
+
+            entry.bind('<Return>', (lambda event, s=s: self.ud_entry(s)))
+
+            # pad below AND above if bottom widget (row 3)...
+            if row == 3:
+                title.grid(row=row, column=0, padx=(10,0), pady=10, sticky='w')
+                scale.grid(row=row, column=1, padx=(10,0), pady=10, sticky='ew')
+                entry.grid(row=row, column=2, padx=10, pady=10, sticky='w')
+            # ...otherwise, only pad above
+            else:
+                title.grid(row=row, column=0, padx=(10,0), pady=(10,0),
+                           sticky='w')
+                scale.grid(row=row, column=1, padx=(10,0), pady=(10,0),
+                           sticky='ew')
+                entry.grid(row=row, column=2, padx=10, pady=(10,0), sticky='w')
+
+            row += 1
+
+    def ud_entry(self, s):
+        """Update the GUI after the user presses <Enter> whilst in an entry
+        widget"""
+
+        try:
+            # check input can be interpreted as a float, and
+            # obtain the array index corresponding to the ppm value
+            index = _misc.conv_ppm_idx(float(self.__dict__[f'{s}_var'].get()),
+                                       self.ctrl.sw_p,
+                                       self.ctrl.off_p,
+                                       self.ctrl.n,
+                                       direction='ppm->idx')
+
+            # update the relevant parameters
+            self.ud_bound(index, s)
+
+        except:
+            # input cannot be interpreted as a float
+            # reset the value in the entry to the current bound value
+            reset = self.ctrl.__dict__[f'{s}_ppm']
+            self.__dict__[f'{s}_var'].set(f'{reset:.3f}')
+
+
+    def ud_scale(self, index, s):
+        """Update the GUI after the user changes the slider on a scale
+        widget"""
+
+        # scale value is set by a StringVar, so convert to integer
+        index = int(index)
+        # update the relevant parameters
+        self.ud_bound(index, s)
+
+
+    def ud_bound(self, index, s):
+        """Given an update index, and the identity of the bound to change,
+        adjust relavent region parameters, and update the GUI."""
+
+        # determine if we are considering a left or right bound
+        if s[0] == 'l':
+            twist = index
+            left = index
+            right = self.ctrl.__dict__[f'r{s[1:]}']
+        else:
+            left = self.ctrl.__dict__[f'l{s[1:]}']
+            twist = index
+            right = index
+
+        if left < right: # all good, update bound attribute
+            self.ctrl.__dict__[s] = twist
+
+        else: # all not good, ensure left < right is True
+            if twist == left:
+                self.ctrl.__dict__[s] = right - 1
+            else:
+                self.ctrl.__dict__[s] = left + 1
+
+        # convert index to ppm
+        ppm = _misc.conv_ppm_idx(self.ctrl.__dict__[s],
+                                 self.ctrl.sw_p,
+                                 self.ctrl.off_p,
+                                 self.ctrl.n,
+                                 direction='idx->ppm')
+
+        self.ctrl.__dict__[f'{s}_ppm'] = ppm
+        self.__dict__[f'{s}_var'].set(f'{ppm:.3f}')
+
+
+        # check if (lb, rb) or (lnb, rnb)
+        # change the bound of the relevant rectangle
+        if s[1] == 'b':
+            # changing lb or rb
+            self.ctrl.filtregion.set_bounds(
+                self.ctrl.rb_ppm,
+                -20 * self.ctrl.ylim_init[1],
+                self.ctrl.lb_ppm - self.ctrl.rb_ppm,
+                40 * self.ctrl.ylim_init[1],
+            )
+
+        else:
+            # changing lnb or rnb
+            self.ctrl.noiseregion.set_bounds(
+                self.ctrl.rnb_ppm,
+                -20 * self.ctrl.ylim_init[1],
+                self.ctrl.lnb_ppm - self.ctrl.rnb_ppm,
+                40 * self.ctrl.ylim_init[1],
+            )
+
+        # update plot
+        self.__dict__[f'{s}_scale'].set(self.ctrl.__dict__[s])
+        self.ctrl.frames['PlotFrame'].canvas.draw_idle()
+
+
+class PhaseFrame(tk.Frame):
+    """Frame inside SetupApp notebook - for phase correction of data"""
+
+    def __init__(self, parent, ctrl):
+        tk.Frame.__init__(self, parent)
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+
+        # make scales expandable
+        self.columnconfigure(1, weight=1)
+
+        row = 0
+        for s in ('pivot', 'p0', 'p1'):
+            # scale titles
+            self.__dict__[f'{s}_title'] = title = \
+                tk.Label(self, text=s, bg='white')
+
+            # pivot scale
+            if row == 0:
+                tc = '#ffb0b0'
+                from_ = 0
+                to = self.ctrl.n - 1
+                resolution = 1
+            # p0 and p1 scales
+            else:
+                tc = '#e0e0e0'
+                from_ = -np.pi
+                to = np.pi
+                resolution = 0.0001
+            # p1: set between -10π and 10π
+            if row == 2:
+                from_ *= 10
+                to *= 10
+
+            self.__dict__[f'{s}_scale'] = scale = \
+                tk.Scale(self,
+                         troughcolor = tc,
+                         from_ = from_,
+                         to = to,
+                         resolution=resolution,
+                         orient = tk.HORIZONTAL,
+                         bg = 'white',
+                         sliderlength = 15,
+                         bd = 0,
+                         highlightthickness = 0,
+                         relief = 'flat',
+                         showvalue = 0,
+                         command = lambda value, s=s: self.ud_scale(value, s))
+
+            scale.set(self.ctrl.__dict__[s])
+
+            self.__dict__[f'{s}_var'] = var = tk.StringVar()
+            if s == 'pivot':
+                value = self.ctrl.__dict__[f'{s}_ppm']
+            else:
+                value = self.ctrl.__dict__[s]
+            var.set(f'{value:.3f}')
+
+            self.__dict__[f'{s}_entry'] = entry = \
+                tk.Entry(self,
+                         textvariable=var,
+                         width=6,
+                         highlightthickness=0)
+
+            entry.bind('<Return>', (lambda event, s=s: self.ud_entry(s)))
+
+
+            if row == 2:
+                title.grid(row=row, column=0, padx=(10,0), pady=10, sticky='w')
+                scale.grid(row=row, column=1, padx=(10,0), pady=10, sticky='ew')
+                entry.grid(row=row, column=2, padx=10, pady=10, sticky='w')
+            else:
+                title.grid(row=row, column=0, padx=(10,0), pady=(10,0),
+                           sticky='w')
+                scale.grid(row=row, column=1, padx=(10,0), pady=(10,0),
+                           sticky='ew')
+                entry.grid(row=row, column=2, padx=10, pady=(10,0),
+                           sticky='w')
+
+            row += 1
+
+
+    def ud_scale(self, value, s):
+        """Update the GUI after the user changes the slider on a scale
+        widget"""
+
+        if s == 'pivot':
+            self.ud_pivot(int(value))
+        else:
+            print(float(value))
+            self.ud_p0_p1(float(value), s)
+
+
+    def ud_entry(self, s):
+        """Update the GUI after the user changes and entry widget"""
+
+        if s == 'pivot':
+            try:
+                self.ud_pivot(
+                    _misc.conv_ppm_idx(
+                        float(self.pivot_var.get()),
+                        self.ctrl.sw_p,
+                        self.ctrl.off_p,
+                        self.ctrl.n,
+                        direction='ppm->idx'
+                    )
+                )
+
+            except:
+                self.pivot_var.set(self.ctrl.pivot_ppm)
+
+        else:
+            try:
+                self.ud_p0_p1(float(self.__dict__[f'{s}_var'].get()), s)
+            except:
+                self.__dict__[f'{s}_var'].set(f'{self.ctrl.__dict__[s]:.3f}')
+
+
+    def ud_pivot(self, index):
+        # check index is in the suitable range (check for entry widget)
+        if self.pivot_scale['from'] <= index <= self.pivot_scale['to']:
+            self.ctrl.pivot = index
+            self.ctrl.pivot_ppm = \
+                _misc.conv_ppm_idx(index,
+                                   self.ctrl.sw_p,
+                                   self.ctrl.off_p,
+                                   self.ctrl.n,
+                                   direction='idx->ppm')
+
+            self.pivot_var.set(f'{self.ctrl.pivot_ppm:.3f}')
+
+            x = np.linspace(self.ctrl.pivot_ppm,
+                            self.ctrl.pivot_ppm,
+                            1000)
+            self.ctrl.pivotplot.set_xdata(x)
+            self.ud_phase()
+            self.ctrl.frames['PlotFrame'].canvas.draw_idle()
+
+        else:
+            self.pivot_var.set(f'{self.ctrl.pivot_ppm:.3f}')
+
+
+    def ud_p0_p1(self, phase, s):
+
+        low = self.decifloor(self.__dict__[f'{s}_scale']['from'], 3)
+        high = self.deciceil(self.__dict__[f'{s}_scale']['to'], 3)
+
+        # check angle is in the suitable range (check for entry widget)
+        # floor and ceil the lower and upper bounds to give a bit of leighway
+        # for floating point values at the boundary
+        if  low <= phase <= high:
+            pass
+        else:
+            # angle outside range: wrap it!
+            phase = (phase + np.pi) % (2 * np.pi) - np.pi
+
+        self.__dict__[f'{s}_var'].set(f'{phase:.3f}')
+        self.ctrl.__dict__[s] = phase
+        self.__dict__[f'{s}_scale'].set(phase)
+        self.ud_phase()
+        self.ctrl.frames['PlotFrame'].canvas.draw_idle()
+
+
+    def ud_phase(self):
+
+        pivot = self.ctrl.pivot
+        p0 = self.ctrl.p0
+        p1 = self.ctrl.p1
+        n = self.ctrl.n
+
+        spec = self.ctrl.spec * np.exp(
+            1j * (p0 + (p1 * np.arange(-pivot, -pivot + n, 1) / n))
+        )
+
+        self.ctrl.specplot.set_ydata(np.real(spec))
+
+
+    def deciceil(self, value, precision):
+        return np.round(value + 0.5 * 10**(-precision), precision)
+
+
+    def decifloor(self, value, precision):
+        return np.round(value - 0.5 * 10**(-precision), precision)
 
 
 class LogoFrame(tk.Frame):
     """Contains the NMR-EsPy logo (who doesn't like a bit of publicity)"""
-    def __init__(self, parent, controller):
+
+    def __init__(self, parent, ctrl, scale=0.06):
         tk.Frame.__init__(self, parent)
-        self.controller = controller # ResultApp instance
+        self.ctrl = ctrl
         self['bg'] = 'white'
         self.grid(row=0, column=0, sticky='ew')
 
-        # path to NMR-EsPy PNG
-        path = os.path.join(os.path.dirname(nmrespy.__file__),
-                            'topspin/images/nmrespy_full.png')
-        # construct Label with image
-        self.img = get_PhotoImage(path, 0.08)
+        self.img = get_PhotoImage(os.path.join(imgpath, 'nmrespy_full.png'),
+                                  scale)
         logo = tk.Label(self, image=self.img, bg='white')
         logo.grid(row=0, column=0, padx=10, pady=10)
 
 
 class EditFrame(tk.Frame):
     # TODO
-    def __init__(self, parent, controller):
+    def __init__(self, parent, ctrl):
         tk.Frame.__init__(self, parent)
 
-        self.controller = controller
+        self.ctrl = ctrl
 
         self['bg'] = 'white'
         self.grid(row=1, column=0, sticky='ew')
@@ -1227,21 +1530,21 @@ class EditFrame(tk.Frame):
         self.edit_labels.grid(row=3, column=0)
 
     def config_params(self):
-        EditParams(self, self.controller)
+        EditParams(self, self.ctrl)
 
     def config_lines(self):
         pass
-        # ConfigLines(self, self.controller)
+        # ConfigLines(self, self.ctrl)
 
     def config_labels(self):
         pass
-        # ConfigLabels(self, self.controller)
+        # ConfigLabels(self, self.ctrl)
 
 
 class SaveFrame(tk.Frame):
     #TODO
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
+    def __init__(self, parent):
+        tk.Frame.__init__(self, parent)
 
         self.config(bg='white')
         self.grid(row=2, column=0, sticky='new')
@@ -1306,8 +1609,8 @@ class SaveFrame(tk.Frame):
 
 class ButtonFrame(tk.Frame):
     #TODO
-    def __init__(self, master, sframe, info):
-        tk.Frame.__init__(self, master)
+    def __init__(self, parent, sframe, info):
+        tk.Frame.__init__(self, parent)
 
         self.sframe = sframe
         self.info = info
@@ -1363,8 +1666,8 @@ class ButtonFrame(tk.Frame):
 
 class ContactFrame(tk.Frame):
     #TODO
-    def __init__(self, master):
-        tk.Frame.__init__(self, master)
+    def __init__(self, parent):
+        tk.Frame.__init__(self, parent)
 
         self.config(bg='white')
         self.grid(row=4, column=0, sticky='new')
@@ -1382,10 +1685,10 @@ class ContactFrame(tk.Frame):
 class EditParams(tk.Toplevel):
     """Window allowing user to edit the estimation result."""
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent, ctrl):
 
         tk.Toplevel.__init__(self, parent)
-        self.controller = controller
+        self.ctrl = ctrl
         self['bg'] = 'white'
         self.resizable(False, False)
 
@@ -1444,7 +1747,7 @@ class EditParams(tk.Toplevel):
         self.table_entries = [] # tk.Entry instances (M x 4 elements)
         self.table_variables = [] # tk.StringVar instances (M x 4 elements)
 
-        for i, oscillator in enumerate(self.controller.info.get_theta()):
+        for i, oscillator in enumerate(self.ctrl.info.get_theta()):
 
             # first column: oscillator number
             label = tk.Label(self.table, bg='white', text=f'{i + 1}')
@@ -1588,10 +1891,10 @@ class EditParams(tk.Toplevel):
         """
 
         indices = self.get_selected_indices()
-        self.controller.info.merge_oscillators(indices)
+        self.ctrl.info.merge_oscillators(indices)
 
         # update the plot
-        ud_plot(self.controller)
+        ud_plot(self.ctrl)
 
         # destroy and reconstruct the data table to match the new theta
         for widget in self.table.winfo_children():
@@ -1611,7 +1914,7 @@ class EditParams(tk.Toplevel):
         i = int(self.get_selected_indices()[0])
 
         # opens a SplitFrame window
-        SplitFrame(self, self.controller, i)
+        SplitFrame(self, self.ctrl, i)
 
     def manual_edit(self):
         """Enables user to manually change the parameters of the selected
@@ -1664,7 +1967,7 @@ class EditParams(tk.Toplevel):
             # reset variables back to original values
             for j in range(4):
                 self.table_variables[i][j].set(
-                                f'{self.controller.info.theta[i][j]:.5f}')
+                                f'{self.ctrl.info.theta[i][j]:.5f}')
 
             msg = 'At least one of the parameter values specified could not' \
                   + ' be converted to a numerical value!'
@@ -1672,16 +1975,16 @@ class EditParams(tk.Toplevel):
             return
 
         # replace oscillator with user input
-        self.controller.info.theta[i] = oscillator
+        self.ctrl.info.theta[i] = oscillator
         # sort oscillators in order of frequency
-        self.controller.info.theta = \
-        self.controller.info.theta[np.argsort(
-                                    self.controller.info.theta[..., 2])]
+        self.ctrl.info.theta = \
+        self.ctrl.info.theta[np.argsort(
+                                    self.ctrl.info.theta[..., 2])]
 
         # remove temporary buton frame
         self.tmpframe.destroy()
         # update plot and parameter table
-        ud_plot(self.controller)
+        ud_plot(self.ctrl)
         self.construct_table()
         self.activate_buttons()
 
@@ -1695,7 +1998,7 @@ class EditParams(tk.Toplevel):
         # set entry widgets back to read-only mode
         for j in range(4):
             self.table_variables[i][j].set(
-                            f'{self.controller.info.theta[i][j]:.5f}')
+                            f'{self.ctrl.info.theta[i][j]:.5f}')
         # recontruct table (all rows will become deselected)
         self.construct_table()
         self.activate_buttons()
@@ -1715,10 +2018,10 @@ class SplitFrame(tk.Toplevel):
     """Window for specifying how to split a certain oscillator.
     Opened after calling :py:meth:`EditParams.split`."""
 
-    def __init__(self, parent, controller, index):
+    def __init__(self, parent, ctrl, index):
         tk.Toplevel.__init__(self, parent)
         self.parent = parent
-        self.controller = controller
+        self.ctrl = ctrl
         # row selected
         self.index = index
         self['bg'] = 'white'
@@ -1764,7 +2067,7 @@ class SplitFrame(tk.Toplevel):
         hz_label.grid(row=2, column=2, sticky='w', padx=(0,10), pady=(10,0))
 
         # repeat frequency separation widgets for ppm units
-        ppm = float(self.freq_hz.get()) / self.controller.info.get_sfo()[0]
+        ppm = float(self.freq_hz.get()) / self.ctrl.info.get_sfo()[0]
         self.freq_ppm = tk.StringVar()
         self.freq_ppm.set(f'{ppm:.5f}')
 
@@ -1815,7 +2118,7 @@ class SplitFrame(tk.Toplevel):
     def key_press_hz(self, entry):
         """Update the value of the ppm variable upon change to Hz."""
         try:
-            ppm = float(self.freq_hz.get()) / self.controller.info.get_sfo()[0]
+            ppm = float(self.freq_hz.get()) / self.ctrl.info.get_sfo()[0]
             self.freq_ppm.set(f'{ppm:.5f}')
         # if Hz input could not be understood as a numerical value, clear
         # ppm string variable
@@ -1825,7 +2128,7 @@ class SplitFrame(tk.Toplevel):
     def key_press_ppm(self, entry):
         """Update the value of the Hz variable upon change to ppm."""
         try:
-            hz = float(self.freq_ppm.get()) * self.controller.info.get_sfo()[0]
+            hz = float(self.freq_ppm.get()) * self.ctrl.info.get_sfo()[0]
             self.freq_hz.set(f'{hz:.5f}')
         # if ppm input could not be understood as a numerical value, clear
         # Hz string variable
@@ -1880,20 +2183,20 @@ class SplitFrame(tk.Toplevel):
             WarnFrame(self, msg)
             return
 
-        self.controller.info.split_oscillator(self.index,
+        self.ctrl.info.split_oscillator(self.index,
                                               frequency_sep=frequency_sep,
                                               split_number=number,
                                               amp_ratio=ratio)
         # update the plot
-        ud_plot(self.controller)
+        ud_plot(self.ctrl)
         # reconstruct the parameter table with the updated oscillators
         self.parent.construct_table()
         self.destroy()
 
 
 class ConfigLines(tk.Toplevel):
-    def __init__(self, master, lines, figcanvas):
-        tk.Toplevel.__init__(self, master)
+    def __init__(self, parent, lines, figcanvas):
+        tk.Toplevel.__init__(self, parent)
         self.resizable(True, False)
         self.lines = lines
         self.figcanvas = figcanvas
@@ -1970,8 +2273,8 @@ class ConfigLines(tk.Toplevel):
 
 
 class LineEdit(tk.Frame):
-    def __init__(self, master, lines, number, figcanvas):
-        tk.Frame.__init__(self, master)
+    def __init__(self, parent, lines, number, figcanvas):
+        tk.Frame.__init__(self, parent)
 
         self['bg'] = 'white'
         self.grid(row=0, column=0, sticky='ew')
@@ -2082,12 +2385,12 @@ class LineEdit(tk.Frame):
         self.figcanvas.draw_idle()
 
     def close(self):
-        self.master.destroy()
+        self.parent.destroy()
 
 
 class LineMultiEdit(tk.Frame):
-    def __init__(self, master, lines, figcanvas):
-        tk.Frame.__init__(self, master)
+    def __init__(self, parent, lines, figcanvas):
+        tk.Frame.__init__(self, parent)
         self['bg'] = 'white'
 
         self.grid(row=0, column=0, sticky='nsew')
@@ -2269,12 +2572,12 @@ class LineMultiEdit(tk.Frame):
         self.figcanvas.draw_idle()
 
     def close(self):
-        self.master.destroy()
+        self.parent.destroy()
 
 
 class ColorPicker(tk.Frame):
-    def __init__(self, master, init_color):
-        tk.Frame.__init__(self, master)
+    def __init__(self, parent, init_color):
+        tk.Frame.__init__(self, parent)
 
         self['bg'] = 'white'
 
@@ -2484,8 +2787,8 @@ class ColorPicker(tk.Frame):
 
 
 class ConfigLabels(tk.Toplevel):
-    def __init__(self, master, labels, ax, figcanvas):
-        tk.Toplevel.__init__(self, master)
+    def __init__(self, parent, labels, ax, figcanvas):
+        tk.Toplevel.__init__(self, parent)
 
         self.labels = labels
         self.ax = ax
@@ -2558,8 +2861,8 @@ class ConfigLabels(tk.Toplevel):
 
 
 class LabelEdit(tk.Frame):
-    def __init__(self, master, labels, number, ax, figcanvas):
-        tk.Frame.__init__(self, master)
+    def __init__(self, parent, labels, number, ax, figcanvas):
+        tk.Frame.__init__(self, parent)
 
         self.grid(row=0, column=0, sticky='nsew')
 
@@ -2780,7 +3083,7 @@ class LabelEdit(tk.Frame):
             return False
 
     def close(self):
-        self.master.destroy()
+        self.parent.destroy()
 
 # Tweaked using most upvoted answer as template:
 # https://stackoverflow.com/questions/20399243/display-message-when-hovering-over-something-with-mouse-cursor-in-python
@@ -2828,25 +3131,21 @@ if __name__ == '__main__':
     # path to nmrespy directory
     espypath = os.path.dirname(nmrespy.__file__)
 
-    # # extract path information
-    # infopath = os.path.join(espypath, 'topspin/tmp/info.txt')
-    # try:
-    #     with open(infopath, 'r') as fh:
-    #         from_topspin = fh.read().split(' ')
-    # except:
-    #     raise IOError(f'No file of path {infopath} found')
-    #
-    # # import dictionary of spectral info
-    # fidpath = from_topspin[0]
-    # pdatapath = from_topspin[1]
-    #
-    # # determine the data type to consider (FID or pdata)
-    # root = tk.Tk()
-    # root.title('NMR-EsPy - Calculation Setup')
-    # root.rowconfigure(0, weight=1)
-    # root.columnconfigure(0, weight=1)
-    # window = Setup(root, fidpath, pdatapath)
-    # root.mainloop()
+    # extract path information
+    infopath = os.path.join(espypath, 'topspin/tmp/info.txt')
+    try:
+        with open(infopath, 'r') as fh:
+            from_topspin = fh.read().split(' ')
+    except:
+        raise IOError(f'No file of path {infopath} found')
+
+    # import dictionary of spectral info
+    fidpath = from_topspin[0]
+    pdatapath = from_topspin[1]
+
+    # determine the data type to consider (FID or pdata)
+    setup_app = SetupApp(fidpath, pdatapath)
+    setup_app.mainloop()
 
     try:
         tmpdir = os.path.join(espypath, 'topspin/tmp')
@@ -2856,8 +3155,8 @@ if __name__ == '__main__':
         exit()
 
     # load the result GUI
-    res_app = ResultApp(info)
-    res_app.mainloop()
+    result_app = ResultApp(info)
+    result_app.mainloop()
 
     # construct save files
     descrip = res_app.descrip
