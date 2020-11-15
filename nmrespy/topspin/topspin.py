@@ -1094,8 +1094,10 @@ class ScaleFrame(tk.Frame):
         # dictionary of notebook frames
         self.nbframes = {}
 
-        for F, title in zip((RegionFrame, PhaseFrame),
-                                ('Region Selection', 'Phase Correction')):
+        for F, title in zip((RegionFrame, PhaseFrame, AdvancedSettingsFrame),
+                            ('Region Selection', 'Phase Correction',
+                             'Advanced Settings')):
+
             frame = F(parent=self.notebook, ctrl=self.ctrl)
             self.notebook.add(frame, text=title, sticky='ew')
             self.nbframes[F.__name__] = frame
@@ -1109,8 +1111,8 @@ class ScaleFrame(tk.Frame):
         # detemine the active tab (0 = region selection, 1 = phase correction)
         tab = self.notebook.index(self.notebook.select())
         # set alpha values for region rectangles and pivot plot
-        if tab == 0:
-            # region selection tab
+        if tab in [0, 2]:
+            # region selection tab and advanced settings tab
             filt = 1
             noise = 1
             pivot = 0
@@ -1330,7 +1332,7 @@ class PhaseFrame(tk.Frame):
                 from_ = -np.pi
                 to = np.pi
                 resolution = 0.0001
-            # p1: set between -10π and 10π
+            # p1: set between -10π and 10π rad
             if row == 2:
                 from_ *= 10
                 to *= 10
@@ -1390,7 +1392,7 @@ class PhaseFrame(tk.Frame):
         if s == 'pivot':
             self.ud_pivot(int(value))
         else:
-            print(float(value))
+            # p0 and p1 scales
             self.ud_p0_p1(float(value), s)
 
 
@@ -1399,6 +1401,7 @@ class PhaseFrame(tk.Frame):
 
         if s == 'pivot':
             try:
+                # check input can be converted as a float
                 self.ud_pivot(
                     _misc.conv_ppm_idx(
                         float(self.pivot_var.get()),
@@ -1410,16 +1413,29 @@ class PhaseFrame(tk.Frame):
                 )
 
             except:
+                # invalid input: reset value
                 self.pivot_var.set(self.ctrl.pivot_ppm)
 
         else:
+            var = self.__dict__[f'{s}_var'].get()
             try:
-                self.ud_p0_p1(float(self.__dict__[f'{s}_var'].get()), s)
+                # check input can be converted to a float
+                self.ud_p0_p1(float(var), s)
             except:
-                self.__dict__[f'{s}_var'].set(f'{self.ctrl.__dict__[s]:.3f}')
+                # determine if user has given a value as a multiple of pi
+                if var[-2:] == 'pi':
+                    try:
+                        self.ud_p0_p1(float(var[:-2]) * np.pi, s)
+                    except:
+                        # invalid input: reset value
+                        self.__dict__[f'{s}_var'].set(
+                            f'{self.ctrl.__dict__[s]:.3f}'
+                        )
 
 
     def ud_pivot(self, index):
+        """Deals with a change to either the pivot scale or entry widget"""
+
         # check index is in the suitable range (check for entry widget)
         if self.pivot_scale['from'] <= index <= self.pivot_scale['to']:
             self.ctrl.pivot = index
@@ -1444,13 +1460,15 @@ class PhaseFrame(tk.Frame):
 
 
     def ud_p0_p1(self, phase, s):
+        """Deals with a change to either the p0/p1 scale or entry widget"""
+
+        # check angle is in the suitable range (check for entry widget)
+        # floor and ceil the lower and upper bounds to give a bit of leighway
+        # (get bugs at extremes of scale if this rounding isn't included)
 
         low = self.decifloor(self.__dict__[f'{s}_scale']['from'], 3)
         high = self.deciceil(self.__dict__[f'{s}_scale']['to'], 3)
 
-        # check angle is in the suitable range (check for entry widget)
-        # floor and ceil the lower and upper bounds to give a bit of leighway
-        # for floating point values at the boundary
         if  low <= phase <= high:
             pass
         else:
@@ -1465,31 +1483,228 @@ class PhaseFrame(tk.Frame):
 
 
     def ud_phase(self):
+        """Phase the spectral data and update the figure plot's y data"""
 
         pivot = self.ctrl.pivot
         p0 = self.ctrl.p0
         p1 = self.ctrl.p1
         n = self.ctrl.n
 
+        # apply phase correcion to original spectral data
         spec = self.ctrl.spec * np.exp(
             1j * (p0 + (p1 * np.arange(-pivot, -pivot + n, 1) / n))
         )
 
+        # update y-data of spectrum plot
         self.ctrl.specplot.set_ydata(np.real(spec))
 
 
     def deciceil(self, value, precision):
+        """round a number up to a certain number of deicmal places"""
         return np.round(value + 0.5 * 10**(-precision), precision)
 
 
     def decifloor(self, value, precision):
+        """round a number down to a certain number of deicmal places"""
         return np.round(value - 0.5 * 10**(-precision), precision)
+
+
+class AdvancedSettingsFrame(tk.Frame):
+    """Frame inside SetupApp notebook - for customising details about the
+    optimisation routine"""
+
+    def __init__(self, parent, ctrl):
+        tk.Frame.__init__(self, parent)
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+
+        # create multiple frames (one for each row)
+        # don't need to conform to single grid for whole frame:
+        # more organic layout
+        self.rows = {}
+
+        for i in range(5):
+            frame = tk.Frame(self, bg='white')
+            if i == 4:
+                frame.grid(row=i, column=0, sticky='w', padx=10, pady=10)
+            else:
+                frame.grid(row=i, column=0, sticky='w', padx=10, pady=(10,0))
+            self.rows[f'{i+1}'] = frame
+
+        # ROW 1
+        # number of datapoints for MPM and NLP
+        datapoint_label = tk.Label(
+            self.rows['1'], text='Datapoints to consider:', bg='white'
+        )
+        datapoint_label.grid(row=0, column=0)
+
+        self.mpm_points_var = tk.StringVar()
+        self.nlp_points_var = tk.StringVar()
+
+        # determine default number of points for MPM and NLP
+        for var, n in zip((self.mpm_points_var, self.nlp_points_var),
+                          (4096, 8192)):
+            if self.ctrl.n >= n:
+                var.set(str(n))
+            else:
+                var.set(str(self.ctrl.n))
+
+        mpm_points_label = tk.Label(self.rows['1'], text='MPM:', bg='white')
+        mpm_points_label.grid(row=0, column=1, padx=(10, 0))
+
+        self.mpm_points_entry = tk.Entry(
+            self.rows['1'], width=8, highlightthickness=0,
+            textvariable=self.mpm_points_var
+        )
+        self.mpm_points_entry.grid(row=0, column=2, padx=(4,0))
+
+        nlp_points_label = tk.Label(self.rows['1'], text='NLP:', bg='white')
+        nlp_points_label.grid(row=0, column=3, padx=(10, 0))
+
+        self.nlp_points_entry = tk.Entry(
+            self.rows['1'], width=8, highlightthickness=0,
+            textvariable=self.nlp_points_var
+        )
+        self.nlp_points_entry.grid(row=0, column=4, padx=(4,0))
+
+        # ROW 2
+        # number of oscillators to consider for the mpm
+        # user can give their own value, or elect to use MDL
+        oscillator_label = tk.Label(
+            self.rows['2'], text='Number of oscillators for MPM:', bg='white'
+        )
+        oscillator_label.grid(row=0, column=0)
+
+        self.oscillator_var = tk.StringVar()
+        self.oscillator_var.set('')
+
+        self.oscillator_entry = tk.Entry(
+            self.rows['2'], width=8, highlightthickness=0, bg='white',
+            textvariable=self.oscillator_var, state='disabled'
+        )
+        self.oscillator_entry.grid(row=0, column=1, padx=(4,0))
+
+        use_mdl_label = tk.Label(self.rows['2'], text='Use MDL:', bg='white')
+        use_mdl_label.grid(row=0, column=2, padx=(10,0))
+
+        self.use_mdl = tk.StringVar()
+        self.use_mdl.set('1')
+
+        self.mdl_checkbutton = tk.Checkbutton(
+            self.rows['2'], variable=self.use_mdl, bg='white',
+            highlightthickness=0, bd=0, command=self.ud_mdl_button
+        )
+        self.mdl_checkbutton.grid(row=0, column=3)
+
+        # ROW 3
+        # nonlinear programming algorithm and max, number of iterations
+        self.nlp_algorithm = tk.StringVar()
+        self.nlp_algorithm.set('Trust Region')
+
+        nlp_method_label = tk.Label(
+            self.rows['3'], text='NLP algorithm:', bg='white'
+        )
+        nlp_method_label.grid(row=0, column=0)
+
+        options = ['Trust Region', 'L-BFGS']
+        self.algorithm_menu = tk.OptionMenu(
+            self.rows['3'], self.nlp_algorithm, *options
+        )
+        self.algorithm_menu['bg'] = 'white'
+        self.algorithm_menu['borderwidth'] = 0
+        self.algorithm_menu['width'] = 10
+        self.algorithm_menu['menu']['bg'] = 'white'
+
+        self.nlp_algorithm.trace('w', self.ud_max_iterations)
+
+        self.algorithm_menu.grid(row=0, column=1, padx=(10,0))
+
+
+        self.max_iterations = tk.StringVar()
+        self.max_iterations.set('100')
+
+        max_iterations_label = tk.Label(
+            self.rows['3'], text='Maximum iterations:', bg='white'
+        )
+        max_iterations_label.grid(row=0, column=2, padx=(15,0))
+
+        self.max_iterations_entry = tk.Entry(
+            self.rows['3'], width=8, highlightthickness=0, bg='white',
+            textvariable=self.max_iterations
+        )
+        self.max_iterations_entry.grid(row=0, column=3, padx=(10,0))
+
+        # ROW 4
+        # phase variance
+        phase_variance_label = tk.Label(
+            self.rows['4'], text='Optimise phase variance:', bg='white')
+        phase_variance_label.grid(row=0, column=0)
+
+        self.phase_variance = tk.StringVar()
+        self.phase_variance.set('1')
+
+        self.phase_var_checkbutton = tk.Checkbutton(
+            self.rows['4'], variable=self.phase_variance, bg='white',
+            highlightthickness=0, bd=0
+        )
+        self.phase_var_checkbutton.grid(row=0, column=1)
+
+        # ROW 5
+        # amplitude/frequency thresholds
+        amplitude_thold_label = tk.Label(
+            self.rows['5'], text='Amplitude threshold:', bg='white')
+        amplitude_thold_label.grid(row=0, column=0)
+
+        self.amplitude_thold = tk.StringVar()
+        self.amplitude_thold.set('0.001')
+
+        self.amplitude_thold_entry = tk.Entry(
+            self.rows['5'], width=8, highlightthickness=0, bg='white',
+            textvariable=self.amplitude_thold
+        )
+        self.amplitude_thold_entry.grid(row=0, column=1, padx=(10,0))
+
+        frequency_thold_label = tk.Label(
+            self.rows['5'], text='Frequency threshold:', bg='white')
+        frequency_thold_label.grid(row=0, column=2, padx=(20,0))
+
+        self.frequency_thold = tk.StringVar()
+        self.frequency_thold.set(f'{1 / self.ctrl.sw_p:.4f}')
+
+        self.frequency_thold_entry = tk.Entry(
+            self.rows['5'], width=8, highlightthickness=0, bg='white',
+            textvariable=self.frequency_thold
+        )
+        self.frequency_thold_entry.grid(row=0, column=3, padx=(10,0))
+
+
+    def ud_mdl_button(self):
+        """For when the user clicks on the checkbutton relating to use the
+        MDL"""
+
+        value = int(self.use_mdl.get()) # 0 or 1
+        if value:
+            self.oscillator_entry['state'] = 'disabled'
+            self.oscillator_var.set('')
+        else:
+            self.oscillator_entry['state'] = 'normal'
+
+    def ud_max_iterations(self, *args):
+        """Called when user changes the NLP algorithm. Sets the default
+        number of maximum iterations for the given method"""
+
+        method = self.nlp_algorithm.get()
+        if method == 'Trust Region':
+            self.max_iterations.set('100')
+        elif method == 'L-BFGS':
+            self.max_iterations.set('500')
+
 
 
 class LogoFrame(tk.Frame):
     """Contains the NMR-EsPy logo (who doesn't like a bit of publicity)"""
 
-    def __init__(self, parent, ctrl, scale=0.06):
+    def __init__(self, parent, ctrl, scale=0.08):
         tk.Frame.__init__(self, parent)
         self.ctrl = ctrl
         self['bg'] = 'white'
