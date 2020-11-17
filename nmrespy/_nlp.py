@@ -141,7 +141,7 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
     # callables for cost function, grad and hessian
     if dim == 1:
         cf = {'f' : _f_1d, 'g' : _g_1d, 'h' : _h_1d}
-    elif dim == 2:
+    else: # dim = 2
         cf = {'f' : _f_2d, 'g' : _g_2d, 'h' : _h_2d}
 
     if method == 'trust_region':
@@ -182,13 +182,12 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
     theta[..., 0] = theta[..., 0] * nm # rescale amps
     theta = _wrap(theta)
 
-    # removal of negligibale amplitude oscillators
-    theta = _rm_negligible_amps(theta, amp_thold, fprint)
+    # TODO: deal with negligible amplitudes and excessively close frequencies
+
+    term = True
+
     # move offset back to original position
     theta = _correct_freqs(theta, off)
-
-    # termination flag
-    term = True
 
     if negative_amps == 'remove':
         # removal of -ve amp oscillators
@@ -1032,7 +1031,7 @@ def _rm_negligible_amps(x, amp_thold, fprint):
         (M_new, 6)``, with ``M_new <= M``
     """
     if amp_thold is None:
-        return x
+        return x, True
 
     thold = amp_thold * norm(x[:, 0])
     rm_ind = np.nonzero(x[:, 0] < thold) # indices of neg. amp. oscillators
@@ -1043,8 +1042,8 @@ def _rm_negligible_amps(x, amp_thold, fprint):
         if fprint:
             print(f'{O}Oscillations with negligible amplitude'
                   f' removed.{END}\nUpdated number of oscillators:'
-                  f' {x.shape[0]}')
-    return x_new
+                  f' {x_new.shape[0]}')
+    return x_new, False
 
 
 def _rm_negative_amps(x, fprint):

@@ -1847,6 +1847,83 @@ class NMREsPyBruker:
         return _plot.plotres_1d(data, peaks, shifts, region, nuc, datacol,
                                 osccols, labels, stylesheet)
 
+    def add_oscillators(self, oscillators, result_name=None):
+        """Adds new oscillators to a parameter array.
+
+        Parameters
+        ----------
+        oscillators : numpy.ndarray
+            An array of the new oscillator(s) to add to the array. The array
+            should be of shape (I, 4) or (I, 6), where I is greater than 0.
+
+        result_name : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If ``None``, the parameter estimate
+            to use will be determined in the following order of priority:
+
+            1. ``self.theta`` will be used if it is not ``None``.
+            2. ``self.theta0`` will be used if it is not ``None``.
+            3. Otherwise, an error will be raised.
+        """
+
+        if isinstance(oscillators, np.ndarray):
+            # if oscillators is 1D, convert to 2D array
+            if oscillators.ndim == 1:
+                oscillators = oscillators.reshape(-1, oscillators.shape[0])
+
+            # number of parameters per oscillator (should be 4 for 1D, 6 for 2D)
+            num = oscillators.shape[1]
+            # expected number of parameters per oscillator
+            exp = 2 * self.get_dim() + 2
+
+            if num == exp:
+                pass
+            else:
+                msg = f'\n{R}oscillators should have a size of {exp} along' \
+                      + f' axis-1{END}'
+                raise ValueError(msg)
+
+        else:
+            raise TypeError(f'\n{R}oscillators should be a numpy array{END}')
+
+        result, result_name = self._check_result(result_name)
+
+        result = np.append(result, oscillators, axis=0)
+        self.__dict__[result_name] = result[np.argsort(result[..., 2])]
+
+
+    def remove_oscillators(self, indices, result_name=None):
+        """Removes the oscillators corresponding to ``indices``.
+
+        Parameters
+        ----------
+        indices : list, tuple or numpy.ndarray
+            A list of indices corresponding to the oscillators to be removed.
+
+        result_name : None, 'theta', or 'theta0', default: None
+            The parameter array to use. If ``None``, the parameter estimate
+            to use will be determined in the following order of priority:
+
+            1. ``self.theta`` will be used if it is not ``None``.
+            2. ``self.theta0`` will be used if it is not ``None``.
+            3. Otherwise, an error will be raised.
+        """
+
+        if isinstance(indices, (tuple, list, np.ndarray)):
+            pass
+        else:
+            raise TypeError(f'\n{R}indices does not have a suitable type{END}')
+
+        result, result_name = self._check_result(result_name)
+
+        try:
+            result = np.delete(result, indices, axis=0)
+        except:
+            msg = f'{R}oscillator removal failed. Check the values in' \
+                  + f' indices are valid.{END}'
+            raise ValueError(msg)
+
+        self.__dict__[result_name] = result[np.argsort(result[..., 2])]
+
 
     def merge_oscillators(self, indices, result_name=None):
         """Removes the oscillators corresponding to ``indices``, and
@@ -1876,7 +1953,6 @@ class NMREsPyBruker:
         denoted by indices :math:`\{m_1, m_2, \cdots, m_J\}`, where
         :math:`J \leq M`, the new oscillator formed by the merging of the
         oscillator subset will possess the follwing parameters:
-
 
             * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`
             * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\phi_{m_i}`
