@@ -34,10 +34,7 @@ data_path = '%s/%s/%s' %(info[3], info[0], info[1])
 
 proc_path = '%s/%s/%s/pdata/%s' %(info[3], info[0], info[1], info[2])
 
-f = open('%s/topspin/tmp/info.txt' %nmrespy_path, 'w')
+with open('%s/topspin/info.txt' %nmrespy_path, 'w') as fh:
+	fh.write('%s %s' %(data_path, proc_path))
 
-f.write('%s %s' %(data_path, proc_path))
-
-f.close()
-
-script = Popen(['%s/topspin/topspin.py' %nmrespy_path.rstrip()], shell=True)
+script = Popen(['%s/topspin/setup_calc.py' %nmrespy_path.rstrip()], shell=True)

@@ -1637,14 +1637,14 @@ class NMREsPyBruker:
         # peak integrals
         integrals = []
         # dx in each dimension (gap between successive points in Hz)
-        delta = [(sw, n) for sw, n in zip(self.get_sw(), self.get_n())]
+        delta = [sw / n for sw, n in zip(self.get_sw(), self.get_n())]
 
         # integrate each oscillator numerically
         # constructs absolute real spectrum for each oscillator and
         # uses Simpson's rule
         # TODO: Perhaps this could be done analytically?
-        for m, osc in enumerate(res):
-            f = self.make_fid(resname, oscs=[m])
+        for m, osc in enumerate(result):
+            f = self.make_fid(result_name, oscillators=[m])
             # absolute real spectrum
             s = np.absolute(np.real(fftshift(fft(f))))
             # inegrate successively over each dimension
@@ -1677,7 +1677,7 @@ class NMREsPyBruker:
         info.append(region_p)
 
         _write.write_file(info, description, fname, dir, sf, sci_lims, format,
-                         force_overwrite)
+                          force_overwrite)
 
 
 

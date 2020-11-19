@@ -31,10 +31,9 @@ import nmrespy.load as load
 import nmrespy._misc as _misc
 from nmrespy._plot import _generate_xlabel
 
-# path to nmrespy
-path = os.path.dirname(nmrespy.__file__)
-# path to image directory
-imgpath = os.path.join(path, 'topspin/images')
+NMRESPYDIR = os.path.dirname(nmrespy.__file__)
+TOPSPINDIR = os.path.join(NMRESPYDIR, 'topspin')
+IMAGESDIR = os.path.join(TOPSPINDIR, 'images')
 
 def get_PhotoImage(path, scale=1.0):
     """Generate a TKinter-compatible photo image, given a path, and a scaling
@@ -62,16 +61,18 @@ def get_PhotoImage(path, scale=1.0):
     image = image.resize((new_w, new_h), Image.ANTIALIAS)
     return ImageTk.PhotoImage(image)
 
+
 class WarnFrame(tk.Toplevel):
     """A window in case the user does something silly."""
 
     def __init__(self, parent, msg):
         tk.Toplevel.__init__(self, parent)
+        self.title('NMR-EsPy - Error')
         self['bg'] = 'white'
         self.resizable(False, False)
 
         # warning image
-        self.img = get_PhotoImage(os.path.join(imgpath, 'warning.png'), 0.08)
+        self.img = get_PhotoImage(os.path.join(IMAGESDIR, 'warning.png'), 0.08)
         self.warn_sign = tk.Label(self, image=self.img, bg='white')
         self.warn_sign.grid(row=0, column=0, padx=(10,0), pady=10)
 
@@ -160,7 +161,7 @@ class DataType(tk.Toplevel):
 
         # nmrespy logo
         self.img = get_PhotoImage(
-            os.path.join(imgpath, 'nmrespy_full.png'), 0.08
+            os.path.join(IMAGESDIR, 'nmrespy_full.png'), 0.08
         )
         self.logo = tk.Label(self.logoframe, image=self.img, bg='white')
         self.logo.grid(row=0, column=0, padx=10, pady=10)
@@ -231,9 +232,6 @@ class DataType(tk.Toplevel):
 
         self.ctrl.wait_window(self)
 
-    # --- COMMANDS ------------------------------------------------------------
-    # click_fid and click_pdata ensure only one checkbutton is selected at
-    # any time
     def click_fid(self):
         fidval = self.fid.get()
         if fidval == 1:
@@ -276,16 +274,16 @@ class SetupApp(tk.Tk):
         self.title('NMR-EsPy - Setup Calculation')
         self.protocol('WM_DELETE_WINDOW', self.destroy)
 
+        # open window to ask user for data type (fid or pdata)
+        # acquires dtype attribute
+        self.withdraw()
+        DataType(self, fidpath, pdatapath)
+
         # main container: everything goes into here
         container = tk.Frame(self, bg='white')
         container.pack(side='top', fill='both', expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
-
-        # open window to ask user for data type (fid or pdata)
-        # acquires dtype attribute
-        self.withdraw()
-        DataType(self, fidpath, pdatapath)
 
         # FID data - transform to frequency domain
         if self.dtype == 'fid':
@@ -293,7 +291,7 @@ class SetupApp(tk.Tk):
             self.spec = np.flip(fftshift(fft(self.info.get_data())))
 
         # pdata - combine real and imaginary components
-        elif self.dtype == 'pdata':
+        else:
             self.info = load.import_bruker_pdata(pdatapath)
             self.spec = self.info.get_data(pdata_key='1r') \
                         + 1j * self.info.get_data(pdata_key='1i')
@@ -329,8 +327,9 @@ class SetupApp(tk.Tk):
         # plot spectrum
         self.fig = Figure(figsize=(6,3.5), dpi=170)
         self.ax = self.fig.add_subplot(111)
-        self.specplot = self.ax.plot(self.shifts, np.real(self.spec),
-                                     color='k', lw=0.6)[0]
+        self.specplot = self.ax.plot(
+            self.shifts, np.real(self.spec), color='k', lw=0.6
+        )[0]
 
         # set x-limits as edges of spectral window
         self.xlim = (self.shifts[0], self.shifts[-1])
@@ -341,17 +340,20 @@ class SetupApp(tk.Tk):
 
         # highlight the spectral region to be filtered (green)
         # Rectangle's first 3 args: bottom left coords, width, height
-        self.filtregion = Rectangle((self.rb_ppm, -20*self.ylim_init[1]),
-                                     self.lb_ppm - self.rb_ppm,
-                                     40*self.ylim_init[1],
-                                     facecolor='#7fd47f')
+        self.filtregion = Rectangle(
+            (self.rb_ppm, -20*self.ylim_init[1]),
+            self.lb_ppm - self.rb_ppm, 40*self.ylim_init[1],
+            facecolor='#7fd47f'
+        )
         self.ax.add_patch(self.filtregion)
 
         # highlight the noise region (blue)
-        self.noiseregion = Rectangle((self.rnb_ppm, -20*self.ylim_init[1]),
-                                      self.lnb_ppm - self.rnb_ppm,
-                                      40*self.ylim_init[1],
-                                      facecolor='#66b3ff')
+        self.noiseregion = Rectangle(
+            (self.rnb_ppm, -20*self.ylim_init[1]),
+            self.lnb_ppm - self.rnb_ppm,
+            40*self.ylim_init[1],
+            facecolor='#66b3ff'
+        )
         self.ax.add_patch(self.noiseregion)
 
         # plot pivot line (alpha=0 to make invisible initially)
@@ -369,9 +371,8 @@ class SetupApp(tk.Tk):
         self.ax.spines['right'].set_color('k')
 
         # prevent user panning/zooming beyond spectral window
-        self.restrict_left = Restrictor(self.ax, x=lambda x: x<= self.xlim[0])
-        self.restrict_right = Restrictor(self.ax, x=lambda x: x>= self.xlim[1])
-
+        Restrictor(self.ax, x=lambda x: x<= self.xlim[0])
+        Restrictor(self.ax, x=lambda x: x>= self.xlim[1])
 
         self.frames = {}
 
@@ -380,11 +381,14 @@ class SetupApp(tk.Tk):
         self.frames['PlotFrame'].grid(
             row=0, column=0, columnspan=2, sticky='nsew'
         )
+
         self.frames['NotebookFrame'] = NotebookFrame(
             parent=container, ctrl=self
         )
         self.frames['NotebookFrame'].grid(
-            row=1, column=0, columnspan=2, sticky='ew')
+            row=1, column=0, columnspan=2, sticky='ew'
+        )
+
         self.frames['SetupButtonFrame'] = SetupButtonFrame(
             parent=container, ctrl=self
         )
@@ -393,55 +397,9 @@ class SetupApp(tk.Tk):
         self.frames['LogoFrame'] = LogoFrame(
             parent=container, ctrl=self, scale=0.06
         )
-        self.frames['LogoFrame'].grid(row=2, column=0, padx=10, pady=10, sticky='w')
-
-
-def ud_plot(ctrl):
-    """Reconstructs the result plot after a change to the oscillators is
-    made
-
-    Parameters
-    ----------
-
-    ctrl : nmrespy.topspin.ResultApp
-        controller
-    """
-
-    # get new lines and labels
-    # also obtaining ax to acquire new y-limits
-    _, ax, lines, labels = ctrl.info.plot_result()
-
-    # wipe lines and text instances from the axis
-    ctrl.ax.lines = []
-    ctrl.ax.texts = []
-    # wipe lines and text labels from the ctrl
-    ctrl.lines = {}
-    ctrl.labels = {}
-
-    # plot data line onto axis
-    ctrl.lines['data'] = ctrl.ax.plot(lines['data'].get_xdata(),
-                                    lines['data'].get_ydata(),
-                                    color=lines['data'].get_color(),
-                                    lw=lines['data'].get_lw())
-
-    # plot oscillator lines and add oscillator text labels
-    # append these to the lines and labels attributes of the ctrl
-    lines_and_labels = zip(list(lines.values())[1:], list(labels.values()))
-    for i, (line, label) in enumerate(lines_and_labels):
-
-        key = f'osc{i+1}'
-        # plot oscillator
-        ctrl.lines[key] = ctrl.ax.plot(line.get_xdata(), line.get_ydata(),
-                                     color=line.get_color(), lw=line.get_lw())
-        # add oscillator label
-        x, y = label.get_position()
-        ctrl.labels[key] = ctrl.ax.text(x, y, label.get_text())
-
-    # update y-limits to fit new lines
-    ctrl.ax.set_xlim(ax.get_xlim())
-    ctrl.ax.set_ylim(ax.get_ylim())
-    # draw the new plot!
-    ctrl.frames['PlotFrame'].canvas.draw_idle()
+        self.frames['LogoFrame'].grid(
+            row=2, column=0, padx=10, pady=10, sticky='w'
+        )
 
 
 class ResultApp(tk.Tk):
@@ -451,22 +409,14 @@ class ResultApp(tk.Tk):
 
     def __init__(self, info):
         tk.Tk.__init__(self)
+        self.title('NMR-EsPy - Result')
+        self.protocol('WM_DELETE_WINDOW', self.destroy)
+
         # main container: everything goes inside here
         container = tk.Frame(self, bg='white')
         container.pack(side='top', fill='both', expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
-        # left frame will contain the PlotFrame and navigation toolbar
-        leftframe = tk.Frame(container, bg='white')
-        leftframe.grid(column=0, row=0, sticky='nsew')
-        # leftframe expands/contracts if user adjusts window size
-        leftframe.rowconfigure(0, weight=1)
-        leftframe.columnconfigure(0, weight=1)
-
-        # right frame contains all widgets for editing/saving
-        rightframe = tk.Frame(container, bg='white')
-        rightframe.grid(column=1, row=0, sticky='nsew')
-        rightframe.rowconfigure(2, weight=1)
 
         # instance of nmrespy.core.NMREsPyBruker
         self.info = info
@@ -479,7 +429,6 @@ class ResultApp(tk.Tk):
 
         # restrict x-axis to spectral window of interest
         xlim = self.ax.get_xlim()
-        ylim = self.ax.get_ylim()
         Restrictor(self.ax, x=lambda x: x<= xlim[0]) # restrict left
         Restrictor(self.ax, x=lambda x: x>= xlim[1]) # restrict right
 
@@ -487,17 +436,23 @@ class ResultApp(tk.Tk):
         # attributes whilst in different classes)
         self.frames = {}
 
-        left = True
         # append all frames to the window
-        for F in (PlotFrame, LogoFrame, EditFrame):
-            frame_name = F.__name__
-            if left:
-                frame = F(parent=leftframe, ctrl=self)
-                left = False
-            else:
-                frame = F(parent=rightframe, ctrl=self)
+        self.frames['PlotFrame'] = PlotFrame(parent=container, ctrl=self)
+        self.frames['PlotFrame'].grid(
+            row=0, column=0, columnspan=2, sticky='nsew'
+        )
 
-            self.frames[frame_name] = frame
+        self.frames['LogoFrame'] = LogoFrame(
+            parent=container, ctrl=self, scale=0.06
+        )
+        self.frames['LogoFrame'].grid(
+            row=1, column=0, padx=10, pady=10, sticky='w'
+        )
+
+        self.frames['ResultButtonFrame'] = ResultButtonFrame(
+            parent=container, ctrl=self
+        )
+        self.frames['ResultButtonFrame'].grid(row=1, column=1, sticky='s')
 
 
 class PlotFrame(tk.Frame):
@@ -530,6 +485,7 @@ class NotebookFrame(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.ctrl = ctrl
         self['bg'] = 'white'
+        # make column container scales adjustable
         self.columnconfigure(0, weight=1)
 
         # customise notebook style
@@ -1162,10 +1118,7 @@ class AdvancedSettingsFrame(tk.Frame):
         elif method == 'L-BFGS':
             self.max_iterations.set('500')
 
-
-class SetupButtonFrame(tk.Frame):
-    """Button frame for SetupApp. Buttons for quitting, loading help,
-    and running NMR-EsPy"""
+class RootButtonFrame(tk.Frame):
 
     def __init__(self, parent, ctrl):
         tk.Frame.__init__(self, parent)
@@ -1182,7 +1135,7 @@ class SetupButtonFrame(tk.Frame):
             highlightbackground='black', command=self.ctrl.destroy
         )
         self.cancel_button.grid(
-            row=0, column=0, padx=(10,0), pady=(10,0), sticky='e'
+            row=1, column=0, padx=(10,0), pady=(10,0), sticky='e'
         )
 
         self.help_button = tk.Button(
@@ -1191,37 +1144,48 @@ class SetupButtonFrame(tk.Frame):
             command=lambda: webbrowser.open_new(docpath)
         )
         self.help_button.grid(
-            row=0, column=1, padx=(10,0), pady=(10,0), sticky='e'
+            row=1, column=1, padx=(10,0), pady=(10,0), sticky='e'
         )
 
+        # command varies - will need to be defined from the class that
+        # inherits from this
         self.save_button = tk.Button(
-            self, text='Run', width=8, bg='#9eda88', command=self.run,
+            self, text='Run', width=8, bg='#9eda88',
             highlightbackground='black'
         )
         self.save_button.grid(
-            row=0, column=2, padx=10, pady=(10,0), sticky='e'
+            row=1, column=2, padx=10, pady=(10,0), sticky='e'
         )
-
-
 
         contact_info_1 = tk.Label(
             self, text='For queries/feedback, contact', bg='white'
         )
         contact_info_1.grid(
-            row=1, column=0, columnspan=3, padx=10, pady=(10,0), sticky='w'
+            row=2, column=0, columnspan=3, padx=10, pady=(10,0), sticky='w'
         )
 
         email = 'simon.hulse@chem.ox.ac.uk'
         contact_info_2 = tk.Label(
-            self, text=email, bg='white', font='Courier', fg='blue'
+            self, text=email, bg='white', font='Courier', fg='blue',
+            cursor='hand1'
         )
         contact_info_2.bind(
             '<Button-1>', lambda e: webbrowser.open_new(f'mailto:{email}')
         )
 
         contact_info_2.grid(
-            row=2, column=0, columnspan=3, padx=10, pady=(0,10), sticky='w'
+            row=3, column=0, columnspan=3, padx=10, pady=(0,10), sticky='w'
         )
+
+
+class SetupButtonFrame(RootButtonFrame):
+    """Button frame for SetupApp. Buttons for quitting, loading help,
+    and running NMR-EsPy"""
+
+    def __init__(self, parent, ctrl):
+        RootButtonFrame.__init__(self, parent, ctrl)
+        self.ctrl = ctrl
+        self.save_button['command'] = self.run
 
     def run(self):
         """Set up the estimation routine"""
@@ -1336,10 +1300,39 @@ class SetupButtonFrame(tk.Frame):
             freq_thold=frequency_thold
         )
 
-        tmpdir = os.path.join(path, 'topspin')
+
         self.ctrl.info.pickle_save(
-            fname='tmp.pkl', dir=tmpdir, force_overwrite=True
+            fname='tmp.pkl', dir=TOPSPINDIR, force_overwrite=True
         )
+
+        subprocess.Popen(['python3', f'{os.path.join(TOPSPINDIR, result.py)}'])
+
+
+class ResultButtonFrame(RootButtonFrame):
+    """Button frame for SetupApp. Buttons for quitting, loading help,
+    and running NMR-EsPy"""
+
+    def __init__(self, parent, ctrl):
+        RootButtonFrame.__init__(self, parent, ctrl)
+        self.parent = parent
+        self.ctrl = ctrl
+
+        self.save_button['command'] = self.save_options
+        self.save_button['text'] = 'Save'
+
+        self.edit_parameter_button = tk.Button(
+            self, text='Edit Parameter Estimate', width=20, bg='#7fccf3',
+            highlightbackground='black', command=self.edit_parameters
+        )
+        self.edit_parameter_button.grid(
+            row=0, column=0, columnspan=3, sticky='ew', padx=10, pady=(10,0)
+        )
+
+    def edit_parameters(self):
+        EditParams(parent=self, ctrl=self.ctrl)
+
+    def save_options(self):
+        SaveFrame(parent=self, ctrl=self.ctrl)
 
 
 class LogoFrame(tk.Frame):
@@ -1351,24 +1344,24 @@ class LogoFrame(tk.Frame):
         self['bg'] = 'white'
 
         self.nmrespy_img = get_PhotoImage(
-            os.path.join(imgpath, 'nmrespy_full.png'), scale
+            os.path.join(IMAGESDIR, 'nmrespy_full.png'), scale
         )
         self.nmrespy_logo = tk.Label(
             self, image=self.nmrespy_img, bg='white', cursor='hand1'
         )
 
         # TODO this will need to be changed once the docs go online
-        nmrespypath = '/home/simon/Documents/DPhil/projects/' \
+        docpath = '/home/simon/Documents/DPhil/projects/' \
                   + 'p0-FID_signal_processing/code/Python_Scripts/' \
                   + 'NMR-EsPy/docs/_build/html/index.html'
 
         self.nmrespy_logo.bind(
-            '<Button-1>', lambda e: webbrowser.open_new(nmrespypath)
+            '<Button-1>', lambda e: webbrowser.open_new(docpath)
         )
         self.nmrespy_logo.grid(row=0, column=0)
 
         self.mfgroup_img = get_PhotoImage(
-            os.path.join(imgpath, 'mf_logo.png'), scale*10
+            os.path.join(IMAGESDIR, 'mf_logo.png'), scale*10
         )
         self.mfgroup_logo = tk.Label(
             self, image=self.mfgroup_img, bg='white', cursor='hand1'
@@ -1380,187 +1373,6 @@ class LogoFrame(tk.Frame):
             '<Button-1>', lambda e: webbrowser.open_new(mfgrouppath)
         )
         self.mfgroup_logo.grid(row=0, column=1, padx=(40,0))
-
-
-class EditFrame(tk.Frame):
-    # TODO
-    def __init__(self, parent, ctrl):
-        tk.Frame.__init__(self, parent)
-
-        self.ctrl = ctrl
-
-        self['bg'] = 'white'
-        self.grid(row=1, column=0, sticky='ew')
-        self.columnconfigure(0, weight=1)
-
-        self.editoptions = tk.Label(self, text='Edit Options', bg='white',
-                                    font=('Helvetica', 14))
-        self.edit_params = tk.Button(self, text='Edit Parameters',
-                                     command=self.config_params, width=12,
-                                     bg='#e0e0e0', highlightbackground='black')
-        self.edit_lines = tk.Button(self, text='Edit Lines',
-                                    command=self.config_lines, width=12,
-                                    bg='#e0e0e0', highlightbackground='black')
-        self.edit_labels = tk.Button(self, text='Edit Labels',
-                                     command=self.config_labels, width=12,
-                                     bg='#e0e0e0', highlightbackground='black')
-
-        self.editoptions.grid(row=0, column=0, sticky='w')
-        self.edit_params.grid(row=1, column=0)
-        self.edit_lines.grid(row=2, column=0)
-        self.edit_labels.grid(row=3, column=0)
-
-    def config_params(self):
-        EditParams(self, self.ctrl)
-
-    def config_lines(self):
-        pass
-        # ConfigLines(self, self.ctrl)
-
-    def config_labels(self):
-        pass
-        # ConfigLabels(self, self.ctrl)
-
-
-class SaveFrame(tk.Frame):
-    #TODO
-    def __init__(self, parent):
-        tk.Frame.__init__(self, parent)
-
-        self.config(bg='white')
-        self.grid(row=2, column=0, sticky='new')
-        self.columnconfigure(0, weight=1)
-
-        self.saveoptions = tk.Label(self, text='Save Options', bg='white',
-                                    font=('Helvetica', 14))
-        self.descrip_lab = tk.Label(self, text='Description:', bg='white')
-        self.descrip_box = tk.Text(self, height=4, width=20)
-        self.fname_lab = tk.Label(self, text='Filename:', bg='white')
-        self.fname_box = tk.Entry(self, width=20, highlightthickness=0)
-        self.fname_box.insert(0, 'NMREsPy_result')
-        self.dir_lab = tk.Label(self, text='Directory:', bg='white')
-        self.dir = tk.StringVar()
-        self.dir.set(os.path.expanduser('~'))
-        self.dir_box = tk.Entry(self, width=16, text=self.dir, highlightthickness=0)
-
-        path = os.path.join(os.path.dirname(nmrespy.__file__),
-                            'topspin/images/folder_icon.png')
-        self.img = get_PhotoImage(path, 0.02)
-
-        self.dir_but = tk.Button(self, command=self.browse, bg='white',
-                                 highlightbackground='black', image=self.img)
-        self.txt_lab = tk.Label(self, text='Save Textfile:', bg='white')
-        self.txt = tk.StringVar()
-        self.txt.set('1')
-        self.txt_box = tk.Checkbutton(self, variable=self.txt, bg='white',
-                                      highlightthickness=0, bd=0)
-
-        self.pdf_lab = tk.Label(self, text='Save PDF:', bg='white')
-        self.pdf = tk.StringVar()
-        self.pdf.set('0')
-        self.pdf_box = tk.Checkbutton(self, variable=self.pdf, bg='white',
-                                      highlightthickness=0, bd=0)
-
-        self.pickle_lab = tk.Label(self, text='Pickle Result:', bg='white')
-        self.pickle = tk.StringVar()
-        self.pickle.set('1')
-        self.pickle_box = tk.Checkbutton(self, variable=self.pickle, bg='white',
-                                         highlightthickness=0, bd=0)
-
-        self.saveoptions.grid(row=0, column=0, columnspan=3, sticky='w')
-        self.descrip_lab.grid(row=1, column=0, sticky='nw')
-        self.descrip_box.grid(row=1, column=1, columnspan=2, sticky='w')
-        self.fname_lab.grid(row=2, column=0, sticky='w')
-        self.fname_box.grid(row=2, column=1, columnspan=2, sticky='w')
-        self.dir_lab.grid(row=3, column=0, sticky='w')
-        self.dir_box.grid(row=3, column=1, sticky='w')
-        self.dir_but.grid(row=3, column=2, sticky='w')
-        self.txt_lab.grid(row=4, column=0, sticky='w')
-        self.txt_box.grid(row=4, column=1, columnspan=2)
-        self.pdf_lab.grid(row=5, column=0, sticky='w')
-        self.pdf_box.grid(row=5, column=1, columnspan=2)
-        self.pickle_lab.grid(row=6, column=0, sticky='w')
-        self.pickle_box.grid(row=6, column=1, columnspan=2)
-
-    def browse(self):
-        self.dir = filedialog.askdirectory(initialdir=os.path.expanduser('~'))
-        self.dir_box.delete(0, 'end')
-        self.dir_box.insert(0, self.dir)
-
-
-class ButtonFrame(tk.Frame):
-    #TODO
-    def __init__(self, parent, sframe, info):
-        tk.Frame.__init__(self, parent)
-
-        self.sframe = sframe
-        self.info = info
-
-        self.config(bg='white')
-        self.grid(row=3, column=0, sticky='new')
-        self.columnconfigure(0, weight=1)
-
-        self.cancel_but = tk.Button(self, text='Cancel', width=8,
-                                    bg='#ff9894', highlightbackground='black',
-                                    command=self.cancel)
-        self.help_but = tk.Button(self, text='Help', width=8, bg='#ffb861',
-                                  highlightbackground='black', command=self.help)
-        self.rerun_but = tk.Button(self, text='Re-run', width=8, bg='#f9f683',
-                                   highlightbackground='black', command=self.re_run)
-        self.save_but = tk.Button(self, text='Save', width=8, bg='#9eda88',
-                                  highlightbackground='black', command=self.save)
-
-        self.cancel_but.grid(row=0, column=0)
-        self.help_but.grid(row=0, column=1)
-        self.rerun_but.grid(row=0, column=2)
-        self.save_but.grid(row=0, column=3)
-
-    def cancel(self):
-        exit()
-
-    def help(self):
-        import webbrowser
-        webbrowser.open('http://foroozandeh.chem.ox.ac.uk/home')
-
-    def re_run(self):
-        print('TODO')
-
-    def save(self):
-        descrip = self.sframe.descrip_box.get('1.0', tk.END)
-        file = self.sframe.fname_box.get()
-        dir = self.sframe.dir_box.get()
-        txt = self.sframe.txt.get()
-        pdf = self.sframe.pdf.get()
-        pickle = self.sframe.pickle.get()
-
-        if txt == '1':
-            self.info.write_result(descrip=descrip, fname=file, dir=dir,
-                                   force_overwrite=True)
-        if pdf == '1':
-            self.info.write_result(descrip=descrip, fname=file, dir=dir,
-                                   force_overwrite=True, format='pdf')
-        if pickle == '1':
-            self.info.pickle_save(fname=file, dir=dir, force_overwrite=True)
-
-        exit()
-
-
-class ContactFrame(tk.Frame):
-    #TODO
-    def __init__(self, parent):
-        tk.Frame.__init__(self, parent)
-
-        self.config(bg='white')
-        self.grid(row=4, column=0, sticky='new')
-        self.columnconfigure(0, weight=1)
-
-        self.msg1 = tk.Label(self, text='For queries/feedback, contact',
-                             bg='white')
-        self.msg2 = tk.Label(self, text='simon.hulse@chem.ox.ac.uk',
-                             font='Courier', bg='white')
-
-        self.msg1.grid(row=0, column=0, sticky='w')
-        self.msg2.grid(row=1, column=0, sticky='w')
 
 
 class EditParams(tk.Toplevel):
@@ -1582,46 +1394,88 @@ class EditParams(tk.Toplevel):
         self.buttonframe = tk.Frame(self, bg='white')
         self.buttonframe.grid(row=1, column=0, sticky='e')
 
-        # split selected oscillator
-        self.splitbutton = tk.Button(self.buttonframe, text='Split Oscillator',
-                                     highlightbackground='black',
-                                     state='disabled', command=self.split)
-        # merge selected oscillators
-        self.mergebutton = tk.Button(self.buttonframe, text='Merge Oscillators',
-                                     highlightbackground='black',
-                                     state='disabled', command=self.merge)
+
+        # add oscillator(s)
+        self.addbutton = tk.Button(
+            self.buttonframe, text='Add Oscillator(s)',
+            highlightbackground='black', state='active', command=self.add
+        )
+        self.addbutton.grid(
+            row=0, column=0, sticky='ew', padx=(10,0), pady=(10,0)
+        )
+
+        # add oscillator(s)
+        self.removebutton = tk.Button(
+            self.buttonframe, text='Remove Oscillator(s)',
+            highlightbackground='black', state='disabled', command=self.remove
+        )
+        self.removebutton.grid(
+            row=0, column=1, sticky='ew', padx=(10,0), pady=(10,0)
+        )
+
         # manually edit parameters associated with oscillator
-        self.manualbutton = tk.Button(self.buttonframe, text='Edit Manually',
-                                      highlightbackground='black',
-                                      state='disabled',
-                                      command=self.manual_edit)
+        self.manualbutton = tk.Button(
+            self.buttonframe, text='Edit Manually',
+            highlightbackground='black', state='disabled',
+            command=self.manual_edit
+        )
+        self.manualbutton.grid(
+            row=0, column=2, sticky='ew', padx=10, pady=(10,0)
+        )
+
+        # split selected oscillator
+        self.splitbutton = tk.Button(
+            self.buttonframe, text='Split Oscillator',
+            highlightbackground='black', state='disabled', command=self.split
+        )
+        self.splitbutton.grid(
+            row=1, column=0, sticky='ew', padx=(10,0), pady=(10,10)
+        )
+
+        # merge selected oscillators
+        self.mergebutton = tk.Button(
+            self.buttonframe, text='Merge Oscillators',
+            highlightbackground='black', state='disabled', command=self.merge
+        )
+        self.mergebutton.grid(
+            row=1, column=1, sticky='ew', padx=(10,0), pady=(10,10)
+        )
+
         # close window
-        self.closebutton = tk.Button(self.buttonframe, text='Close',
-                                     highlightbackground='black',
-                                     command=self.destroy)
+        self.closebutton = tk.Button(
+            self.buttonframe, text='Close', highlightbackground='black',
+            command=self.destroy
+        )
+        self.closebutton.grid(
+            row=1, column=2, sticky='ew', padx=10, pady=(10,10)
+        )
 
 
-        self.splitbutton.grid(row=0, column=0, sticky='e', padx=10, pady=10)
-        self.mergebutton.grid(row=0, column=1, sticky='e', padx=(0,10), pady=10)
-        self.manualbutton.grid(row=0, column=2, sticky='e', padx=(0,10),
-                               pady=10)
-        self.closebutton.grid(row=0, column=4, sticky='e', padx=(0,10),
-                              pady=(10,10))
+    def construct_table(self, reconstruct=False):
 
+        if reconstruct:
+            for widget in self.table.winfo_children():
+                widget.destroy()
 
-    def construct_table(self):
         # column titles
-        osc = tk.Label(self.table, bg='white', text='#')
-        amp = tk.Label(self.table, bg='white', text='Amplitude')
-        phase = tk.Label(self.table, bg='white', text='Phase')
-        freq = tk.Label(self.table, bg='white', text='Frequency')
-        damp = tk.Label(self.table, bg='white', text='Damping')
+        column = 0
+        for title in ('#', 'Amplitude', 'Phase', 'Frequency', 'Damping'):
+            label = tk.Label(self.table, bg='white', text=title)
 
-        osc.grid(row=0, column=0, ipadx=10, pady=(10,0))
-        amp.grid(row=0, column=1, padx=(5,0), pady=(10,0), sticky='w')
-        phase.grid(row=0, column=2, padx=(5,0), pady=(10,0), sticky='w')
-        freq.grid(row=0, column=3, padx=(5,0), pady=(10,0), sticky='w')
-        damp.grid(row=0, column=4, padx=(5,10), pady=(10,0), sticky='w')
+            if column == 0:
+                label.grid(
+                    row=0, column=column, ipadx=10, pady=(10,0), sticky='w'
+                )
+            elif column == 4:
+                label.grid(
+                    row=0, column=column, padx=(5,10), pady=(10,0), sticky='w'
+                )
+            else:
+                label.grid(
+                    row=0, column=column, padx=(5,0), pady=(10,0), sticky='w'
+                )
+
+            column += 1
 
         # store oscillator labels, entry widgets, and string variables
         self.table_labels = [] # tk.Label instances (M elements)
@@ -1745,6 +1599,7 @@ class EditParams(tk.Toplevel):
 
         # deactivate all buttons
         if activated_number == 0:
+            self.removebutton['state'] = 'disabled'
             self.splitbutton['state'] = 'disabled'
             self.mergebutton['state'] = 'disabled'
             self.manualbutton['state'] = 'disabled'
@@ -1752,6 +1607,7 @@ class EditParams(tk.Toplevel):
         # activate split and manual edit buttons
         # deactivate merge button (can't merge one oscillator...)
         elif activated_number == 1:
+            self.removebutton['state'] = 'normal'
             self.splitbutton['state'] = 'normal'
             self.mergebutton['state'] = 'disabled'
             self.manualbutton['state'] = 'normal'
@@ -1760,10 +1616,34 @@ class EditParams(tk.Toplevel):
         # deactivate split and manual edit buttons (ambiguous with multiple
         # oscillators selected)
         else: # activated_number > 1
+            self.removebutton['state'] = 'normal'
             self.splitbutton['state'] = 'disabled'
             self.mergebutton['state'] = 'normal'
             self.manualbutton['state'] = 'disabled'
 
+
+    def add(self):
+        """Add oscillators using
+        :py:meth:`~nmrespy.core.NMREsPyBruker.add_oscillators`.
+        """
+
+        AddFrame(self, self.ctrl)
+
+    def remove(self):
+        """Removes all selected oscillators using
+        :py:meth:`~nmrespy.core.NMREsPyBruker.remove_oscillators`.
+        """
+
+        indices = self.get_selected_indices()
+        self.ctrl.info.remove_oscillators(indices)
+
+        # update the plot
+        ud_plot(self.ctrl)
+
+        # destroy and reconstruct the data table to match the new theta
+        self.construct_table(reconstruct=True)
+        # decativate all buttons except close
+        self.activate_buttons()
 
     def merge(self):
         """Merges all selected oscillators into a single oscillator.
@@ -1778,9 +1658,7 @@ class EditParams(tk.Toplevel):
         ud_plot(self.ctrl)
 
         # destroy and reconstruct the data table to match the new theta
-        for widget in self.table.winfo_children():
-            widget.destroy()
-        self.construct_table()
+        self.construct_table(reconstruct=True)
         # decativate all buttons except close
         self.activate_buttons()
 
@@ -1866,7 +1744,7 @@ class EditParams(tk.Toplevel):
         self.tmpframe.destroy()
         # update plot and parameter table
         ud_plot(self.ctrl)
-        self.construct_table()
+        self.construct_table(reconstruct=True)
         self.activate_buttons()
 
     def cancel_manual(self, i):
@@ -1880,9 +1758,9 @@ class EditParams(tk.Toplevel):
         for j in range(4):
             self.table_variables[i][j].set(
                             f'{self.ctrl.info.theta[i][j]:.5f}')
-        # recontruct table (all rows will become deselected)
-        self.construct_table()
-        self.activate_buttons()
+
+        # deactivate row
+        self.left_click(i)
 
     def get_selected_indices(self):
         """Determine the indices of the rows which are selected."""
@@ -1893,6 +1771,142 @@ class EditParams(tk.Toplevel):
                 indices.append(i)
 
         return indices
+
+
+class AddFrame(tk.Toplevel):
+    """Window for adding oscillators.
+    Opened after calling :py:meth:`EditParams.add`."""
+
+    def __init__(self, parent, ctrl):
+        tk.Toplevel.__init__(self, parent)
+        self.parent = parent
+        self.ctrl = ctrl
+
+        self['bg'] = 'white'
+        self.resizable(False, False)
+
+        self.tableframe = tk.Frame(self, bg='white')
+        self.tableframe.grid(row=0, column=0)
+
+        self.entries = []
+        self.vars = []
+
+        entry_row = []
+        var_row = []
+
+        column = 0
+        for title in ('Amplitude', 'Phase', 'Frequency', 'Damping'):
+            label = tk.Label(self.tableframe, bg='white', text=title)
+
+            var = tk.StringVar()
+            var.set('')
+
+            entry = tk.Entry(
+                self.tableframe, bg='white', width=12, textvariable=var,
+                highlightthickness=0
+            )
+
+            if column == 0:
+                label.grid(
+                    row=0, column=column, padx=(10,5), pady=(10,0), sticky='w'
+                )
+                entry.grid(row=1, column=column, padx=(10,5), pady=(5,0))
+            elif column == 3:
+                label.grid(
+                    row=0, column=column, padx=(0,10), pady=(10,0), sticky='w'
+                )
+                entry.grid(row=1, column=column, padx=(0,10), pady=(5,0))
+            else:
+                label.grid(
+                    row=0, column=column, padx=(0,5), pady=(10,0), sticky='w'
+                )
+                entry.grid(row=1, column=column, padx=(0,5), pady=(5,0))
+
+            var_row.append(var)
+            entry_row.append(entry)
+
+            column += 1
+
+        self.entries.append(entry_row)
+        self.vars.append(var_row)
+
+        self.buttonframe = tk.Frame(self, bg='white')
+        self.buttonframe.grid(row=1, column=0, sticky='e')
+
+        self.add_button = tk.Button(
+            self.buttonframe, text='Add', width=3,
+            highlightbackground='black', command=self.add_row,
+        )
+        self.add_button.grid(row=0, column=0, padx=(0,10), pady=(10,10))
+
+        self.cancel_button = tk.Button(
+            self.buttonframe, text='Cancel', width=8, bg='#ff9894',
+            highlightbackground='black', command=self.destroy,
+        )
+        self.cancel_button.grid(row=0, column=1, padx=(0,10), pady=(10,10))
+
+        self.save_button = tk.Button(
+            self.buttonframe, text='Save', width=8, bg='#9eda88',
+            highlightbackground='black', command=self.save,
+        )
+        self.save_button.grid(row=0, column=2, padx=(0,10), pady=(10,10))
+
+    def add_row(self):
+
+        entry_row = []
+        var_row = []
+
+        row = len(self.entries) + 1
+
+        for column in range(4):
+            var = tk.StringVar()
+            var.set('')
+
+            entry = tk.Entry(
+                self.tableframe, bg='white', width=12, textvariable=var,
+                highlightthickness=0
+            )
+
+            if column == 0:
+                entry.grid(row=row, column=column, padx=(10,5), pady=(5,0))
+            elif column == 3:
+                entry.grid(row=row, column=column, padx=(0,10), pady=(5,0))
+            else:
+                entry.grid(row=row, column=column, padx=(0,5), pady=(5,0))
+
+            var_row.append(var)
+            entry_row.append(entry)
+
+        self.entries.append(entry_row)
+        self.vars.append(var_row)
+
+
+    def save(self):
+
+        oscillators = []
+        try:
+            for var_row in self.vars:
+                oscillator_row = []
+                for var in var_row:
+
+                    oscillator_row.append(float(var.get()))
+                oscillators.append(oscillator_row)
+
+        except:
+            msg = 'Not all parameters could be converted to floats. Make sure' \
+                  + ' all the parameters given are valid numerical values.'
+            WarnFrame(self, msg)
+            return
+
+        oscillators = np.array(oscillators)
+
+        self.ctrl.info.add_oscillators(oscillators)
+
+        # update the plot
+        ud_plot(self.ctrl)
+        # reconstruct the parameter table with the updated oscillators
+        self.parent.construct_table(reconstruct=True)
+        self.destroy()
 
 
 class SplitFrame(tk.Toplevel):
@@ -2071,8 +2085,477 @@ class SplitFrame(tk.Toplevel):
         # update the plot
         ud_plot(self.ctrl)
         # reconstruct the parameter table with the updated oscillators
-        self.parent.construct_table()
+        self.parent.construct_table(reconstruct=True)
         self.destroy()
+
+
+def ud_plot(ctrl):
+    """Reconstructs the result plot after a change to the oscillators is
+    made
+
+    Parameters
+    ----------
+
+    ctrl : nmrespy.topspin.ResultApp
+        controller
+    """
+
+    # get new lines and labels
+    # also obtaining ax to acquire new y-limits
+    _, ax, lines, labels = ctrl.info.plot_result()
+
+    # wipe lines and text instances from the axis
+    ctrl.ax.lines = []
+    ctrl.ax.texts = []
+    # wipe lines and text labels from the ctrl
+    ctrl.lines = {}
+    ctrl.labels = {}
+
+    # plot data line onto axis
+    ctrl.lines['data'] = ctrl.ax.plot(
+        lines['data'].get_xdata(), lines['data'].get_ydata(),
+        color=lines['data'].get_color(), lw=lines['data'].get_lw()
+    )
+
+    # plot oscillator lines and add oscillator text labels
+    # append these to the lines and labels attributes of the ctrl
+    lines_and_labels = zip(list(lines.values())[1:], list(labels.values()))
+    for i, (line, label) in enumerate(lines_and_labels):
+
+        key = f'osc{i+1}'
+        # plot oscillator
+        ctrl.lines[key] = ctrl.ax.plot(
+            line.get_xdata(), line.get_ydata(), color=line.get_color(),
+            lw=line.get_lw()
+        )
+
+        # add oscillator label
+        x, y = label.get_position()
+        ctrl.labels[key] = ctrl.ax.text(x, y, label.get_text())
+
+    # update y-limits to fit new lines
+    ctrl.ax.set_xlim(ax.get_xlim())
+    ctrl.ax.set_ylim(ax.get_ylim())
+    # draw the new plot!
+    ctrl.frames['PlotFrame'].canvas.draw_idle()
+
+
+
+class SaveFrame(tk.Toplevel):
+
+    def __init__(self, parent, ctrl):
+
+        tk.Toplevel.__init__(self, parent)
+        self.title('Save Options')
+        self.parent = parent
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+        self.resizable(False, False)
+
+        self.fileframe = tk.Frame(self, bg='white')
+        self.fileframe.grid(row=0, column=0)
+        self.buttonframe = tk.Frame(self, bg='white')
+        self.buttonframe.grid(row=2, column=0, sticky='e')
+
+        tk.Label(self.fileframe, text='Save Figure', bg='white').grid(
+            row=0, column=0, padx=(10,0), pady=(10,0), sticky='w'
+        )
+
+        self.fig_var = tk.IntVar()
+        self.fig_var.set(1)
+        self.fig_check = tk.Checkbutton(
+            self.fileframe, variable=self.fig_var, bg='white',
+            highlightthickness=0, bd=0,
+            command=(lambda: self.check('fig'))
+        )
+        self.fig_check.grid(row=0, column=1, padx=(2,0), pady=(10,0))
+
+        self.fig_button = tk.Button(
+            self.fileframe, text='Customise Figure',
+            highlightbackground='black', command=self.customise_figure
+        )
+        self.fig_button.grid(
+            row=0, column=2, columnspan=3, padx=10, pady=(10,0), sticky='ew'
+        )
+
+        titles = ('Save textfile:', 'Save PDF:', 'Pickle result:')
+        extensions = ('.txt', '.pdf', '.pkl')
+        for i, (title, extension) in enumerate(zip(titles, extensions)):
+
+            tk.Label(self.fileframe, text=title, bg='white').grid(
+                row=i+1, column=0, padx=(10,0), pady=(10,0), sticky='w'
+            )
+
+            tag = extension[1:]
+            # variable which dictates whether to save the filetype
+            self.__dict__[f'{tag}_var'] = savevar = tk.IntVar()
+            savevar.set(1)
+
+            self.__dict__[f'{tag}_check'] = check = \
+                tk.Checkbutton(
+                    self.fileframe, variable=savevar, bg='white',
+                    highlightthickness=0, bd=0,
+                    command=(lambda tag=tag: self.check(tag))
+                )
+            check.grid(row=i+1, column=1, padx=(2,0), pady=(10,0))
+
+            tk.Label(self.fileframe, text='Filename:', bg='white').grid(
+                row=i+1, column=2, padx=(15,0), pady=(10,0), sticky='w'
+            )
+
+            self.__dict__[f'{tag}_name'] = fnamevar = tk.StringVar()
+            fnamevar.set('nmrespy_result')
+
+            self.__dict__[f'{tag}_entry'] = entry = \
+                tk.Entry(
+                    self.fileframe, textvariable=fnamevar, width=20,
+                    highlightthickness=0
+                )
+            entry.grid(
+                row=i+1, column=3, padx=(5,0), pady=(10,0)
+            )
+
+            tk.Label(self.fileframe, text=extension, bg='white').grid(
+                row=i+1, column=4, padx=(0,10), pady=(10,0), sticky='w'
+            )
+
+        tk.Label(self.fileframe, text='Description:', bg='white').grid(
+            row=4, column=0, padx=(10,0), pady=(10,0), sticky='nw'
+        )
+
+        self.descr_box = tk.Text(self.fileframe, width=40, height=3)
+        self.descr_box.grid(
+            row=4, column=1, columnspan=4, padx=10, pady=(10,0), sticky='ew'
+        )
+
+        tk.Label(self.fileframe, text='Directory:', bg='white').grid(
+            row=5, column=0, padx=(10,0), pady=(10,0), sticky='w'
+        )
+
+        self.dir_var = tk.StringVar()
+        self.dir_var.set(os.path.expanduser('~'))
+
+        self.dir_entry = tk.Entry(
+            self.fileframe, textvariable=self.dir_var, width=30,
+            highlightthickness=0
+        )
+        self.dir_entry.grid(
+            row=5, column=1, columnspan=3, padx=(10,0), pady=(10,0), sticky='ew'
+        )
+
+        self.img = get_PhotoImage(
+            os.path.join(IMAGESDIR, 'folder_icon.png'), scale=0.02
+        )
+
+        self.dir_button = tk.Button(
+            self.fileframe, command=self.browse, bg='white',
+            highlightbackground='black', image=self.img
+        )
+        self.dir_button.grid(row=5, column=4, padx=(5,10), pady=(10,0))
+
+
+        self.cancel_button = tk.Button(
+            self.buttonframe, text='Cancel', width=8, bg='#ff9894',
+            highlightbackground='black', command=self.destroy
+        )
+        self.cancel_button.grid(row=0, column=0, pady=10)
+
+        self.save_button = tk.Button(
+            self.buttonframe, text='Save', width=8, bg='#9eda88',
+            highlightbackground='black', command=self.save
+        )
+        self.save_button.grid(row=0, column=1, padx=10, pady=10)
+
+
+    def check(self, tag):
+
+        var = self.__dict__[f'{tag}_var'].get()
+
+        state = 'disabled'
+        if var: # 1 or 0
+            state = 'normal'
+
+        if tag == 'fig':
+            self.fig_button['state'] = state
+        else:
+            self.__dict__[f'{tag}_entry']['state'] = state
+
+    def browse(self):
+        self.dir_var.set(filedialog.askdirectory(initialdir=self.dir_var.get()))
+
+    def save(self):
+
+        # check directory is valid
+        dir = self.dir_var.get()
+        if os.path.isdir(dir):
+            pass
+        else:
+            msg = f'The specified directory doesn\'t exist!\n{dir}'
+            WarnFrame(self, msg)
+
+        descr = self.descr_box.get('1.0', 'end-1c')
+
+        # check textfile
+        if self.txt_var.get():
+            fname = self.txt_name.get()
+            self.ctrl.info.write_result(
+                description=descr, fname=fname, dir=dir, format='txt',
+                force_overwrite=True
+            )
+
+        # check PDF
+        if self.pdf_var.get():
+            fname = self.pdf_name.get()
+            self.ctrl.info.write_result(
+                description=descr, fname=fname, dir=dir, format='pdf',
+                force_overwrite=True
+            )
+
+        # check pickle
+        if self.pkl_var.get():
+            fname = self.pkl_name.get()
+            self.ctrl.info.pickle_save(
+                fname=fname, dir=dir, force_overwrite=True
+            )
+
+    def customise_figure(self):
+        CustomiseFigureFrame(self, self.ctrl)
+
+class CustomiseFigureFrame(tk.Toplevel):
+
+    def __init__(self, parent, ctrl):
+        tk.Toplevel.__init__(self, parent)
+        self.title('Customise Figure')
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+
+        self.mainlist = tk.Listbox(self, width=10, selectmode=tk.SINGLE)
+        self.mainlist.bind('<<ListboxSelect>>', self.ud_mainlist)
+
+        self.frames = {}
+
+        for item in ['General', 'Axes', 'Lines', 'Labels']:
+            self.mainlist.insert(tk.END, item)
+
+        self.mainlist.grid(
+            row=0, column=0, padx=(10,0), pady=(10,0), sticky='n'
+        )
+
+        self.optframe = tk.Frame(self, bg='white')
+        self.optframe.grid(row=0, column=1)
+
+        self.frames = {}
+
+        for F in (GeneralFrame, AxesFrame, LinesFrame, LabelsFrame):
+            self.frames[F.__name__] =  F(self.optframe, self.ctrl)
+
+        self.frames['GeneralFrame'].grid(row=0, column=0)
+        self.active = 'GeneralFrame'
+
+
+    def ud_mainlist(self, event):
+        item = self.mainlist.get(self.mainlist.curselection())
+
+        self.frames[self.active].grid_remove()
+        self.active = f'{item}Frame'
+        self.frames[self.active].grid(row=0, column=0)
+
+
+class GeneralFrame(tk.Frame):
+
+    def __init__(self, parent, ctrl):
+        tk.Frame.__init__(self, parent)
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+
+        tk.Label(
+            self, text='GeneralFrame', font=('Helvetica', 20, 'bold'), bg='white'
+        ).pack(padx=30, pady=30)
+
+
+class AxesFrame(tk.Frame):
+
+    def __init__(self, parent, ctrl):
+        tk.Frame.__init__(self, parent)
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+
+        tk.Label(
+            self, text='AxesFrame', font=('Helvetica', 20, 'bold'), bg='white'
+        ).pack(padx=30, pady=30)
+
+
+class LinesFrame(tk.Frame):
+
+    def __init__(self, parent, ctrl):
+        tk.Frame.__init__(self, parent)
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+
+        items = ['Data', 'All oscillators']
+        items += [f'Oscillator {i+1}' for i in range(self.ctrl.info.theta.shape[0])]
+
+        self.linelist = tk.Listbox(self, width=12, selectmode=tk.SINGLE)
+
+        for item in items:
+            self.linelist.insert(tk.END, item)
+
+        self.linelist.selection_set(0)
+        self.linelist.bind('<<ListboxSelect>>', lambda e: self.ud_linelist())
+        self.linelist.grid(row=0, column=0, rowspan=3, pady=10)
+
+        tk.Label(
+            self, text='Color:', font=('Helvetica', 12, 'bold'), bg='white'
+        ).grid(row=0, column=1, padx=10, pady=(10,0), sticky='w')
+
+        data_color = self.ctrl.lines['data'].get_color()
+        self.colorpicker = ColorPicker(self, init_color=data_color)
+        self.colorpicker.grid(row=1, column=1)
+
+        tk.Label(self, )
+
+    def ud_linelist(self):
+        idx = self.linelist.curselection()[0]
+        print(idx)
+
+class LabelsFrame(tk.Frame):
+
+    def __init__(self, parent, ctrl):
+        tk.Frame.__init__(self, parent)
+        self.ctrl = ctrl
+        self['bg'] = 'white'
+
+        tk.Label(
+            self, text='LabelsFrame', font=('Helvetica', 20, 'bold'), bg='white'
+        ).pack(padx=30, pady=30)
+
+
+
+class ColorPicker(tk.Frame):
+
+    def __init__(self, parent, init_color='random'):
+
+        tk.Frame.__init__(self, parent)
+        self['bg'] = 'white'
+        self.topframe = tk.Frame(self, bg='white')
+        self.topframe.grid(row=0, column=0)
+        self.bottomframe = tk.Frame(self, bg='white')
+        self.bottomframe.grid(row=1, column=0, sticky='w')
+
+        if init_color == 'random':
+            r = lambda: random.randint(0,255)
+            init_color = '#{:02x}{:02x}{:02x}'.format(r(), r(), r())
+
+        self.color_var = tk.StringVar()
+        self.color_var.set(init_color)
+        color_tags = ['r', 'g', 'b']
+        color_hexes = ['#ff0000', '#008000', '#0000ff']
+        for i, (tag, hexa) in enumerate(zip(color_tags, color_hexes)):
+
+            tk.Label(self.topframe, text=tag.upper(), fg=hexa, bg='white').grid(
+                row=i, column=0, padx=(10,0), pady=(10,0), sticky='w'
+            )
+
+            self.__dict__[f'{tag}_var'] = var = tk.StringVar()
+            var.set(init_color[2*i+1:2*i+3])
+
+            tc = '#' + (i * '00') + var.get() + (abs(i - 2) * '00')
+            self.__dict__[f'{tag}_scale'] = scale = \
+                tk.Scale(
+                    self.topframe, from_=0, to=255, orient=tk.HORIZONTAL,
+                    showvalue=0, bg='white', sliderlength=15, bd=0,
+                    troughcolor=tc, length=500, highlightthickness=0,
+                    command=lambda val, tag=tag: self.ud_scale(val, tag)
+                )
+            scale.set(int(var.get(), 16))
+            scale.grid(row=i, column=1, padx=(10,0), pady=(10,0))
+
+            print(var.get().upper())
+            self.__dict__[f'{tag}_entry'] = entry = \
+                tk.Entry(
+                    self.topframe, bg='white', text=var.get().upper(),
+                    width=3, highlightthickness=0
+                )
+            entry.bind('<Return>', (lambda event, tag=tag: self.ud_entry(tag)))
+            entry.grid(row=i, column=2, padx=(10,0), pady=(10,0))
+
+        self.swatch = tk.Canvas(self.topframe, width=40, height=40, bg='white')
+        self.rectangle = self.swatch.create_rectangle(
+            0, 0, 40, 40, fill=self.color_var.get()
+        )
+        self.swatch.grid(row=0, column=3, rowspan=3, pady=(10,0), padx=10)
+
+        tk.Label(self.bottomframe, text='matplotlib colour:', bg='white').grid(
+            row=0, column=0, padx=(10,0), pady=10
+        )
+
+        self.mpl_entry = tk.Entry(
+            self.bottomframe, bg='white', width=12, highlightthickness=0
+        )
+        self.mpl_entry.bind('<Return>', self.mpl_color)
+        self.mpl_entry.grid(row=0, column=1, padx=(5,10), pady=10)
+
+
+    def ud_scale(self, value, tag):
+
+        hexa = f'{int(value):02x}'
+        self.__dict__[f'{tag}_var'].set(hexa)
+        self.__dict__[f'{tag}_entry'].delete(0, tk.END)
+        self.__dict__[f'{tag}_entry'].insert(0, hexa.upper())
+
+        col = self.color_var.get()
+        if tag == 'r':
+            self.r_scale['troughcolor'] = '#' + hexa + '0000'
+            self.color_var.set(f'#{hexa}{col[3:]}')
+        elif tag == 'g':
+            self.g_scale['troughcolor'] = '#' + '00' + hexa + '00'
+            self.color_var.set(f'#{col[1:3]}{hexa}{col[5:]}')
+        else:
+            self.b_scale['troughcolor'] = '#' + '0000' + hexa
+            self.color_var.set(f'#{col[1:5]}{hexa}')
+
+        self.swatch.itemconfig(self.rectangle, fill=self.color_var.get())
+
+
+    def ud_entry(self, tag):
+
+        hexa = self.__dict__[f'{tag}_entry'].get().lower()
+
+        # check valid 2-digit hex value
+        try:
+            # decimal value
+            dec = int(hexa, 16)
+            self.__dict__[f'{tag}_scale'].set(dec)
+            # all other necessary updates will be handled by ud_scale...
+
+        except:
+            # invalid input from user: reset entry widget with current value
+            self.__dict__[f'{tag}_entry'].delete(0, tk.END)
+            self.__dict__[f'{tag}_entry'].insert(
+                0, self.__dict__[f'{tag}_var'].get().upper()
+            )
+
+    def mpl_color(self, event):
+
+        color = self.mpl_entry.get()
+        self.mpl_entry.delete(0, tk.END)
+
+        try:
+            hexa = mcolors.to_hex(color)
+
+        except:
+            return
+
+        self.color_var.set(hexa)
+        self.r_scale.set(int(hexa[1:3], 16))
+        self.g_scale.set(int(hexa[3:5], 16))
+        self.b_scale.set(int(hexa[5:], 16))
+
+
+
+
+
+
 
 
 class ConfigLines(tk.Toplevel):
@@ -2456,216 +2939,6 @@ class LineMultiEdit(tk.Frame):
         self.parent.destroy()
 
 
-class ColorPicker(tk.Frame):
-    def __init__(self, parent, init_color):
-        tk.Frame.__init__(self, parent)
-
-        self['bg'] = 'white'
-
-        self.color = init_color
-        self.r = self.color[1:3] # red hex
-        self.g = self.color[3:5] # green hex
-        self.b = self.color[5:] # blue hex
-
-        self.topframe = tk.Frame(self, bg='white')
-        self.botframe = tk.Frame(self, bg='white')
-        self.topframe.grid(row=0, column=0, sticky='ew', padx=10, pady=(5,0))
-        self.botframe.grid(row=1, column=0, sticky='e', padx=10, pady=(10,0))
-        self.columnconfigure(0, weight=1)
-
-        # --- FRAME 1: Color scales and entries  ------------------------------
-        self.color_ttl = tk.Label(self.topframe, text='Color', bg='white',
-                                  font=('Helvetica', 12))
-        self.r_lab = tk.Label(self.topframe, text='R', fg='#ff0000', bg='white')
-        self.g_lab = tk.Label(self.topframe, text='G', fg='#008000', bg='white')
-        self.b_lab = tk.Label(self.topframe, text='B', fg='#0000ff', bg='white')
-
-        self.r_scale = tk.Scale(self.topframe, from_=0, to=255,
-                                orient=tk.HORIZONTAL, showvalue=0, bg='white',
-                                sliderlength=15, bd=0,
-                                troughcolor=f'#{self.r}0000', length=500,
-                                highlightthickness=0,
-                                command=lambda r: self.ud_r_sc(r))
-
-        self.g_scale = tk.Scale(self.topframe, from_=0, to=255,
-                                orient=tk.HORIZONTAL, showvalue=0, bg='white',
-                                sliderlength=15, bd=0,
-                                troughcolor=f'#00{self.g}00', length=500,
-                                highlightthickness=0, command=self.ud_g_sc)
-
-        self.b_scale = tk.Scale(self.topframe, from_=0, to=255,
-                                orient=tk.HORIZONTAL, showvalue=0, bg='white',
-                                sliderlength=15, bd=0,
-                                troughcolor=f'#0000{self.b}', length=500,
-                                highlightthickness=0,
-                                command=self.ud_b_sc)
-
-        self.r_scale.set(int(self.r, 16))
-        self.g_scale.set(int(self.g, 16))
-        self.b_scale.set(int(self.b, 16))
-
-        self.r_ent = tk.Entry(self.topframe, bg='white', text=f'{self.r.upper()}',
-                              width=3, highlightthickness=0)
-        self.g_ent = tk.Entry(self.topframe, bg='white', text=f'{self.g.upper()}',
-                              width=3, highlightthickness=0)
-        self.b_ent = tk.Entry(self.topframe, bg='white', text=f'{self.b.upper()}',
-                              width=3, highlightthickness=0)
-
-        self.r_ent.bind('<Return>', (lambda event: self.ud_r_ent()))
-        self.g_ent.bind('<Return>', (lambda event: self.ud_g_ent()))
-        self.b_ent.bind('<Return>', (lambda event: self.ud_b_ent()))
-
-        self.swatch = tk.Canvas(self.topframe, width=40, height=40, bg='white')
-        self.rect = self.swatch.create_rectangle(0, 0, 40, 40, fill=self.color)
-
-        self.color_ttl.grid(row=0, column=0, columnspan=4, sticky='w')
-        self.r_lab.grid(row=1, column=0, sticky='w', pady=(5,0))
-        self.g_lab.grid(row=2, column=0, sticky='w', pady=(5,0))
-        self.b_lab.grid(row=3, column=0, sticky='w', pady=(5,0))
-        self.r_scale.grid(row=1, column=1, sticky='ew', padx=(10,0), pady=(5,0))
-        self.g_scale.grid(row=2, column=1, sticky='ew', padx=(10,0), pady=(5,0))
-        self.b_scale.grid(row=3, column=1, sticky='ew', padx=(10,0), pady=(5,0))
-        self.r_ent.grid(row=1, column=2, sticky='w', padx=(10,0), pady=(5,0))
-        self.g_ent.grid(row=2, column=2, sticky='w', padx=(10,0), pady=(5,0))
-        self.b_ent.grid(row=3, column=2, sticky='w', padx=(10,0), pady=(5,0))
-        self.swatch.grid(row=1, rowspan=3, column=3, padx=(10,0))
-
-        self.topframe.columnconfigure(1, weight=1)
-
-        # --- FRAME 2: Matplotlib color entry ---------------------------------
-        self.mplcol_lab = tk.Label(self.botframe, text='Matplotlib color:',
-                                   bg='white')
-        self.mplcol_ent = tk.Entry(self.botframe, bg='white', width=20,
-                                   highlightthickness=0)
-        self.mplcol_ent.bind('<Return>', (lambda event: self.ud_mplcol_ent()))
-
-        self.mplcol_lab.grid(row=0, column=0, sticky='e')
-        self.mplcol_ent.grid(row=0, column=1, sticky='e', padx=(10,0))
-
-
-    def ud_r_sc(self, r, dynamic=False, object=None, figcanvas=None):
-        self.r = '{:02x}'.format(int(r))
-        self.color = '#' + self.r + self.g + self.b
-        self.r_scale['troughcolor'] = f'#{self.r}0000'
-        self.r_ent.delete(0, tk.END)
-        self.r_ent.insert(0, self.r.upper())
-        self.swatch.itemconfig(self.rect, fill=self.color)
-
-        if dynamic:
-            object.set_color(self.color)
-            figcanvas.draw_idle()
-
-
-    def ud_g_sc(self, g, dynamic=False, object=None, figcanvas=None):
-        self.g = '{:02x}'.format(int(g))
-        self.color = '#' + self.r + self.g + self.b
-        self.g_scale['troughcolor'] = f'#00{self.g}00'
-        self.g_ent.delete(0, tk.END)
-        self.g_ent.insert(0, self.g.upper())
-        self.swatch.itemconfig(self.rect, fill=self.color)
-
-        if dynamic:
-            object.set_color(self.color)
-            figcanvas.draw_idle()
-
-    def ud_b_sc(self, b, dynamic=False, object=None, figcanvas=None):
-        self.b = '{:02x}'.format(int(b))
-        self.color = '#' + self.r + self.g + self.b
-        self.b_scale['troughcolor'] = f'#0000{self.b}'
-        self.b_ent.delete(0, tk.END)
-        self.b_ent.insert(0, self.b.upper())
-        self.swatch.itemconfig(self.rect, fill=self.color)
-
-        if dynamic:
-            object.set_color(self.color)
-            figcanvas.draw_idle()
-
-    def ud_r_ent(self):
-        value = self.r_ent.get()
-        valid_hex = self.check_hex(value)
-
-        if valid_hex:
-            self.r = value.lower()
-            self.color = '#' + self.r + self.g + self.b
-            self.r_scale.set(int(value, 16))
-            self.r_scale['troughcolor'] = f'#{self.r}0000'
-            self.r_ent.delete(0, tk.END)
-            self.r_ent.insert(0, self.r.upper())
-            self.swatch.itemconfig(self.rect, fill=self.color)
-
-        else:
-            self.r_ent.delete(0, tk.END)
-            self.r_ent.insert(0, self.r.upper())
-
-    def ud_g_ent(self):
-        value = self.g_ent.get()
-        valid_hex = self.check_hex(value)
-
-        if valid_hex:
-            self.g = value.lower()
-            self.color = '#' + self.r + self.g + self.b
-            self.g_scale.set(int(value, 16))
-            self.g_scale['troughcolor'] = f'#00{self.g}00'
-            self.g_ent.delete(0, tk.END)
-            self.g_ent.insert(0, self.g.upper())
-            self.swatch.itemconfig(self.rect, fill=self.color)
-
-        else:
-            self.g_ent.delete(0, tk.END)
-            self.g_ent.insert(0, self.g.upper())
-
-    def ud_b_ent(self):
-        value = self.b_ent.get()
-        valid_hex = self.check_hex(value)
-
-        if valid_hex:
-            self.b = value.lower()
-            self.color = '#' + self.r + self.g + self.b
-            self.b_scale.set(int(value, 16))
-            self.b_scale['troughcolor'] = f'#0000{self.b}'
-            self.b_ent.delete(0, tk.END)
-            self.b_ent.insert(0, self.b.upper())
-            self.swatch.itemconfig(self.rect, fill=self.color)
-
-        else:
-            self.b_ent.delete(0, tk.END)
-            self.b_ent.insert(0, self.b.upper())
-
-
-    @staticmethod
-    def check_hex(value):
-        if len(value) == 2:
-            try:
-                hex_ = int(value, 16)
-                return True
-            except:
-                return False
-
-        return False
-
-
-    def ud_mplcol_ent(self):
-        value = self.mplcol_ent.get()
-        self.mplcol_ent.delete(0, tk.END)
-
-        try:
-            self.color = mcolors.to_hex(value)
-            self.r = self.color[1:3]
-            self.g = self.color[3:5]
-            self.b = self.color[5:]
-            self.r_scale.set(int(self.r, 16))
-            self.g_scale.set(int(self.g, 16))
-            self.b_scale.set(int(self.b, 16))
-            self.r_ent.delete(0, tk.END)
-            self.r_ent.insert(0, self.r.upper())
-            self.g_ent.delete(0, tk.END)
-            self.g_ent.insert(0, self.g.upper())
-            self.b_ent.delete(0, tk.END)
-            self.b_ent.insert(0, self.b.upper())
-
-        except:
-            pass
-
 
 class ConfigLabels(tk.Toplevel):
     def __init__(self, parent, labels, ax, figcanvas):
@@ -2966,51 +3239,21 @@ class LabelEdit(tk.Frame):
     def close(self):
         self.parent.destroy()
 
-
-
-if __name__ == '__main__':
-    # extract path information
-    infopath = os.path.join(path, 'topspin/tmp/info.txt')
-    try:
-        with open(infopath, 'r') as fh:
-            from_topspin = fh.read().split(' ')
-    except:
-        raise IOError(f'No file of path {infopath} found')
-
-    # import dictionary of spectral info
-    fidpath = from_topspin[0]
-    pdatapath = from_topspin[1]
-
-    # determine the data type to consider (FID or pdata)
-    setup_app = SetupApp(fidpath, pdatapath)
-    setup_app.mainloop()
-
-    try:
-        tmpdir = os.path.join(path, 'topspin')
-        info = load.pickle_load('tmp.pkl', tmpdir)
-        # os.remove(os.path.join(tmpdir, 'tmp.pkl'))
-    except FileNotFoundError:
-        exit()
-
-    # load the result GUI
-    result_app = ResultApp(info)
-    result_app.mainloop()
-
-    # construct save files
-    descrip = res_app.descrip
-    file = res_app.file
-    dir = res_app.dir
-
-    txt = res_app.txt
-    pdf = res_app.pdf
-    pickle = res_app.pickle
-
-
-    if txt == '1':
-        info.write_result(descrip=descrip, fname=file, dir=dir,
-                               force_overwrite=True)
-    if pdf == '1':
-        info.write_result(descrip=descrip, fname=file, dir=dir,
-                               force_overwrite=True, format='pdf')
-    if pickle == '1':
-        info.pickle_save(fname=file, dir=dir, force_overwrite=True)
+    # # construct save files
+    # descrip = res_app.descrip
+    # file = res_app.file
+    # dir = res_app.dir
+    #
+    # txt = res_app.txt
+    # pdf = res_app.pdf
+    # pickle = res_app.pickle
+    #
+    #
+    # if txt == '1':
+    #     info.write_result(descrip=descrip, fname=file, dir=dir,
+    #                            force_overwrite=True)
+    # if pdf == '1':
+    #     info.write_result(descrip=descrip, fname=file, dir=dir,
+    #                            force_overwrite=True, format='pdf')
+    # if pickle == '1':
+    #     info.pickle_save(fname=file, dir=dir, force_overwrite=True)
