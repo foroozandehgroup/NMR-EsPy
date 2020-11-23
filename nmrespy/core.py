@@ -1,4 +1,6 @@
 from copy import deepcopy
+import datetime
+import functools
 import inspect
 import json
 import os
@@ -10,14 +12,23 @@ import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 from scipy.integrate import simps
 
+import nmrespy
 from ._cols import *
 if USE_COLORAMA:
     import colorama
 from ._errors import *
 from . import _misc, _mpm, _nlp, _plot, _ve, _write
 
+NMRESPYPATH = os.path.dirname(nmrespy.__file__)
 
-np.set_printoptions(precision=5, threshold=32)
+def logger(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        with open(os.path.join(NMRESPYPATH, 'logs/tmp.log'), 'w') as fh:
+            fh.write(f'{f.__name__} {args[1:]} {kwargs}\n')
+        return f(*args, **kwargs)
+    return wrapper
+
 
 class NMREsPyBruker:
     """A class for consideration of Bruker data.
@@ -125,6 +136,8 @@ class NMREsPyBruker:
         The parameter estimate derived using :py:meth:`nonlinear_programming`
     """
 
+    NMRESPYPATH = os.path.dirname(nmrespy.__file__)
+
     def __init__(self, dtype, data, path, sw, off, n, sfo, nuc, endian,
                  intfloat, dim, filt_spec=None, virt_echo=None,
                  half_echo=None, ve_n=None, ve_sw=None, ve_off=None,
@@ -156,6 +169,15 @@ class NMREsPyBruker:
         self.theta = theta # nlp result
         self.errors = errors # errors assocaitesd with nlp result
 
+        curr = datetime.datetime.now()
+        stamp = curr.strftime('%y%m%d%H%M%S')
+        self.logpath = os.path.join(NMRESPYPATH, f'logs/{stamp}.log')
+
+        header = 'logfile for NMREsPyBruker instance\n'
+        header += curr.strftime('%d-%m-%y %H:%M:%S') + '\n'
+        with open(self.logpath, 'w') as fh:
+            fh.write(header)
+
 
     def __repr__(self):
         msg = f'nmrespy.core.NMREsPyBruker('
@@ -183,7 +205,6 @@ class NMREsPyBruker:
         msg += f'{self.errors})'
 
         return msg
-
 
     def __str__(self):
         cats = [] # categories
@@ -341,7 +362,7 @@ class NMREsPyBruker:
         # string with consistent padding
         # elements in cats with magenta coloring are titles, do not
         # involve in padding considerations
-        pad = max(len(c) for c in cats if f'{MA}' not in c)
+        pad = max(len(c) for c in cats if MA not in c)
         for c, v in zip(cats, vals):
             p = (pad - len(c) + 1) + len(v)
             msg += c + v.rjust(p) + '\n'
@@ -1032,6 +1053,8 @@ class NMREsPyBruker:
 
         return _misc.mkfid(result, n, sw, off, dim)
 
+
+    @logger
     def virtual_echo(self, highs, lows, highs_n, lows_n, p0=0.0, p1=0.0,
                      cut=False):
         """Generates phased, frequency-filtered data from the original data
@@ -1107,6 +1130,8 @@ class NMREsPyBruker:
         Unfortunately, 2-dimensional frequency filtration isn't supported yet.
         """
 
+        self._log_method()
+
         n = self.get_n()
         dim = self.get_dim()
         sfo = self.get_sfo()
@@ -1171,6 +1196,8 @@ class NMREsPyBruker:
         self.p0 = p0
         self.p1 = p1
 
+
+    @logger
     def matrix_pencil(self, M_in=0, trim=None, func_print=True):
         """Implementation of the 1D Matrix Pencil Method [1]_ [2]_ or 2D
         Modified Matrix Enchancement and Matrix Pencil (MMEMP) method [3]_
@@ -1237,6 +1264,9 @@ class NMREsPyBruker:
            frequencies using modified matrix pencil method”. In: IEEE Trans.
            Signal Process. 55.2 (2007), pp. 718–724.
         """
+
+        self._log_method()
+
         # unpack required parameters
         dtype = self.get_dtype()
         dim = self.get_dim()
@@ -1258,7 +1288,7 @@ class NMREsPyBruker:
         elif dim == 2:
             self.theta0 = _mpm.mpm_2d(data, M_in, sw, off, func_print)
 
-
+    @logger
     def nonlinear_programming(self, trim=None, method='trust_region',
                               mode=None, bound=False, phase_variance=False,
                               maxit=None, amp_thold=None, freq_thold=None,
@@ -1415,6 +1445,8 @@ class NMREsPyBruker:
         """
 
         # TODO: include freq threshold
+
+        self._log_method()
 
         # unpack parameters
         dim = self.get_dim()
@@ -1847,6 +1879,7 @@ class NMREsPyBruker:
         return _plot.plotres_1d(data, peaks, shifts, region, nuc, datacol,
                                 osccols, labels, stylesheet)
 
+    @logger
     def add_oscillators(self, oscillators, result_name=None):
         """Adds new oscillators to a parameter array.
 
@@ -1864,6 +1897,8 @@ class NMREsPyBruker:
             2. ``self.theta0`` will be used if it is not ``None``.
             3. Otherwise, an error will be raised.
         """
+
+        self._log_method()
 
         if isinstance(oscillators, np.ndarray):
             # if oscillators is 1D, convert to 2D array
@@ -1891,6 +1926,7 @@ class NMREsPyBruker:
         self.__dict__[result_name] = result[np.argsort(result[..., 2])]
 
 
+    @logger
     def remove_oscillators(self, indices, result_name=None):
         """Removes the oscillators corresponding to ``indices``.
 
@@ -1907,6 +1943,8 @@ class NMREsPyBruker:
             2. ``self.theta0`` will be used if it is not ``None``.
             3. Otherwise, an error will be raised.
         """
+
+        self._log_method()
 
         if isinstance(indices, (tuple, list, np.ndarray)):
             pass
@@ -1925,6 +1963,7 @@ class NMREsPyBruker:
         self.__dict__[result_name] = result[np.argsort(result[..., 2])]
 
 
+    @logger
     def merge_oscillators(self, indices, result_name=None):
         """Removes the oscillators corresponding to ``indices``, and
         constructs a single new oscillator with a cumulative amplitude, and
@@ -1960,6 +1999,8 @@ class NMREsPyBruker:
             * :math:`\\eta_{\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\eta_{m_i}`
         """
 
+        self._log_method()
+
         # determine number of elements in indices
         # if fewer than 2 elements, return without doing anything
         if isinstance(indices, (tuple, list, np.ndarray)):
@@ -1984,6 +2025,7 @@ class NMREsPyBruker:
         self.__dict__[result_name] = result[np.argsort(result[..., 2])]
 
 
+    @logger
     def split_oscillator(self, index, result_name=None, frequency_sep=2.,
                          unit='Hz', split_number=2, amp_ratio='same'):
         """Removes the oscillator corresponding to ``index``. Incorporates two
@@ -2026,6 +2068,9 @@ class NMREsPyBruker:
             frequency oscillator constructed. If ``'same'``, all oscillators
             will be given equal amplitudes.
         """
+
+        self._log_method()
+
         # get frequency_Sep in correct units
         if unit == 'Hz':
             pass
@@ -2081,6 +2126,24 @@ class NMREsPyBruker:
 
 
     # ---Internal use methods---
+    def _log_method(self):
+        """Records method calls"""
+        tmppath = os.path.join(NMRESPYPATH, 'logs/tmp.log')
+        with open(tmppath, 'r') as tmpfh:
+            new_call = tmpfh.read()
+        os.remove(tmppath)
+
+        try:
+            with open(self.logpath, 'r') as logfh_r:
+                old_calls = logfh_r.read()
+
+        except FileNotFoundError:
+            old_calls = ''
+
+        with open(self.logpath, 'w') as logfh_w:
+            logfh_w.write(old_calls + new_call)
+
+
     @staticmethod
     def _check_int_float(param):
         """Check if param is a float or int. If it is, convert to a tuple"""

@@ -5,6 +5,7 @@ from itertools import cycle
 import os
 import random
 import subprocess
+import time
 import webbrowser
 
 import numpy as np
@@ -1304,8 +1305,8 @@ class SetupButtonFrame(RootButtonFrame):
         self.ctrl.info.pickle_save(
             fname='tmp.pkl', dir=TOPSPINDIR, force_overwrite=True
         )
-
-        subprocess.Popen(['python3', f'{os.path.join(TOPSPINDIR, result.py)}'])
+        respath = os.path.join(TOPSPINDIR, 'result.py')
+        subprocess.Popen(['python3', respath])
 
 
 class ResultButtonFrame(RootButtonFrame):
@@ -2392,31 +2393,62 @@ class LinesFrame(tk.Frame):
         self.ctrl = ctrl
         self['bg'] = 'white'
 
-        items = ['Data', 'All oscillators']
-        items += [f'Oscillator {i+1}' for i in range(self.ctrl.info.theta.shape[0])]
-
-        self.linelist = tk.Listbox(self, width=12, selectmode=tk.SINGLE)
-
-        for item in items:
-            self.linelist.insert(tk.END, item)
-
-        self.linelist.selection_set(0)
-        self.linelist.bind('<<ListboxSelect>>', lambda e: self.ud_linelist())
-        self.linelist.grid(row=0, column=0, rowspan=3, pady=10)
+        items = ['data']
+        items += [f'osc{i+1}' for i in range(self.ctrl.info.theta.shape[0])]
 
         tk.Label(
             self, text='Color:', font=('Helvetica', 12, 'bold'), bg='white'
         ).grid(row=0, column=1, padx=10, pady=(10,0), sticky='w')
 
-        data_color = self.ctrl.lines['data'].get_color()
-        self.colorpicker = ColorPicker(self, init_color=data_color)
-        self.colorpicker.grid(row=1, column=1)
+        self.frames = {}
 
-        tk.Label(self, )
+        for item in items:
+            self.frames[item] = frame = tk.Frame(self, bg='white')
+            col = self.ctrl.lines[item].get_color()
+            colorpicker = ColorPicker(
+                frame, self.ctrl, init_color=col, object=self.ctrl.lines[item]
+            )
+            colorpicker.grid(row=0, column=0)
 
-    def ud_linelist(self):
-        idx = self.linelist.curselection()[0]
-        print(idx)
+            lwframe = tk.Frame(frame, bg='white')
+            lwframe.grid(row=1, column=0)
+
+            tk.Label(
+                lwframe, text='Linewidth:', font=('Helvetica', 12, 'bold'),
+                bg='white'
+            ).grid(row=0, column=0, padx=(10,0), pady=(10,0), sticky='w')
+
+
+
+        self.active = 'data'
+        self.frames[self.active].grid(row=1, column=1, pady=(10,0))
+
+        self.linelist = CustomListBox(self, items)
+
+        self.linelist.grid(row=0, column=0, rowspan=3, pady=10)
+
+
+
+    def click_linelist(self):
+
+        self.frames[self.active].grid_remove()
+
+        for item in self.linelist.options.keys():
+            if item['bg'] == '#cde6ff':
+                self.active = item
+
+        self.frames[self.active].grid(row=1, column=1, pady=(10,0))
+
+
+    def change_color(self, key):
+        print('we\'re in', time.time())
+        try:
+            color = self.colorpickers[key].color_var.get()
+            self.ctrl.lines[key].set_color(color)
+            self.ctrl.frames['PlotFrame'].canvas.draw_idle()
+        except KeyError:
+            pass
+
 
 class LabelsFrame(tk.Frame):
 
@@ -2430,13 +2462,31 @@ class LabelsFrame(tk.Frame):
         ).pack(padx=30, pady=30)
 
 
-
-class ColorPicker(tk.Frame):
-
-    def __init__(self, parent, init_color='random'):
+class LineFrame(tk.Frame):
+    def __init__(self, parent, ctrl, idx):
 
         tk.Frame.__init__(self, parent)
         self['bg'] = 'white'
+        self.ctrl = ctrl
+        self.idx = idx
+
+        color = self.ctrl.lines[self.idx].get_color()
+        self.colorpicker = ColorPicker(self, ctrl, init_color='random')
+        self.colorpicker.grid(row=0, column=0)
+
+
+
+class ColorPicker(tk.Frame):
+    # BUG: If init color has equal RGB values, the entry widget content
+    #      is mysteriously linked. Any change to one color will change
+    #      the entry widgets to match.
+
+    def __init__(self, parent, ctrl, init_color='random', object=None):
+
+        tk.Frame.__init__(self, parent)
+        self['bg'] = 'white'
+        self.ctrl = ctrl
+        self.object = object
         self.topframe = tk.Frame(self, bg='white')
         self.topframe.grid(row=0, column=0)
         self.bottomframe = tk.Frame(self, bg='white')
@@ -2445,6 +2495,8 @@ class ColorPicker(tk.Frame):
         if init_color == 'random':
             r = lambda: random.randint(0,255)
             init_color = '#{:02x}{:02x}{:02x}'.format(r(), r(), r())
+
+        print(init_color)
 
         self.color_var = tk.StringVar()
         self.color_var.set(init_color)
@@ -2470,7 +2522,6 @@ class ColorPicker(tk.Frame):
             scale.set(int(var.get(), 16))
             scale.grid(row=i, column=1, padx=(10,0), pady=(10,0))
 
-            print(var.get().upper())
             self.__dict__[f'{tag}_entry'] = entry = \
                 tk.Entry(
                     self.topframe, bg='white', text=var.get().upper(),
@@ -2505,16 +2556,20 @@ class ColorPicker(tk.Frame):
 
         col = self.color_var.get()
         if tag == 'r':
-            self.r_scale['troughcolor'] = '#' + hexa + '0000'
+            self.r_scale['troughcolor'] = f'#{hexa}0000'
             self.color_var.set(f'#{hexa}{col[3:]}')
         elif tag == 'g':
-            self.g_scale['troughcolor'] = '#' + '00' + hexa + '00'
+            self.g_scale['troughcolor'] = f'#00{hexa}00'
             self.color_var.set(f'#{col[1:3]}{hexa}{col[5:]}')
         else:
-            self.b_scale['troughcolor'] = '#' + '0000' + hexa
+            self.b_scale['troughcolor'] = f'#0000{hexa}'
             self.color_var.set(f'#{col[1:5]}{hexa}')
 
         self.swatch.itemconfig(self.rectangle, fill=self.color_var.get())
+
+        if self.object:
+            self.object.set_color(self.color_var.get())
+            self.ctrl.frames['PlotFrame'].canvas.draw_idle()
 
 
     def ud_entry(self, tag):
@@ -2553,7 +2608,30 @@ class ColorPicker(tk.Frame):
 
 
 
+class CustomListBox(tk.Frame):
 
+    def __init__(self, parent, items, height=12):
+        tk.Frame.__init__(self, parent)
+        self['bg'] = 'white'
+        self['highlightthickness'] = 2
+
+        self.options = {}
+        for i, item in enumerate(items):
+
+            self.options[item] = label = \
+                tk.Label(self, text=item, bg='white', anchor='w')
+            label.bind('<Button-1>', lambda e, item=item: self.click(item))
+            label.grid(row=i, column=0, sticky='new', ipadx=2)
+
+        self.active = items[0]
+        self.options[self.active]['bg'] = '#cde6ff'
+
+
+    def click(self, item):
+        print('click_called')
+        self.options[self.active]['bg'] = 'white'
+        self.active = item
+        self.options[self.active]['bg'] = '#cde6ff'
 
 
 
