@@ -210,9 +210,10 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
 
     else:
         # Re-run nlp recursively until solution has no -ve amps
-        return nlp(data, dim, theta, sw, off, phase_variance, method, mode,
-                   bound, maxit, amp_thold, freq_thold, fprint, negative_amps,
-                   False, start)
+        return nlp(
+            data, dim, theta, sw, off, phase_variance, method, mode, bound,
+            maxit, amp_thold, freq_thold, fprint, negative_amps, False, start
+        )
 
 
 
@@ -264,7 +265,7 @@ def _f_1d(para_act, *args):
             mu = np.sum(para[M:2*M]) / M
             func += (np.sum(para[M:2*M] ** 2) / M) - (mu ** 2)
         else:
-            mu = np.sum(para[:M]) / M
+            mu = np.sum(para[:M]) / (M * np.pi)
             func += (np.sum(para[:M] ** 2) / M) - (mu ** 2)
 
     return func
@@ -334,7 +335,7 @@ def _g_1d(para_act, *args):
             grad[M:2*M] = grad[M:2*M] + ((2 / M) * (para[M:2*M] - mu))
         # amplitudes are not being optimised (phases between 0 and M)
         else:
-            mu = np.sum(para[:M]) / M
+            mu = np.sum(para[:M]) / (M * np.pi)
             grad[:M] = grad[:M] + ((2 / M) * (para[:M] - mu))
 
     return grad
@@ -431,8 +432,9 @@ def _h_1d(para_act, *args):
         if 3 in idx:
             comps2.insert(1, np.einsum('ij,i->ij', comps1[0], -tp)) # f-η
 
-    deriv1 =np.hstack(comps1)
+    deriv1 = np.hstack(comps1)
     deriv2 = np.hstack(comps2)
+    print(deriv2.shape)
 
     diff = data - np.sum(model, axis=1)
     diags = -2 * np.real(np.matmul(deriv2.conj().T, diff))
@@ -455,14 +457,14 @@ def _h_1d(para_act, *args):
     if phase_variance:
         # amplitudes are being optimised (phases between M and 2M)
         if 0 in idx:
-            hess[M:2*M, M:2*M] += (2/(M**2))
+            hess[M:2*M, M:2*M] += (2/(M**2 * np.pi))
             hess[_diag_indices(hess, k=0)[0][M:2*M],
                  _diag_indices(hess, k=0)[1][M:2*M]] += 2 / M
         # amplitudes are not being optimised (phases between 0 and M)
         else:
             hess[:M, :M] += (2/(M**2))
             hess[_diag_indices(hess, k=0)[0][:M],
-                 _diag_indices(hess, k=0)[1][:M]] += 2 / M
+                 _diag_indices(hess, k=0)[1][:M]] += 2 / (M * np.pi)
 
     return hess
 

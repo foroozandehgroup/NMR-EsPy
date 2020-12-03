@@ -136,7 +136,7 @@ def plotres_1d(data, peaks, shifts, region, nuc, data_col,
     if region:
         # left and right boundaries of region, in ppm
         left = region[0][0]
-        right = region[1][0]
+        right = region[0][1]
 
         # set new x-axis limits to region studied
         # TODO generalise when writing for 2D as well

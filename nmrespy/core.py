@@ -2,6 +2,7 @@ from copy import deepcopy
 import datetime
 import functools
 import inspect
+import itertools
 import json
 import os
 import pickle
@@ -90,14 +91,14 @@ class NMREsPyBruker:
     dim : 1, 2
         The dimension of the data.
 
-    filt_spec : numpy.ndarray or None, default: `None`
+    filtered_spectrum : numpy.ndarray or None, default: `None`
         Spectral data which has been filtered using :py:meth:`virtual_echo`
 
-    virt_echo : numpy.ndarray or None, default: `None`
+    virtual_echo : numpy.ndarray or None, default: `None`
         Time-domain virtual echo derived using :py:meth:`virtual_echo`
 
     half_echo : numpy.ndarray or None, default: `None`
-        First half of ``virt_echo``, derived using :py:meth:`virtual_echo`
+        First half of ``virtual_echo``, derived using :py:meth:`virtual_echo`
 
     ve_n : (int,), (int, int) or None, default: `None`
         The size of the virtual echo generated using :py:meth:`virtual_echo`
@@ -136,13 +137,12 @@ class NMREsPyBruker:
         The parameter estimate derived using :py:meth:`nonlinear_programming`
     """
 
-    NMRESPYPATH = os.path.dirname(nmrespy.__file__)
-
-    def __init__(self, dtype, data, path, sw, off, n, sfo, nuc, endian,
-                 intfloat, dim, filt_spec=None, virt_echo=None,
-                 half_echo=None, ve_n=None, ve_sw=None, ve_off=None,
-                 highs=None, lows=None, p0=None, p1=None, theta0=None,
-                 theta=None, errors=None):
+    def __init__(
+        self, dtype, data, path, sw, off, n, sfo, nuc, endian, intfloat, dim,
+        filtered_spectrum=None, virtual_echo=None, half_echo=None, ve_n=None,
+        ve_sw=None, ve_off=None, region=None, noise_region=None, p0=None,
+        p1=None, theta0=None, theta=None, errors=None
+    ):
 
         self.dtype = dtype # type of data ('raw' or 'pdata')
         self.data = data
@@ -151,24 +151,25 @@ class NMREsPyBruker:
         self.off = off # transmitter offset (Hz)
         self.n = n # number of points in data
         self.sfo = sfo # transmitter frequency (MHz)
-        self.nuc = nuc # nucleus label
+        self.nucleus = nuc # nucleus label
         self.endian = endian # endianness of binary file(s)
         self.intfloat = intfloat # data type in binary file(s)
         self.dim = dim # data dimesnion
-        self.filt_spec = filt_spec # filtered spectrum
-        self.virt_echo = virt_echo # virtual echo
-        self.half_echo = half_echo # first half of virt_echo
+        self.filtered_spectrum = filtered_spectrum # filtered spectrum
+        self.virtual_echo = virtual_echo # virtual echo
+        self.half_echo = half_echo # first half of virtual_echo
         self.ve_n = ve_n # number of points in virtual echo if cut
         self.ve_sw = ve_sw # sw width of virtual echo if cut
         self.ve_off = ve_off # offset of virtual echo if cut
-        self.highs = highs # idx values corresponding to highest ppms of region
-        self.lows = lows # idx values corresponding to lowest ppms of region
+        self.region = region # idx values corresponding region of interest
+        self.noise_region = noise_region # idx values corresponding to noise region
         self.p0 = p0 # zero-order phase correction for virtual echo
         self.p1 = p1 # first-order phase correction for virtual echo
         self.theta0 = theta0 # mpm result
         self.theta = theta # nlp result
         self.errors = errors # errors assocaitesd with nlp result
 
+        # setup file for logging method calls
         curr = datetime.datetime.now()
         stamp = curr.strftime('%y%m%d%H%M%S')
         self.logpath = os.path.join(NMRESPYPATH, f'logs/{stamp}.log')
@@ -188,18 +189,18 @@ class NMREsPyBruker:
         msg += f'{self.off}, '
         msg += f'{self.n}, '
         msg += f'{self.sfo}, '
-        msg += f'{self.nuc}, '
+        msg += f'{self.nucleus}, '
         msg += f'{self.endian}, '
         msg += f'{self.intfloat}, '
         msg += f'{self.dim}, '
-        msg += f'{self.filt_spec}, '
-        msg += f'{self.virt_echo}, '
+        msg += f'{self.filtered_spectrum}, '
+        msg += f'{self.virtual_echo}, '
         msg += f'{self.half_echo}, '
         msg += f'{self.ve_n}, '
         msg += f'{self.ve_sw}, '
         msg += f'{self.ve_off}, '
-        msg += f'{self.highs}, '
-        msg += f'{self.lows}, '
+        msg += f'{self.region}, '
+        msg += f'{self.noise_region}, '
         msg += f'{self.theta0}, '
         msg += f'{self.theta}, '
         msg += f'{self.errors})'
@@ -294,7 +295,7 @@ class NMREsPyBruker:
             vals.append(s)
 
         # nucleus of each channel
-        nuc = self.get_nuc()
+        nuc = self.get_nucleus()
         for i, n in enumerate(nuc):
             if i == 0:
                 cats.append('Nuclei:')
@@ -304,22 +305,22 @@ class NMREsPyBruker:
             vals.append(f'{n} (F{i+1})')
 
         # --- Frequency filtered signal information ---
-        virt_echo = self.get_virt_echo(kill=False)
-        if virt_echo is None:
+        virtual_echo = self.get_virtual_echo(kill=False)
+        if virtual_echo is None:
             pass
         else:
             cats.append(f'\n{MA}───Frequency Filter Info───{END}')
             vals.append('')
             half_echo = self.get_half_echo()
-            filt_spec = self.get_filt_spec()
-            bounds = zip(self.get_highs(unit='Hz'),
-                         self.get_highs(unit='ppm'),
-                         self.get_lows(unit='Hz'),
-                         self.get_lows(unit='ppm'))
+            filtered_spectrum = self.get_filtered_spectrum()
+
+            bounds = zip(
+                self.get_region(unit='hz'), self.get_region(unit='ppm')
+            )
 
             # virtual echo
             cats.append('Virtual Echo:')
-            vals.append(f'numpy.ndarray of shape {virt_echo.shape}')
+            vals.append(f'numpy.ndarray of shape {virtual_echo.shape}')
 
             # halved virtual echo (the signal actually processed)
             cats.append('Half Echo:')
@@ -327,18 +328,19 @@ class NMREsPyBruker:
 
             # the filtered spectrum from which the virtual echo is derived
             cats.append('Filtered Spectrum:')
-            vals.append(f'numpy.ndarray of shape {filt_spec.shape}')
+            vals.append(f'numpy.ndarray of shape {filtered_spectrum.shape}')
 
-            # upper and lower bounds of spectral region in each dimension
-            for i, (hi, hi_p, lo, lo_p) in enumerate(bounds):
+            # bounds of spectral region in each dimension
+            for i, (bound_hz, bound_ppm) in enumerate(bounds):
                 if i == 0:
                     cats.append('Region:')
 
                 else:
                     cats.append('')
 
-                s = f'{hi:.4f} - {lo:.4f}Hz' + f' ({hi_p:.4f} - ' \
-                    + f'{lo_p:.4f}ppm) (F{i+1})\n'
+                s = f'{bound_hz[0]:.4f} - {bound_hz[1]:.4f}Hz' \
+                    + f' ({bound_ppm[0]:.4f} - {bound_ppm[1]:.4f}ppm)' \
+                    + f' (F{i+1})\n'
 
                 vals.append(s)
 
@@ -370,7 +372,6 @@ class NMREsPyBruker:
         return msg
 
 
-    # get parameters from class
     def get_datapath(self):
         """Return path of the data directory.
 
@@ -380,6 +381,7 @@ class NMREsPyBruker:
         """
         return self.path
 
+
     def get_dtype(self):
         """Return data type.
 
@@ -388,6 +390,7 @@ class NMREsPyBruker:
         dtype : 'raw', 'pdata'
         """
         return self.dtype
+
 
     def get_data(self, pdata_key=None):
         """Return the original data.
@@ -425,6 +428,7 @@ class NMREsPyBruker:
                     msg += ', '.join([repr(k) for k in self.data.keys()]) + END
                     raise ValueError(msg)
 
+
     def get_n(self):
         """Return number of points the data is composed of in each
         dimesnion.
@@ -435,6 +439,7 @@ class NMREsPyBruker:
         """
         return self.n
 
+
     def get_dim(self):
         """Return the data dimension.
 
@@ -444,12 +449,13 @@ class NMREsPyBruker:
         """
         return self.dim
 
-    def get_sw(self, unit='Hz'):
+
+    def get_sw(self, unit='hz'):
         """Return the experiment sweep width in each dimension.
 
         Parameters
         ----------
-        unit : 'Hz' or 'ppm', default: 'Hz'
+        unit : 'hz' or 'ppm', default: 'hz'
             The unit of the value(s).
 
         Returns
@@ -460,24 +466,25 @@ class NMREsPyBruker:
         Raises
         ------
         InvalidUnitError
-            If ``unit`` is not ``'Hz'`` or ``'ppm'``
+            If ``unit`` is not ``'hz'`` or ``'ppm'``
         """
-        if unit == 'Hz':
-            return self.sw
-        elif unit == 'ppm':
-            sw_p = ()
-            for sw, sfo in zip(self.sw, self.sfo):
-                sw_p += (sw / sfo),
-            return sw_p
-        else:
-            raise InvalidUnitError('Hz', 'ppm')
 
-    def get_offset(self, unit='Hz'):
+        if unit == 'hz':
+            return self.sw
+
+        elif unit == 'ppm':
+            return self._unit_convert(self.sw, convert='hz->ppm')
+
+        else:
+            raise InvalidUnitError('hz', 'ppm')
+
+
+    def get_offset(self, unit='hz'):
         """Return the transmitter's offset frequency in each dimesnion.
 
         Parameters
         ----------
-        unit : 'Hz' or 'ppm', default: 'Hz'
+        unit : 'hz' or 'ppm', default: 'hz'
             The unit of the value(s).
 
         Returns
@@ -487,17 +494,18 @@ class NMREsPyBruker:
         Raises
         ------
         InvalidUnitError
-            If ``unit`` is not ``'Hz'`` or ``'ppm'``
+            If ``unit`` is not ``'hz'`` or ``'ppm'``
         """
-        if unit == 'Hz':
+
+        if unit == 'hz':
             return self.off
+
         elif unit == 'ppm':
-            off_p = ()
-            for off, sfo in zip(self.off, self.sfo):
-                off_p += (off / sfo),
-            return off_p
+            return self._unit_convert(self.sw, convert='hz->ppm')
+
         else:
-            raise InvalidUnitError('Hz', 'ppm')
+            raise InvalidUnitError('hz', 'ppm')
+
 
     def get_sfo(self):
         """Return transmitter frequency for each channel (MHz).
@@ -506,7 +514,9 @@ class NMREsPyBruker:
         -------
         sfo : (float,) or (float, float)
         """
+
         return self.sfo
+
 
     def get_bf(self):
         """Return the transmitter's basic frequency for each channel (MHz).
@@ -515,27 +525,33 @@ class NMREsPyBruker:
         -------
         bf : (float,) or (float, float)
         """
+
         bf = ()
-        for sfo, off in zip(self.sfo, self.off):
+
+        for sfo, off in zip(self.get_sfo(), self.get_offset()):
             bf += (sfo - (off / 1E6)),
+
         return bf
 
-    def get_nuc(self):
+
+    def get_nucleus(self):
         """Return the target nucleus of each channel.
 
         Returns
         -------
         nuc : (str,) or (str, str)
         """
-        return self.nuc
 
-    def get_shifts(self, unit='ppm'):
+        return self.nucleus
+
+
+    def get_shifts(self, unit='ppm', meshgrid=False):
         """Return the sampled frequencies consistent with experiment's
         parameters (sweep width, transmitter offset, number of points).
 
         Parameters
         ----------
-        unit : 'ppm' or 'Hz', default: 'ppm'
+        unit : 'ppm' or 'hz', default: 'ppm'
             The unit of the value(s).
 
         Returns
@@ -546,23 +562,22 @@ class NMREsPyBruker:
         Raises
         ------
         InvalidUnitError
-            If ``unit`` is not ``'Hz'`` or ``'ppm'``
+            If ``unit`` is not ``'hz'`` or ``'ppm'``
         """
-        if unit == 'ppm':
-            sw = self.get_sw(unit='ppm')
-            off = self.get_offset(unit='ppm')
 
-        elif unit == 'Hz':
-            sw = self.get_sw()
-            off = self.get_offset()
-
-        else:
-            raise InvalidUnitError('ppm', 'Hz')
+        if unit not in ['ppm', 'hz']:
+            raise InvalidUnitError('ppm', 'hz')
 
         n = self.get_n()
+
         shifts = []
-        for s, o, n_ in zip(sw, off, n):
-            shifts.append(np.linspace(o+(s/2), o-(s/2), n_))
+        for sw, off, n in zip(
+            self.get_sw(unit=unit), self.get_offset(unit=unit), self.get_n()
+        ):
+            shifts.append(
+                np.linspace(off + (sw / 2), off - (sw / 2), n)
+            )
+
         return tuple(shifts)
 
     def get_tp(self):
@@ -574,27 +589,28 @@ class NMREsPyBruker:
         tp : (numpy.ndarray,) or (numpy.ndarray, numpy.ndarray)
             The times sampled along each dimension (seconds).
         """
-        sw = self.get_sw()
-        n = self.get_n()
+
         tp = []
-        for s, n_ in zip(sw, n):
-            tp.append(np.linspace(0, float(n_-1)/s, n_))
+        for sw, n in zip(self.get_sw(), self.get_n()):
+            tp.append(
+                np.linspace(0, float(n - 1) / s, n)
+            )
+
         return tuple(tp)
 
-    def get_highs(self, unit='idx', kill=True):
-        """Return the value of the point with the highest ppm value that
-        is contained within the filter region specified using
-        :py:meth:`virtual_echo`, in each dimension.
+
+# TODO get_region and get_noise_region could be generalised ===================
+
+    def get_region(self, unit='idx', kill=True):
+        """Return the region of interest.
 
         Parameters
         ----------
-        unit : 'idx', 'Hz', 'ppm', default: 'idx'
-            The unit of the value(s). 'idx' corresponds to array index,
-            'ppm' corresonds to parts per million, 'Hz' corresponds to
-            Hertz.
+        unit : 'idx', 'hz', 'ppm', default: 'idx'
+            The unit of the elements.
 
         kill : bool, default: True
-            If ``self.highs`` is ``None``, ``kill`` specifies
+            If ``self.region`` is ``None``, ``kill`` specifies
             how to act:
 
             * If ``kill`` is ``True``, an error is raised.
@@ -602,84 +618,94 @@ class NMREsPyBruker:
 
         Returns
         -------
-        highs : (float,), (int,), (float, float), (int, int), or None
+        region : ((float,float),), ((int,int),),
+                 ((float, float),(float, float)), ((int, int),(int, int)),
+                 or None
 
         Raises
         ------
         AttributeIsNoneError
-            If ``self.highs`` is ``None``, and ``kill`` is ``True``.
+            If ``self.region`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
-            If ``unit`` is not ``'idx'``, ``'Hz'``, or ``'ppm'``.
+            If ``unit`` is not ``'idx'``, ``'hz'``, or ``'ppm'``.
 
         Notes
         -----
-        If ``self.highs`` is ``None``, it is likely that :py:meth:`virtual_echo`
-        is yet to be called on the class instance.
+        If ``self.region`` is ``None``, it is likely that
+        :py:meth:`virtual_echo` is yet to be called on the class instance.
         """
-        highs = self._get_nondefault_param('highs', 'virtual_echo()', kill)
+
+        region = self._get_nondefault_param('region', 'virtual_echo()', kill)
+
         if unit == 'idx':
-            return highs
-        elif unit == 'Hz':
-            return self._indices_to_hz(highs)
-        elif unit == 'ppm':
-            return self._indices_to_ppm(highs)
+            return region
+
+        elif unit in ['hz', 'ppm']:
+            return self._unit_convert(region, convert=f'idx->{unit}')
+
         else:
-            raise InvalidUnitError('idx', 'Hz', 'ppm')
+            raise InvalidUnitError('idx', 'hz', 'ppm')
 
 
-    def get_lows(self, unit='idx', kill=True):
-        """Return the value of the point with the lowest ppm value that
-        is contained within the filter region specified using
-        :py:meth:`virtual_echo`, in each dimension.
+    def get_noise_region(self, unit='idx', kill=True):
+        """Return the noise region.
 
         Parameters
         ----------
-        unit : 'idx', 'Hz', 'ppm', default: 'idx'
-            The unit of the value(s). 'idx' corresponds to array index,
-            'ppm' corresonds to parts per million, 'Hz' corresponds to
-            Hertz.
+        unit : 'idx', 'hz', 'ppm', default: 'idx'
+            The unit of the elements.
 
         kill : bool, default: True
-            If ``self.low`` is ``None``, ``kill`` specifies how to act:
+            If ``self.region`` is ``None``, ``kill`` specifies
+            how to act:
 
             * If ``kill`` is ``True``, an error is raised.
             * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
-        highs : (float,), (int,), (float, float), (int, int), or None
+        noise_region : ((float,float),), ((int,int),),
+                 ((float, float),(float, float)), ((int, int),(int, int)),
+                 or None
 
         Raises
         ------
         AttributeIsNoneError
-            If ``self.lows`` is ``None``, and ``kill`` is ``True``.
+            If ``self.noise_region`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
-            If `unit` is not 'idx', 'Hz', or 'ppm'
+            If ``unit`` is not ``'idx'``, ``'hz'``, or ``'ppm'``.
 
         Notes
         -----
-        If ``self.lows`` is ``None``, it is likely that :py:meth:`virtual_echo`
-        is yet to be called on the class instance.
+        If ``self.noise_region`` is ``None``, it is likely that
+        :py:meth:`virtual_echo` is yet to be called on the class instance.
         """
-        lows = self._get_nondefault_param('lows', 'virtual_echo()', kill)
-        if unit == 'idx':
-            return lows
-        elif unit == 'Hz':
-            return self._indices_to_hz(lows)
-        elif unit == 'ppm':
-            return self._indices_to_ppm(lows)
-        else:
-            raise InvalidUnitError('idx', 'Hz', 'ppm')
 
-    def get_p0(self, unit='rad', kill=True):
+        noise_region = self._get_nondefault_param(
+            'noise_region', 'virtual_echo()', kill
+        )
+
+        if unit == 'idx':
+            return noise_region
+
+        elif unit in ['hz', 'ppm']:
+            return self._unit_convert(noise_region, convert=f'idx->{unit}')
+
+        else:
+            raise InvalidUnitError('idx', 'hz', 'ppm')
+
+# =============================================================================
+
+# TODO get_p0 and get_p1 copuldbe generalised =================================
+
+    def get_p0(self, unit='radians', kill=True):
         """Return the zero-order phase correction specified using
         :py:meth:`virtual_echo`.
 
         Parameters
         ----------
-        unit : 'rad', 'deg', default: 'rad'
-            The unit the phase is expressed in. ``'rad'`` corresponds to
-            radians, ``'deg'`` corresonds to degress.
+        unit : 'radians', 'degrees', default: 'rad'
+            The unit the phase is expressed in.
 
         kill : bool, default: True
             If ``self.p0`` is ``None``, ``kill`` specifies how to act:
@@ -696,31 +722,33 @@ class NMREsPyBruker:
         AttributeIsNoneError
             Raised if ``p0`` is ``None``, and ``kill`` is ``True``
         InvalidUnitError
-            If ``unit`` is not ``'rad'`` or ``'deg'``
+            If ``unit`` is not ``'radians'`` or ``'degrees'``
 
         Notes
         -----
         If ``self.p0`` is ``None``, it is likely that :py:meth:`virtual_echo`
         is yet to be called on the class instance.
         """
-        p0 = self._get_nondefault_param('p0', 'virtual_echo()', kill)
-        if unit == 'rad':
-            return p0
-        elif unit == 'deg':
-            return p0 * (180 / np/pi)
+
+        if unit == 'radians':
+            return self._get_nondefault_param('p0', 'virtual_echo()', kill)
+
+        elif unit == 'degrees':
+            return self._get_nondefault_param('p0', 'virtual_echo()', kill) \
+                   * (180 / np.pi)
+
         else:
-            raise InvalidUnitError('rad', 'deg')
+            raise InvalidUnitError('radians', 'degrees')
 
 
-    def get_p1(self, unit='rad', kill=True):
+    def get_p1(self, unit='radians', kill=True):
         """Return the first-order phase correction specified using
         :py:meth:`virtual_echo`.
 
         Parameters
         ----------
-        unit : 'rad', 'deg', default: 'rad'
-            The unit the phase is expressed in. ``'rad'`` corresponds to
-            radians, ``'deg'`` corresonds to degress.
+        unit : 'radians', 'degrees', default: 'radians'
+            The unit the phase is expressed in.
 
         kill : bool, default: True
             If ``self.p1`` is ``None``, `kill` specifies how to act:
@@ -737,76 +765,89 @@ class NMREsPyBruker:
         AttributeIsNoneError
             Raised if ``self.p1`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
-            If ``unit`` is not ``'rad'`` or ``'deg'``
+            If ``unit`` is not ``'radians'`` or ``'degrees'``
 
         Notes
         -----
         If ``self.p1`` is ``None``, it is likely that :py:meth:`virtual_echo`
         is yet to be called on the class instance.
         """
-        p1 = self._get_nondefault_param('p1', 'virtual_echo()', kill)
-        if unit == 'rad':
-            return p1
-        elif unit == 'deg':
-            return p1 * (180 / np/pi)
-        else:
-            raise InvalidUnitError('rad', 'deg')
 
-    def get_filt_spec(self, kill=True):
+        if unit == 'radians':
+            return self._get_nondefault_param('p1', 'virtual_echo()', kill)
+
+        elif unit == 'degrees':
+            return self._get_nondefault_param('p1', 'virtual_echo()', kill) \
+                   * (180 / np.pi)
+
+        else:
+            raise InvalidUnitError('radians', 'degrees')
+
+# =============================================================================
+
+    def get_filtered_spectrum(self, kill=True):
         """Return the filtered spectral data generated using
         :py:meth:`virtual_echo`.
 
         Parameters
         ----------
         kill : bool, default: True
-            If ``self.filt_spec`` is ``None``, `kill` specifies how to act:
+            If ``self.filtered_spectrum`` is ``None``, `kill` specifies how to act:
 
             * If ``kill`` is ``True``, an error is raised.
             * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
-        filt_spec : numpy.ndarray or None
+        filtered_spectrum : numpy.ndarray or None
 
         Raises
         ------
         AttributeIsNoneError
-            Raised if ``self.filt_spec`` is ``None``, and ``kill`` is ``True``.
+            Raised if ``self.filtered_spectrum`` is ``None``, and ``kill`` is ``True``.
 
         Notes
         -----
-        If ``self.filt_spec`` is ``None``, it is likely that
+        If ``self.filtered_spectrum`` is ``None``, it is likely that
         :py:meth:`virtual_echo` is yet to be called on the class instance.
         """
-        return self._get_nondefault_param('filt_spec', 'virtual_echo()', kill)
 
-    def get_virt_echo(self, kill=True):
+        return self._get_nondefault_param(
+            'filtered_spectrum', 'virtual_echo()', kill
+        )
+
+
+    def get_virtual_echo(self, kill=True):
         """Return the virtual echo data generated using
         :py:meth:`virtual_echo`
 
         Parameters
         ----------
         kill : bool, default: True
-            If ``self.virt_echo`` is ``None``, `kill` specifies how to act:
+            If ``self.virtual_echo`` is ``None``, `kill` specifies how to act:
 
             * If ``kill`` is ``True``, an error is raised.
             * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
-        filt_spec : numpy.ndarray or None
+        filtered_spectrum : numpy.ndarray or None
 
         Raises
         ------
         AttributeIsNoneError
-            Raised if ``self.virt_echo`` is ``None``, and ``kill`` is ``True``.
+            Raised if ``self.virtual_echo`` is ``None``, and ``kill`` is ``True``.
 
         Notes
         -----
-        If ``self.virt_echo`` is ``None``, it is likely that
+        If ``self.virtual_echo`` is ``None``, it is likely that
         :py:meth:`virtual_echo` is yet to be called on the class instance.
         """
-        return self._get_nondefault_param('virt_echo', 'virtual_echo()', kill)
+
+        return self._get_nondefault_param(
+            'virtual_echo', 'virtual_echo()', kill
+        )
+
 
     def get_half_echo(self, kill=True):
         """Return the halved virtual echo data generated using
@@ -822,7 +863,7 @@ class NMREsPyBruker:
 
         Returns
         -------
-        filt_spec : numpy.ndarray or None
+        filtered_spectrum : numpy.ndarray or None
 
         Raises
         ------
@@ -834,16 +875,52 @@ class NMREsPyBruker:
         If ``self.half_echo`` is ``None``, it is likely that
         :py:meth:`virtual_echo` is yet to be called on the class instance.
         """
-        return self._get_nondefault_param('half_echo', 'virtual_echo()', kill)
+
+        return self._get_nondefault_param(
+            'half_echo', 'virtual_echo()', kill
+        )
 
 
-    def get_ve_sw(self, unit='Hz', kill=True):
+    def get_ve_n(self, kill=True):
+        """Return the number of points of the signal generated using
+        :py:meth:`virtual_echo` with ``cut = True``, in each dimesnion.
+
+        Parameters
+        ----------
+        kill : bool, default: True
+            If ``self.n`` is ``None``, `kill` specifies how to act:
+
+            * If ``kill`` is ``True``, an error is raised.
+            * If ``kill`` is ``False``, ``None`` is returned.
+
+        Returns
+        -------
+        ve_n : (int,), (int, int), or None
+
+        Raises
+        ------
+        AttributeIsNoneError
+            Raised if ``self.n`` is ``None``, and ``kill`` is ``True``.
+
+        Notes
+        -----
+        If ``self.n`` is ``None``, it is likely that
+        :py:meth:`virtual_echo`, with ``cut = True`` has not been called on
+        the class instance.
+        """
+
+        return self._get_nondefault_param(
+            've_n', 'virtual_echo() with cut=True', kill
+        )
+
+
+    def get_ve_sw(self, unit='hz', kill=True):
         """Return the sweep width of the signal generated using
         :py:meth:`virtual_echo` with ``cut = True``, in each dimesnion.
 
         Parameters
         ----------
-        unit : 'Hz', 'ppm', default: 'Hz'
+        unit : 'hz', 'ppm', default: 'hz'
             The unit of the value(s).
 
         kill : bool, default: True
@@ -861,7 +938,7 @@ class NMREsPyBruker:
         AttributeIsNoneError
             Raised if ``self.ve_sw`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
-            If ``unit`` is not ``'Hz'`` or ``'ppm'``.
+            If ``unit`` is not ``'hz'`` or ``'ppm'``.
 
         Notes
         -----
@@ -869,27 +946,29 @@ class NMREsPyBruker:
         :py:meth:`virtual_echo`, with ``cut = True`` has not been called on the
         class instance.
         """
-        ve_sw =  self._get_nondefault_param('ve_sw',
-                                            'virtual_echo() with cut=True',
-                                            kill)
-        if unit == 'Hz':
-            return ve_sw
-        elif unit == 'ppm':
-            ve_sw_p = ()
-            for sw, sfo in zip(ve_sw, self.sfo):
-                ve_sw_p += (sw / sfo),
-            return ve_sw_p
-        else:
-            raise InvalidUnitError('Hz', 'ppm')
 
-    def get_ve_offset(self, unit='Hz', kill=True):
+        ve_sw =  self._get_nondefault_param(
+            've_sw', 'virtual_echo() with cut=True', kill
+        )
+
+        if unit == 'hz':
+            return ve_sw
+
+        elif unit == 'ppm':
+            return self._unit_convert(ve_sw, convert='hz->ppm')
+
+        else:
+            raise InvalidUnitError('hz', 'ppm')
+
+
+    def get_ve_offset(self, unit='hz', kill=True):
         """Return the transmitter's offest frequency of the signal generated
         using :py:meth:`virtual_echo` with ``cut = True``, in each
         dimesnion.
 
         Parameters
         ----------
-        unit : 'Hz', 'ppm', default: 'Hz'
+        unit : 'hz', 'ppm', default: 'hz'
             The unit of the value(s).
 
         kill : bool, default: True
@@ -907,7 +986,7 @@ class NMREsPyBruker:
         AttributeIsNoneError
             Raised if ``self.ve_off`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
-            If `unit` is not 'Hz' or 'ppm'
+            If `unit` is not 'hz' or 'ppm'
 
         Notes
         -----
@@ -915,18 +994,20 @@ class NMREsPyBruker:
         :py:meth:`virtual_echo`, with ``cut = True`` has not been called on the
         class instance.
         """
-        ve_off =  self._get_nondefault_param('ve_off',
-                                             'virtual_echo() with cut=True',
-                                             kill)
-        if unit == 'Hz':
+
+        ve_off =  self._get_nondefault_param(
+            've_off', 'virtual_echo() with cut=True', kill
+        )
+
+        if unit == 'hz':
             return ve_off
+
         elif unit == 'ppm':
-            ve_off_p = ()
-            for off, sfo in zip(ve_off, self.sfo):
-                ve_off_p += (off / sfo),
-            return ve_off_p
+            return self._unit_convert(ve_off, convert='hz->ppm')
+
         else:
-            raise InvalidUnitError('Hz', 'ppm')
+            raise InvalidUnitError('hz', 'ppm')
+
 
     def get_theta0(self, kill=True):
         """Return the parameter estimate derived using
@@ -956,6 +1037,7 @@ class NMREsPyBruker:
         If ``self.theta0`` is ``None``, it is likely that
         :py:meth:`matrix_pencil` has not been called on the class instance.
         """
+
         return self._get_nondefault_param('theta0', 'matrix_pencil()', kill)
 
 
@@ -988,21 +1070,30 @@ class NMREsPyBruker:
         :py:meth:`nonlinear_programming` has not been called on the class
         instance.
         """
+
         return self._get_nondefault_param('theta', 'nonlinear_programming()',
                                           kill)
 
 
     def _get_nondefault_param(self, name, method, kill):
-        """Retrieve attributes that may be assigned the value ``None``. Warn
-        user/raise error depending on the value of ``kill``"""
-        if self.__dict__[name] is not None: # determine if attribute is not None
+        """Retrieve attributes that may be assigned the value ``None``. Return
+        None/raise error depending on the value of ``kill``"""
+
+        # determine if attribute is not None
+        if self.__dict__[name] is not None:
             return self.__dict__[name]
+
         else:
             if kill is True:
                 raise AttributeIsNoneError(name, method)
             else:
                 return None
 
+# TODO ========================================================
+# make_fid:
+# include functionality to write to Bruker files, Varian files,
+# JEOL files etc
+# =============================================================
 
     def make_fid(self, result_name=None, oscillators=None, n=None):
         """Constructs a synthetic FID using a parameter estimate and
@@ -1032,55 +1123,53 @@ class NMREsPyBruker:
         fid : numpy.ndarray
             The generated FID.
         """
+
         result, _ = self._check_result(result_name)
 
-        if oscillators or oscillators == 0:
+        if oscillators:
+            # slice desired oscillators
             result = result[[oscillators],:]
 
         dim = self.get_dim()
-
         n = self._check_int_float(n)
+
         if not n:
             n = self.get_n()
+
         elif isinstance(n, tuple) and len(n) == dim:
             pass
+
         else:
-            raise TypeError(f'{R}n should be None or a tuple of int{END}')
+            raise TypeError(f'{R}n should be None or a tuple of ints{END}')
 
-        sw = self.get_sw()
-        off = self.get_offset()
-        dim = self.get_dim()
-
-        return _misc.mkfid(result, n, sw, off, dim)
+        return _misc.mkfid(
+            result, n, self.get_sw(), self.get_offset(), dim
+        )
 
 
     @logger
-    def virtual_echo(self, highs, lows, highs_n, lows_n, p0=0.0, p1=0.0,
-                     cut=False):
+    def frequency_filter(
+        self, region, noise_region, p0=0.0, p1=0.0, cut=False, cut_ratio=2.5,
+        region_units='ppm'
+    ):
         """Generates phased, frequency-filtered data from the original data
         supplied.
 
         Parameters
         ----------
-        highs : (float,) or (float, float,)
-            The highest ppm value of the spectral region to consider, for
-            each dimension.
+        region: (float, float) or ((float, float),(float, float))
+            Cut-off points of the spectral region to consider, in ppm.
+            If the signal is 1D, this should be of the form ``(a,b)``
+            where ``a`` and ``b`` are the boundaries.
+            If the signal is 2D, this should be of the form
+            ``((a,b), (c,d))`` where ``a`` and ``b`` are the boundaries in
+            dimension 1, and ``c`` and ``d`` are the boundaries in
+            dimension 2. The ordering of the bounds in each dimension is
+            not important.
 
-        lows : (float,) or (float, float,)
-            The lowest ppm value of the spectral region to consider, for
-            each dimension.
-
-        highs_n : (float,), (float, float,) or None
-            The highest ppm value of a region of the signal that doesn't
-            contain any noticeable signals, in each dimesion. If ``cut``
-            is set to ``True``, the value of ``highs_n`` will be of no
-            consequence.
-
-        lows_n : (float,), (float, float,) or None
-            The lowest ppm value of a region of the signal that doesn't
-            contain any noticeable signals, in each dimesion. If ``cut``
-            is set to ``True``, the value of ``lows_n`` will be of no
-            consequence.
+        noise_region: ((float, float),) or ((float, float),(float, float))
+            Cut-off points of the spectral region to extract the spectrum's
+            noise variance. This should have the same structure as ``region``.
 
         p0 : float, default: 0.0
             Zero order phase correction to apply to the data (radians).
@@ -1096,6 +1185,16 @@ class NMREsPyBruker:
             so that only the spectral region specified by ``highs`` and
             ``lows`` will be retained.
 
+        cut_ratio : float, default: 2.5
+            If cut is ``True`` this value defines the ratio between the
+            cut signal's sweep width, and the region width, in each dimesnion.
+            It is reccommended that this is comfortably larger than ``1.``.
+            ``2.`` or higher should be appropriate.
+
+        region_units : 'ppm', 'hz' or 'idx', default: 'ppm'
+            The unit the elements of ``region`` and ``noise_region`` are
+            expressed in.
+
         Raises
         ------
         TwoDimUnsupportedError
@@ -1103,20 +1202,20 @@ class NMREsPyBruker:
 
         Notes
         -----
-        The values of the class' following attributes will be updated following
-        the successful running of this method:
+        The values of the class instance's following attributes will be
+        updated after the successful running of this method:
 
-        * ``filt_spec`` - The frequency-filtered spectrum used to generate the
+        * ``filtered_spectrum`` - The frequency-filtered spectrum used to generate the
           resultant time domin data
-        * ``virt_echo`` - Virtual echo, the inverse FT of ``filt_spec``. This
+        * ``virtual_echo`` - Virtual echo, the inverse FT of ``filtered_spectrum``. This
           signal is conjugate symmetric.
-        * ``half_echo`` - The first half of ``virt_echo``. This is the signal
+        * ``half_echo`` - The first half of ``virtual_echo``. This is the signal
           that is subsequently analysed by default by :py:meth:`matrix_pencil`
           and :py:meth:`nonlinear_programming`.
-        * ``highs`` - The value of ``highs`` input to the method, converted to
+        * ``region`` - The value of ``region`` input to the method, converted to
           the unit of array indices.
-        * ``lows`` - The value of ``lows`` input to the method, converted to
-          the unit of array indices.
+        * ``noise_region`` - The value of ``noise_region`` input to the method,
+          converted to the unit of array indices.
         * ``p0`` - The value of ``p0`` input to the method.
         * ``p1`` - The value of ``p1`` input to the method.
 
@@ -1126,75 +1225,132 @@ class NMREsPyBruker:
         * ``ve_sw`` - The sweep width of the sliced signal, in Hz
         * ``ve_off`` - The transmitter offset frequency of the sliced signal,
           in Hz.
-
-        Unfortunately, 2-dimensional frequency filtration isn't supported yet.
         """
 
         self._log_method()
 
-        n = self.get_n()
-        dim = self.get_dim()
-        sfo = self.get_sfo()
-
-        # check dim is valid (only 1D data supported so far)
-        if dim == 2:
+        if self.get_dim() == 2:
             raise TwoDimUnsupportedError()
 
+        if region_units not in ['ppm', 'idx', 'hz']:
+            raise ValueError(f'{R}region_unit should be \'ppm\', \'idx\','
+                             f' or \'hz\'{END}')
+
+        if cut_ratio < 1.:
+            raise ValueError(f'{R}cut_ratio should not be smaller than 1{END}')
+
+        if cut_ratio < 1.5:
+            print(f'{O}WARNING: It is advisable that you set cut_ratio to be'
+                  f' comfortably higher than 1. (2. or higher should suffice).'
+                  f'{END}')
+
         if self.dtype == 'raw':
-            dtype = 'raw'
             data = np.flip(fftshift(fft(self.data)))
 
-        elif self.dtype == 'pdata':
-            dtype = 'pdata'
+        else:
             data = self.get_data(pdata_key='1r') + \
                    1j * self.get_data(pdata_key='1i')
 
-        # convert floats to tuples if user didn't follow my documentation...
-        # (1D case)
-        highs = self._check_int_float(highs)
-        lows = self._check_int_float(lows)
-        highs_n = self._check_int_float(highs_n)
-        lows_n = self._check_int_float(lows_n)
+        # if 1D, contain inside a tuple so that stuff can be generalised
+        if self.get_dim() == 1 and isinstance(region[0], (float, int)):
+            region = (region,)
 
-        # convert bounds from ppm values to indices
-        highs_idx = self._ppm_to_indices(highs)
-        lows_idx = self._ppm_to_indices(lows)
-        if not cut:
-            highs_n_idx = self._ppm_to_indices(highs_n)
-            lows_n_idx = self._ppm_to_indices(lows_n)
+        if self.get_dim() == 1 and isinstance(noise_region[0], (float, int)):
+            noise_region = (noise_region,)
+
+        # TODO ===========================================================
+        # might be useful to put some checks in here (i.e. that at
+        # this point in the code, region and noise_region are both a tuple
+        # of 2-tuples)
+        # ================================================================
+
+        if region_units == 'idx':
+            pass
+
+        else:
+            # region_units is either 'ppm' or 'hz'
+            # convert contents to array indices
+            region = self._unit_convert(
+                region, convert=f'{region_units}->idx'
+            )
+
+            noise_region = self._unit_convert(
+                noise_region, convert=f'{region_units}->idx'
+            )
 
         # phase data
         data = np.real(_ve.phase(data, p0, p1))
-
         # generate super gaussian filter
-        superg = _ve.super_gaussian(n, highs_idx, lows_idx)
+        superg = _ve.super_gaussian(self.get_n(), region)
+        # extract noise
+        noise_slice = tuple(np.s_[b[0]:b[1]] for b in noise_region)
+        noise_region = np.real(data)[noise_slice]
+        # determine noise variance
+        variance = np.var(noise_region)
+        # construct synthetic noise
+        noise = _ve.sg_noise(superg, variance)
+        # construct filtered spectrum
+        filtered_spectrum = (np.real(data) * superg) + noise
 
-        if cut is True:
-            # TODO check this implementation works (will be crucial for 2D)
-            # remove data outside bounds
-            slice_ = tuple(np.s_[hi:lo] for hi, lo in zip(highs_idx, lows_idx))
-            self.filt_spec = (np.real(data) * superg)[slice_]
-            self.ve_n = self.filt_spec.shape
+        if cut:
+            cut_slice = []
+            ve_n = [] # number of points the cut signal is made of
+            ve_sw = [] # sweep width of the cut signal
+            ve_off = [] # offset of the cut signal
 
-            # get sweep width and offset of cut signal
-            ve_sw = tuple((hi-lo)*s for hi, lo, s in zip(highs, lows, sfo))
-            ve_off = tuple((hi+lo)*(s/2) for hi, lo, s in zip(highs, lows, sfo))
+            # determine slice indices
+            for n, bounds in zip(self.get_n(), region):
+                center = (bounds[0] + bounds[1]) / 2
+                bw = bounds[1] - bounds[0]
 
-        else:
-            # keep data outside the bounds, but add synthetic noise
-            slice_ = tuple(np.s_[hi:lo] for hi, lo in zip(highs_n_idx, lows_n_idx))
-            noise_region = np.real(data[slice_])
-            var = np.var(noise_region)
-            noise = _ve.sg_noise(superg, var)
-            self.filt_spec = (np.real(data) * superg) + noise
+                # minimum and maximum array indices of cut signal
+                min = int(np.floor(center - (bw / 2 * cut_ratio)))
+                max = int(np.ceil(center + (bw / 2 * cut_ratio)))
 
-        self.virt_echo = ifft(ifftshift(self.filt_spec))
-        half = tuple([np.s_[0:int(np.floor(n_/2))] for n_ in self.virt_echo.shape])
-        self.half_echo = 2 * self.virt_echo[half]
-        self.highs = highs_idx
-        self.lows = lows_idx
+                if min < 0:
+                    min = 0
+                if max > n + 1:
+                    max = n + 1
+
+                cut_slice.append(np.s_[min:max])
+
+                # convert to ppm
+                # bit of a hack... _unit_convert requires an iterable
+                # as an input
+                min_h = self._unit_convert((min,), convert='idx->hz')[0]
+                max_h = self._unit_convert((max,), convert='idx->hz')[0]
+
+                ve_n.append(max - min)
+                ve_sw.append(abs(min_h - max_h))
+                ve_off.append((min_h + max_h) / 2)
+
+            filtered_spectrum = filtered_spectrum[cut_slice]
+            self.ve_n = tuple(ve_n)
+            self.ve_sw = tuple(ve_sw)
+            self.ve_off = tuple(ve_off)
+
+        self.virtual_echo = filtered_spectrum
+
+        # TODO =====================================
+        # will have to check this 2D ifft is correct
+        # I haven't tested it
+        # ==========================================
+
+        for ax in range(self.get_dim()):
+            self.virtual_echo = \
+                ifft(ifftshift(self.virtual_echo, axes=ax), axis=ax)
+
+        half = \
+            tuple([np.s_[0:int(np.floor(n/2))] for n in self.virtual_echo.shape]
+               )
+
+        self.half_echo = 2 * self.virtual_echo[half]
+        self.filtered_spectrum = filtered_spectrum
+        self.region = region
+        self.noise_region = noise_region
         self.p0 = p0
         self.p1 = p1
+
 
 
     @logger
@@ -1268,10 +1424,18 @@ class NMREsPyBruker:
         self._log_method()
 
         # unpack required parameters
-        dtype = self.get_dtype()
         dim = self.get_dim()
-        sw = self.get_sw()
-        off = self.get_offset()
+
+        # get sweep width and offset
+        # which set is the correct set will depend on whether the user
+        # called self.virtual_echo with cut=True or False
+        if self.ve_sw is None:
+            sw = self.get_sw()
+            off = self.get_offset()
+
+        else:
+            sw = self.get_ve_sw()
+            off = self.get_ve_offset()
 
         # look for appropriate data to analyse (see Notes in docstring)
         data = self._check_data()
@@ -1288,11 +1452,13 @@ class NMREsPyBruker:
         elif dim == 2:
             self.theta0 = _mpm.mpm_2d(data, M_in, sw, off, func_print)
 
+
     @logger
-    def nonlinear_programming(self, trim=None, method='trust_region',
-                              mode=None, bound=False, phase_variance=False,
-                              maxit=None, amp_thold=None, freq_thold=None,
-                              negative_amps='remove', fprint=True):
+    def nonlinear_programming(
+        self, trim=None, method='trust_region', mode=None, bound=False,
+        phase_variance=False, maxit=None, amp_thold=None, freq_thold=None,
+        negative_amps='remove', fprint=True
+    ):
         """Estimation of signal parameters using nonlinear programming, given
         an inital guess.
 
@@ -1450,13 +1616,25 @@ class NMREsPyBruker:
 
         # unpack parameters
         dim = self.get_dim()
+
+        # initial guess: should have come from self.matrix_pencil()
         theta0 = self.get_theta0()
-        sw = self.get_sw()
-        off = self.get_offset()
+
+        # get sweep width and offset
+        # which set is the correct set will depend on whether the user
+        # called self.virtual_echo with cut=True or False
+        if self.ve_sw is None:
+            sw = self.get_sw()
+            off = self.get_offset()
+
+        else:
+            sw = self.get_ve_sw()
+            off = self.get_ve_offset()
 
         # check inputs are valid
 
         # types of parameters to be optimised
+        # (amplitudes, phases, frequencies, damping factors)
         mode = self._check_mode(mode, phase_variance)
         # retrieve data to be analysed
         data = self._check_data()
@@ -1466,9 +1644,7 @@ class NMREsPyBruker:
         data = data[tuple([np.s_[0:int(t)] for t in trim])]
 
         # nonlinear programming method
-        if method in ['trust_region', 'lbfgs']:
-            pass
-        else:
+        if method not in ['trust_region', 'lbfgs']:
             raise ValueError(f'\n{R}method should be \'trust_region\''
                              f' or \'lbfgs\'.{END}')
 
@@ -1476,7 +1652,7 @@ class NMREsPyBruker:
         if maxit is None:
             if method == 'trust_region':
                 maxit = 100
-            elif method == 'lbfgs':
+            else: # lbfgs: more iters as much faster but poorer convergence
                 maxit = 500
         elif isinstance(maxit, int):
             pass
@@ -1484,20 +1660,20 @@ class NMREsPyBruker:
             raise TypeError(f'\n{R}maxit should be an int or None.{END}')
 
         # treatment of negative amplitudes
-        if negative_amps in ['remove', 'flip_phase']:
-            pass
-        else:
+        if negative_amps not in ['remove', 'flip_phase']:
             raise ValueError(f'{R}negative_amps should be \'remove\' or'
                              f' \'flip_phase\'{END}')
 
 
-        self.theta, self.errors = _nlp.nlp(data, dim, theta0, sw, off,
-                phase_variance, method, mode, bound, maxit, amp_thold,
-                freq_thold, negative_amps, fprint, True, None)
+        self.theta, self.errors = _nlp.nlp(
+            data, dim, theta0, sw, off, phase_variance, method, mode, bound,
+            maxit, amp_thold, freq_thold, negative_amps, fprint, True, None
+        )
 
 
-    def pickle_save(self, fname='NMREsPy_result.pkl', dir='.',
-                    force_overwrite=False):
+    def pickle_save(
+        self, fname='NMREsPy_result.pkl', dir='.', force_overwrite=False
+    ):
         """Converts the class instance to a byte stream using Python's
         "Pickling" protocol, and saves it to a .pkl file.
 
@@ -1553,9 +1729,11 @@ class NMREsPyBruker:
         print(f'{G}Saved instance of NMREsPyBruker to {path}{END}')
 
 
-    def write_result(self, description=None, fname='NMREsPy_result', dir='.',
-                     result_name=None, sf=5, sci_lims=(-2,3), format='txt',
-                     force_overwrite=False):
+    def write_result(
+        self, description=None, fname='NMREsPy_result', dir='.',
+        result_name=None, sf=5, sci_lims=(-2,3), format='txt',
+        force_overwrite=False
+    ):
         """Saves an estimation result to a file in a human-readable format
         (either a textfile or a PDF).
 
@@ -1664,7 +1842,7 @@ class NMREsPyBruker:
         info.append(self.get_offset(unit='ppm')) # offset (Hz)
         info.append(self.get_sfo()) # transmitter frequency
         info.append(self.get_bf()) # basic frequency
-        info.append(self.get_nuc()) # nuclei
+        info.append(self.get_nucleus()) # nuclei
 
         # peak integrals
         integrals = []
@@ -1686,27 +1864,10 @@ class NMREsPyBruker:
                 integrals.append(simps(simps(s, dx=delta[1]), dx=delta[0]))
         info.append(integrals)
 
-        # virtual echo region
+        # frequency filter region
         # These 4 varaibles could be tuples or Nonetypes
-        highs_h = self.get_highs(unit='Hz', kill=False)
-        highs_p = self.get_highs(unit='ppm', kill=False)
-        lows_h = self.get_lows(unit='Hz', kill=False)
-        lows_p = self.get_lows(unit='ppm', kill=False)
-
-        if highs_h:
-            # pack filter region (ppm and Hz) - Each is a list containing
-            # tuples of length 2 for each dimension
-            region_h, region_p = [], []
-            for hi_h, lo_h, hi_p, lo_p in zip(highs_h, lows_h, highs_p, lows_p):
-                region_h.append((hi_h, lo_h))
-                region_p.append((hi_p, lo_p))
-
-        else:
-            # No frequency filtering has been carried out
-            region_h, region_p = None, None
-
-        info.append(region_h)
-        info.append(region_p)
+        info.append(self.get_region(unit='hz', kill=False))
+        info.append(self.get_region(unit='ppm', kill=False))
 
         _write.write_file(info, description, fname, dir, sf, sci_lims, format,
                           force_overwrite)
@@ -1871,13 +2032,16 @@ class NMREsPyBruker:
             peaks.append(np.real(fftshift(fft(f))))
 
         # left and right boundaries of filter region
-        region = [self.get_highs(kill=False), self.get_lows(kill=False)]
+        region = self.get_region(kill=False)
 
-        nuc = self.get_nuc()
+        nuc = self.get_nucleus()
         shifts = self.get_shifts(unit='ppm')
 
-        return _plot.plotres_1d(data, peaks, shifts, region, nuc, datacol,
-                                osccols, labels, stylesheet)
+        return _plot.plotres_1d(
+            data, peaks, shifts, region, nuc, datacol, osccols, labels,
+            stylesheet
+        )
+
 
     @logger
     def add_oscillators(self, oscillators, result_name=None):
@@ -2027,7 +2191,7 @@ class NMREsPyBruker:
 
     @logger
     def split_oscillator(self, index, result_name=None, frequency_sep=2.,
-                         unit='Hz', split_number=2, amp_ratio='same'):
+                         unit='hz', split_number=2, amp_ratio='same'):
         """Removes the oscillator corresponding to ``index``. Incorporates two
         or more oscillators whose cumulative amplitudes match that of the
         removed oscillator.
@@ -2053,7 +2217,7 @@ class NMREsPyBruker:
             The frequency separation given to adjacent oscillators formed from
             splitting.
 
-        unit : 'Hz' or 'ppm', default: 'Hz'
+        unit : 'hz' or 'ppm', default: 'hz'
             The unit of ``frequency_sep``.
 
         split_number: int, default: 2
@@ -2072,12 +2236,12 @@ class NMREsPyBruker:
         self._log_method()
 
         # get frequency_Sep in correct units
-        if unit == 'Hz':
+        if unit == 'hz':
             pass
         elif unit == 'ppm':
             frequency_sep = frequency_sep * self.get_sfo()
         else:
-            raise InvalidUnitError('Hz', 'ppm')
+            raise InvalidUnitError('hz', 'ppm')
 
         result, result_name = self._check_result(result_name)
 
@@ -2147,8 +2311,10 @@ class NMREsPyBruker:
     @staticmethod
     def _check_int_float(param):
         """Check if param is a float or int. If it is, convert to a tuple"""
+
         if isinstance(param, (float, int)):
             return param,
+
         return param
 
     def _check_data(self):
@@ -2240,50 +2406,77 @@ class NMREsPyBruker:
         else:
             return data.shape
 
-    def _ppm_to_indices(self, tup_ppm):
-        """Converts tuple of values from ppm to index"""
 
-        sw_p = self.get_sw(unit='ppm')
-        off_p = self.get_offset(unit='ppm')
-        n = self.get_n()
+    def _unit_convert(self, tup, convert='idx->ppm'):
+        """Converts unit of a tuple of values
+        '|a|->|b|', where |a| and |b| are not the same, and in
+        ['idx', 'ppm', 'hz']"""
 
-        tup_idx = ()
-        for elem, sw, off, n_ in zip(tup_ppm, sw_p, off_p, n):
-            tup_idx += (int(round((off + (sw / 2) - elem) * (n_ / sw)))),
-        return tup_idx
+        # flag to determine whether value of convert is valid
+        valid = False
 
-    def _indices_to_ppm(self, tup_idx):
-        """Converts tuple of values from indices to ppm"""
+        # check that convert is a valid value
+        valid_units = ['idx', 'ppm', 'hz']
+        for pair in itertools.permutations(valid_units, r=2):
+            if f'{pair[0]}->{pair[1]}' == convert:
+                valid = True
+                break
 
-        sw_p = self.get_sw(unit='ppm')
-        off_p = self.get_offset(unit='ppm')
-        n = self.get_n()
+        if valid:
+            pass
+        else:
+            raise ValueError(f'{R}convert is not valid.')
 
-        tup_ppm = ()
-        for elem, sw, off, n_ in zip(tup_idx, sw_p, off_p, n):
-            tup_ppm += float(off + (sw / 2) - ((elem * sw) / n_)),
-        return tup_ppm
+        # list for storing final converted contents (will be returned as tuple)
+        lst = []
+        for dimension, element in enumerate(tup):
 
-    def _hz_to_indices(self, tup_hz):
-        """Converts tuple of values from Hz to index"""
+            # try/except block enables code to work with both tuples and
+            # tuples of tuples
+            try:
+                # test whether element is an iterable (i.e. tuple)
+                iterable = iter(element)
 
-        sw_h = self.get_sw()
-        off_h = self.get_offset()
-        n = self.get_n()
+                # elem is a tuple...
+                sublst = []
+                while True:
+                    try:
+                        sublst.append(
+                            self.convert(next(iterable), convert, dimension)
+                        )
+                    except StopIteration:
+                        break
 
-        tup_idx = ()
-        for elem, sw, off, n_ in zip(tup_hz, sw_h, off_h, n):
-            tup_idx += (int(round((off + (sw / 2) - elem) * (n_ / sw)))),
-        return tup_idx
+                lst.append(tuple(sublst))
 
-    def _indices_to_hz(self, tup_idx):
-        """Converts tuple of values from indices to Hz"""
+            except TypeError:
+                # elem is a float/int...
+                lst.append(self.convert(element, convert, dimension))
 
-        sw_h = self.get_sw()
-        off_h = self.get_offset()
-        n = self.get_n()
+        return tuple(lst)
 
-        tup_hz = ()
-        for elem, sw, off, n_ in zip(tup_idx, sw_h, off_h, n):
-            tup_hz += float(off + (sw / 2) - ((elem * sw) / n_)),
-        return tup_hz
+
+    def convert(self, value, conv, dimension):
+
+        sw = self.get_sw()[dimension]
+        off = self.get_offset()[dimension]
+        n = self.get_n()[dimension]
+        sfo = self.get_sfo()[dimension]
+
+        if conv == 'idx->hz':
+            return float(off + (sw / 2) - ((value * sw) / n))
+
+        elif conv == 'idx->ppm':
+            return float((off + sw / 2 - value * sw / n) / sfo)
+
+        elif conv == 'ppm->idx':
+            return int(round((off + (sw / 2) - sfo * value) * (n / sw)))
+
+        elif conv == 'ppm->hz':
+            return value * sfo
+
+        elif conv == 'hz->idx':
+            return int((n / sw) * (off + (sw / 2) - value))
+
+        elif conv == 'hz->ppm':
+            return value / sfo

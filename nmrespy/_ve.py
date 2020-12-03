@@ -37,9 +37,9 @@ def phase(spec, p0, p1):
     return spec_phased
 
 
-def super_gaussian(n, highs, lows, P=40):
+def super_gaussian(n, region, p=40):
     """
-    nmrespy.ve.super_gaussian(n, highs, lows, P=40)
+    nmrespy.ve.super_gaussian(n, highs, lows, p=40)
 
     ───Description─────────────────────────────
     Generates a super-Gaussian for filtration of
@@ -48,13 +48,10 @@ def super_gaussian(n, highs, lows, P=40):
     ───Parameters──────────────────────────────
     n - tuple
         Number of points the function is composed of in each dimension.
-    highs - tuple
-        Boundaries for the region's highest ppm values, in each
-        dimension.
-    lows - tuple
-        Boundaries for the region's lowest ppm values, in each
-        dimension.
-    P - int
+    region - ((int, int),) or ((int, int), (int, int),)
+        Cut-off points of region in each dimensions, in array indices.
+        Ordered from lower index to higher
+    p - int
         Power of the super-Gaussian. Defaults to 40
 
     ───Returns─────────────────────────────────
@@ -62,19 +59,23 @@ def super_gaussian(n, highs, lows, P=40):
         super-Gaussian function"""
 
     # determine center and bandwidth of super gaussian
-    cent = ()
+    center = ()
     bw = ()
+
     # loop over each dimension
-    for hi, lo in zip(highs, lows):
-        cent += int(np.floor((hi + lo) / 2)),
-        bw += (lo - hi),
+    # determine center of region and bandwidth
+    for bounds in region:
+        center += ((bounds[0] + bounds[1]) / 2),
+        bw += (bounds[1] - bounds[0]),
 
     # construct super gaussian
-    for i, (n_, c, b) in enumerate(zip(n, cent, bw)):
-        sg = np.exp(-2**(P+1) * ((np.arange(1, n_+1) - \
-                    np.linspace(c, c, n_)) / b)**P)
+    for i, (n_, c, b) in enumerate(zip(n, center, bw)):
+
+        sg = np.exp(-2 ** (p+1) * ((np.arange(1, n_+1) - c) / b) ** p)
         if i == 0:
             superg = sg
+
+        # None creates a new dimension (see numpy newaxis)
         else:
             superg = superg[..., None] * sg
 

@@ -1,3 +1,6 @@
 **/__pycache__/
 docs/_build/
 nmrespy/topspin/apps_cp.py
+nmrespy/core_cp.py
+nmrespy/logs/*
+tests

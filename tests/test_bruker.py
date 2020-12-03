@@ -60,13 +60,6 @@ class TestBruker(unittest.TestCase):
                          str(info).split('>')[1])
         os.remove('pickle_test.pkl')
 
-    def test_virt_echo(self):
-
-        path = os.path.join(datadir, '1/pdata/1')
-        info = load.import_bruker_pdata(path)
-        info.virtual_echo(highs=(5.285,), lows=(5.180,), highs_n=(9.5,),
-                          lows_n=(9.2,))
-
     def test_mpm(self):
 
         path = os.path.join(datadir, '1/pdata/1')
@@ -75,7 +68,7 @@ class TestBruker(unittest.TestCase):
                           lows_n=(9.2,))
         info.matrix_pencil(trim=(4096,))
 
-    def test_plot(self):
+    # def test_plot(self):
 
 
 
