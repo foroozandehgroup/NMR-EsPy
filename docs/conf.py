@@ -13,7 +13,6 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-print(sys.path)
 import sphinx_rtd_theme
 
 
@@ -34,6 +33,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx_rtd_theme',
               'sphinx.ext.imgmath',
               'sphinx.ext.todo',
+              'sphinx.ext.autosummary',
+              'sphinx.ext.viewcode',
 ]
 
 imgmath_latex_premable = '\\usepackage{nicefrac}\n'
@@ -57,7 +58,36 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #
 html_theme = 'sphinx_rtd_theme'
 
+rst_prolog = """
+.. raw:: html
+
+   <style>
+      .grey {color:#808080}
+      .red {color:#ff0000}
+      .green {color:#008000}
+      .blue {color:#0000ff}
+      .oscblue {color:#1063e0}
+      .oscorange {color:#eb9310}
+      .oscgreen {color:#2bb539}
+      .oscred {color:#d4200c}
+   </style>
+
+.. role:: grey
+.. role:: red
+.. role:: green
+.. role:: blue
+.. role:: oscblue
+.. role:: oscorange
+.. role:: oscgreen
+.. role:: oscred
+"""
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# -----------
+# Autosummary
+# -----------
+autosummary_generate = True

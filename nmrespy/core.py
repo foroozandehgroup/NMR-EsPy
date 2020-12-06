@@ -2442,7 +2442,7 @@ class NMREsPyBruker:
                 while True:
                     try:
                         sublst.append(
-                            self.convert(next(iterable), convert, dimension)
+                            self._convert(next(iterable), convert, dimension)
                         )
                     except StopIteration:
                         break
@@ -2451,12 +2451,12 @@ class NMREsPyBruker:
 
             except TypeError:
                 # elem is a float/int...
-                lst.append(self.convert(element, convert, dimension))
+                lst.append(self._convert(element, convert, dimension))
 
         return tuple(lst)
 
 
-    def convert(self, value, conv, dimension):
+    def _convert(self, value, conv, dimension):
 
         sw = self.get_sw()[dimension]
         off = self.get_offset()[dimension]
