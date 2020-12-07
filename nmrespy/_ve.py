@@ -12,23 +12,22 @@ from numpy.random import normal
 
 def phase(spec, p0, p1):
     """
-    nmrespy.ve.phase(spec, p0, p1)
-
-    ───Description─────────────────────────────
     First order phase correction applied to Fourier transformed data.
-    *** ONLY 1D DATA CURRENTLY SUPPORTED ***
 
-    ───Parameters──────────────────────────────
-    spec - ndarray
+    Parameters
+    ----------
+    spec : numpy.ndarray
         Spectrum (FT of time-domain signal)
-    p0 - float
+
+    p0 : float
         Zero-order phase correction (radians)
-    p1 - float
+    
+    p1 : float
         First-order phase correction (radians)
 
-    ───Returns─────────────────────────────────
-    spec_phased - ndarray
-        Phased version of spec
+    Returns
+    spec_phased : numpy.ndarray
+        Phased spectrum
     """
 
     n = spec.shape[0]
@@ -39,24 +38,25 @@ def phase(spec, p0, p1):
 
 def super_gaussian(n, region, p=40):
     """
-    nmrespy.ve.super_gaussian(n, highs, lows, p=40)
-
-    ───Description─────────────────────────────
     Generates a super-Gaussian for filtration of
     frequency-domian data.
 
-    ───Parameters──────────────────────────────
-    n - tuple
+    Parameters
+    ----------
+    n : tuple
         Number of points the function is composed of in each dimension.
-    region - ((int, int),) or ((int, int), (int, int),)
+
+    region : ((int, int),) or ((int, int), (int, int),)
         Cut-off points of region in each dimensions, in array indices.
         Ordered from lower index to higher
-    p - int
+
+    p : int
         Power of the super-Gaussian. Defaults to 40
 
-    ───Returns─────────────────────────────────
-    superg - ndarray
-        super-Gaussian function"""
+    Returns
+    -------
+    superg : numpy.ndarray
+        super-Gaussian"""
 
     # determine center and bandwidth of super gaussian
     center = ()
@@ -84,24 +84,23 @@ def super_gaussian(n, region, p=40):
 
 def sg_noise(sg, var):
     """
-    nmrespy.ve.sg_noise(sg, var)
+    Creates an array of noise whose variance at each point reflects
+    the super-Gaussian amplitude
 
-    ───Description─────────────────────────────
-    Creates an array of noise whose value at the point with coordinates
-    [idx] is drawn from a normal distribution with mean 0 and variance
-    var*(1-sg[idx]).
+    Parameters
+    ----------
+    sg : numpy.ndarray
+        super-Gaussian filter, construted using :func:`_super_gaussian`
 
-    ───Parameters──────────────────────────────
-    sg - ndarray
-        Super-Gaussian filter, construted using ve._super_gaussian
-    var - float
-        Noise variance of the signal the Super-gaussian will be
-        applied to
+    var : float
+        Noise variance of the signal
 
-    ───Returns─────────────────────────────────
-    noise - ndarray
+    Returns
+    -------
+    noise : ndarray
         Noise array, with equivalent shape to sg
     """
+
     n = sg.shape
     noise = np.zeros(n)
 
