@@ -368,15 +368,15 @@ class NMREsPyApp(tk.Tk):
         self.rb = int(np.floor(9 * self.n / 16)) # right bound
         self.lnb = int(np.floor(1 * self.n / 16)) # left noise bound
         self.rnb = int(np.floor(2 * self.n / 16)) # right noise bound
-        print(self.lb, self.rb, self.lnb, self.rnb)
-        exit()
+        # number of points the region comprises
+        self.region_size = self.rb - self.lb 
 
         # phase correction parameters
         self.pivot = int(np.floor(self.n / 2)) # location of pivot
         self.p0 = 0. # zero-order phase
         self.p1 = 0. # first-order phase
 
-        # TODO I think that _misc.conv_ppm_idx is used here.
+        # TODO I think that _misc.conv_ppm_idx is used only here.
         # Could include it as part of the apps module instead
 
         # convert boundaries and pivot from array indices to ppm
@@ -444,7 +444,6 @@ class NMREsPyApp(tk.Tk):
             self.ax.spines[direction].set_color('k')
 
         self.nucleus = self.info.get_nucleus()[0] # nucleus identifier
-        print(self.nucleus)
         self.ax.set_xlabel(_plot._generate_xlabel(self.nucleus), fontsize=8)
 
         # prevent user panning/zooming beyond spectral window
@@ -595,8 +594,7 @@ class RegionFrame(tk.Frame):
         # make scales expandable
         self.columnconfigure(1, weight=1)
 
-        row = 0
-        for s in ('lb', 'rb', 'lnb', 'rnb'):
+        for row, s in enumerate(('lb', 'rb', 'lnb', 'rnb')):
             # construct text strings for scale titles
             text = ''
             for letter in s:
@@ -657,7 +655,6 @@ class RegionFrame(tk.Frame):
                            sticky='ew')
                 entry.grid(row=row, column=2, padx=10, pady=(10,0), sticky='w')
 
-            row += 1
 
     def ud_entry(self, s):
         """Update the GUI after the user presses <Enter> whilst in an entry
@@ -762,8 +759,7 @@ class PhaseFrame(tk.Frame):
         # make scales expandable
         self.columnconfigure(1, weight=1)
 
-        row = 0
-        for s in ('pivot', 'p0', 'p1'):
+        for row, s in enumerate(('pivot', 'p0', 'p1')):
             # scale titles
             self.__dict__[f'{s}_title'] = title = \
                 tk.Label(self, text=s, bg='white')
@@ -780,10 +776,11 @@ class PhaseFrame(tk.Frame):
                 from_ = -np.pi
                 to = np.pi
                 resolution = 0.0001
-            # p1: set between -10π and 10π rad
-            if row == 2:
-                from_ *= 10
-                to *= 10
+
+                # p1: set between -10π and 10π rad
+                if row == 2:
+                    from_ *= 10
+                    to *= 10
 
             self.__dict__[f'{s}_scale'] = scale = \
                 tk.Scale(self,
@@ -830,13 +827,11 @@ class PhaseFrame(tk.Frame):
                 entry.grid(row=row, column=2, padx=10, pady=(10,0),
                            sticky='w')
 
-            row += 1
-
 
     def ud_scale(self, value, s):
+
         """Update the GUI after the user changes the slider on a scale
         widget"""
-
         if s == 'pivot':
             self.ud_pivot(int(value))
         else:
@@ -896,9 +891,7 @@ class PhaseFrame(tk.Frame):
 
             self.pivot_var.set(f'{self.ctrl.pivot_ppm:.3f}')
 
-            x = np.linspace(self.ctrl.pivot_ppm,
-                            self.ctrl.pivot_ppm,
-                            1000)
+            x = [self.ctrl.pivot_ppm, self.ctrl.pivot_ppm]
             self.ctrl.pivotplot.set_xdata(x)
             self.ud_phase()
             self.ctrl.frames['PlotFrame'].canvas.draw_idle()
@@ -942,10 +935,9 @@ class PhaseFrame(tk.Frame):
         spec = self.ctrl.spec * np.exp(
             1j * (p0 + (p1 * np.arange(-pivot, -pivot + n, 1) / n))
         )
-
+        
         # update y-data of spectrum plot
         self.ctrl.specplot.set_ydata(np.real(spec))
-
 
     def deciceil(self, value, precision):
         """round a number up to a certain number of deicmal places"""
