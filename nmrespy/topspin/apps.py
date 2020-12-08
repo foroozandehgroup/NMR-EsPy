@@ -207,7 +207,7 @@ class DataType(tk.Toplevel):
 
         # open info file. Gives paths to fid file and pdata directory
         with open(os.path.join(TOPSPINDIR, 'info.txt'), 'r') as fh:
-            fidpath, pdatapath = fh.read().split(' ')
+            self.fidpath, self.pdatapath = fh.read().split(' ')
 
         # nmrespy logo
         self.img = get_PhotoImage(
@@ -232,7 +232,8 @@ class DataType(tk.Toplevel):
         )
 
         pdatapath = tk.Label(
-            self.mainframe, text=f'{pdatapath}/1r', font='Courier', bg='white'
+            self.mainframe, text=f'{self.pdatapath}/1r', font='Courier',
+            bg='white'
         )
         pdatapath.grid(column=0, row=2, padx=(10, 0), sticky='w')
 
@@ -252,7 +253,8 @@ class DataType(tk.Toplevel):
         )
 
         fidpath = tk.Label(
-            self.mainframe, text=f'{fidpath}/fid', font='Courier', bg='white'
+            self.mainframe, text=f'{self.fidpath}/fid', font='Courier',
+            bg='white'
         )
         fidpath.grid(column=0, row=4, padx=(10, 0), sticky='w')
 
@@ -299,8 +301,10 @@ class DataType(tk.Toplevel):
     def confirm(self):
         if self.fid.get() == 1:
             self.ctrl.dtype = 'fid'
+            self.ctrl.path = self.fidpath 
         else:
             self.ctrl.dtype = 'pdata'
+            self.ctrl.path = self.pdatapath
         self.ctrl.deiconify()
         self.destroy()
 
@@ -338,12 +342,12 @@ class NMREsPyApp(tk.Tk):
         # generate self.info: NMREsPyBruker class instance
         # FID data - transform to frequency domain
         if self.dtype == 'fid':
-            self.info = load.import_bruker_fid(fidpath, ask_convdta=False)
+            self.info = load.import_bruker_fid(self.path, ask_convdta=False)
             self.spec = np.flip(fftshift(fft(self.info.get_data())))
 
         # pdata - combine real and imaginary components
         else:
-            self.info = load.import_bruker_pdata(pdatapath)
+            self.info = load.import_bruker_pdata(self.path)
             self.spec = self.info.get_data(pdata_key='1r') \
                         + 1j * self.info.get_data(pdata_key='1i')
 
@@ -353,7 +357,10 @@ class NMREsPyApp(tk.Tk):
         self.sw_p = self.info.get_sw(unit='ppm')[0] # sweep width (ppm)
         self.off_p = self.info.get_offset(unit='ppm')[0] # transmitter offset
         self.n = self.spec.shape[0] # number of points
-        self.nuc = self.info.get_nuc() # nucleus identifier
+
+        # TODO For consitency witht he rest of my code, it's probably
+        # a good idea to use 2-tuples for the regions, rather than left
+        # and right bonunds
 
         # initialise region of interest and noise region boundaries
         # values in array indices
@@ -361,11 +368,16 @@ class NMREsPyApp(tk.Tk):
         self.rb = int(np.floor(9 * self.n / 16)) # right bound
         self.lnb = int(np.floor(1 * self.n / 16)) # left noise bound
         self.rnb = int(np.floor(2 * self.n / 16)) # right noise bound
+        print(self.lb, self.rb, self.lnb, self.rnb)
+        exit()
 
         # phase correction parameters
         self.pivot = int(np.floor(self.n / 2)) # location of pivot
         self.p0 = 0. # zero-order phase
         self.p1 = 0. # first-order phase
+
+        # TODO I think that _misc.conv_ppm_idx is used here.
+        # Could include it as part of the apps module instead
 
         # convert boundaries and pivot from array indices to ppm
         # forms attributes called:
@@ -431,8 +443,9 @@ class NMREsPyApp(tk.Tk):
         for direction in ('top', 'bottom', 'left', 'right'):
             self.ax.spines[direction].set_color('k')
 
-        nuc = self.info.get_nuc()[0]
-        self.ax.set_xlabel(_plot._generate_xlabel(nuc), fontsize=8)
+        self.nucleus = self.info.get_nucleus()[0] # nucleus identifier
+        print(self.nucleus)
+        self.ax.set_xlabel(_plot._generate_xlabel(self.nucleus), fontsize=8)
 
         # prevent user panning/zooming beyond spectral window
         Restrictor(self.ax, x=lambda x: x<= self.xlim[0])
@@ -1330,10 +1343,8 @@ class SetupButtonFrame(RootButtonFrame):
         # get parameters
         spec = self.ctrl.specplot.get_ydata()
 
-        lb_ppm = (self.ctrl.lb_ppm,)
-        rb_ppm = (self.ctrl.rb_ppm,)
-        lnb_ppm = (self.ctrl.lnb_ppm,)
-        rnb_ppm = (self.ctrl.rnb_ppm,)
+        region = (self.lb, self.rb)
+        noise_region = (self.lnb, self.rnb)
 
         pivot = self.ctrl.pivot
         p0 = self.ctrl.p0
@@ -1438,9 +1449,9 @@ class SetupButtonFrame(RootButtonFrame):
 
         self.ctrl.destroy()
 
-        self.ctrl.info.virtual_echo(
-            highs=lb_ppm, lows=rb_ppm, highs_n=lnb_ppm, lows_n=rnb_ppm,
-            p0=p0, p1=p1
+        self.ctrl.info.frequency_filter(
+            region=region, nose_region=noise_region, p0=p0, p1=p1,
+            cut=True,
         )
 
         self.ctrl.info.matrix_pencil(trim=mpm_points, M_in=M_in)

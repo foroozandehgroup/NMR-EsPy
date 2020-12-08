@@ -501,7 +501,7 @@ class NMREsPyBruker:
             return self.off
 
         elif unit == 'ppm':
-            return self._unit_convert(self.sw, convert='hz->ppm')
+            return self._unit_convert(self.off, convert='hz->ppm')
 
         else:
             raise InvalidUnitError('hz', 'ppm')
@@ -574,6 +574,7 @@ class NMREsPyBruker:
         for sw, off, n in zip(
             self.get_sw(unit=unit), self.get_offset(unit=unit), self.get_n()
         ):
+            print(sw, off, n)
             shifts.append(
                 np.linspace(off + (sw / 2), off - (sw / 2), n)
             )
@@ -1245,8 +1246,14 @@ class NMREsPyBruker:
                   f'{END}')
 
         if self.dtype == 'raw':
-            data = np.flip(fftshift(fft(self.data)))
-
+            data = np.flip(fftshift(fft(
+                np.hstack(
+                    (self.get_data(), np.zeros(self.get_n(), dtype='complex'))
+                )
+            )))
+            import matplotlib.pyplot as plt
+            plt.plot(data)
+            plt.show()
         else:
             data = self.get_data(pdata_key='1r') + \
                    1j * self.get_data(pdata_key='1i')
