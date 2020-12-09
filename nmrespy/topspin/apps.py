@@ -358,7 +358,7 @@ class NMREsPyApp(tk.Tk):
         self.off_p = self.info.get_offset(unit='ppm')[0] # transmitter offset
         self.n = self.spec.shape[0] # number of points
 
-        # TODO For consitency with he rest of my code, it's probably
+        # TODO For consitency with the rest of my code, it's probably
         # a good idea to use 2-tuples for the regions, rather than left
         # and right bonunds
 
@@ -369,7 +369,7 @@ class NMREsPyApp(tk.Tk):
         self.lnb = int(np.floor(1 * self.n / 16)) # left noise bound
         self.rnb = int(np.floor(2 * self.n / 16)) # right noise bound
 
-
+        # loop 'coz I'm lazy...
         for s in ['lb', 'rb', 'lnb', 'rnb']:
             # convert boundaries from array indices to ppm
             # forms attributes called:
@@ -421,7 +421,7 @@ class NMREsPyApp(tk.Tk):
         self.nlp_points_var = tk.StringVar()
 
         # set default values for mpm_points_var and nlp_points_var
-        signal_size = float(self.cut_width.get()) * self.region_size
+        signal_size = int(float(self.cut_width.get()) * self.region_size)
         if signal_size <= 4096:
             self.mpm_points_var.set(str(signal_size))
             self.nlp_points_var.set(str(signal_size))
@@ -434,7 +434,7 @@ class NMREsPyApp(tk.Tk):
 
         # maximum number of points possible based on signal size, whether
         # to cut the signal, and the cut size/filter size ratio
-        self.max_points = tk.SringVar()
+        self.max_points = tk.StringVar()
         self.max_points.set(str(signal_size))
 
         # number of oscillators (M) string variable
@@ -566,6 +566,36 @@ class NMREsPyApp(tk.Tk):
         self.frames['LogoFrame'].grid(
             row=2, column=0, padx=10, pady=10, sticky='w'
         )
+
+
+    def ud_max_points(self):
+        """Update the maximum number of points StringVar"""
+
+        if int(self.cut.get()):
+            # check range is suitable. If not, set it within the spectrum
+            span = int(self.region_size * float(self.cut_width.get()))
+            low = (self.rb + self.lb) / 2 - int(np.ceil(span / 2))
+            high = low + span
+
+            if low < 0:
+                low = 0
+            if high > self.n - 1:
+                high = self.n - 1
+
+            self.max_points.set(str(int(high - low)))
+
+        else:
+            self.max_points.set(self.n)
+
+        if int(self.max_points.get()) > 8192:
+            self.mpm_points_var.set('4096')
+            self.nlp_points_var.set('8192')
+        elif 4096 < int(self.max_points.get()) < 8192:
+            self.mpm_points_var.set('4096')
+            self.nlp_points_var.set(str(self.max_points.get()))
+        else:
+            self.mpm_points_var.set(str(self.max_points.get()))
+            self.nlp_points_var.set(str(self.max_points.get()))
 
 
 class PlotFrame(CustomFrame):
@@ -826,6 +856,9 @@ class RegionFrame(CustomFrame):
                 40 * self.ctrl.ylim_init[1],
             )
 
+        # update the maximum number of points to consider
+        self.ctrl.ud_max_points()
+
         # update plot
         self.__dict__[f'{s}_scale'].set(self.ctrl.__dict__[s])
         self.ctrl.frames['PlotFrame'].canvas.draw_idle()
@@ -1060,7 +1093,7 @@ class AdvancedSettingsFrame(CustomFrame):
 
         # --- ROW 2 ---
         cut_label = tk.Label(
-            self.rows['2'], text='Cut signal', bg='white',
+            self.rows['2'], text='Cut signal:', bg='white',
         )
         cut_label.grid(row=0, column=0)
 
@@ -1069,6 +1102,17 @@ class AdvancedSettingsFrame(CustomFrame):
             highlightthickness=0, bd=0, command=self.ud_cut
         )
         self.cut_checkbutton.grid(row=0, column=1)
+
+        ratio_label = tk.Label(
+            self.rows['2'], text='Cut width/filter width ratio:', bg='white',
+        )
+        ratio_label.grid(row=0, column=2, padx=(10,0),)
+
+        self.ratio_entry = tk.Entry(
+            self.rows['2'], width=8, highlightthickness=0,
+            textvariable=self.ctrl.cut_width,
+        )
+        self.ratio_entry.grid(row=0, column=3, padx=(4,0),)
 
         # --- ROW 3 ---
         mpm_title = tk.Label(
@@ -1085,29 +1129,48 @@ class AdvancedSettingsFrame(CustomFrame):
 
         self.mpm_points_entry = tk.Entry(
             self.rows['4'], width=8, highlightthickness=0,
-            textvariable=self.ctrl.mpm_points_var
+            textvariable=self.ctrl.mpm_points_var,
         )
         self.mpm_points_entry.grid(row=0, column=1, padx=(10,0))
+
+        self.max_frame_mpm = tk.Frame(self.rows['4'], bg='white')
+        self.max_frame_mpm.grid(row=1, column=1, sticky='w',)
+
+        max_label_mpm = tk.Label(
+            self.max_frame_mpm, bg='white', font=('Helvetica', 8),
+            text='Max:',
+        )
+        max_label_mpm.grid(
+            row=0, column=0, padx=(10,0), pady=(5,0), sticky='w',
+        )
+
+        self.max_points_label_mpm = tk.Label(
+            self.max_frame_mpm, bg='white', font=('Helvetica', 8, 'bold'),
+            textvariable=self.ctrl.max_points,
+        )
+        self.max_points_label_mpm.grid(row=0, column=1, pady=(5,0), sticky='w',)
+
+
 
         oscillator_label = tk.Label(
             self.rows['4'], text='Number of oscillators:', bg='white'
         )
-        oscillator_label.grid(row=0, column=2, padx=(20,0))
+        oscillator_label.grid(row=0, column=3, padx=(20,0))
 
         self.oscillator_entry = tk.Entry(
             self.rows['4'], width=8, highlightthickness=0, bg='white',
             textvariable=self.ctrl.M_var, state='disabled'
         )
-        self.oscillator_entry.grid(row=0, column=3, padx=(10,0))
+        self.oscillator_entry.grid(row=0, column=4, padx=(10,0))
 
         use_mdl_label = tk.Label(self.rows['4'], text='Use MDL:', bg='white')
-        use_mdl_label.grid(row=0, column=4, padx=(10,0))
+        use_mdl_label.grid(row=0, column=5, padx=(10,0))
 
         self.mdl_checkbutton = tk.Checkbutton(
             self.rows['4'], variable=self.ctrl.use_mdl, bg='white',
             highlightthickness=0, bd=0, command=self.ud_mdl_button
         )
-        self.mdl_checkbutton.grid(row=0, column=5)
+        self.mdl_checkbutton.grid(row=0, column=6)
 
 
         # --- ROW 5 ---
@@ -1120,7 +1183,7 @@ class AdvancedSettingsFrame(CustomFrame):
         # --- ROW 6 ---
         # construct a 2 x 6 grid to arrange the various widgets
         self.row6_frames = {}
-        for r in range(2):
+        for r in range(3):
             for c in range(6):
                 self.row6_frames[f'{r},{c}'] = tk.Frame(
                     self.rows['6'], bg='white'
@@ -1137,6 +1200,23 @@ class AdvancedSettingsFrame(CustomFrame):
             textvariable=self.ctrl.nlp_points_var
         )
         self.nlp_points_entry.grid(row=0, column=0, padx=(10,0))
+
+        self.max_frame_nlp = tk.Frame(self.row6_frames['1,1'], bg='white')
+        self.max_frame_nlp.grid(row=1, column=1, sticky='w',)
+
+        max_label_nlp = tk.Label(
+            self.max_frame_nlp, bg='white', font=('Helvetica', 8),
+            text='Max:',
+        )
+        max_label_nlp.grid(
+            row=0, column=0, padx=(10,0), pady=(5,0), sticky='w',
+        )
+
+        self.max_points_label_nlp = tk.Label(
+            self.max_frame_nlp, bg='white', font=('Helvetica', 8, 'bold'),
+            textvariable=self.ctrl.max_points,
+        )
+        self.max_points_label_nlp.grid(row=0, column=1, pady=(5,0), sticky='w',)
 
         nlp_method_label = tk.Label(
             self.row6_frames['0,2'], text='NLP algorithm:', bg='white'
@@ -1170,25 +1250,25 @@ class AdvancedSettingsFrame(CustomFrame):
         self.max_iterations_entry.grid(row=0, column=0, padx=(10,0))
 
         phase_variance_label = tk.Label(
-            self.row6_frames['1,0'], text='Optimise phase variance:',
+            self.row6_frames['2,0'], text='Optimise phase variance:',
             bg='white',
         )
         phase_variance_label.grid(row=0, column=0, pady=(10,0))
 
         self.phase_var_checkbutton = tk.Checkbutton(
-            self.row6_frames['1,1'], variable=self.ctrl.phase_variance,
+            self.row6_frames['2,1'], variable=self.ctrl.phase_variance,
             bg='white', highlightthickness=0, bd=0,
         )
         self.phase_var_checkbutton.grid(row=0, column=0, pady=(10,0))
 
         # amplitude/frequency thresholds
         amplitude_thold_label = tk.Label(
-            self.row6_frames['1,2'], text='Amplitude threshold:', bg='white',
+            self.row6_frames['2,2'], text='Amplitude threshold:', bg='white',
         )
         amplitude_thold_label.grid(row=0, column=0, padx=(20,0), pady=(10,0))
 
         self.amplitude_thold_entry = tk.Entry(
-            self.row6_frames['1,3'], width=8, highlightthickness=0, bg='white',
+            self.row6_frames['2,3'], width=8, highlightthickness=0, bg='white',
             textvariable=self.ctrl.amplitude_thold, state='disabled',
         )
         self.amplitude_thold_entry.grid(
@@ -1196,34 +1276,41 @@ class AdvancedSettingsFrame(CustomFrame):
         )
 
         self.amplitude_thold_checkbutton = tk.Checkbutton(
-            self.row6_frames['1,3'], variable=self.ctrl.use_amp_thold,
+            self.row6_frames['2,3'], variable=self.ctrl.use_amp_thold,
             bg='white', highlightthickness=0, bd=0,
             command=self.ud_amp_thold_button
         )
         self.amplitude_thold_checkbutton.grid(row=0, column=1, pady=(10,0))
 
         frequency_thold_label = tk.Label(
-            self.row6_frames['1,4'], text='Frequency threshold:', bg='white',
+            self.row6_frames['2,4'], text='Frequency threshold:', bg='white',
         )
         frequency_thold_label.grid(row=0, column=0, padx=(20,0), pady=(10,0))
 
         self.frequency_thold_entry = tk.Entry(
-            self.row6_frames['1,5'], width=8, highlightthickness=0, bg='white',
+            self.row6_frames['2,5'], width=8, highlightthickness=0, bg='white',
             textvariable=self.ctrl.frequency_thold
         )
         self.frequency_thold_entry.grid(row=0, column=0, padx=(10,0), pady=(10,0))
 
         self.frequency_thold_checkbutton = tk.Checkbutton(
-            self.row6_frames['1,5'], variable=self.ctrl.use_freq_thold,
+            self.row6_frames['2,5'], variable=self.ctrl.use_freq_thold,
             bg='white', highlightthickness=0, bd=0,
             command=self.ud_freq_thold_button
         )
         self.frequency_thold_checkbutton.grid(row=0, column=1, pady=(10,0))
 
+
     def ud_cut(self):
-        """For when the user clicks the 'Cut signal' checkbutton"""
-        if self.ctrl.cut == '1':
-            pass
+
+        if int(self.ctrl.cut.get()):
+            self.ratio_entry['state'] = 'normal'
+        else:
+            self.ratio_entry['state'] = 'disabled'
+            self.ctrl.cut_width.set('')
+
+        self.ctrl.ud_max_points()
+
 
     def ud_mdl_button(self):
         """For when the user clicks on the checkbutton relating to use the
