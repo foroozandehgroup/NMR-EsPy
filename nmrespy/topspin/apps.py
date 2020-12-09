@@ -46,6 +46,9 @@ NMRESPYDIR = os.path.dirname(nmrespy.__file__)
 TOPSPINDIR = os.path.join(NMRESPYDIR, 'topspin')
 IMAGESDIR = os.path.join(TOPSPINDIR, 'images')
 
+# colors
+TABCOLOR = '#d6dbe0'
+
 def get_PhotoImage(path, scale=1.0):
     """Generate a TKinter-compatible photo image, given a path, and a scaling
     factor.
@@ -74,22 +77,21 @@ def get_PhotoImage(path, scale=1.0):
 
 
 class CustomFrame(tk.Frame):
-    """A Tkinter frame with a white background. Prevents me from having
-    to write (and you read) self['bg'] = 'white' about 1000000 times"""
+    """A Tkinter frame with a white background by default. Prevents me from
+    having to write (and you read) self['bg'] = 'white' about 1000000 times"""
 
-    def __init__(self, parent):
+    def __init__(self, parent, color='white'):
         tk.Frame.__init__(self, parent)
-        self['bg'] = 'white'
+        self['bg'] = color
 
 
 class CustomToplevel(tk.Toplevel):
-    """A Tkinter toplevel with a white background. Prevents me from having
-    to write (and you read) self['bg'] = 'white' about 1000000 times. By
+    """A Tkinter toplevel with a white background by default. By
     default, it is also unable to be resized, and its title is 'NMR-EsPy'"""
 
-    def __init__(self, parent):
+    def __init__(self, parent, color='white'):
         tk.Toplevel.__init__(self, parent)
-        self['bg'] = 'white'
+        self['bg'] = color
         self.title('NMR-EsPy')
         self.resizable(False, False)
 
@@ -638,7 +640,7 @@ class TabFrame(CustomFrame):
         # make column containing scales adjustable
         self.columnconfigure(0, weight=1)
 
-        # customise notebook style
+        #customise notebook style
         style = ttk.Style()
         style.theme_create('notebook', parent='alt',
             settings={
@@ -650,10 +652,9 @@ class TabFrame(CustomFrame):
                 'TNotebook.Tab': {
                     'configure': {
                         'padding': [5, 1],
-                        'background': '#d0d0d0'},
+                        'background': TABCOLOR},
                     'map': {
-                        'background': [('selected', 'black')],
-                        'foreground': [('selected', 'white')],
+                        'background': [('selected', '#85de77')],
                         'expand': [("selected", [1, 1, 1, 0])]}}})
 
         style.theme_use("notebook")
@@ -674,8 +675,8 @@ class TabFrame(CustomFrame):
             ('Region Selection', 'Phase Correction', 'Advanced Settings')
         ):
 
-            frame = F(parent=self.notebook, ctrl=self.ctrl)
-            self.notebook.add(frame, text=title, sticky='ew')
+            frame = F(parent=self.notebook, ctrl=self.ctrl, bg='#d6dbe0')
+            self.notebook.add(frame, text=title, sticky='nsew')
             self.nbframes[F.__name__] = frame
 
 
@@ -710,8 +711,8 @@ class TabFrame(CustomFrame):
 class RegionFrame(CustomFrame):
     """Frame inside SetupApp notebook - for altering region boundaries"""
 
-    def __init__(self, parent, ctrl):
-        CustomFrame.__init__(self, parent)
+    def __init__(self, parent, ctrl, bg='white'):
+        CustomFrame.__init__(self, parent, color=bg)
         self.ctrl = ctrl
 
         # make scales expandable
@@ -732,7 +733,7 @@ class RegionFrame(CustomFrame):
 
             # scale titles
             self.__dict__[f'{s}_title'] = title = \
-                tk.Label(self, text=text, bg='white')
+                tk.Label(self, text=text, bg=bg)
 
             # determine troughcolor of scale (0, 1: green; 2, 3: blue)
             if row < 2:
@@ -744,8 +745,9 @@ class RegionFrame(CustomFrame):
             self.__dict__[f'{s}_scale'] = scale = \
                 tk.Scale(
                     self, from_=0, to=self.ctrl.n - 1, orient=tk.HORIZONTAL,
-                    showvalue=0, bg='white', sliderlength=15, bd=0,
-                    highlightthickness=0, troughcolor=tc,
+                    showvalue=0, bg=bg, sliderlength=15, bd=0,
+                    highlightthickness=1, troughcolor=tc,
+                    highlightbackground='black',
                     command=lambda value, s=s: self.ud_scale(value, s),
                 )
 
@@ -875,10 +877,9 @@ class RegionFrame(CustomFrame):
 class PhaseFrame(tk.Frame):
     """Frame inside SetupApp notebook - for phase correction of data"""
 
-    def __init__(self, parent, ctrl):
-        tk.Frame.__init__(self, parent)
+    def __init__(self, parent, ctrl, bg='white'):
+        CustomFrame.__init__(self, parent, color=bg)
         self.ctrl = ctrl
-        self['bg'] = 'white'
 
         # make scales expandable
         self.columnconfigure(1, weight=1)
@@ -886,7 +887,7 @@ class PhaseFrame(tk.Frame):
         for row, s in enumerate(('pivot', 'p0', 'p1')):
             # scale titles
             self.__dict__[f'{s}_title'] = title = \
-                tk.Label(self, text=s, bg='white')
+                tk.Label(self, text=s, bg=bg)
 
             # pivot scale
             if row == 0:
@@ -908,9 +909,9 @@ class PhaseFrame(tk.Frame):
 
             self.__dict__[f'{s}_scale'] = scale = \
                 tk.Scale(self, troughcolor=tc, from_=from_, to=to,
-                    resolution=resolution, orient=tk.HORIZONTAL, bg='white',
-                    sliderlength=15, bd=0, highlightthickness=0, relief='flat',
-                    showvalue=0,
+                    resolution=resolution, orient=tk.HORIZONTAL, bg=bg,
+                    sliderlength=15, bd=0, highlightthickness=1, relief='flat',
+                    showvalue=0, highlightbackground='black',
                     command=lambda value, s=s: self.ud_scale(value, s),
                 )
 
@@ -1074,8 +1075,8 @@ class AdvancedSettingsFrame(CustomFrame):
     """Frame inside SetupApp notebook - for customising details about the
     optimisation routine"""
 
-    def __init__(self, parent, ctrl):
-        CustomFrame.__init__(self, parent)
+    def __init__(self, parent, ctrl, bg='white'):
+        CustomFrame.__init__(self, parent, color=bg)
         self.ctrl = ctrl
 
         # create multiple frames (one for each row)
@@ -1084,7 +1085,7 @@ class AdvancedSettingsFrame(CustomFrame):
         self.rows = {}
 
         for i in range(6):
-            self.rows[f'{i+1}'] = frame = tk.Frame(self, bg='white')
+            self.rows[f'{i+1}'] = frame = tk.Frame(self, bg=bg)
             if i == 0:
                 frame.grid(row=i, column=0, sticky='w', padx=10, pady=(10,5))
             elif i == 5:
@@ -1094,25 +1095,25 @@ class AdvancedSettingsFrame(CustomFrame):
 
         # --- ROW 1 ---
         filter_title = tk.Label(
-            self.rows['1'], text='Filtered Signal', bg='white',
+            self.rows['1'], text='Filtered Signal', bg=bg,
             font=('Helvetica', 12, 'bold')
         )
         filter_title.grid(row=0, column=0)
 
         # --- ROW 2 ---
         cut_label = tk.Label(
-            self.rows['2'], text='Cut signal:', bg='white',
+            self.rows['2'], text='Cut signal:', bg=bg,
         )
         cut_label.grid(row=0, column=0)
 
         self.cut_checkbutton = tk.Checkbutton(
-            self.rows['2'], variable=self.ctrl.cut, bg='white',
+            self.rows['2'], variable=self.ctrl.cut, bg=bg,
             highlightthickness=0, bd=0, command=self.ud_cut
         )
         self.cut_checkbutton.grid(row=0, column=1)
 
         ratio_label = tk.Label(
-            self.rows['2'], text='Cut width/filter width ratio:', bg='white',
+            self.rows['2'], text='Cut width/filter width ratio:', bg=bg,
         )
         ratio_label.grid(row=0, column=2, padx=(10,0),)
 
@@ -1126,14 +1127,14 @@ class AdvancedSettingsFrame(CustomFrame):
 
         # --- ROW 3 ---
         mpm_title = tk.Label(
-            self.rows['3'], text='Matrix Pencil', bg='white',
+            self.rows['3'], text='Matrix Pencil', bg=bg,
             font=('Helvetica', 12, 'bold')
         )
         mpm_title.grid(row=0, column=0)
 
         # --- ROW 4 ---
         datapoint_label = tk.Label(
-            self.rows['4'], text='Datapoints to consider:', bg='white'
+            self.rows['4'], text='Datapoints to consider:', bg=bg
         )
         datapoint_label.grid(row=0, column=0)
 
@@ -1143,11 +1144,11 @@ class AdvancedSettingsFrame(CustomFrame):
         )
         self.mpm_points_entry.grid(row=0, column=1, padx=(10,0))
 
-        self.max_frame_mpm = tk.Frame(self.rows['4'], bg='white')
+        self.max_frame_mpm = tk.Frame(self.rows['4'], bg=bg)
         self.max_frame_mpm.grid(row=1, column=1, sticky='w',)
 
         max_label_mpm = tk.Label(
-            self.max_frame_mpm, bg='white', font=('Helvetica', 8),
+            self.max_frame_mpm, bg=bg, font=('Helvetica', 8),
             text='Max:',
         )
         max_label_mpm.grid(
@@ -1155,7 +1156,7 @@ class AdvancedSettingsFrame(CustomFrame):
         )
 
         self.max_points_label_mpm = tk.Label(
-            self.max_frame_mpm, bg='white', font=('Helvetica', 8, 'bold'),
+            self.max_frame_mpm, bg=bg, font=('Helvetica', 8, 'bold'),
             textvariable=self.ctrl.max_points,
         )
         self.max_points_label_mpm.grid(row=0, column=1, pady=(5,0), sticky='w',)
@@ -1163,21 +1164,21 @@ class AdvancedSettingsFrame(CustomFrame):
 
 
         oscillator_label = tk.Label(
-            self.rows['4'], text='Number of oscillators:', bg='white'
+            self.rows['4'], text='Number of oscillators:', bg=bg
         )
         oscillator_label.grid(row=0, column=3, padx=(20,0))
 
         self.oscillator_entry = tk.Entry(
-            self.rows['4'], width=8, highlightthickness=0, bg='white',
+            self.rows['4'], width=8, highlightthickness=0, bg=bg,
             textvariable=self.ctrl.M_var, state='disabled'
         )
         self.oscillator_entry.grid(row=0, column=4, padx=(10,0))
 
-        use_mdl_label = tk.Label(self.rows['4'], text='Use MDL:', bg='white')
+        use_mdl_label = tk.Label(self.rows['4'], text='Use MDL:', bg=bg)
         use_mdl_label.grid(row=0, column=5, padx=(10,0))
 
         self.mdl_checkbutton = tk.Checkbutton(
-            self.rows['4'], variable=self.ctrl.use_mdl, bg='white',
+            self.rows['4'], variable=self.ctrl.use_mdl, bg=bg,
             highlightthickness=0, bd=0, command=self.ud_mdl_button
         )
         self.mdl_checkbutton.grid(row=0, column=6)
@@ -1185,7 +1186,7 @@ class AdvancedSettingsFrame(CustomFrame):
 
         # --- ROW 5 ---
         nlp_title = tk.Label(
-            self.rows['5'], text='Nonlinear Programming', bg='white',
+            self.rows['5'], text='Nonlinear Programming', bg=bg,
             font=('Helvetica', 12, 'bold')
         )
         nlp_title.grid(row=0, column=0)
@@ -1196,12 +1197,12 @@ class AdvancedSettingsFrame(CustomFrame):
         for r in range(3):
             for c in range(6):
                 self.row6_frames[f'{r},{c}'] = tk.Frame(
-                    self.rows['6'], bg='white'
+                    self.rows['6'], bg=bg
                 )
                 self.row6_frames[f'{r},{c}'].grid(row=r, column=c, sticky='w')
 
         datapoint_label = tk.Label(
-            self.row6_frames['0,0'], text='Datapoints to consider:', bg='white'
+            self.row6_frames['0,0'], text='Datapoints to consider:', bg=bg
         )
         datapoint_label.grid(row=0, column=0)
 
@@ -1211,11 +1212,11 @@ class AdvancedSettingsFrame(CustomFrame):
         )
         self.nlp_points_entry.grid(row=0, column=0, padx=(10,0))
 
-        self.max_frame_nlp = tk.Frame(self.row6_frames['1,1'], bg='white')
+        self.max_frame_nlp = tk.Frame(self.row6_frames['1,1'], bg=bg)
         self.max_frame_nlp.grid(row=1, column=1, sticky='w',)
 
         max_label_nlp = tk.Label(
-            self.max_frame_nlp, bg='white', font=('Helvetica', 8),
+            self.max_frame_nlp, bg=bg, font=('Helvetica', 8),
             text='Max:',
         )
         max_label_nlp.grid(
@@ -1223,13 +1224,13 @@ class AdvancedSettingsFrame(CustomFrame):
         )
 
         self.max_points_label_nlp = tk.Label(
-            self.max_frame_nlp, bg='white', font=('Helvetica', 8, 'bold'),
+            self.max_frame_nlp, bg=bg, font=('Helvetica', 8, 'bold'),
             textvariable=self.ctrl.max_points,
         )
         self.max_points_label_nlp.grid(row=0, column=1, pady=(5,0), sticky='w',)
 
         nlp_method_label = tk.Label(
-            self.row6_frames['0,2'], text='NLP algorithm:', bg='white'
+            self.row6_frames['0,2'], text='NLP algorithm:', bg=bg
         )
         nlp_method_label.grid(row=0, column=0, padx=(20,0))
 
@@ -1249,36 +1250,36 @@ class AdvancedSettingsFrame(CustomFrame):
         self.algorithm_menu.grid(row=0, column=0, padx=(10,0))
 
         max_iterations_label = tk.Label(
-            self.row6_frames['0,4'], text='Maximum iterations:', bg='white',
+            self.row6_frames['0,4'], text='Maximum iterations:', bg=bg,
         )
         max_iterations_label.grid(row=0, column=0, padx=(20,0))
 
         self.max_iterations_entry = tk.Entry(
-            self.row6_frames['0,5'], width=8, highlightthickness=0, bg='white',
+            self.row6_frames['0,5'], width=8, highlightthickness=0, bg=bg,
             textvariable=self.ctrl.max_iterations,
         )
         self.max_iterations_entry.grid(row=0, column=0, padx=(10,0))
 
         phase_variance_label = tk.Label(
             self.row6_frames['2,0'], text='Optimise phase variance:',
-            bg='white',
+            bg=bg,
         )
         phase_variance_label.grid(row=0, column=0, pady=(10,0))
 
         self.phase_var_checkbutton = tk.Checkbutton(
             self.row6_frames['2,1'], variable=self.ctrl.phase_variance,
-            bg='white', highlightthickness=0, bd=0,
+            bg=bg, highlightthickness=0, bd=0,
         )
         self.phase_var_checkbutton.grid(row=0, column=0, pady=(10,0))
 
         # amplitude/frequency thresholds
         amplitude_thold_label = tk.Label(
-            self.row6_frames['2,2'], text='Amplitude threshold:', bg='white',
+            self.row6_frames['2,2'], text='Amplitude threshold:', bg=bg,
         )
         amplitude_thold_label.grid(row=0, column=0, padx=(20,0), pady=(10,0))
 
         self.amplitude_thold_entry = tk.Entry(
-            self.row6_frames['2,3'], width=8, highlightthickness=0, bg='white',
+            self.row6_frames['2,3'], width=8, highlightthickness=0, bg=bg,
             textvariable=self.ctrl.amplitude_thold, state='disabled',
         )
         self.amplitude_thold_entry.grid(
@@ -1287,25 +1288,25 @@ class AdvancedSettingsFrame(CustomFrame):
 
         self.amplitude_thold_checkbutton = tk.Checkbutton(
             self.row6_frames['2,3'], variable=self.ctrl.use_amp_thold,
-            bg='white', highlightthickness=0, bd=0,
+            bg=bg, highlightthickness=0, bd=0,
             command=self.ud_amp_thold_button
         )
         self.amplitude_thold_checkbutton.grid(row=0, column=1, pady=(10,0))
 
         frequency_thold_label = tk.Label(
-            self.row6_frames['2,4'], text='Frequency threshold:', bg='white',
+            self.row6_frames['2,4'], text='Frequency threshold:', bg=bg,
         )
         frequency_thold_label.grid(row=0, column=0, padx=(20,0), pady=(10,0))
 
         self.frequency_thold_entry = tk.Entry(
-            self.row6_frames['2,5'], width=8, highlightthickness=0, bg='white',
+            self.row6_frames['2,5'], width=8, highlightthickness=0, bg=bg,
             textvariable=self.ctrl.frequency_thold
         )
         self.frequency_thold_entry.grid(row=0, column=0, padx=(10,0), pady=(10,0))
 
         self.frequency_thold_checkbutton = tk.Checkbutton(
             self.row6_frames['2,5'], variable=self.ctrl.use_freq_thold,
-            bg='white', highlightthickness=0, bd=0,
+            bg=bg, highlightthickness=0, bd=0,
             command=self.ud_freq_thold_button
         )
         self.frequency_thold_checkbutton.grid(row=0, column=1, pady=(10,0))
@@ -2899,7 +2900,8 @@ class ColorPicker(tk.Frame):
                 tk.Scale(
                     self.topframe, from_=0, to=255, orient=tk.HORIZONTAL,
                     showvalue=0, bg='white', sliderlength=15, bd=0,
-                    troughcolor=tc, length=500, highlightthickness=0,
+                    troughcolor=tc, length=500, highlightthickness=1,
+                    highlightbackground='black',
                     command=lambda val, tag=tag: self.ud_scale(val, tag)
                 )
             scale.set(int(var.get(), 16))
@@ -3144,11 +3146,12 @@ class LineEdit(tk.Frame):
         self.lw_ttl = tk.Label(self.lwframe, text='Linewidth', bg='white',
                                font=('Helvetica', 12))
 
-        self.lw_scale = tk.Scale(self.lwframe, from_=0, to=2.5,
-                                 orient=tk.HORIZONTAL,
+        self.lw_scale = tk.Scale(
+            self.lwframe, from_=0, to=2.5, orient=tk.HORIZONTAL,
                                  showvalue=0, bg='white', sliderlength=15, bd=0,
-                                 troughcolor=f'#808080', highlightthickness=0,
-                                 command=self.ud_lw_sc, resolution=0.001)
+                                 troughcolor=f'#808080', highlightthickness=1,
+                                 command=self.ud_lw_sc, resolution=0.001,
+                                 highlightbackground='black',)
         self.lw_scale.set(self.lw)
 
         self.lw_ent = tk.Entry(self.lwframe, bg='white', text=f'{self.lw:.3f}',
@@ -3278,7 +3281,7 @@ class LineMultiEdit(tk.Frame):
         self.lw_scale = tk.Scale(self.lwframe, from_=0, to=5, orient=tk.HORIZONTAL,
                                  showvalue=0, bg='white', sliderlength=15, bd=0,
                                  troughcolor=f'#808080', length=500,
-                                 highlightthickness=0, command=self.ud_lw_sc,
+                                 highlightthickness=1, command=self.ud_lw_sc,
                                  resolution=0.001)
         self.lw_scale.set(self.lw)
 
@@ -3537,7 +3540,7 @@ class LabelEdit(tk.Frame):
                                    orient=tk.HORIZONTAL, showvalue=0,
                                    bg='white', sliderlength=15, bd=0,
                                    troughcolor=f'#808080', length=500,
-                                   highlightthickness=0,
+                                   highlightthickness=1,
                                    command=self.ud_size_sc,
                                    resolution=0.001)
         self.size_scale.set(self.size)
@@ -3571,7 +3574,7 @@ class LabelEdit(tk.Frame):
                                 orient=tk.HORIZONTAL, showvalue=0,
                                 bg='white', sliderlength=15, bd=0,
                                 troughcolor=f'#808080', length=500,
-                                highlightthickness=0,
+                                highlightthickness=1,
                                 command=self.ud_x_sc,
                                 resolution=0.0001)
         self.x_scale.set(self.x)
@@ -3588,7 +3591,7 @@ class LabelEdit(tk.Frame):
                                 orient=tk.HORIZONTAL, showvalue=0,
                                 bg='white', sliderlength=15, bd=0,
                                 troughcolor=f'#808080', length=500,
-                                highlightthickness=0,
+                                highlightthickness=1,
                                 command=self.ud_y_sc,
                                 resolution=1)
         self.y_scale.set(self.y)
