@@ -1251,12 +1251,11 @@ class NMREsPyBruker:
                     (self.get_data(), np.zeros(self.get_n(), dtype='complex'))
                 )
             )))
-            import matplotlib.pyplot as plt
-            plt.plot(data)
-            plt.show()
+
         else:
             data = self.get_data(pdata_key='1r') + \
                    1j * self.get_data(pdata_key='1i')
+
 
         # if 1D, contain inside a tuple so that stuff can be generalised
         if self.get_dim() == 1 and isinstance(region[0], (float, int)):
@@ -1331,7 +1330,9 @@ class NMREsPyBruker:
                 ve_sw.append(abs(min_h - max_h))
                 ve_off.append((min_h + max_h) / 2)
 
+            cut_slice = tuple(cut_slice)
             filtered_spectrum = filtered_spectrum[cut_slice]
+
             self.ve_n = tuple(ve_n)
             self.ve_sw = tuple(ve_sw)
             self.ve_off = tuple(ve_off)

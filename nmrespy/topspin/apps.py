@@ -413,15 +413,18 @@ class NMREsPyApp(tk.Tk):
         self.cut.set(1)
 
         # ratio of length of cut signal and filter length
-        self.cut_width = tk.StringVar()
-        self.cut_width.set('2.5')
+        self.cut_ratio = tk.StringVar()
+        self.cut_ratio.set('2.5')
 
         # number of points to be used for MPM and NLP
         self.mpm_points_var = tk.StringVar()
         self.nlp_points_var = tk.StringVar()
 
         # set default values for mpm_points_var and nlp_points_var
-        signal_size = int(float(self.cut_width.get()) * self.region_size)
+        signal_size = int(
+            np.ceil(float(self.cut_ratio.get()) * self.region_size / 2)
+        )
+
         if signal_size <= 4096:
             self.mpm_points_var.set(str(signal_size))
             self.nlp_points_var.set(str(signal_size))
@@ -435,7 +438,7 @@ class NMREsPyApp(tk.Tk):
         # maximum number of points possible based on signal size, whether
         # to cut the signal, and the cut size/filter size ratio
         self.max_points = tk.StringVar()
-        self.max_points.set(str(signal_size))
+        self.max_points.set(signal_size)
 
         # number of oscillators (M) string variable
         self.M_var = tk.StringVar()
@@ -573,24 +576,29 @@ class NMREsPyApp(tk.Tk):
 
         if int(self.cut.get()):
             # check range is suitable. If not, set it within the spectrum
-            span = int(self.region_size * float(self.cut_width.get()))
-            low = (self.rb + self.lb) / 2 - int(np.ceil(span / 2))
-            high = low + span
+            # divide by two as halving signal in frequency_filter
+            signal_size = int(
+                np.ceil(float(self.cut_ratio.get()) * self.region_size / 2)
+            )
+
+            # determine respective low and high bounds
+            low = int((self.rb + self.lb) // 2) - int(np.ceil(signal_size / 2))
+            high = low + signal_size
 
             if low < 0:
                 low = 0
             if high > self.n - 1:
                 high = self.n - 1
 
-            self.max_points.set(str(int(high - low)))
+            self.max_points.set(str(high - low))
 
         else:
-            self.max_points.set(self.n)
+            self.max_points.set(str(self.n // 2))
 
-        if int(self.max_points.get()) > 8192:
+        if int(self.max_points.get()) >= 8192:
             self.mpm_points_var.set('4096')
             self.nlp_points_var.set('8192')
-        elif 4096 < int(self.max_points.get()) < 8192:
+        elif 4096 <= int(self.max_points.get()) < 8192:
             self.mpm_points_var.set('4096')
             self.nlp_points_var.set(str(self.max_points.get()))
         else:
@@ -1110,8 +1118,10 @@ class AdvancedSettingsFrame(CustomFrame):
 
         self.ratio_entry = tk.Entry(
             self.rows['2'], width=8, highlightthickness=0,
-            textvariable=self.ctrl.cut_width,
         )
+        self.ratio_entry.insert(0, self.ctrl.cut_ratio.get())
+
+        self.ratio_entry.bind('<Return>', (lambda event: self.ud_cut_ratio()))
         self.ratio_entry.grid(row=0, column=3, padx=(4,0),)
 
         # --- ROW 3 ---
@@ -1307,10 +1317,20 @@ class AdvancedSettingsFrame(CustomFrame):
             self.ratio_entry['state'] = 'normal'
         else:
             self.ratio_entry['state'] = 'disabled'
-            self.ctrl.cut_width.set('')
 
         self.ctrl.ud_max_points()
 
+    def ud_cut_ratio(self):
+
+        # check the value can be interpreted as a float
+        try:
+            cut_ratio = float(self.ratio_entry.get())
+            self.ctrl.cut_ratio.set(str(cut_ratio))
+            self.ctrl.ud_max_points()
+
+        except:
+            self.ratio_entry.delete(0, tk.END)
+            self.ratio_entry.insert(0, self.ctrl.cut_ratio.get())
 
     def ud_mdl_button(self):
         """For when the user clicks on the checkbutton relating to use the
@@ -1319,7 +1339,6 @@ class AdvancedSettingsFrame(CustomFrame):
         value = int(self.ctrl.use_mdl.get()) # 0 or 1
         if value:
             self.oscillator_entry['state'] = 'disabled'
-            self.oscillator_var.set('')
         else:
             self.oscillator_entry['state'] = 'normal'
 
@@ -1426,10 +1445,7 @@ class RootButtonFrame(tk.Frame):
         self.ctrl = ctrl
         self['bg'] = 'white'
 
-        # TODO this will need to be changed once the docs go online
-        docpath = '/home/simon/Documents/DPhil/projects/' \
-                  + 'p0-FID_signal_processing/code/Python_Scripts/' \
-                  + 'NMR-EsPy/docs/_build/html/topspin_gui.html'
+        docpath = 'https://nmr-espy.readthedocs.io/en/latest/gui.html'
 
         self.cancel_button = tk.Button(
             self, text='Cancel', width=8, bg='#ff9894',
@@ -1450,6 +1466,7 @@ class RootButtonFrame(tk.Frame):
 
         # command varies - will need to be defined from the class that
         # inherits from this
+        # for example, see SetupButtonFrame
         self.save_button = tk.Button(
             self, text='Run', width=8, bg='#9eda88',
             highlightbackground='black'
@@ -1465,13 +1482,14 @@ class RootButtonFrame(tk.Frame):
             row=2, column=0, columnspan=3, padx=10, pady=(10,0), sticky='w'
         )
 
-        email = 'simon.hulse@chem.ox.ac.uk'
         contact_info_2 = tk.Label(
-            self, text=email, bg='white', font='Courier', fg='blue',
-            cursor='hand1'
+            self, text='simon.hulse@chem.ox.ac.uk', bg='white', font='Courier',
+            fg='blue', cursor='hand1',
         )
         contact_info_2.bind(
-            '<Button-1>', lambda e: webbrowser.open_new(f'mailto:{email}')
+            '<Button-1>', lambda e: webbrowser.open_new(
+                r"mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query"
+            )
         )
 
         contact_info_2.grid(
@@ -1492,80 +1510,93 @@ class SetupButtonFrame(RootButtonFrame):
         """Set up the estimation routine"""
 
         # get parameters
-        spec = self.ctrl.specplot.get_ydata()
+        spectrum = self.ctrl.specplot.get_ydata()
 
-        region = (self.lb, self.rb)
-        noise_region = (self.lnb, self.rnb)
+        region = (self.ctrl.lb, self.ctrl.rb)
+        noise_region = (self.ctrl.lnb, self.ctrl.rnb)
 
         pivot = self.ctrl.pivot
         p0 = self.ctrl.p0
         p1 = self.ctrl.p1
 
-        adsetframe = self.ctrl.frames['TabFrame'].nbframes['AdvancedSettingsFrame']
 
-        mpm_points = adsetframe.mpm_points_var.get()
-        nlp_points = adsetframe.nlp_points_var.get()
+        cut = int(self.ctrl.cut.get())
+        if cut:
+            cut_ratio = float(self.ctrl.cut_ratio.get())
+        else:
+            cut_ratio = None
+
+        max_points = int(self.ctrl.max_points.get())
+        print(f'max_points: {max_points}')
+
+        # check mpm_points and nlp_points are valid (ints)
         try:
-            mpm_points = (int(mpm_points),)
+            mpm_points = (int(self.ctrl.mpm_points_var.get()),)
         except:
             msg = 'The number of points for the MPM is not valid' \
                   + f' (\'{mpm_points}\' could not be converted to an integer)'
             WarnFrame(self.ctrl, msg)
             return
-        if mpm_points[0] > self.ctrl.n:
-            msg = 'The number of points for the MPM is too large' \
-                  + f' (it should be less than or equal to {self.ctrl.n})'
-            WarnFrame(self.ctrl, msg)
-            return
 
         try:
-            nlp_points = (int(nlp_points),)
+            nlp_points = (int(self.ctrl.nlp_points_var.get()),)
         except:
             msg = 'The number of points for nonlinear programming is not' \
                   + f' valid (\'{nlp_points}\' could not be converted to an' \
                   + ' integer)'
             WarnFrame(self.ctrl, msg)
             return
-        if nlp_points[0] > self.ctrl.n:
-            msg = 'The number of points for nonlinear programming is too' \
-                  + f' large (it should be less than or equal to {self.ctrl.n})'
+
+        # check mpm_points and nlp_points are not larger than permitted by
+        # the signal's full size
+        if mpm_points[0] > max_points:
+            msg = 'The number of points for the MPM is too large' \
+                  + ' (it should be less than or equal to' \
+                  + f' {max_points})'
             WarnFrame(self.ctrl, msg)
             return
 
-        if int(adsetframe.use_mdl.get()):
+        if nlp_points[0] > max_points:
+            msg = 'The number of points for the nonlinear programming is too' \
+                  + ' large (it should be less than or equal to' \
+                  + f' {max_points})'
+            WarnFrame(self.ctrl, msg)
+            return
+
+        # get number of oscillators for initial guess (or determine whether
+        # to use MDL)
+        if int(self.ctrl.use_mdl.get()):
             M_in = 0
         else:
-            M_in = adsetframe.oscillator_var.get()
             try:
-                M_in = int(M_in)
+                M_in = int(self.ctrl.M_var.get())
             except:
                  msg = f'The number of oscillators for the MPM (\'{M_in}\')' \
                        + ' could not be interpreted as an integer.'
                  WarnFrame(self.ctrl, msg)
                  return
 
-        algorithm = adsetframe.nlp_algorithm.get()
+        algorithm = self.ctrl.nlp_algorithm.get()
         if algorithm == 'Trust Region':
             algorithm = 'trust_region'
         elif algorithm == 'L-BFGS':
             algorithm = 'lbfgs'
 
-        max_iterations = adsetframe.max_iterations.get()
         try:
-            max_iterations = int(max_iterations)
+            max_iterations = int(self.ctrl.max_iterations.get())
         except:
-            msg = 'The number of maximum iterations for NLP' \
-                  + f'(\'{max_iterations}\') could not be interpreted as an' \
-                  + ' integer.'
+            msg = 'The number of maximum iterations for nonlinear programming' \
+                  + f' (\'{self.ctrl.max_iterations.get()}\') could not be' \
+                  + ' interpreted as an integer.'
             WarnFrame(self.ctrl, msg)
             return
 
-        phase_variance = bool(int(adsetframe.phase_variance.get()))
+        phase_variance = bool(int(self.ctrl.phase_variance.get()))
 
-        use_amp_thold = int(adsetframe.use_amp_thold.get())
+        use_amp_thold = int(self.ctrl.use_amp_thold.get())
 
         if use_amp_thold:
-            amplitude_thold = adsetframe.amplitude_thold.get()
+            amplitude_thold = self.ctrl.amplitude_thold.get()
             if amplitude_thold == '':
                 amplitude_thold = None
             else:
@@ -1580,10 +1611,10 @@ class SetupButtonFrame(RootButtonFrame):
         else:
             amplitude_thold = None
 
-        use_freq_thold = int(adsetframe.use_freq_thold.get())
+        use_freq_thold = int(self.ctrl.use_freq_thold.get())
 
         if use_freq_thold:
-            frequency_thold = adsetframe.frequency_thold.get()
+            frequency_thold = self.ctrl.frequency_thold.get()
             if frequency_thold == '':
                 frequency_thold = None
             else:
@@ -1601,8 +1632,8 @@ class SetupButtonFrame(RootButtonFrame):
         self.ctrl.destroy()
 
         self.ctrl.info.frequency_filter(
-            region=region, nose_region=noise_region, p0=p0, p1=p1,
-            cut=True,
+            region=region, noise_region=noise_region, p0=p0, p1=p1,
+            cut=cut, cut_ratio=cut_ratio, region_units='idx'
         )
 
         self.ctrl.info.matrix_pencil(trim=mpm_points, M_in=M_in)
@@ -1619,9 +1650,6 @@ class SetupButtonFrame(RootButtonFrame):
         )
 
         ResultFrame()
-        # subprocess.Popen(
-        #     [sys.executable, os.path.join(TOPSPINDIR, 'result.py')]
-        # )
 
 
 class ResultButtonFrame(RootButtonFrame):
@@ -1666,10 +1694,7 @@ class LogoFrame(tk.Frame):
             self, image=self.nmrespy_img, bg='white', cursor='hand1'
         )
 
-        # TODO this will need to be changed once the docs go online
-        docpath = '/home/simon/Documents/DPhil/projects/' \
-                  + 'p0-FID_signal_processing/code/Python_Scripts/' \
-                  + 'NMR-EsPy/docs/_build/html/index.html'
+        docpath = 'https://nmr-espy.readthedocs.io/en/latest/index.html'
 
         self.nmrespy_logo.bind(
             '<Button-1>', lambda e: webbrowser.open_new(docpath)
