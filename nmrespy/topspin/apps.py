@@ -34,20 +34,38 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 import nmrespy
 import nmrespy.load as load
 import nmrespy._misc as _misc
 import nmrespy._plot as _plot
 
+# bring in my custon widgets, and BGCOLOR "constant"
+from nmrespy.topspin.custom_widgets import *
+
 # useful paths to various directories
 NMRESPYDIR = os.path.dirname(nmrespy.__file__)
 TOPSPINDIR = os.path.join(NMRESPYDIR, 'topspin')
 IMAGESDIR = os.path.join(TOPSPINDIR, 'images')
 
-# colors
-TABCOLOR = '#d6dbe0'
+# web links
+MFGROUPLINK = 'http://foroozandeh.chem.ox.ac.uk/home'
+NMRESPYLINK = 'https://nmr-espy.readthedocs.io/en/latest/index.html'
+GUIDOCLINK = 'https://nmr-espy.readthedocs.io/en/latest/gui.html'
+EMAILLINK = r"mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query"
+
+# colors related to plot
+PLOTCOLOR = '#ffffff' # plot background
+REGIONCOLOR = '#7fd47f' # region rectangle patch
+NOISEREGIONCOLOR = '#66b3ff' # noise region rectange patch
+PIVOTCOLOR = '#ff0000' # pivot line plot
+NOTEBOOKCOLOR = '#c4d1dc'
+ACTIVETABCOLOR = '#648ba4'
+BUTTONGREEN = '#9eda88'
+BUTTONORANGE = '#ffb861'
+BUTTONRED = '#ff9894'
+
 
 def get_PhotoImage(path, scale=1.0):
     """Generate a TKinter-compatible photo image, given a path, and a scaling
@@ -68,7 +86,7 @@ def get_PhotoImage(path, scale=1.0):
         tk.Label(parent, image=img)
     """
 
-    image = Image.open(path)
+    image = Image.open(path).convert('RGBA')
     [w, h] = image.size
     new_w = int(w * scale)
     new_h = int(h * scale)
@@ -76,71 +94,28 @@ def get_PhotoImage(path, scale=1.0):
     return ImageTk.PhotoImage(image)
 
 
-class CustomFrame(tk.Frame):
-    """A Tkinter frame with a white background by default. Prevents me from
-    having to write (and you read) self['bg'] = 'white' about 1000000 times"""
-
-    def __init__(self, parent, color='white'):
-        tk.Frame.__init__(self, parent)
-        self['bg'] = color
-
-
-class CustomToplevel(tk.Toplevel):
-    """A Tkinter toplevel with a white background by default. By
-    default, it is also unable to be resized, and its title is 'NMR-EsPy'"""
-
-    def __init__(self, parent, color='white'):
-        tk.Toplevel.__init__(self, parent)
-        self['bg'] = color
-        self.title('NMR-EsPy')
-        self.resizable(False, False)
-
-
-class WarnFrame(CustomToplevel):
+class WarnFrame(MyToplevel):
     """A window in case the user does something silly."""
 
     def __init__(self, parent, msg):
-        CustomToplevel.__init__(self, parent)
+        MyToplevel.__init__(self, parent)
         self.title('NMR-EsPy - Error')
 
         # warning image
         self.img = get_PhotoImage(os.path.join(IMAGESDIR, 'warning.png'), 0.08)
-        self.warn_sign = tk.Label(self, image=self.img, bg='white')
+        self.warn_sign = MyLabel(self, image=self.img)
         self.warn_sign.grid(row=0, column=0, padx=(10,0), pady=10)
 
         # add text explaining the issue
-        text = tk.Label(self, text=msg, wraplength=400, bg='white')
+        text = MyLabel(self, text=msg, wraplength=400)
         text.grid(row=0, column=1, padx=10, pady=10)
 
         # close button
-        close_button = tk.Button(self, text='Close', width=8, bg='#ff9894',
-                                 highlightbackground='black',
-                                 command=self.destroy)
+        close_button = MyButton(
+            self, text='Close', bg='#ff9894', command=self.destroy,
+        )
         close_button.grid(row=1, column=1, padx=10, pady=(0,10))
 
-
-class CustomNavigationToolbar(NavigationToolbar2Tk):
-    """Tweak default matplotlib navigation bar to exclude subplot-config
-    and save buttons. Also dialogues as cursor goes over plot, and bar
-    is set to be white"""
-
-    def __init__(self, canvas, parent):
-
-        # slice toolitems (this gets rid of the unwanted buttons)
-        self.toolitems = self.toolitems[:6]
-
-        NavigationToolbar2Tk.__init__(
-            self, canvas, parent, pack_toolbar=False
-        )
-
-        # make everything white
-        self['bg'] = 'white'
-        self._message_label['bg'] = 'white'
-        for button in self.winfo_children():
-            button['bg'] = 'white'
-
-    def set_message(self, msg):
-        pass
 
 
 class Restrictor():
@@ -184,27 +159,27 @@ class Restrictor():
                 self.limits[axis] = self.get_lim()[axis]
 
 
-class DataType(CustomToplevel):
+class DataType(MyToplevel):
     """GUI for asking user whether they want to analyse the raw FID or
     pdata"""
 
     def __init__(self, parent):
 
-        CustomToplevel.__init__(self, parent)
+        MyToplevel.__init__(self, parent)
 
         # parent is the controler in this case (NMREsPyApp)
         self.ctrl = parent
 
         # frame for the NMR-EsPy logo
-        self.logoframe = tk.Frame(self, bg='white')
+        self.logoframe = MyFrame(self)
         self.logoframe.grid(row=0, column=0, rowspan=2)
 
         # frame for option boxes and descriptors
-        self.mainframe = tk.Frame(self, bg='white')
+        self.mainframe = MyFrame(self)
         self.mainframe.grid(row=0, column=1)
 
         # frame for save/cancel buttons
-        self.buttonframe = tk.Frame(self, bg='white')
+        self.buttonframe = MyFrame(self)
         self.buttonframe.grid(row=1, column=1, sticky='e')
 
         # open info file. Gives paths to fid file and pdata directory
@@ -213,74 +188,70 @@ class DataType(CustomToplevel):
 
         # nmrespy logo
         self.img = get_PhotoImage(
-            os.path.join(IMAGESDIR, 'nmrespy_full.png'), 0.08
+            os.path.join(IMAGESDIR, 'nmrespy_full.png'), 0.06
         )
-        self.logo = tk.Label(self.logoframe, image=self.img, bg='white')
+        self.logo = MyLabel(self.logoframe, image=self.img)
         self.logo.grid(row=0, column=0, padx=10, pady=10)
 
-        message = tk.Label(
+        message = MyLabel(
             self.mainframe, text='Which data would you like to analyse?',
-            font=('Helvetica', '12', 'bold'), bg='white'
+            font=('Helvetica', '12', 'bold'),
         )
         message.grid(
             column=0, row=0, columnspan=2, padx=10, pady=(10,0)
         )
 
-        pdata_label = tk.Label(
-            self.mainframe, text='Processed Data', bg='white'
+        pdata_label = MyLabel(
+            self.mainframe, text='Processed Data'
         )
         pdata_label.grid(
             column=0, row=1, padx=(10,0), pady=(10,0), sticky='w'
         )
 
-        pdatapath = tk.Label(
-            self.mainframe, text=f'{self.pdatapath}/1r', font='Courier',
-            bg='white'
+        pdatapath = MyLabel(
+            self.mainframe, text=f'{self.pdatapath}/1r', font=('Courier', 11),
         )
         pdatapath.grid(column=0, row=2, padx=(10, 0), sticky='w')
 
         self.pdata = tk.IntVar()
         self.pdata.set(1)
-        self.pdata_box = tk.Checkbutton(
+        self.pdata_box = MyCheckbutton(
             self.mainframe, variable=self.pdata, command=self.click_pdata,
-            bg='white', highlightthickness=0, bd=0
         )
         self.pdata_box.grid(
             column=1, row=1, rowspan=2, padx=10, sticky='nsw'
         )
 
-        fid_label = tk.Label(self.mainframe, text='Raw FID', bg='white')
+        fid_label = MyLabel(self.mainframe, text='Raw FID')
         fid_label.grid(
-            column=0, row=3, padx=(10, 0), pady=(10, 0), sticky='w'
+            column=0, row=3, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
-        fidpath = tk.Label(
-            self.mainframe, text=f'{self.fidpath}/fid', font='Courier',
-            bg='white'
+        fidpath = MyLabel(
+            self.mainframe, text=f'{self.fidpath}/fid', font=('Courier', 11),
         )
         fidpath.grid(column=0, row=4, padx=(10, 0), sticky='w')
 
         self.fid = tk.IntVar()
         self.fid.set(0)
-        self.fid_box = tk.Checkbutton(
+        self.fid_box = MyCheckbutton(
             self.mainframe, variable=self.fid, command=self.click_fid,
-            bg='white', highlightthickness=0, bd=0
         )
         self.fid_box.grid(
             column=1, row=3, rowspan=2, padx=10, sticky='nsw'
         )
 
-        self.confirmbutton = tk.Button(
-            self.buttonframe, text='Confirm', command=self.confirm, width=8,
-            bg='#9eda88', highlightbackground='black'
+        self.confirmbutton = MyButton(
+            self.buttonframe, text='Confirm', command=self.confirm,
+            bg=BUTTONGREEN,
         )
         self.confirmbutton.grid(
-            column=1, row=0, padx=(5, 10), pady=10, sticky='e'
+            column=1, row=0, padx=(5, 10), pady=10, sticky='e',
         )
 
-        self.cancelbutton = tk.Button(
+        self.cancelbutton = MyButton(
             self.buttonframe, text='Cancel', command=self.ctrl.destroy,
-            width=8, bg='#ff9894', highlightbackground='black'
+            bg=BUTTONRED,
         )
         self.cancelbutton.grid(column=0, row=0, pady=10, sticky='e')
 
@@ -315,9 +286,8 @@ class NMREsPyApp(tk.Tk):
     """App for using NMR-EsPy."""
 
     # This is the controller
-    # if you see self.ctrl throughout other classes in this file, it refers
+    # when you see self.ctrl throughout other classes in this file, it refers
     # to this class
-
     def __init__(self):
         tk.Tk.__init__(self)
         self.title('NMR-EsPy - Setup Calculation')
@@ -329,12 +299,12 @@ class NMREsPyApp(tk.Tk):
         DataType(parent=self)
 
         # main container: everything goes into here
-        container = tk.Frame(self, bg='white')
+        container = MyFrame(self)
         # make resizeable in both dimensions
         container.pack(side='top', fill='both', expand=True)
 
         # make first row and first column of container resizeable.
-        # this will be:
+        # this corresponds to:
         # Plotframe (x and y)
         # Tabframe (x)
         # Logoframe (x)
@@ -345,20 +315,20 @@ class NMREsPyApp(tk.Tk):
         # FID data - transform to frequency domain
         if self.dtype == 'fid':
             self.info = load.import_bruker_fid(self.path, ask_convdta=False)
-            self.spec = np.flip(fftshift(fft(self.info.get_data())))
+            self.spectrum = np.flip(fftshift(fft(self.info.get_data())))
 
         # pdata - combine real and imaginary components
         else:
             self.info = load.import_bruker_pdata(self.path)
-            self.spec = self.info.get_data(pdata_key='1r') \
-                        + 1j * self.info.get_data(pdata_key='1i')
+            self.spectrum = self.info.get_data(pdata_key='1r') \
+                            + 1j * self.info.get_data(pdata_key='1i')
 
         # unpack useful parameters into attributes
         # as 1D data, these will be one-element tuples
         self.shifts = self.info.get_shifts(unit='ppm')[0] # shifts for plot
-        self.sw_p = self.info.get_sw(unit='ppm')[0] # sweep width (ppm)
+        self.sw_p = self.info.get_sw(unit='ppm')[0] # sweep width
         self.off_p = self.info.get_offset(unit='ppm')[0] # transmitter offset
-        self.n = self.spec.shape[0] # number of points
+        self.n = self.spectrum.shape[0] # number of points
 
         # TODO For consitency with the rest of my code, it's probably
         # a good idea to use 2-tuples for the regions, rather than left
@@ -392,14 +362,17 @@ class NMREsPyApp(tk.Tk):
         self.region_size = self.rb - self.lb
 
         # phase correction parameters
-        self.pivot = int(np.floor(self.n / 2)) # location of pivot
+        self.pivot = self.n // 2 # location of pivot
+
+        # convert pivot to ppm
         self.pivot_ppm = _misc.conv_ppm_idx(
                 self.pivot, self.sw_p, self.off_p, self.n,
                 direction='idx->ppm',
         )
 
-        self.p0 = 0. # zero-order phase
-        self.p1 = 0. # first-order phase
+        # zero- and first-order phase corrections (radians)
+        self.p0 = 0.
+        self.p1 = 0.
 
         # generate string vars of the pivot and phases
         self.pivot_var = tk.StringVar()
@@ -409,7 +382,7 @@ class NMREsPyApp(tk.Tk):
         self.p1_var = tk.StringVar()
         self.pivot_var.set(f'{self.p1:.3f}')
 
-        # specifies whether to get the filtered spectrum or not, prior to
+        # specifies whether to cut the filtered spectrum or not, prior to
         # ifft. By default, cut will be applied
         self.cut = tk.IntVar()
         self.cut.set(1)
@@ -422,25 +395,27 @@ class NMREsPyApp(tk.Tk):
         self.mpm_points_var = tk.StringVar()
         self.nlp_points_var = tk.StringVar()
 
-        # set default values for mpm_points_var and nlp_points_var
+        # determine the size of the signal given the current situation
+        # division by 2 is necessary as virtual echo is halved
         signal_size = int(
-            np.ceil(float(self.cut_ratio.get()) * self.region_size / 2)
+            np.floor(float(self.cut_ratio.get()) * self.region_size / 2)
         )
 
+        # set default values for mpm_points_var and nlp_points_var
         if signal_size <= 4096:
             self.mpm_points_var.set(str(signal_size))
             self.nlp_points_var.set(str(signal_size))
         elif signal_size <= 8192:
-            self.mpm_points_var.set('4048')
+            self.mpm_points_var.set('4096')
             self.nlp_points_var.set(str(signal_size))
         else:
-            self.mpm_points_var.set('4048')
+            self.mpm_points_var.set('4096')
             self.nlp_points_var.set('8192')
 
         # maximum number of points possible based on signal size, whether
         # to cut the signal, and the cut size/filter size ratio
         self.max_points = tk.StringVar()
-        self.max_points.set(signal_size)
+        self.max_points.set(str(signal_size))
 
         # number of oscillators (M) string variable
         self.M_var = tk.StringVar()
@@ -448,7 +423,7 @@ class NMREsPyApp(tk.Tk):
 
         # specifies whether or not to use the MDL to estimate M
         self.use_mdl = tk.IntVar()
-        self.use_mdl.set('1')
+        self.use_mdl.set(1)
 
         # idnitity of the NLP algorithm to use
         self.nlp_algorithm = tk.StringVar()
@@ -460,19 +435,19 @@ class NMREsPyApp(tk.Tk):
 
         # whether or not to include phase variance in NLP cost func
         self.phase_variance = tk.IntVar()
-        self.phase_variance.set('1')
+        self.phase_variance.set(1)
 
         # whether or not to purge negligible oscillators
         self.use_amp_thold = tk.IntVar()
-        self.use_amp_thold.set('0')
+        self.use_amp_thold.set(0)
 
         # amplitude threshold for purging negligible oscillators
         self.amplitude_thold = tk.StringVar()
         self.amplitude_thold.set('0.001')
 
         # whether or not to merge excessively close opscillators
-        self.use_freq_thold = tk.StringVar()
-        self.use_freq_thold.set('1')
+        self.use_freq_thold = tk.IntVar()
+        self.use_freq_thold.set(1)
 
         # frequency threshold for merging excessively close oscillators
         self.frequency_thold = tk.StringVar()
@@ -484,8 +459,8 @@ class NMREsPyApp(tk.Tk):
         # add axes to figure
         self.ax = self.fig.add_subplot(111)
         # plot spectrum
-        self.specplot = self.ax.plot(
-            self.shifts, np.real(self.spec), color='k', lw=0.6
+        self.spectrum_plot = self.ax.plot(
+            self.shifts, np.real(self.spectrum), color='k', lw=0.6
         )[0]
 
         # set x-limits as edges of spectral window
@@ -493,39 +468,44 @@ class NMREsPyApp(tk.Tk):
         self.ax.set_xlim(self.xlim)
 
         # Get current y-limit. Will reset y-limits to this value after the
-        # very tall noiseregion and filtregion rectangles have been added to
-        # the plot
+        # very tall noise_region and filter_region rectangles have been added
+        # to the plot
         self.ylim_init = self.ax.get_ylim()
 
         # highlight the spectral region to be filtered (green)
         # Rectangle's first 3 args: bottom left coords, width, height
-        self.filtregion = Rectangle(
+        self.filter_region = Rectangle(
             (self.rb_ppm, -20*self.ylim_init[1]),
             self.lb_ppm - self.rb_ppm,
             40*self.ylim_init[1],
-            facecolor='#7fd47f'
+            facecolor=REGIONCOLOR
         )
-        self.ax.add_patch(self.filtregion)
+        self.ax.add_patch(self.filter_region)
 
         # highlight the noise region (blue)
-        self.noiseregion = Rectangle(
+        self.noise_region = Rectangle(
             (self.rnb_ppm, -20*self.ylim_init[1]),
             self.lnb_ppm - self.rnb_ppm,
             40*self.ylim_init[1],
-            facecolor='#66b3ff'
+            facecolor=NOISEREGIONCOLOR
         )
-        self.ax.add_patch(self.noiseregion)
+        self.ax.add_patch(self.noise_region)
 
         # plot pivot line
         # alpha set to 0 to make invisible initially
         x = [self.pivot_ppm, self.pivot_ppm]
         y = [-20*self.ylim_init[1], 20*self.ylim_init[1]]
-        self.pivotplot = self.ax.plot(x, y, color='r', alpha=0, lw=1)[0]
+
+        self.pivot_plot = self.ax.plot(
+            x, y, color=PIVOTCOLOR, alpha=0, lw=1
+        )[0]
 
         # reset y limit
         self.ax.set_ylim(self.ylim_init)
 
         # aesthetic tweaks to plot
+        self.fig.patch.set_facecolor(BGCOLOR)
+        self.ax.set_facecolor(PLOTCOLOR)
         self.ax.tick_params(axis='x', which='major', labelsize=6)
         self.ax.locator_params(axis='x', nbins=10)
         self.ax.set_yticks([])
@@ -533,7 +513,8 @@ class NMREsPyApp(tk.Tk):
         for direction in ('top', 'bottom', 'left', 'right'):
             self.ax.spines[direction].set_color('k')
 
-        self.nucleus = self.info.get_nucleus()[0] # nucleus identifier
+        # label plot x-axis with nucleus identity
+        self.nucleus = self.info.get_nucleus()[0]
         self.ax.set_xlabel(_plot._generate_xlabel(self.nucleus), fontsize=8)
 
         # prevent user panning/zooming beyond spectral window
@@ -542,8 +523,6 @@ class NMREsPyApp(tk.Tk):
 
         # dict to store frames that will go inside container
         self.frames = {}
-
-        # append all frames to the window
 
         # frame with plot. N.B. this frame is resizable (row 0, col 0)
         self.frames['PlotFrame'] = PlotFrame(parent=container, ctrl=self)
@@ -580,7 +559,7 @@ class NMREsPyApp(tk.Tk):
             # check range is suitable. If not, set it within the spectrum
             # divide by two as halving signal in frequency_filter
             signal_size = int(
-                np.ceil(float(self.cut_ratio.get()) * self.region_size / 2)
+                np.floor(float(self.cut_ratio.get()) * self.region_size / 2)
             )
 
             # determine respective low and high bounds
@@ -597,22 +576,23 @@ class NMREsPyApp(tk.Tk):
         else:
             self.max_points.set(str(self.n // 2))
 
-        if int(self.max_points.get()) >= 8192:
+        # set default values for mpm_points_var and nlp_points_var
+        if int(self.max_points.get()) <= 4096:
+            self.mpm_points_var.set(int(self.max_points.get()))
+            self.nlp_points_var.set(int(self.max_points.get()))
+        elif int(self.max_points.get()) <= 8192:
+            self.mpm_points_var.set('4096')
+            self.nlp_points_var.set(str(int(self.max_points.get())))
+        else:
             self.mpm_points_var.set('4096')
             self.nlp_points_var.set('8192')
-        elif 4096 <= int(self.max_points.get()) < 8192:
-            self.mpm_points_var.set('4096')
-            self.nlp_points_var.set(str(self.max_points.get()))
-        else:
-            self.mpm_points_var.set(str(self.max_points.get()))
-            self.nlp_points_var.set(str(self.max_points.get()))
 
 
-class PlotFrame(CustomFrame):
+class PlotFrame(MyFrame):
     """Contains a plot, along with navigation toolbar"""
 
     def __init__(self, parent, ctrl):
-        CustomFrame.__init__(self, parent)
+        MyFrame.__init__(self, parent)
         self.ctrl = ctrl
 
         # make figure canvas expandable
@@ -625,16 +605,16 @@ class PlotFrame(CustomFrame):
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
 
         # construct navigation toolbar
-        self.toolbar = CustomNavigationToolbar(self.canvas, self)
+        self.toolbar = MyNavigationToolbar(self.canvas, self)
         self.toolbar.grid(column=0, row=1, sticky='e')
 
 
-class TabFrame(CustomFrame):
+class TabFrame(MyFrame):
     """Contains a notebook for region selection, phase correction, and
     advanced settings"""
 
     def __init__(self, parent, ctrl):
-        CustomFrame.__init__(self, parent)
+        MyFrame.__init__(self, parent)
         self.ctrl = ctrl
 
         # make column containing scales adjustable
@@ -646,16 +626,23 @@ class TabFrame(CustomFrame):
             settings={
                 'TNotebook': {
                     'configure': {
-                        'tabmargins': [2, 5, 2, 0],
-                        'background': 'white',
+                        'tabmargins': [2, 0, 5, 0],
+                        'background': BGCOLOR,
                         'bordercolor': 'black'}},
                 'TNotebook.Tab': {
                     'configure': {
-                        'padding': [5, 1],
-                        'background': TABCOLOR},
+                        'padding': [10, 3],
+                        'background': NOTEBOOKCOLOR,
+                        'font': ('Helvetica', 11)},
                     'map': {
-                        'background': [('selected', '#85de77')],
-                        'expand': [("selected", [1, 1, 1, 0])]}}})
+                        'background': [('selected', ACTIVETABCOLOR)],
+                        'expand': [("selected", [1, 1, 1, 0])],
+                        'font': [('selected', ('Helvetica', 11, 'bold'))],
+                        'foreground': [('selected', 'white')],
+                    }
+                }
+            }
+        )
 
         style.theme_use("notebook")
 
@@ -675,7 +662,7 @@ class TabFrame(CustomFrame):
             ('Region Selection', 'Phase Correction', 'Advanced Settings')
         ):
 
-            frame = F(parent=self.notebook, ctrl=self.ctrl, bg='#d6dbe0')
+            frame = F(parent=self.notebook, ctrl=self.ctrl, bg=NOTEBOOKCOLOR)
             self.notebook.add(frame, text=title, sticky='nsew')
             self.nbframes[F.__name__] = frame
 
@@ -700,19 +687,20 @@ class TabFrame(CustomFrame):
             noise = 0
             pivot = 1
 
-        self.ctrl.filtregion.set_alpha(filt)
-        self.ctrl.noiseregion.set_alpha(noise)
-        self.ctrl.pivotplot.set_alpha(pivot)
+        self.ctrl.filter_region.set_alpha(filt)
+        self.ctrl.noise_region.set_alpha(noise)
+        self.ctrl.pivot_plot.set_alpha(pivot)
 
         # draw updated figure
         self.ctrl.frames['PlotFrame'].canvas.draw_idle()
 
 
-class RegionFrame(CustomFrame):
+class RegionFrame(MyFrame):
     """Frame inside SetupApp notebook - for altering region boundaries"""
 
     def __init__(self, parent, ctrl, bg='white'):
-        CustomFrame.__init__(self, parent, color=bg)
+        MyFrame.__init__(self, parent)
+        self['bg'] = bg
         self.ctrl = ctrl
 
         # make scales expandable
@@ -733,21 +721,19 @@ class RegionFrame(CustomFrame):
 
             # scale titles
             self.__dict__[f'{s}_title'] = title = \
-                tk.Label(self, text=text, bg=bg)
+                MyLabel(self, text=text, bg=bg)
 
             # determine troughcolor of scale (0, 1: green; 2, 3: blue)
             if row < 2:
-                tc = '#cbedcb'
+                tc = REGIONCOLOR
             else:
-                tc = '#cde6ff'
+                tc = NOISEREGIONCOLOR
 
             # scale atts are called: lb_scale, rb_scale, lnb_scale, rnb_scale
             self.__dict__[f'{s}_scale'] = scale = \
-                tk.Scale(
-                    self, from_=0, to=self.ctrl.n - 1, orient=tk.HORIZONTAL,
-                    showvalue=0, bg=bg, sliderlength=15, bd=0,
+                MyScale(
+                    self, from_=0, to=self.ctrl.n - 1, bg=bg,
                     highlightthickness=1, troughcolor=tc,
-                    highlightbackground='black',
                     command=lambda value, s=s: self.ud_scale(value, s),
                 )
 
@@ -755,25 +741,35 @@ class RegionFrame(CustomFrame):
 
             # entry atts are called: lb_entry, rb_entry, lnb_entry, rnb_entry
             self.__dict__[f'{s}_entry'] = entry = \
-                tk.Entry(
-                    self, textvariable=self.ctrl.__dict__[f'{s}_var'], width=6,
-                    highlightthickness=0,
+                MyEntry(
+                    self, textvariable=self.ctrl.__dict__[f'{s}_var'],
                 )
 
             entry.bind('<Return>', (lambda event, s=s: self.ud_entry(s)))
 
             # pad below AND above if bottom widget (row 3)...
             if row == 3:
-                title.grid(row=row, column=0, padx=(10,0), pady=10, sticky='w')
-                scale.grid(row=row, column=1, padx=(10,0), pady=10, sticky='ew')
-                entry.grid(row=row, column=2, padx=10, pady=10, sticky='w')
+                title.grid(
+                    row=row, column=0, padx=(10,0), pady=10, sticky='w',
+                )
+                scale.grid(
+                    row=row, column=1, padx=(10,0), pady=10, sticky='ew',
+                )
+                entry.grid(
+                    row=row, column=2, padx=10, pady=10, sticky='w',
+                )
+
             # ...otherwise, only pad above
             else:
-                title.grid(row=row, column=0, padx=(10,0), pady=(10,0),
-                           sticky='w')
-                scale.grid(row=row, column=1, padx=(10,0), pady=(10,0),
-                           sticky='ew')
-                entry.grid(row=row, column=2, padx=10, pady=(10,0), sticky='w')
+                title.grid(
+                    row=row, column=0, padx=(10,0), pady=(10,0), sticky='w',
+                )
+                scale.grid(
+                    row=row, column=1, padx=(10,0), pady=(10,0), sticky='ew',
+                )
+                entry.grid(
+                    row=row, column=2, padx=10, pady=(10,0), sticky='w',
+                )
 
 
     def ud_entry(self, s):
@@ -847,7 +843,7 @@ class RegionFrame(CustomFrame):
         # change the bound of the relevant rectangle
         if s[1] == 'b':
             # changing lb or rb
-            self.ctrl.filtregion.set_bounds(
+            self.ctrl.filter_region.set_bounds(
                 self.ctrl.rb_ppm,
                 -20 * self.ctrl.ylim_init[1],
                 self.ctrl.lb_ppm - self.ctrl.rb_ppm,
@@ -859,7 +855,7 @@ class RegionFrame(CustomFrame):
 
         else:
             # changing lnb or rnb
-            self.ctrl.noiseregion.set_bounds(
+            self.ctrl.noise_region.set_bounds(
                 self.ctrl.rnb_ppm,
                 -20 * self.ctrl.ylim_init[1],
                 self.ctrl.lnb_ppm - self.ctrl.rnb_ppm,
@@ -878,7 +874,8 @@ class PhaseFrame(tk.Frame):
     """Frame inside SetupApp notebook - for phase correction of data"""
 
     def __init__(self, parent, ctrl, bg='white'):
-        CustomFrame.__init__(self, parent, color=bg)
+        MyFrame.__init__(self, parent)
+        self['bg'] = bg
         self.ctrl = ctrl
 
         # make scales expandable
@@ -887,17 +884,17 @@ class PhaseFrame(tk.Frame):
         for row, s in enumerate(('pivot', 'p0', 'p1')):
             # scale titles
             self.__dict__[f'{s}_title'] = title = \
-                tk.Label(self, text=s, bg=bg)
+                MyLabel(self, text=s, bg=bg)
 
             # pivot scale
             if row == 0:
-                tc = '#ffb0b0'
+                tc = PIVOTCOLOR
                 from_ = 0
                 to = self.ctrl.n - 1
                 resolution = 1
             # p0 and p1 scales
             else:
-                tc = '#e0e0e0'
+                tc = 'white'
                 from_ = -np.pi
                 to = np.pi
                 resolution = 0.0001
@@ -908,19 +905,17 @@ class PhaseFrame(tk.Frame):
                     to *= 10
 
             self.__dict__[f'{s}_scale'] = scale = \
-                tk.Scale(self, troughcolor=tc, from_=from_, to=to,
-                    resolution=resolution, orient=tk.HORIZONTAL, bg=bg,
-                    sliderlength=15, bd=0, highlightthickness=1, relief='flat',
-                    showvalue=0, highlightbackground='black',
+                MyScale(
+                    self, troughcolor=tc, from_=from_, to=to, bg=bg,
+                    resolution=resolution,
                     command=lambda value, s=s: self.ud_scale(value, s),
                 )
 
             scale.set(self.ctrl.__dict__[s])
 
             self.__dict__[f'{s}_entry'] = entry = \
-                tk.Entry(
+                MyEntry(
                     self, textvariable=self.ctrl.__dict__[f'{s}_var'],
-                    width=6, highlightthickness=0
                 )
 
             entry.bind('<Return>', (lambda event, s=s: self.ud_entry(s)))
@@ -1009,7 +1004,7 @@ class PhaseFrame(tk.Frame):
 
             # update x-coordinates of pivot line
             x = [self.ctrl.pivot_ppm, self.ctrl.pivot_ppm]
-            self.ctrl.pivotplot.set_xdata(x)
+            self.ctrl.pivot_plot.set_xdata(x)
 
             # update phase of the data after pivot change
             self.ud_phase()
@@ -1054,12 +1049,12 @@ class PhaseFrame(tk.Frame):
         n = self.ctrl.n
 
         # apply phase correcion to original spectral data
-        spec = self.ctrl.spec * np.exp(
+        spec = self.ctrl.spectrum * np.exp(
             1j * (p0 + (p1 * np.arange(-pivot, -pivot + n, 1) / n))
         )
 
         # update y-data of spectrum plot
-        self.ctrl.specplot.set_ydata(np.real(spec))
+        self.ctrl.spectrum_plot.set_ydata(np.real(spec))
 
     def deciceil(self, value, precision):
         """round a number up to a certain number of deicmal places"""
@@ -1071,12 +1066,13 @@ class PhaseFrame(tk.Frame):
         return np.round(value - 0.5 * 10**(-precision), precision)
 
 
-class AdvancedSettingsFrame(CustomFrame):
+class AdvancedSettingsFrame(MyFrame):
     """Frame inside SetupApp notebook - for customising details about the
     optimisation routine"""
 
     def __init__(self, parent, ctrl, bg='white'):
-        CustomFrame.__init__(self, parent, color=bg)
+        MyFrame.__init__(self, parent)
+        self['bg'] = bg
         self.ctrl = ctrl
 
         # create multiple frames (one for each row)
@@ -1094,100 +1090,97 @@ class AdvancedSettingsFrame(CustomFrame):
                 frame.grid(row=i, column=0, sticky='w', padx=10, pady=(5,5))
 
         # --- ROW 1 ---
-        filter_title = tk.Label(
+        filter_title = MyLabel(
             self.rows['1'], text='Filtered Signal', bg=bg,
-            font=('Helvetica', 12, 'bold')
+            font=('Helvetica', 11, 'bold')
         )
         filter_title.grid(row=0, column=0)
 
         # --- ROW 2 ---
-        cut_label = tk.Label(
+        cut_label = MyLabel(
             self.rows['2'], text='Cut signal:', bg=bg,
         )
         cut_label.grid(row=0, column=0)
 
-        self.cut_checkbutton = tk.Checkbutton(
+        self.cut_checkbutton = MyCheckbutton(
             self.rows['2'], variable=self.ctrl.cut, bg=bg,
-            highlightthickness=0, bd=0, command=self.ud_cut
+            command=self.ud_cut,
         )
         self.cut_checkbutton.grid(row=0, column=1)
 
-        ratio_label = tk.Label(
+        ratio_label = MyLabel(
             self.rows['2'], text='Cut width/filter width ratio:', bg=bg,
         )
         ratio_label.grid(row=0, column=2, padx=(10,0),)
 
-        self.ratio_entry = tk.Entry(
-            self.rows['2'], width=8, highlightthickness=0,
-        )
+        self.ratio_entry = MyEntry(self.rows['2'])
         self.ratio_entry.insert(0, self.ctrl.cut_ratio.get())
 
         self.ratio_entry.bind('<Return>', (lambda event: self.ud_cut_ratio()))
         self.ratio_entry.grid(row=0, column=3, padx=(4,0),)
 
         # --- ROW 3 ---
-        mpm_title = tk.Label(
+        mpm_title = MyLabel(
             self.rows['3'], text='Matrix Pencil', bg=bg,
-            font=('Helvetica', 12, 'bold')
+            font=('Helvetica', 11, 'bold')
         )
         mpm_title.grid(row=0, column=0)
 
         # --- ROW 4 ---
-        datapoint_label = tk.Label(
+        datapoint_label = MyLabel(
             self.rows['4'], text='Datapoints to consider:', bg=bg
         )
         datapoint_label.grid(row=0, column=0)
 
-        self.mpm_points_entry = tk.Entry(
-            self.rows['4'], width=8, highlightthickness=0,
-            textvariable=self.ctrl.mpm_points_var,
+        self.mpm_points_entry = MyEntry(
+            self.rows['4'], textvariable=self.ctrl.mpm_points_var,
         )
         self.mpm_points_entry.grid(row=0, column=1, padx=(10,0))
 
         self.max_frame_mpm = tk.Frame(self.rows['4'], bg=bg)
-        self.max_frame_mpm.grid(row=1, column=1, sticky='w',)
+        self.max_frame_mpm.grid(row=1, column=1, sticky='w')
 
-        max_label_mpm = tk.Label(
-            self.max_frame_mpm, bg=bg, font=('Helvetica', 8),
-            text='Max:',
+        max_label_mpm = MyLabel(
+            self.max_frame_mpm, bg=bg, font=('Helvetica', 8), text='Max:',
         )
         max_label_mpm.grid(
             row=0, column=0, padx=(10,0), pady=(5,0), sticky='w',
         )
 
-        self.max_points_label_mpm = tk.Label(
+        self.max_points_label_mpm = MyLabel(
             self.max_frame_mpm, bg=bg, font=('Helvetica', 8, 'bold'),
             textvariable=self.ctrl.max_points,
         )
-        self.max_points_label_mpm.grid(row=0, column=1, pady=(5,0), sticky='w',)
+        self.max_points_label_mpm.grid(
+            row=0, column=1, pady=(5,0), sticky='w',
+        )
 
 
 
-        oscillator_label = tk.Label(
+        oscillator_label = MyLabel(
             self.rows['4'], text='Number of oscillators:', bg=bg
         )
         oscillator_label.grid(row=0, column=3, padx=(20,0))
 
-        self.oscillator_entry = tk.Entry(
-            self.rows['4'], width=8, highlightthickness=0, bg=bg,
-            textvariable=self.ctrl.M_var, state='disabled'
+        self.oscillator_entry = MyEntry(
+            self.rows['4'], textvariable=self.ctrl.M_var, state='disabled'
         )
         self.oscillator_entry.grid(row=0, column=4, padx=(10,0))
 
-        use_mdl_label = tk.Label(self.rows['4'], text='Use MDL:', bg=bg)
+        use_mdl_label = MyLabel(self.rows['4'], text='Use MDL:', bg=bg)
         use_mdl_label.grid(row=0, column=5, padx=(10,0))
 
-        self.mdl_checkbutton = tk.Checkbutton(
+        self.mdl_checkbutton = MyCheckbutton(
             self.rows['4'], variable=self.ctrl.use_mdl, bg=bg,
-            highlightthickness=0, bd=0, command=self.ud_mdl_button
+            command=self.ud_mdl_button,
         )
         self.mdl_checkbutton.grid(row=0, column=6)
 
 
         # --- ROW 5 ---
-        nlp_title = tk.Label(
+        nlp_title = MyLabel(
             self.rows['5'], text='Nonlinear Programming', bg=bg,
-            font=('Helvetica', 12, 'bold')
+            font=('Helvetica', 11, 'bold')
         )
         nlp_title.grid(row=0, column=0)
 
@@ -1201,47 +1194,54 @@ class AdvancedSettingsFrame(CustomFrame):
                 )
                 self.row6_frames[f'{r},{c}'].grid(row=r, column=c, sticky='w')
 
-        datapoint_label = tk.Label(
+        datapoint_label = MyLabel(
             self.row6_frames['0,0'], text='Datapoints to consider:', bg=bg
         )
         datapoint_label.grid(row=0, column=0)
 
-        self.nlp_points_entry = tk.Entry(
-            self.row6_frames['0,1'], width=8, highlightthickness=0,
-            textvariable=self.ctrl.nlp_points_var
+        self.nlp_points_entry = MyEntry(
+            self.row6_frames['0,1'], textvariable=self.ctrl.nlp_points_var
         )
         self.nlp_points_entry.grid(row=0, column=0, padx=(10,0))
 
         self.max_frame_nlp = tk.Frame(self.row6_frames['1,1'], bg=bg)
-        self.max_frame_nlp.grid(row=1, column=1, sticky='w',)
+        self.max_frame_nlp.grid(row=1, column=1, sticky='w')
 
-        max_label_nlp = tk.Label(
+        max_label_nlp = MyLabel(
             self.max_frame_nlp, bg=bg, font=('Helvetica', 8),
             text='Max:',
         )
         max_label_nlp.grid(
-            row=0, column=0, padx=(10,0), pady=(5,0), sticky='w',
+            row=0, column=0, padx=(10,0), sticky='w',
         )
 
-        self.max_points_label_nlp = tk.Label(
+        self.max_points_label_nlp = MyLabel(
             self.max_frame_nlp, bg=bg, font=('Helvetica', 8, 'bold'),
             textvariable=self.ctrl.max_points,
         )
-        self.max_points_label_nlp.grid(row=0, column=1, pady=(5,0), sticky='w',)
+        self.max_points_label_nlp.grid(row=0, column=1, sticky='w')
 
-        nlp_method_label = tk.Label(
+        nlp_method_label = MyLabel(
             self.row6_frames['0,2'], text='NLP algorithm:', bg=bg
         )
         nlp_method_label.grid(row=0, column=0, padx=(20,0))
 
         options = ['Trust Region', 'L-BFGS']
+
+        # I was getting funny behaviour when I tried to make a class
+        # that inherited from tk.OptionMenu
+        # had to customise manually after generating an instance
         self.algorithm_menu = tk.OptionMenu(
             self.row6_frames['0,3'], self.ctrl.nlp_algorithm, *options
         )
+
         self.algorithm_menu['bg'] = 'white'
-        self.algorithm_menu['borderwidth'] = 0
         self.algorithm_menu['width'] = 10
+        self.algorithm_menu['highlightbackground'] = 'black'
+        self.algorithm_menu['highlightthickness'] = 1
         self.algorithm_menu['menu']['bg'] = 'white'
+        self.algorithm_menu['menu']['activebackground'] = ACTIVETABCOLOR
+        self.algorithm_menu['menu']['activeforeground'] = 'white'
 
         # change the max. number of iterations after changing NLP
         # algorithm
@@ -1249,64 +1249,62 @@ class AdvancedSettingsFrame(CustomFrame):
 
         self.algorithm_menu.grid(row=0, column=0, padx=(10,0))
 
-        max_iterations_label = tk.Label(
+        max_iterations_label = MyLabel(
             self.row6_frames['0,4'], text='Maximum iterations:', bg=bg,
         )
         max_iterations_label.grid(row=0, column=0, padx=(20,0))
 
-        self.max_iterations_entry = tk.Entry(
-            self.row6_frames['0,5'], width=8, highlightthickness=0, bg=bg,
-            textvariable=self.ctrl.max_iterations,
+        self.max_iterations_entry = MyEntry(
+            self.row6_frames['0,5'], textvariable=self.ctrl.max_iterations,
         )
         self.max_iterations_entry.grid(row=0, column=0, padx=(10,0))
 
-        phase_variance_label = tk.Label(
+        phase_variance_label = MyLabel(
             self.row6_frames['2,0'], text='Optimise phase variance:',
             bg=bg,
         )
         phase_variance_label.grid(row=0, column=0, pady=(10,0))
 
-        self.phase_var_checkbutton = tk.Checkbutton(
+        self.phase_var_checkbutton = MyCheckbutton(
             self.row6_frames['2,1'], variable=self.ctrl.phase_variance,
-            bg=bg, highlightthickness=0, bd=0,
+            bg=bg,
         )
         self.phase_var_checkbutton.grid(row=0, column=0, pady=(10,0))
 
         # amplitude/frequency thresholds
-        amplitude_thold_label = tk.Label(
+        amplitude_thold_label = MyLabel(
             self.row6_frames['2,2'], text='Amplitude threshold:', bg=bg,
         )
         amplitude_thold_label.grid(row=0, column=0, padx=(20,0), pady=(10,0))
 
-        self.amplitude_thold_entry = tk.Entry(
-            self.row6_frames['2,3'], width=8, highlightthickness=0, bg=bg,
-            textvariable=self.ctrl.amplitude_thold, state='disabled',
+        self.amplitude_thold_entry = MyEntry(
+            self.row6_frames['2,3'], textvariable=self.ctrl.amplitude_thold,
+            state='disabled',
         )
         self.amplitude_thold_entry.grid(
             row=0, column=0, padx=(10,0), pady=(10,0),
         )
 
-        self.amplitude_thold_checkbutton = tk.Checkbutton(
+        self.amplitude_thold_checkbutton = MyCheckbutton(
             self.row6_frames['2,3'], variable=self.ctrl.use_amp_thold,
-            bg=bg, highlightthickness=0, bd=0,
+            bg=bg,
             command=self.ud_amp_thold_button
         )
         self.amplitude_thold_checkbutton.grid(row=0, column=1, pady=(10,0))
 
-        frequency_thold_label = tk.Label(
+        frequency_thold_label = MyLabel(
             self.row6_frames['2,4'], text='Frequency threshold:', bg=bg,
         )
         frequency_thold_label.grid(row=0, column=0, padx=(20,0), pady=(10,0))
 
-        self.frequency_thold_entry = tk.Entry(
-            self.row6_frames['2,5'], width=8, highlightthickness=0, bg=bg,
-            textvariable=self.ctrl.frequency_thold
+        self.frequency_thold_entry = MyEntry(
+            self.row6_frames['2,5'], textvariable=self.ctrl.frequency_thold
         )
         self.frequency_thold_entry.grid(row=0, column=0, padx=(10,0), pady=(10,0))
 
-        self.frequency_thold_checkbutton = tk.Checkbutton(
+        self.frequency_thold_checkbutton = MyCheckbutton(
             self.row6_frames['2,5'], variable=self.ctrl.use_freq_thold,
-            bg=bg, highlightthickness=0, bd=0,
+            bg=bg,
             command=self.ud_freq_thold_button
         )
         self.frequency_thold_checkbutton.grid(row=0, column=1, pady=(10,0))
@@ -1377,89 +1375,22 @@ class AdvancedSettingsFrame(CustomFrame):
             self.ctrl.max_iterations.set('500')
 
 
-class ResultFrame(tk.Toplevel):
-    """App for dealing with result of estimation. Enables user to tweak
-    oscillators (and re-run the optimisation with the updated parameter array),
-    customise the final plot, and save results."""
-
-    def __init__(self, parent, ctrl):
-        tk.Toplevel.__init__(self)
-        self.title('NMR-EsPy - Result')
-        self.protocol('WM_DELETE_WINDOW', self.destroy)
-
-        # main container: everything goes inside here
-        container = tk.Frame(self, bg='white')
-        container.pack(side='top', fill='both', expand=True)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
-
-        # instance of nmrespy.core.NMREsPyBruker
-
-        # plot result
-        self.fig, self.ax, self.lines, self.labels = self.ctrl.info.plot_result()
-        # edit figure resolution and size
-        self.fig.set_dpi(170)
-        self.fig.set_size_inches(6, 3.5)
-
-        # restrict x-axis to spectral window of interest
-        xlim = self.ax.get_xlim()
-        Restrictor(self.ax, x=lambda x: x<= xlim[0]) # restrict left
-        Restrictor(self.ax, x=lambda x: x>= xlim[1]) # restrict right
-
-        # contain all frames inside dictionary (makes it easy to acquire
-        # attributes whilst in different classes)
-        self.frames = {}
-
-        # append all frames to the window
-        self.frames['PlotFrame'] = PlotFrame(parent=container, ctrl=self.ctrl)
-        self.frames['PlotFrame'].grid(
-            row=0, column=0, columnspan=2, sticky='nsew'
-        )
-
-        self.frames['LogoFrame'] = LogoFrame(
-            parent=container, ctrl=self.ctrl, scale=0.06
-        )
-        self.frames['LogoFrame'].grid(
-            row=1, column=0, padx=10, pady=10, sticky='w'
-        )
-
-        self.frames['ResultButtonFrame'] = ResultButtonFrame(
-            parent=container, ctrl=self.ctrl
-        )
-        self.frames['ResultButtonFrame'].grid(row=1, column=1, sticky='s')
-
-
-
-class RerunSettingsFrame(AdvancedSettingsFrame):
-
-    def __init__(self, parent, ctrl):
-        AdvancedSettingsFrame.__init__(self, parent, ctrl)
-        self.ctrl = ctrl
-        self.rows['0'].grid_forget()
-        self.rows['1'].grid_forget()
-
-
 class RootButtonFrame(tk.Frame):
 
     def __init__(self, parent, ctrl):
-        tk.Frame.__init__(self, parent)
+        MyFrame.__init__(self, parent)
         self.ctrl = ctrl
-        self['bg'] = 'white'
 
-        docpath = 'https://nmr-espy.readthedocs.io/en/latest/gui.html'
-
-        self.cancel_button = tk.Button(
-            self, text='Cancel', width=8, bg='#ff9894',
-            highlightbackground='black', command=self.ctrl.destroy
+        self.cancel_button = MyButton(
+            self, text='Cancel', bg=BUTTONRED, command=self.ctrl.destroy
         )
         self.cancel_button.grid(
-            row=1, column=0, padx=(10,0), pady=(10,0), sticky='e'
+            row=1, column=0, padx=(10,0), pady=(10,0), sticky='e',
         )
 
-        self.help_button = tk.Button(
-            self, text='Help', width=8, bg='#ffb861',
-            highlightbackground='black',
-            command=lambda: webbrowser.open_new(docpath)
+        self.help_button = MyButton(
+            self, text='Help', bg=BUTTONORANGE,
+            command=lambda: webbrowser.open_new(GUIDOCLINK)
         )
         self.help_button.grid(
             row=1, column=1, padx=(10,0), pady=(10,0), sticky='e'
@@ -1488,9 +1419,7 @@ class RootButtonFrame(tk.Frame):
             fg='blue', cursor='hand1',
         )
         contact_info_2.bind(
-            '<Button-1>', lambda e: webbrowser.open_new(
-                r"mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query"
-            )
+            '<Button-1>', lambda e: webbrowser.open_new(EMAILLINK)
         )
 
         contact_info_2.grid(
@@ -1511,7 +1440,7 @@ class SetupButtonFrame(RootButtonFrame):
         """Set up the estimation routine"""
 
         # get parameters
-        spectrum = self.ctrl.specplot.get_ydata()
+        spectrum = self.ctrl.spectrum_plot.get_ydata()
 
         region = (self.ctrl.lb, self.ctrl.rb)
         noise_region = (self.ctrl.lnb, self.ctrl.rnb)
@@ -1653,6 +1582,69 @@ class SetupButtonFrame(RootButtonFrame):
         ResultFrame()
 
 
+class ResultFrame(tk.Toplevel):
+    """App for dealing with result of estimation. Enables user to tweak
+    oscillators (and re-run the optimisation with the updated parameter array),
+    customise the final plot, and save results."""
+
+    def __init__(self, parent, ctrl):
+        tk.Toplevel.__init__(self)
+        self.title('NMR-EsPy - Result')
+        self.protocol('WM_DELETE_WINDOW', self.destroy)
+
+        # main container: everything goes inside here
+        container = tk.Frame(self, bg='white')
+        container.pack(side='top', fill='both', expand=True)
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        # instance of nmrespy.core.NMREsPyBruker
+
+        # plot result
+        self.fig, self.ax, self.lines, self.labels = self.ctrl.info.plot_result()
+        # edit figure resolution and size
+        self.fig.set_dpi(170)
+        self.fig.set_size_inches(6, 3.5)
+
+        # restrict x-axis to spectral window of interest
+        xlim = self.ax.get_xlim()
+        Restrictor(self.ax, x=lambda x: x<= xlim[0]) # restrict left
+        Restrictor(self.ax, x=lambda x: x>= xlim[1]) # restrict right
+
+        # contain all frames inside dictionary (makes it easy to acquire
+        # attributes whilst in different classes)
+        self.frames = {}
+
+        # append all frames to the window
+        self.frames['PlotFrame'] = PlotFrame(parent=container, ctrl=self.ctrl)
+        self.frames['PlotFrame'].grid(
+            row=0, column=0, columnspan=2, sticky='nsew'
+        )
+
+        self.frames['LogoFrame'] = LogoFrame(
+            parent=container, ctrl=self.ctrl, scale=0.06
+        )
+        self.frames['LogoFrame'].grid(
+            row=1, column=0, padx=10, pady=10, sticky='w'
+        )
+
+        self.frames['ResultButtonFrame'] = ResultButtonFrame(
+            parent=container, ctrl=self.ctrl
+        )
+        self.frames['ResultButtonFrame'].grid(row=1, column=1, sticky='s')
+
+
+
+class RerunSettingsFrame(AdvancedSettingsFrame):
+
+    def __init__(self, parent, ctrl):
+        AdvancedSettingsFrame.__init__(self, parent, ctrl)
+        self.ctrl = ctrl
+        self.rows['0'].grid_forget()
+        self.rows['1'].grid_forget()
+
+
+
 class ResultButtonFrame(RootButtonFrame):
     """Button frame for SetupApp. Buttons for quitting, loading help,
     and running NMR-EsPy"""
@@ -1684,35 +1676,30 @@ class LogoFrame(tk.Frame):
     """Contains the NMR-EsPy logo (who doesn't like a bit of publicity)"""
 
     def __init__(self, parent, ctrl, scale=0.08):
-        tk.Frame.__init__(self, parent)
+        MyFrame.__init__(self, parent)
         self.ctrl = ctrl
-        self['bg'] = 'white'
 
         self.nmrespy_img = get_PhotoImage(
             os.path.join(IMAGESDIR, 'nmrespy_full.png'), scale
         )
-        self.nmrespy_logo = tk.Label(
-            self, image=self.nmrespy_img, bg='white', cursor='hand1'
+        self.nmrespy_logo = MyLabel(
+            self, image=self.nmrespy_img, cursor='hand1'
         )
 
-        docpath = 'https://nmr-espy.readthedocs.io/en/latest/index.html'
-
         self.nmrespy_logo.bind(
-            '<Button-1>', lambda e: webbrowser.open_new(docpath)
+            '<Button-1>', lambda e: webbrowser.open_new(NMRESPYLINK)
         )
         self.nmrespy_logo.grid(row=0, column=0)
 
         self.mfgroup_img = get_PhotoImage(
             os.path.join(IMAGESDIR, 'mf_logo.png'), scale*10
         )
-        self.mfgroup_logo = tk.Label(
-            self, image=self.mfgroup_img, bg='white', cursor='hand1'
+        self.mfgroup_logo = MyLabel(
+            self, image=self.mfgroup_img, cursor='hand1'
         )
 
-        mfgrouppath = 'http://foroozandeh.chem.ox.ac.uk/home'
-
         self.mfgroup_logo.bind(
-            '<Button-1>', lambda e: webbrowser.open_new(mfgrouppath)
+            '<Button-1>', lambda e: webbrowser.open_new(MFGROUPLINK)
         )
         self.mfgroup_logo.grid(row=0, column=1, padx=(40,0))
 
