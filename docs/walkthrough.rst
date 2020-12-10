@@ -61,30 +61,25 @@ In this example, I am going to focus on the spectral region between
 
 To generate a frequency-filtered, time-domian signal from
 the processed data, the
-:py:meth:`~nmrespy.core.NMREsPyBruker.virtual_echo` method is used. It is
+:py:meth:`~nmrespy.core.NMREsPyBruker.frequency_filter` method is used. It is
 also necessary to specify a region that appears to be just noise. In this
 example, I will set this region to be 9.5-9.2ppm. ::
 
-   >>> info.virtual_echo(highs=(5.285,), lows=(5.180,), highs_n=(9.5,), lows_n=(9.2,))
+   >>> info.frequency_filter(region=(5.285, 5.180), noise_region=(9.5, 9.2,))
    >>> print(info)
 
    <NMREsPyBruker object at 0x7feff35b4f28>
 
    ...
 
-   ───Virtual Echo Info───
+   ───Frequency Filter Info───
    Virtual Echo:      numpy.ndarray of shape (32768,)
    Half Echo:         numpy.ndarray of shape (16384,)
    Filtered Spectrum: numpy.ndarray of shape (32768,)
    Region:            2643.2517 - 2590.7681Hz (5.2851 - 5.1802ppm) (F1)
 
-The ``highs`` and ``lows`` arguments specify the largest and smallest ppm
-values in the region you wish to consider. These should be tuples,
-specifying the bounds in the region of interest for each dimension of the
-data. In this example, as the data is 1D, only 1 entry is required in each
-tuple. The process is analogous for specifying the noise region using
-``highs_n`` and ``lows_n``. Notice that printing the class instance again
-has resulted in a section called `Virtual Echo Info`. This provides
+Notice that printing the class instance again
+has resulted in a section called `Frequency Filter Info`. This provides
 information on the frequency filtered data generated. Note that the signal
 that will actually be analysed is contained in the ``info.half_echo``
 attribute.
@@ -309,7 +304,7 @@ In this example, some customistation of the plot has been done, including:
    info = load.import_bruker_pdata(path)
 
    # construct frequency-filtered time-domain signal
-   info.virtual_echo(highs=(5.285,), lows=(5.180,), highs_n=(9.5,), lows_n=(9.2,))
+   info.frequency_filter(region=(5.285, 5.180), noise_region=(9.5, 9.2))
 
    # estimate parameters with 1) MPM, and then 2) NLP
    info.matrix_pencil(trim=(8192,))

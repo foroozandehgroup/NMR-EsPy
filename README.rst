@@ -39,3 +39,7 @@ to have a look at it you'll need to do the following:
 
      $ cp -r /path/to/.../NMR-EsPy/nmrespy \
      /home/simon/.local/lib/python3.8/site-packages
+
+Check out the
+`Example Walkthrough <https://nmr-espy.readthedocs.io/en/latest/walkthrough.html>`_
+page in the docs for a tutorial on NMR-EsPy's typical usage.
