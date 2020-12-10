@@ -5,7 +5,7 @@ As an illustration of the typical steps involved in using NMR-EsPy, we will
 consider an example dataset that ships with TopSpin 4. Assuming you installed
 TopSpin in the default path, this should be present in the path:
 
-* Linux \& MacOS: ``/opt/topspin4.x.y/examdata/exam1d_1H/1/pdata/1``
+* Linux ``/opt/topspin4.x.y/examdata/exam1d_1H/1/pdata/1``
 * Windows: ``C:\Bruker\TopSpin4.x.y\examdata\exam1d_1H\1\pdata\1``
 
 In what follows, as I am using TopSpin 4.0.8, I shall be replacing
@@ -56,7 +56,7 @@ In this example, I am going to focus on the spectral region between
 .. image:: _static/spectrum.png
    :width: 3781px
    :height: 2820px
-   :scale: 18 %
+   :scale: 14 %
    :align: center
 
 To generate a frequency-filtered, time-domian signal from
@@ -221,6 +221,8 @@ wish to work with it again: ::
 
   >>> info_copy = load.pickle_load('example.pkl')
   Loaded contents of ./example.pkl
+  >>> info == info_copy
+  True
 
 .. warning::
    `From the Python docs:`
@@ -323,7 +325,7 @@ In this example, some customistation of the plot has been done, including:
    fig, ax, lines, labs = info.plot_result(datacol='k',
                                            osccols='winter')
 
-   # tweak locations of oscillator labels to for aesthetic improvement
+   # tweak locations of oscillator labels for aesthetic improvement
    labs['osc1'].set_x(5.2013)
    labs['osc2'].set_x(5.216)
    labs['osc5'].set_x(5.2393)

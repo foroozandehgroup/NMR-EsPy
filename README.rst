@@ -26,6 +26,9 @@ to have a look at it you'll need to do the following:
      $ cp /path/to/.../NMR-EsPy/nmrespy/topspin/nmrespy_lin.py \
      /opt/topspin4.0.8/exp/stan/nmr/py/user/nmrespy.py
 
+  **N.B.** I haven't tested the Windows version in a while. I can't guarantee
+  it'll work right now...
+    
 * Determine the path to your Python installation's site packages directory:
 
   .. code-block:: bash
