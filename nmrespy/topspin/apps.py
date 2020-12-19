@@ -525,7 +525,9 @@ class NMREsPyApp(tk.Tk):
         self.frames = {}
 
         # frame with plot. N.B. this frame is resizable (row 0, col 0)
-        self.frames['PlotFrame'] = PlotFrame(parent=container, ctrl=self)
+        self.frames['PlotFrame'] = PlotFrame(
+            parent=container, ctrl=self, figure=self.fig,
+        )
         self.frames['PlotFrame'].grid(
             row=0, column=0, columnspan=2, sticky='nsew'
         )
@@ -591,7 +593,7 @@ class NMREsPyApp(tk.Tk):
 class PlotFrame(MyFrame):
     """Contains a plot, along with navigation toolbar"""
 
-    def __init__(self, parent, ctrl):
+    def __init__(self, parent, ctrl, figure):
         MyFrame.__init__(self, parent)
         self.ctrl = ctrl
 
@@ -600,7 +602,7 @@ class PlotFrame(MyFrame):
         self.columnconfigure(0, weight=1)
 
         # place figure into canvas
-        self.canvas = FigureCanvasTkAgg(self.ctrl.fig, master=self)
+        self.canvas = FigureCanvasTkAgg(figure, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
 
@@ -1559,12 +1561,22 @@ class SetupButtonFrame(RootButtonFrame):
         else:
             frequency_thold = None
 
-        self.ctrl.destroy()
+        self.ctrl.withdraw()
 
-        self.ctrl.info.frequency_filter(
-            region=region, noise_region=noise_region, p0=p0, p1=p1,
-            cut=cut, cut_ratio=cut_ratio, region_units='idx'
-        )
+        # self.ctrl.info.frequency_filter(
+        #     region=region, noise_region=noise_region, p0=p0, p1=p1,
+        #     cut=cut, cut_ratio=cut_ratio, region_units='idx'
+        # )
+        #
+        # x = []
+        # y = []
+
+        for i in range(11):
+            self.ctrl.info.frequency_filter(
+                region=region, noise_region=noise_region, p0=p0, p1=p1,
+                cut=cut, cut_ratio=cut_ratio + i*0.5, region_units='idx'
+            )
+
 
         self.ctrl.info.matrix_pencil(trim=mpm_points, M_in=M_in)
 
@@ -1579,26 +1591,30 @@ class SetupButtonFrame(RootButtonFrame):
             fname='tmp.pkl', dir=TOPSPINDIR, force_overwrite=True
         )
 
-        ResultFrame()
+        print(self.ctrl.info.get_theta0())
+        print(self.ctrl.info.get_theta())
+
+        ResultFrame(parent=self.ctrl, ctrl=self.ctrl)
 
 
-class ResultFrame(tk.Toplevel):
+class ResultFrame(MyToplevel):
     """App for dealing with result of estimation. Enables user to tweak
     oscillators (and re-run the optimisation with the updated parameter array),
     customise the final plot, and save results."""
 
     def __init__(self, parent, ctrl):
-        tk.Toplevel.__init__(self)
+        MyToplevel.__init__(self, parent)
+        self.ctrl = ctrl
+
         self.title('NMR-EsPy - Result')
-        self.protocol('WM_DELETE_WINDOW', self.destroy)
+        self.protocol('WM_DELETE_WINDOW', self.ctrl.destroy)
+
 
         # main container: everything goes inside here
-        container = tk.Frame(self, bg='white')
+        container = MyFrame(self)
         container.pack(side='top', fill='both', expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
-
-        # instance of nmrespy.core.NMREsPyBruker
 
         # plot result
         self.fig, self.ax, self.lines, self.labels = self.ctrl.info.plot_result()
@@ -1616,7 +1632,9 @@ class ResultFrame(tk.Toplevel):
         self.frames = {}
 
         # append all frames to the window
-        self.frames['PlotFrame'] = PlotFrame(parent=container, ctrl=self.ctrl)
+        self.frames['PlotFrame'] = PlotFrame(
+            parent=container, ctrl=self.ctrl, figure=self.fig,
+        )
         self.frames['PlotFrame'].grid(
             row=0, column=0, columnspan=2, sticky='nsew'
         )

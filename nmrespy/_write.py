@@ -10,12 +10,13 @@ import os
 from shutil import copyfile
 import subprocess
 
+import matplotlib
 import numpy as np
 from numpy.fft import fft, fftshift
 from scipy.integrate import simps
 from scipy.linalg import norm
 
-import nmrespy
+from nmrespy import *
 from ._misc import *
 from ._errors import *
 
@@ -30,6 +31,10 @@ def write_file(info, descrip, fname, dir, sf, sci_lims, format, force_overwrite)
     table = _constr_datatable(res, sfo, integrals, sf, sci_lims, dim)
     ts = _timestamp()
     path = _get_path(fname, dir, format, force_overwrite)
+
+    # remove res and itegrals (now in table)
+    info.pop(0)
+    info.pop(9)
 
     if format == 'txt':
         _write_txt(info, table, path, descrip, ts)
@@ -66,17 +71,7 @@ def _write_txt(info, table, path, descrip, timestamp):
     """
 
     # unpack necessary info
-    datapath = info[1]
-    dim = info[2]
-    sw_h = info[3]
-    sw_p = info[4]
-    off_h = info[5]
-    off_p = info[6]
-    sfo = info[7]
-    bf = info[8]
-    nuc = info[9]
-    region_h = info[11]
-    region_p = info[12]
+    datapath, dim, sw_h, sw_p, off_h, off_p, sfo, bf, nuc, region_h, region_p = info
 
     # ---write header--------------------------
     # start of file text contents (msg)
@@ -203,22 +198,17 @@ def _write_pdf(info, table, path, descrip, timestamp):
     """
 
     # unpack necessary info
-    datapath = info[1]
-    dim = info[2]
-    sw_h = info[3]
-    sw_p = info[4]
-    off_h = info[5]
-    off_p = info[6]
-    sfo = info[7]
-    bf = info[8]
-    nuc = info[9]
-    region_h = info[11]
-    region_p = info[12]
+    datapath, dim, sw_h, sw_p, off_h, off_p, sfo, bf, nuc, region_h, region_p = info[:11]
 
-    # paths to documentation, and images used in pdf
-    espypath = os.path.dirname(nmrespy.__file__)
-    mflogopath = os.path.join(espypath, 'pics/mf_group_logo.pdf')
-    logopath = os.path.join(espypath, 'pics/nmrespy_full.png')
+    if isinstance(info[-1], matplotlib.figure.Figure):
+        fig_path = os.path.join(NMRESPYPATH, 'tmp/tmp.pdf')
+        info[-1].savefig(fig_path, dpi=600)
+        fig_msg = r'\begin{center}' + '\n'
+        fig_msg += r'\includegraphics[scale=1]{' + fig_path + '}\n'
+        fig_msg += r'\end{center}' + '\n'
+
+    else:
+        fig_msg = ''
 
     # Preamble
     msg = r'\documentclass[8pt]{article}' + '\n'
@@ -244,14 +234,14 @@ def _write_pdf(info, table, path, descrip, timestamp):
     msg += r'\begin{minipage}[b][2.5cm][c]{.72\textwidth}' + '\n'
     msg += r'\href{http://foroozandeh.chem.ox.ac.uk/home}' \
            + r'{\includegraphics[scale=0.35]{' \
-           + f'{mflogopath}' \
+           + f'{MFLOGOPATH}' \
            + r'}}' + '\n'
     msg += r'\end{minipage}' + '\n'
     # NMR-EsPy logo
     msg += r'\begin{minipage}[b][2.5cm][c]{.27\textwidth}' + '\n'
     msg += r'\href{https://github.com/foroozandehgroup/NMR-EsPy}' \
            + r'{\includegraphics[scale=0.1]{' \
-           + f'{logopath}' \
+           + f'{NMRESPYLOGOPATH}' \
            + r'}}' + '\n'
     msg += r'\end{minipage}' + '\n'
     msg += r'\end{figure}' + '\n'
@@ -358,6 +348,10 @@ def _write_pdf(info, table, path, descrip, timestamp):
     msg += r'\bottomrule' + '\n'
     msg += r'\end{longtable}' + '\n'
 
+
+    # figure
+    msg += fig_msg
+
     # blurb
     msg += r'\small' + '\n'
     msg += r'\fbox{'
@@ -401,6 +395,11 @@ def _write_pdf(info, table, path, descrip, timestamp):
         os.remove(tmp_texpath[:-3] + 'log')
         os.rename(tmp_texpath, final_texpath)
         os.rename(tmp_pdfpath, final_pdfpath)
+
+        try:
+            os.remove(fig_path)
+        except UnboundLocalError:
+            pass
 
         msg = f'{G}Result successfuly output to:\n' \
               + f'{final_pdfpath}\n' \

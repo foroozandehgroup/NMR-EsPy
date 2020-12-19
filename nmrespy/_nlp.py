@@ -434,7 +434,6 @@ def _h_1d(para_act, *args):
 
     deriv1 = np.hstack(comps1)
     deriv2 = np.hstack(comps2)
-    print(deriv2.shape)
 
     diff = data - np.sum(model, axis=1)
     diags = -2 * np.real(np.matmul(deriv2.conj().T, diff))

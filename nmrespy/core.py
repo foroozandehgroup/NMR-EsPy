@@ -574,7 +574,6 @@ class NMREsPyBruker:
         for sw, off, n in zip(
             self.get_sw(unit=unit), self.get_offset(unit=unit), self.get_n()
         ):
-            print(sw, off, n)
             shifts.append(
                 np.linspace(off + (sw / 2), off - (sw / 2), n)
             )
@@ -1290,13 +1289,16 @@ class NMREsPyBruker:
         superg = _ve.super_gaussian(self.get_n(), region)
         # extract noise
         noise_slice = tuple(np.s_[b[0]:b[1]] for b in noise_region)
-        noise_region = np.real(data)[noise_slice]
+        noise = np.real(data)[noise_slice]
         # determine noise variance
-        variance = np.var(noise_region)
+        variance = np.var(noise)
         # construct synthetic noise
-        noise = _ve.sg_noise(superg, variance)
+        sg_noise = _ve.sg_noise(superg, variance)
         # construct filtered spectrum
-        filtered_spectrum = (np.real(data) * superg) + noise
+        filtered_spectrum = (np.real(data) * superg) + sg_noise
+
+        from scipy.linalg import norm
+        n1 = norm(2*ifft(ifftshift(filtered_spectrum[:self.get_n()[0] // 2])))
 
         if cut:
             cut_slice = []
@@ -1337,22 +1339,23 @@ class NMREsPyBruker:
             self.ve_sw = tuple(ve_sw)
             self.ve_off = tuple(ve_off)
 
-        self.virtual_echo = filtered_spectrum
-
         # TODO =====================================
         # will have to check this 2D ifft is correct
         # I haven't tested it
         # ==========================================
+
+        self.virtual_echo = filtered_spectrum
 
         for ax in range(self.get_dim()):
             self.virtual_echo = \
                 ifft(ifftshift(self.virtual_echo, axes=ax), axis=ax)
 
         half = \
-            tuple([np.s_[0:int(np.floor(n/2))] for n in self.virtual_echo.shape]
+            tuple([np.s_[0:n//2] for n in self.virtual_echo.shape]
                )
 
         self.half_echo = 2 * self.virtual_echo[half]
+        # print(f'cut ratio: {cut_ratio}, norm ratio: {n1 / norm(self.half_echo) * (self.get_n()[0] // 2) / self.half_echo.shape[0]}')
         self.filtered_spectrum = filtered_spectrum
         self.region = region
         self.noise_region = noise_region
@@ -1739,8 +1742,8 @@ class NMREsPyBruker:
 
     def write_result(
         self, description=None, fname='NMREsPy_result', dir='.',
-        result_name=None, sf=5, sci_lims=(-2,3), format='txt',
-        force_overwrite=False
+        result_name=None, sf=5, sci_lims=(-2,3), fmt='txt',
+        inc_pdf_figure=False, force_overwrite=False, **kwargs
     ):
         """Saves an estimation result to a file in a human-readable format
         (either a textfile or a PDF).
@@ -1754,9 +1757,9 @@ class NMREsPyBruker:
         fname : str, default: 'NMREsPy_result'
             The name of the result file.
 
-            * If ``format`` is ``'txt'``, either a name with no extension or
+            * If ``fmt`` is ``'txt'``, either a name with no extension or
               the extension '.txt' will be accepted.
-            * If `format` is 'pdf', either a name with no extension or the
+            * If `fmt` is 'pdf', either a name with no extension or the
               extension '.pdf' will be accepted.
 
         dir : str, default: '.'
@@ -1782,9 +1785,14 @@ class NMREsPyBruker:
             * ``abs(value) <= 10 ** sci_lims[0]``
             * ``abs(value) >= 10 ** sci_lims[1]``
 
-        format : 'txt' or 'pdf', default: 'txt'
+        fmt : 'txt' or 'pdf', default: 'txt'
             Specifies the format of the file. To produce a pdf, a LaTeX
             installation is required. See the Notes below for details.
+
+        inc_pdf_figure : bool, default: False
+            If ``True``, :meth:`plot_result` will be use to create a figure
+            of the result, which will be appended to the file. This is
+            valid only when fomrat is set to ``'pdf'``.
 
         force_overwrite : bool, default: False
             If ``False``, if a file with the desired path already
@@ -1795,7 +1803,7 @@ class NMREsPyBruker:
         Raises
         ------
         LaTeXFailedError
-            With ``format`` set to ``'pdf'``, this will be raised if an error
+            With ``fmt`` set to ``'pdf'``, this will be raised if an error
             was encountered in running ``pdflatex``.
 
         Notes
@@ -1834,10 +1842,10 @@ class NMREsPyBruker:
         result, _ = self._check_result(result_name)
 
         # check format is sensible
-        if format in ['txt', 'pdf']:
+        if fmt in ['txt', 'pdf']:
             pass
         else:
-            raise ValueError(f'{R}format should be \'txt\' or \'pdf\'{END}')
+            raise ValueError(f'{R}fmt should be \'txt\' or \'pdf\'{END}')
 
         # basic info
         info = []
@@ -1877,7 +1885,15 @@ class NMREsPyBruker:
         info.append(self.get_region(unit='hz', kill=False))
         info.append(self.get_region(unit='ppm', kill=False))
 
-        _write.write_file(info, description, fname, dir, sf, sci_lims, format,
+        if fmt == 'pdf':
+            if inc_pdf_figure:
+                print('here')
+                print(kwargs)
+
+                fig, *_ = self.plot_result(**kwargs)
+                info.append(fig)
+
+        _write.write_file(info, description, fname, dir, sf, sci_lims, fmt,
                           force_overwrite)
 
 
@@ -2011,6 +2027,12 @@ class NMREsPyBruker:
         ::
             >>> fig.savefig('example_figure.pdf', format='pdf')
         """
+        print(result_name)
+        print(datacol)
+        print(osccols)
+        print(labels)
+        print(stylesheet)
+
 
         dim = self.get_dim()
         # check dim is valid (only 1D data supported so far)
@@ -2374,26 +2396,27 @@ class NMREsPyBruker:
         raise TypeError(errmsg)
 
 
-    def _check_result(self, resname):
-        if resname is None:
-            for att in ['theta', 'theta0']:
-                res = getattr(self, att)
-                if isinstance(res, np.ndarray):
-                    return res, att
+    def _check_result(self, result_name):
+
+        if result_name is None:
+            for attr in ['theta', 'theta0']:
+                result = getattr(self, attr)
+                if isinstance(result, np.ndarray):
+                    return result, attr
 
             raise NoParameterEstimateError()
 
-        elif resname in ['theta', 'theta0']:
-            res = getattr(self, resname)
-            if isinstance(res, np.ndarray):
-                return res, resname
+        elif result_name in ['theta', 'theta0']:
+            result = getattr(self, result_name)
+            if isinstance(result, np.ndarray):
+                return result, result_name
             else:
-                raise ValueError(f'{R}{resname} does not correspond to a valid'
+                raise ValueError(f'{R}{result_name} does not correspond to a valid'
                                  f' estimation result (it should be a numpy'
                                  f' array). Perhaps you have forgotten a step'
                                  f' in generating the parameter estimate?{END}')
         else:
-            raise ValueError(f'{R}resname should be None, \'theta\', or'
+            raise ValueError(f'{R}result_name should be None, \'theta\', or'
                              f' \'theta0\'{END}')
 
     def _check_trim(self, trim, data):
@@ -2411,6 +2434,7 @@ class NMREsPyBruker:
                           + f'trim: {trim}   data shape: {data.shape}{END}\n'
                     raise ValueError(msg)
             return trim
+
         else:
             return data.shape
 
