@@ -13,14 +13,13 @@ import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 from scipy.integrate import simps
 
-import nmrespy
+from nmrespy import *
 from ._cols import *
 if USE_COLORAMA:
     import colorama
 from ._errors import *
 from . import _misc, _mpm, _nlp, _plot, _ve, _write
 
-NMRESPYPATH = os.path.dirname(nmrespy.__file__)
 
 def logger(f):
     @functools.wraps(f)
@@ -1850,8 +1849,8 @@ class NMREsPyBruker:
         # basic info
         info = []
         info.append(result)
-        info.append(self.get_datapath()) # data path
         info.append(self.get_dim()) # signal dimension
+        info.append(self.get_datapath()) # data path
         info.append(self.get_sw()) # sweep width (Hz)
         info.append(self.get_sw(unit='ppm')) # sweep width (Hz)
         info.append(self.get_offset()) # offset (Hz)

@@ -7,6 +7,7 @@
 
 import datetime
 import os
+import re
 from shutil import copyfile
 import subprocess
 
@@ -24,7 +25,7 @@ def write_file(info, descrip, fname, dir, sf, sci_lims, format, force_overwrite)
 
     # unpack info needed to construct table contents
     res = info[0]
-    dim = info[2]
+    dim = info[1]
     sfo = info[7]
     integrals = info[10]
 
@@ -71,7 +72,7 @@ def _write_txt(info, table, path, descrip, timestamp):
     """
 
     # unpack necessary info
-    datapath, dim, sw_h, sw_p, off_h, off_p, sfo, bf, nuc, region_h, region_p = info
+    dim, datapath, sw_h, sw_p, off_h, off_p, sfo, bf, nuc, region_h, region_p = info
 
     # ---write header--------------------------
     # start of file text contents (msg)
@@ -197,213 +198,116 @@ def _write_pdf(info, table, path, descrip, timestamp):
         :py:func:`_timestamp`.
     """
 
-    # unpack necessary info
-    datapath, dim, sw_h, sw_p, off_h, off_p, sfo, bf, nuc, region_h, region_p = info[:11]
+    info = iter(info)
+    dim = next(info)
 
-    if isinstance(info[-1], matplotlib.figure.Figure):
-        fig_path = os.path.join(NMRESPYPATH, 'tmp/tmp.pdf')
-        info[-1].savefig(fig_path, dpi=600)
-        fig_msg = r'\begin{center}' + '\n'
-        fig_msg += r'\includegraphics[scale=1]{' + fig_path + '}\n'
-        fig_msg += r'\end{center}' + '\n'
+    if dim == 1:
+        with open(os.path.join(NMRESPYPATH, 'config/pdf_boilerplate_1d.txt'), 'r') as fh:
+            txt = fh.read()
+
+    txt = txt.replace('<MFLOGOPATH>', MFLOGOPATH)
+    txt = txt.replace('<NMRESPYLOGOPATH>', NMRESPYLOGOPATH)
+    txt = txt.replace('<TIMESTAMP>', timestamp.replace('\n', r'\\'))
+
+    if descrip:
+        txt = txt.replace('<DESCRIPTION>', descrip.replace('_', '\\_'))
 
     else:
-        fig_msg = ''
+        txt = txt.replace('\subsection*{Description}', '% \subsection*{Description}')
+        txt = txt.replace('<DESCRIPTION>', '')
 
-    # Preamble
-    msg = r'\documentclass[8pt]{article}' + '\n'
-    if dim == 1:
-        msg += r'\usepackage[a4paper,margin=1in]{geometry}' + '\n'
-    elif dim == 1:
-        msg += r'\usepackage[a4paper,landscape,margin=1in]{geometry}' + '\n'
-    msg += r'\usepackage{cmbright}' + '\n'
-    msg += r'\usepackage{amsmath}' + '\n'
-    msg += r'\usepackage{booktabs}' + '\n'
-    msg += r'\usepackage{enumitem}' + '\n'
-    msg += r'\usepackage{graphicx}' + '\n'
-    msg += r'\usepackage[hidelinks]{hyperref}' + '\n'
-    msg += r'\usepackage{longtable}' + '\n'
-    msg += r'\usepackage{siunitx}' + '\n'
-    msg += r'\usepackage{xcolor}[dvipsnames]'
-    msg += r'\setlength\parindent{0pt}' + '\n'
+    datapath = next(info)
+    txt = txt.replace('<DATAPATH>', datapath.replace('_', '\\_'))
 
-    # Header
-    msg += r'\begin{document}' + '\n'
-    msg += r'\begin{figure}[!ht]' + '\n'
-    # MF group logo
-    msg += r'\begin{minipage}[b][2.5cm][c]{.72\textwidth}' + '\n'
-    msg += r'\href{http://foroozandeh.chem.ox.ac.uk/home}' \
-           + r'{\includegraphics[scale=0.35]{' \
-           + f'{MFLOGOPATH}' \
-           + r'}}' + '\n'
-    msg += r'\end{minipage}' + '\n'
-    # NMR-EsPy logo
-    msg += r'\begin{minipage}[b][2.5cm][c]{.27\textwidth}' + '\n'
-    msg += r'\href{https://github.com/foroozandehgroup/NMR-EsPy}' \
-           + r'{\includegraphics[scale=0.1]{' \
-           + f'{NMRESPYLOGOPATH}' \
-           + r'}}' + '\n'
-    msg += r'\end{minipage}' + '\n'
-    msg += r'\end{figure}' + '\n'
+    sw_h = next(info)
+    sw_p = next(info)
+    off_h = next(info)
+    off_p = next(info)
+    sfo = next(info)
+    bf = next(info)
+    nuc = next(info)
 
-    msg += r'\texttt{' + timestamp + r'}' + '\n'
-    # user-provided description
-    if descrip:
-        msg += r'\subsection*{Description}' + '\n'
-        msg += f'{descrip}' + '\n'
+    for i, (sw_hz, sw_ppm, off_hz, off_ppm, sfo_, bf_, nuc_) in enumerate(zip(sw_h, sw_p, off_h, off_p, sfo, bf, nuc)):
+        txt = txt.replace(f'<SW{i}_H>', f'{sw_hz:.4f}')
+        txt = txt.replace(f'<SW{i}_P>', f'{sw_ppm:.4f}')
+        txt = txt.replace(f'<OFF{i}_H>', f'{off_hz:.4f}')
+        txt = txt.replace(f'<OFF{i}_P>', f'{off_ppm:.4f}')
+        txt = txt.replace(f'<SFO{i}>', f'{sfo_:.4f}')
+        txt = txt.replace(f'<BF{i}>', f'{bf_:.4f}')
 
-    # experiment parameters
-    msg += r'\subsection*{Experiment Information}' + '\n'
-    msg += r'\hspace{-6pt}'
-    msg += r'\begin{tabular}{ll}' + '\n'
-    # path data was imported from
-    datapath = datapath.replace('_', r'\_')
-    msg += r'Data path: & \texttt{' + f'{datapath}' + r'} \\' + '\n'
+        nucleus_comps = filter(None, re.split(r'(\d+)', nuc_))
+        txt = txt.replace(f'<NUC{i}_MASS>', next(nucleus_comps))
+        txt = txt.replace(f'<NUC{i}_ELEM>', next(nucleus_comps))
 
-    if dim == 1:
-        # convert sw and offset from Hz to ppm
-        sw_h, sw_p = sw_h[0], sw_p[0]
-        off_h, off_p = off_h[0], off_p[0]
-        sfo = sfo[0]
-        bf = bf[0]
+    region_h = next(info)
+    region_p = next(info)
 
-        msg += r'Sweep Width: & $\SI{' + f'{sw_h:.4f}' + r'}{\hertz}$' \
-               + r' ($' + f'{sw_p:.4f}' + r'$ppm) \\' + '\n'
-        msg += r'Transmitter Frequency: & $\SI{' + f'{sfo:.4f}' \
-               + r'}{\mega\hertz}$ \\' + '\n'
-        msg += r'Basic Transmitter Frequency: & $\SI{' + f'{bf:.4f}' \
-               + r'}{\mega\hertz}$ \\' + '\n'
-        msg += r'Transmitter Offset: & $\SI{' + f'{off_h:.4f}' + r'}{\hertz}$' \
-               + r' ($' + f'{off_p:.4f}' + r'$ppm) \\' + '\n'
+    if region_h:
+        for i, (rh, rp) in enumerate(zip(region_h, region_p)):
+            for j, (h, p) in enumerate(zip(rh, rp)):
+                txt = txt.replace(f'<REGION{i}{j}_H>', f'{h:.4f}')
+                txt = txt.replace(f'<REGION{i}{j}_P>', f'{p:.4f}')
 
-        if region_h and region_p:
-            msg += r'Spectral Region: & $' + f' {region_h[0][0]:.4f}' \
-                   + r'$ - $' + f'{region_h[0][1]:.4f}' + r'\si{\hertz}$' \
-                   + r' ($' + f'{region_p[0][0]:.4f}' + r'$ - $' \
-                   + f'{region_p[0][1]:.4f}' + r'$ppm)' + '\n'
-            msg += r'\end{tabular}' + '\n'
+    else:
+        txt = txt.replace(r'$<REGION00_H>$ - $<REGION01_H>\si{\hertz}$\ ($<REGION00_P>$ - $<REGION01_P>$ppm)', 'full spectrum')
 
-        else:
-            msg += r'Spectral Region: & full spectrum'
-            msg += r'\end{tabular}' + '\n'
+    fname = os.path.split(path)[1][:-4]
 
-        # table of oscillator parameters
-        msg += r'\subsection*{Result}' + '\n'
-        msg += r'\begin{longtable}[c]{c|ccccccc}' + '\n'
-        msg += r'\toprule' + '\n'
-        msg += r'$m$ & $a_m$ & $\phi_m$ & $f_m (\si{\hertz})$ & $f_m$ (ppm)' \
-               + r' & $\eta_m$ & $\int$ & normalised $\int$ \\' + '\n'
-        msg += r'\midrule' + '\n'
-
-    elif dim == 2:
-        # convert sw and offset from Hz to ppm
-        msg += r'Sweep Width (F1): & $\SI{' + f'{sw_h[0]:.4f}' + r'}{\hertz}$' \
-               + r' ($' + f'{sw_p[0]:.4f}' + r'$ppm) \\' + '\n'
-        msg += r'Sweep Width (F2): & $\SI{' + f'{sw_h[1]:.4f}' + r'}{\hertz}$' \
-               + r' ($' + f'{sw_p[1]:.4f}' + r'$ppm) \\' + '\n'
-        msg += r'Transmitter Frequency (F1): & $\SI{' + f'{sfo[0]:.4f}' \
-               + r'}{\mega\hertz}$ \\' + '\n'
-        msg += r'Transmitter Frequency (F2): & $\SI{' + f'{sfo[1]:.4f}' \
-               + r'}{\mega\hertz}$ \\' + '\n'
-        msg += r'Basic Transmitter frequency (F1): & $\SI{' + f'{bf[0]:.4f}' \
-               + r'}{\mega\hertz}$ \\' + '\n'
-        msg += r'Basic Transmitter frequency (F2): & $\SI{' + f'{bf[1]:.4f}' \
-               + r'}{\mega\hertz}$ \\' + '\n'
-        msg += r'Transmitter Offset (F1): & $\SI{' + f'{off_h[0]:.4f}' \
-               + r'}{\hertz}$ ($' + f'{off_p[0]:.4f}' + r'$ppm) \\' + '\n'
-        msg += r'Transmitter Offset (F2): & $\SI{' + f'{off_h[1]:.4f}' \
-               + r'}{\hertz}$ ($' + f'{off_p[1]:.4f}' + r'$ppm) \\' + '\n'
+    try:
+        figure = next(info)
+        figure_path = fname + '_fig.pdf'
+        figure.savefig(figure_path, dpi=600)
+        txt = txt.replace('<FIGURE_PATH>', figure_path)
 
 
-        # spectral region analysed
-        if region_h and region_p:
-            msg += r'Spectral Region (F1): & $' + f' {region_h[0][0]:.4f}' \
-                   + r'$ - $' + f'{region_h[0][1]:.4f}' + r'\si{\hertz}$' \
-                   + r' ($' + f'{region_p[0][0]:.4f}' + r'$ - $' + \
-                   + f'{region_p[0][1]:.4f}' + r'$ppm) \\' + '\n'
-            msg += r'Spectral Region (F2): & $' + f' {region_h[1][0]:.4f}' \
-                   + r'$ - $' + f'{region_h[1][1]:.4f}' + r'\si{\hertz}$' \
-                   + r' ($' + f'{region_p[1][0]:.4f}' + r'$ - $' + \
-                   + f'{region_p[1][1]:.4f}' + r'$ppm)' + '\n'
-            msg += r'\end{tabular}' + '\n'
+    except StopIteration:
+        txt = txt.replace('\n% figure of result\n\\begin{center}\n  \\includegraphics[scale=1]{<FIGURE_PATH>}\n\\end{center}\n', '')
 
-        else:
-            msg += r'Spectral Region: & full spectrum'
-            msg += r'\end{tabular}' + '\n'
 
-        # table of oscillator parameters
-        msg += r'\begin{longtable}[c]{c|cccccccccc}' + '\n'
-        msg += r'\toprule' + '\n'
-        msg += r'$m$ & $a_m$ & $\phi_m$ & $f_{1,m} (\si{\hertz})$' \
-               + r' & $f_{1,m}$ (ppm) & $f_{2,m} (\si{\hertz})$' \
-               + r' & $f_{2,m}$ (ppm) & $\eta_{1,m}$ & $\eta_{2,m}$' \
-               + r' & $\int$ & normalised $\int$ \\' + '\n'
-        msg += r'\midrule' + '\n'
+    table_str = ''
 
     # input table elements
-    for entry in table:
-        for e in entry:
-            msg += r' $\num{' + e + r'}$ &'
-        msg = msg[:-1] + r'\\' + '\n'
-    msg += r'\bottomrule' + '\n'
-    msg += r'\end{longtable}' + '\n'
+    for row in table:
+        for entry in row:
+            table_str += f'$\\num{{{entry}}}$ & '
+        table_str = table_str[:-2] + '\\\\\n    '
+    table_str = table_str[:-5]
+    txt = txt.replace('<TABLE>', table_str)
 
+    # tmp paths: where tex file is compiled
+    tmp_pdfpath = fname + '.pdf'
+    tmp_texpath = fname + '.tex'
 
-    # figure
-    msg += fig_msg
-
-    # blurb
-    msg += r'\small' + '\n'
-    msg += r'\fbox{'
-    msg += r'\begin{minipage}{.5\textwidth}'
-    msg += r'Estimation perfomred using NMR-EsPy.\\' + '\n'
-    msg += r'Author: Simon Hulse\\' + '\n'
-    msg += r'For more information, see the \href{' \
-           + r'http://foroozandeh.chem.ox.ac.uk/home' \
-           + r'}{\textcolor{blue}{documentation}}, or email:' \
-           + r' \href{mailto:simon.hulse@chem.ox.ac.uk}'\
-           + r'{\texttt{simon.hulse@chem.ox.ac.uk}}\\' + '\n' \
-           + r'If used in a publication, please cite:\\' + '\n' \
-           + r'\textbf{Inc. Reference Here}' + '\n'
-    msg += r'\end{minipage}' + '\n'
-    msg += r'}' + '\n'
-    msg += r'\end{document}'
-
-    # tmp paths: paths where tex file is compiled, and where pdf originally
-    # saved (cwd)
-    tmp_texpath = os.path.split(path)[1][:-3] + 'tex'
-    tmp_pdfpath = tmp_texpath[:-3] + 'pdf'
-    # final paths@ paths where tex file and pdf are finally saved to
+    # final paths: where tex file and pdf are finally saved to
+    final_pdfpath = path
     final_texpath = path[:-3] + 'tex'
-    final_pdfpath = path[:-3] + 'pdf'
 
-    with open(tmp_texpath, 'w') as f:
-        f.write(msg)
+    with open(tmp_texpath, 'w') as fh:
+        fh.write(txt)
 
     try:
         # -halt-on-error flag is vital. If any error arises in running
-        # pdflatex, the program would just get stuck
-        run_latex = subprocess.run([
-            'pdflatex',
-            '-halt-on-error',
-            f'{tmp_texpath}'],
+        # pdflatex, the program would get stuck
+        run_latex = subprocess.run(
+            ['pdflatex', '-halt-on-error', tmp_texpath],
             stdout=subprocess.DEVNULL,
-            check=True)
+            check=True
+        )
 
-        os.remove(tmp_texpath[:-3] + 'out')
-        os.remove(tmp_texpath[:-3] + 'aux')
-        os.remove(tmp_texpath[:-3] + 'log')
+        os.remove(tmp_texpath[:-4] + '.out')
+        os.remove(tmp_texpath[:-4] + '.aux')
+        os.remove(tmp_texpath[:-4] + '.log')
         os.rename(tmp_texpath, final_texpath)
         os.rename(tmp_pdfpath, final_pdfpath)
 
         try:
-            os.remove(fig_path)
+            os.remove(figure_path)
         except UnboundLocalError:
             pass
 
         msg = f'{G}Result successfuly output to:\n' \
               + f'{final_pdfpath}\n' \
-              + f'If you wish to customise the document, the LaTeX file can' \
+              + f'If you wish to customise the document, the TeX file can' \
               + f'be found at:\n' \
               + f'{final_texpath}{END}'
         print(msg)
@@ -418,6 +322,52 @@ def _write_pdf(info, table, path, descrip, timestamp):
 
         os.rename(tmp_texpath, final_texpath)
         raise LaTeXFailedError(final_texpath)
+
+    # elif dim == 2:
+    #     # convert sw and offset from Hz to ppm
+    #     msg += r'Sweep Width (F1): & $\SI{' + f'{sw_h[0]:.4f}' + r'}{\hertz}$' \
+    #            + r' ($' + f'{sw_p[0]:.4f}' + r'$ppm) \\' + '\n'
+    #     msg += r'Sweep Width (F2): & $\SI{' + f'{sw_h[1]:.4f}' + r'}{\hertz}$' \
+    #            + r' ($' + f'{sw_p[1]:.4f}' + r'$ppm) \\' + '\n'
+    #     msg += r'Transmitter Frequency (F1): & $\SI{' + f'{sfo[0]:.4f}' \
+    #            + r'}{\mega\hertz}$ \\' + '\n'
+    #     msg += r'Transmitter Frequency (F2): & $\SI{' + f'{sfo[1]:.4f}' \
+    #            + r'}{\mega\hertz}$ \\' + '\n'
+    #     msg += r'Basic Transmitter frequency (F1): & $\SI{' + f'{bf[0]:.4f}' \
+    #            + r'}{\mega\hertz}$ \\' + '\n'
+    #     msg += r'Basic Transmitter frequency (F2): & $\SI{' + f'{bf[1]:.4f}' \
+    #            + r'}{\mega\hertz}$ \\' + '\n'
+    #     msg += r'Transmitter Offset (F1): & $\SI{' + f'{off_h[0]:.4f}' \
+    #            + r'}{\hertz}$ ($' + f'{off_p[0]:.4f}' + r'$ppm) \\' + '\n'
+    #     msg += r'Transmitter Offset (F2): & $\SI{' + f'{off_h[1]:.4f}' \
+    #            + r'}{\hertz}$ ($' + f'{off_p[1]:.4f}' + r'$ppm) \\' + '\n'
+    #
+    #
+    #     # spectral region analysed
+    #     if region_h and region_p:
+    #         msg += r'Spectral Region (F1): & $' + f' {region_h[0][0]:.4f}' \
+    #                + r'$ - $' + f'{region_h[0][1]:.4f}' + r'\si{\hertz}$' \
+    #                + r' ($' + f'{region_p[0][0]:.4f}' + r'$ - $' + \
+    #                + f'{region_p[0][1]:.4f}' + r'$ppm) \\' + '\n'
+    #         msg += r'Spectral Region (F2): & $' + f' {region_h[1][0]:.4f}' \
+    #                + r'$ - $' + f'{region_h[1][1]:.4f}' + r'\si{\hertz}$' \
+    #                + r' ($' + f'{region_p[1][0]:.4f}' + r'$ - $' + \
+    #                + f'{region_p[1][1]:.4f}' + r'$ppm)' + '\n'
+    #         msg += r'\end{tabular}' + '\n'
+    #
+    #     else:
+    #         msg += r'Spectral Region: & full spectrum'
+    #         msg += r'\end{tabular}' + '\n'
+    #
+    #     # table of oscillator parameters
+    #     msg += r'\begin{longtable}[c]{c|cccccccccc}' + '\n'
+    #     msg += r'\toprule' + '\n'
+    #     msg += r'$m$ & $a_m$ & $\phi_m$ & $f_{1,m} (\si{\hertz})$' \
+    #            + r' & $f_{1,m}$ (ppm) & $f_{2,m} (\si{\hertz})$' \
+    #            + r' & $f_{2,m}$ (ppm) & $\eta_{1,m}$ & $\eta_{2,m}$' \
+    #            + r' & $\int$ & normalised $\int$ \\' + '\n'
+    #     msg += r'\midrule' + '\n'
+
 
 
 def _constr_datatable(res, sfo, integrals, sf, sci_lims, dim):
