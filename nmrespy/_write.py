@@ -294,17 +294,11 @@ def _write_pdf(info, table, path, descrip, timestamp):
             check=True
         )
 
-        os.remove(tmp_texpath[:-4] + '.out')
-        os.remove(tmp_texpath[:-4] + '.aux')
-        os.remove(tmp_texpath[:-4] + '.log')
+        # rename pdf and tex files
         os.rename(tmp_texpath, final_texpath)
         os.rename(tmp_pdfpath, final_pdfpath)
 
-        try:
-            os.remove(figure_path)
-        except UnboundLocalError:
-            pass
-
+        # print success message
         msg = f'{G}Result successfuly output to:\n' \
               + f'{final_pdfpath}\n' \
               + f'If you wish to customise the document, the TeX file can' \
@@ -313,15 +307,23 @@ def _write_pdf(info, table, path, descrip, timestamp):
         print(msg)
 
     except subprocess.CalledProcessError:
-        try:
-            os.remove(tmp_texpath[:-3] + 'out')
-            os.remove(tmp_texpath[:-3] + 'aux')
-            os.remove(tmp_texpath[:-3] + 'log')
-        except:
-            pass
-
+        # pdflatex came across an error (or pdflatex doesn't exist)
         os.rename(tmp_texpath, final_texpath)
         raise LaTeXFailedError(final_texpath)
+
+    # rename/remove files
+
+    os.remove(tmp_texpath[:-4] + '.out')
+    os.remove(tmp_texpath[:-4] + '.aux')
+    os.remove(tmp_texpath[:-4] + '.log')
+
+    # remove figure file if it exists
+    try:
+        os.remove(figure_path)
+    except UnboundLocalError:
+        pass
+
+
 
     # elif dim == 2:
     #     # convert sw and offset from Hz to ppm

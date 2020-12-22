@@ -1,13 +1,15 @@
 \documentclass[8pt]{article}
 \usepackage[a4paper,margin=1in]{geometry}
 \usepackage{cmbright}
+
 \usepackage{amsmath}
 \usepackage{nicefrac}
 \usepackage{siunitx}
+
+\usepackage{array}
 \usepackage{booktabs}
 \usepackage{longtable}
-\usepackage{enumitem}
-\usepackage{graphicx}
+
 \usepackage{xcolor}
 \definecolor{urlblue}{HTML}{0000ee}
 \usepackage{hyperref}
@@ -16,8 +18,9 @@ colorlinks = true,%
 urlcolor   = urlblue,%
 }
 
-\setlength\parindent{0pt}
+\usepackage{tcolorbox}
 
+\setlength\parindent{0pt}
 \renewcommand{\ss}{\textsuperscript}
 
 \begin{document}
@@ -54,7 +57,7 @@ urlcolor   = urlblue,%
   \end{tabular}
 
 \subsection*{Result}
-  \begin{longtable}[c]{c|ccccccc}
+  \begin{longtable}[c]{cccccccc}
     \toprule
     $m$ & $a_m$ & $\phi_m$ & $f_m\ (\si{\hertz})$ & $f_m$ (ppm) & $\eta_m$ & $\int$ & $\nicefrac{\int}{\lVert\int\rVert}$ \\
     \midrule
@@ -69,16 +72,14 @@ urlcolor   = urlblue,%
 
 % blurb
 \small
-\fbox{
-  \begin{minipage}{.5\textwidth}
-    Estimation perfomred using NMR-EsPy.\\
-    Author: Simon Hulse\\
-    For more information, see the
-    \href{https://nmr-espy.readthedocs.io/en/latest/}{documentation}, or email:
-    \href{mailto:simon.hulse@chem.ox.ac.uk}{\texttt{simon.hulse@chem.ox.ac.uk}}\\
-    If used in a publication, please cite:\\
-    \textit{Inc. Reference Here}
-  \end{minipage}
-}
+\begin{tcolorbox}
+  Estimation perfomred using \textsc{NMR-EsPy}.\\
+  Author: Simon Hulse\\
+  For more information, see the
+  \href{https://nmr-espy.readthedocs.io/en/latest/}{documentation}, or email:
+  \href{mailto:simon.hulse@chem.ox.ac.uk}{\texttt{simon.hulse@chem.ox.ac.uk}}\\
+  If used in a publication, please cite:\\
+  \textit{Inc. Reference Here}
+\end{tcolorbox}
 
 \end{document}
