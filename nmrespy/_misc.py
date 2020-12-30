@@ -84,54 +84,55 @@ def check_path(fname, dir, force_overwrite):
     return path
 
 
-def conv_ppm_idx(p, sw_p, offset_p, n, direction='ppm->idx'):
+def aligned_tabular(columns, titles=None):
+    """Tabularises as list of lists, with the option of including titles.
+
+    Parameters
+    ----------
+    columns : list
+        A list of lists, representing the columns of the table. Each list
+        must be of the same length.
+
+    titles : None or list, default: None
+        Titles for the table. If desired, the ``titles`` should be of the same
+        length as all of the lists in ``columns``.
+
+    Returns
+    -------
+    msg : str
+        A string with the contents of ``columns`` tabularised.
     """
-    ppm_to_index(p, sw, offset, N)
-    *** ONLY 1D PARAMETERS SUPPORTED AT THE MOMENT ***
 
-    ───Description─────────────────────────────
-    Converts a parameter from ppm units to the corresponding array index,
-    or vice versa
-
-    ───Parameters──────────────────────────────
-    p - float or int
-        The parameter of interest, in ppm.
-    sw_p - float
-        Sweep width, in ppm.
-    offset_p - float
-        Transmitter offset frequency, in ppm
-    n - int
-        Tne number of time-points the signal is composed of
-    direction - str
-        Should be either 'ppm->idx' (default), or 'idx->ppm'. If
-        'ppm->idx', p should be a in units of ppm, and it will be
-        converted to the corresponding array index. If 'idx->ppm',
-        p should be an array index, and it will be converted to
-        the corresponding ppm value
-
-    ───Returns─────────────────────────────────
-    conv_p - float or int
-        The converted parameter
-    """
-    if direction == 'ppm->idx':
-        if isinstance(p, float):
-            return int(round((offset_p + (sw_p / 2) - p) * (n / sw_p)))
-        else:
-            msg = f'\n{R}p should be a float if converting from ppm to' \
-                  + f' index. Got {type(p)} instead{END}'
-            raise TypeError(msg)
-
-    elif direction == 'idx->ppm':
-        if isinstance(p, int):
-            return float(offset_p + (sw_p / 2) - ((p * sw_p) / n))
-        else:
-            msg = f'\n{R}p should be a int if converting from index to' \
-                  + f' ppm. Got {type(p)} instead{END}'
-            raise TypeError(msg)
+    if titles:
+        sep = ' │'
+        for i,(title, column) in enumerate(zip(titles, columns)):
+            columns[i] = [title] + column
 
     else:
-        msg = f'\n{R}direction should be \'ppm->idx\' or \'idx->ppm\'{END}'
-        raise ValueError(msg)
+        sep = ' '
+
+    pads = []
+    for column in columns:
+        pads.append(max(len(element) for element in column))
+
+    msg = ''
+    for i, row in enumerate(zip(*columns)):
+        for j, (pad, e1, e2) in enumerate(zip(pads, row, row[1:])):
+            p = pad - len(e1)
+            if j == 0:
+                msg += f"{e1}{p*' '}{sep}{e2}"
+            else:
+                msg += f"{p*' '}{sep}{e2}"
+        if titles and i == 0:
+            for i, pad in enumerate(pads):
+                if i == 0:
+                    msg += f"\n{(pad+1)*'─'}┼"
+                else:
+                    msg += f"{(pad+1)*'─'}┼"
+            msg = msg[:-1]
+        msg += '\n'
+
+    return msg
 
 
 def mkfid(para, n, sw, offset, dim):

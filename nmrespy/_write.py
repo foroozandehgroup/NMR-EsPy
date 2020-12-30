@@ -71,11 +71,20 @@ def _write_txt(info, table, path, descrip, timestamp):
         :py:func:`_timestamp`.
     """
 
-    # unpack necessary info
-    dim, datapath, sw_h, sw_p, off_h, off_p, sfo, bf, nuc, region_h, region_p = info
+    info = iter(info)
 
-    # ---write header--------------------------
-    # start of file text contents (msg)
+    datapath = next(info)
+    sw_h = next(info)
+    sw_p = next(info)
+    off_h = next(info)
+    off_p = next(info)
+    sfo = next(info)
+    bf = next(info)
+    nuc = next(info)
+    region_h = next(info)
+    region_p = next(info)
+
+    # write header
     msg = f'{timestamp}\n' # time and date
     if descrip:
         # user-provided description
@@ -83,8 +92,10 @@ def _write_txt(info, table, path, descrip, timestamp):
     else:
         msg += '\nExperiment Information:\n'
 
+    msg += f'data path:               {datapath}\n'
+
     if dim == 1:
-        msg += f'data path:               {datapath}\n'
+
 
         # unpack values from tuple
         sw_h, sw_p = sw_h[0], sw_p[0]
@@ -105,7 +116,6 @@ def _write_txt(info, table, path, descrip, timestamp):
             msg += f'full spectrum\n\n'
 
     elif dim == 2:
-        msg += f'data path:                   {datapath}\n'
         msg += f'sweep width (F1):            {sw_h[0]:.4f}Hz ({sw_p[0]:.4f}ppm)\n'
         msg += f'sweep width (F2):            {sw_h[1]:.4f}Hz ({sw_p[1]:.4f}ppm)\n'
         msg += f'trans. frequency (F1):       {sfo[0]:.4f}MHz\n'
@@ -202,7 +212,7 @@ def _write_pdf(info, table, path, descrip, timestamp):
     dim = next(info)
 
     if dim == 1:
-        with open(os.path.join(NMRESPYPATH, 'config/pdf_boilerplate_1d.txt'), 'r') as fh:
+        with open(os.path.join(NMRESPYPATH, 'config/latex_template_1d.txt'), 'r') as fh:
             txt = fh.read()
 
     txt = txt.replace('<MFLOGOPATH>', MFLOGOPATH)

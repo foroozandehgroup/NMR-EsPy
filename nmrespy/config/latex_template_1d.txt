@@ -28,7 +28,7 @@ urlcolor   = urlblue,%
   % MF group logo
   \begin{minipage}[b][2.5cm][c]{.72\textwidth}
     \href{http://foroozandeh.chem.ox.ac.uk/home}%
-         {\includegraphics[scale=0.35]{<MFLOGOPATH>}}
+         {\includegraphics[scale=1.8]{<MFLOGOPATH>}}
   \end{minipage}
   % NMR-EsPy logo
   \begin{minipage}[b][2.5cm][c]{.27\textwidth}
