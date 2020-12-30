@@ -1,9 +1,7 @@
 #!/usr/bin/python3
-#io.py
+# _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-
-# DESCRIPION GOES HERE
 
 from copy import deepcopy
 import os
@@ -85,7 +83,7 @@ def check_path(fname, dir, force_overwrite):
 
 
 def aligned_tabular(columns, titles=None):
-    """Tabularises as list of lists, with the option of including titles.
+    """Tabularises a list of lists, with the option of including titles.
 
     Parameters
     ----------

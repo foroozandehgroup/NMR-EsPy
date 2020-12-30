@@ -209,166 +209,147 @@ class NMREsPyBruker:
         return msg
 
     def __str__(self):
-        cats = [] # categories
-        vals = [] # values
-        msg = ''
-        cats.append(f'\n{MA}<NMREsPyBruker object at {hex(id(self))}>{END}\n')
-        vals.append('')
 
-        # --- Basic experiment information ---
-        cats.append(f'{MA}───Basic Info───{END}')
-        vals.append('')
+        # basic information categories
+        basic_cats = [
+            'Path:',
+            'Data type:',
+            'Dimensions:',
+        ]
 
-        # path to data
-        cats.append('Path:')
-        vals.append(self.get_datapath())
+        # basic information values
 
-        # type of data
-        dtype = self.get_dtype()
-        cats.append('Type:')
-        vals.append(dtype)
+        basic_vals = [
+            self.get_datapath(),
+            self.get_dtype(),
+            str(self.get_dim()),
+        ]
 
-        # number of dimensions
-        cats.append('Dimension:')
-        vals.append(str(self.get_dim()))
-
-        # the data (shape is given)
         data = self.get_data()
-        if dtype == 'raw':
-            cats.append('Data:')
-            vals.append(f'numpy.ndarray of shape {data.shape}\n')
-
-        elif dtype == 'pdata':
+        if self.get_dtype() == 'raw':
+            basic_cats.append('Data:')
+            basic_vals.append(f'array of shape {data.shape}')
+        else:
             for i, (k, v) in enumerate(data.items()):
                 if i == 0:
-                    cats.append('Data:')
-                    vals.append(f'{k}, numpy.ndarray of shape {v.shape}')
+                    basic_cats.append('Data:')
                 else:
-                    cats.append('')
-                    vals.append(f'{k}, numpy.ndarray of shape {v.shape}')
+                    basic_cats.append('')
+                basic_vals.append(f'{k}, array of shape {v.shape}')
 
-        # sweep widths in each dimension (Hz and ppm)
-        sw_h = self.get_sw()
-        sw_p = self.get_sw(unit='ppm')
+        titles = [
+            'Sweep Width:',
+            'Transmitter Offset:',
+            'Transmitter Frequency:',
+            'Basic Frequency:',
+            'Nucleus:'
+        ]
 
-        for i, (sh, sp) in enumerate(zip(sw_h, sw_p)):
-            if i == 0:
-                cats.append('Sweep Width:')
-            else:
-                cats.append('')
+        for title in titles:
+            for i in range(self.get_dim()):
+                if i == 0:
+                    basic_cats.append(title)
+                else:
+                    basic_cats.append('')
 
-            s = f'{sh:.4f}Hz ({sp:.4f}ppm) (F{i+1})'
-            vals.append(s)
+        params = zip(
+            self.get_sw(),
+            self.get_sw(unit='ppm'),
+            self.get_offset(),
+            self.get_offset(unit='ppm'),
+            self.get_sfo(),
+            self.get_bf(),
+            self.get_nucleus(),
+        )
+        for i, (sw_h, sw_p, off_h, off_p, sfo, bf, nuc) in enumerate(params):
+            basic_vals.append(f'{sw_h:.4f}Hz ({sw_p:.4f}ppm) (F{i + 1})')
+            basic_vals.append(f'{off_h:.4f}Hz ({off_p:.4f}ppm) (F{i + 1})')
+            basic_vals.append(f'{sfo:.4f}MHz (F{i + 1})')
+            basic_vals.append(f'{bf:.4f}MHz (F{i + 1})')
+            basic_vals.append(f'{nuc} (F{i + 1})')
 
-        # offsets in each dimension (Hz and ppm)
-        off_h = self.get_offset()
-        off_p = self.get_offset(unit='ppm')
+        basic_table = _misc.aligned_tabular([basic_cats, basic_vals])
 
-        for i, (oh, op) in enumerate(zip(off_h, off_p)):
-            if i == 0:
-                cats.append('Transmitter Offset:')
-            else:
-                cats.append('')
-
-            s = f'{oh:.4f}Hz ({op:.4f}ppm) (F{i+1})'
-            vals.append(s)
-
-        # basic transmitter frequency for each channel
-        bf = self.get_bf()
-        for i, b in enumerate(bf):
-            if i == 0:
-                cats.append('Basic Frequency:')
-            else:
-                cats.append('')
-
-            s = f'{b:.4f}MHz (F{i+1})'
-            vals.append(s)
-
-        # transmitter offset for each channel
-        sfo = self.get_sfo()
-        for i, sf in enumerate(sfo):
-            if i == 0:
-                cats.append('Transmitter Frequency:')
-            else:
-                cats.append('')
-
-            s = f'{sf:.4f}MHz (F{i+1})'
-            vals.append(s)
-
-        # nucleus of each channel
-        nuc = self.get_nucleus()
-        for i, n in enumerate(nuc):
-            if i == 0:
-                cats.append('Nuclei:')
-            else:
-                cats.append('')
-
-            vals.append(f'{n} (F{i+1})')
-
-        # --- Frequency filtered signal information ---
-        virtual_echo = self.get_virtual_echo(kill=False)
-        if virtual_echo is None:
+        # frequency filter info
+        if self.get_virtual_echo(kill=False) is None:
             pass
         else:
-            cats.append(f'\n{MA}───Frequency Filter Info───{END}')
-            vals.append('')
-            half_echo = self.get_half_echo()
-            filtered_spectrum = self.get_filtered_spectrum()
+            filter_cats = []
+            filter_vals = []
 
-            bounds = zip(
-                self.get_region(unit='hz'), self.get_region(unit='ppm')
+            region_info = zip(
+                self.get_region(unit='hz'),
+                self.get_region(unit='ppm'),
             )
 
-            # virtual echo
-            cats.append('Virtual Echo:')
-            vals.append(f'numpy.ndarray of shape {virtual_echo.shape}')
-
-            # halved virtual echo (the signal actually processed)
-            cats.append('Half Echo:')
-            vals.append(f'numpy.ndarray of shape {half_echo.shape}')
-
-            # the filtered spectrum from which the virtual echo is derived
-            cats.append('Filtered Spectrum:')
-            vals.append(f'numpy.ndarray of shape {filtered_spectrum.shape}')
-
-            # bounds of spectral region in each dimension
-            for i, (bound_hz, bound_ppm) in enumerate(bounds):
+            for i, (bnd_hz, bnd_ppm) in enumerate(region_info):
                 if i == 0:
-                    cats.append('Region:')
-
+                    filter_cats.append('Region:')
                 else:
-                    cats.append('')
+                    filter_cats.append('')
 
-                s = f'{bound_hz[0]:.4f} - {bound_hz[1]:.4f}Hz' \
-                    + f' ({bound_ppm[0]:.4f} - {bound_ppm[1]:.4f}ppm)' \
-                    + f' (F{i+1})\n'
+                filter_vals.append(
+                    f'{bnd_hz[0]:.4f} - {bnd_hz[1]:.4f}Hz '
+                    f'({bnd_ppm[0]:.4f} - {bnd_ppm[1]:.4f}ppm) '
+                    f'(F{i+1})'
+                )
 
-                vals.append(s)
+            filter_cats += [
+                'Filtered Spectrum:',
+                'Virtual Echo:',
+                'Half Echo:',
+            ]
+
+            filter_vals += [
+                f'array of shape {self.get_filtered_spectrum().shape}',
+                f'array of shape {self.get_virtual_echo().shape}',
+                f'array of shape {self.get_half_echo().shape}',
+            ]
+
+
+            filter_table = _misc.aligned_tabular([filter_cats, filter_vals])
 
         # Parameter arrays (inital guess and NLP result)
         theta0 = self.get_theta0(kill=False)
         if theta0 is None:
             pass
         else:
-            cats.append(f'\n{MA}───Estimates───{END}')
-            vals.append('')
-            cats.append('Inital guess (theta0):')
-            vals.append(f'numpy.ndarray with shape {theta0.shape}')
+            estimate_cats = [
+                'Inital guess (theta0):',
+            ]
 
-        theta = self.get_theta(kill=False)
-        if theta is None:
-            pass
-        else:
-            cats.append('Newton\'s Method Result (theta):')
-            vals.append(f'numpy.ndarray with shape {theta.shape}')
+            estimate_vals = [
+                f'numpy.ndarray with shape {theta0.shape}'
+            ]
 
-        # string with consistent padding
-        # elements in cats with magenta coloring are titles, do not
-        # involve in padding considerations
-        pad = max(len(c) for c in cats if MA not in c)
-        for c, v in zip(cats, vals):
-            p = (pad - len(c) + 1) + len(v)
-            msg += c + v.rjust(p) + '\n'
+            theta = self.get_theta(kill=False)
+            if theta is None:
+                pass
+            else:
+                estimate_cats.append('Final Result (theta):')
+                estimate_vals.append(f'darray with shape {theta.shape}')
+
+            estimates_table = _misc.aligned_tabular([estimate_cats, estimate_vals])
+
+
+
+        titles = [
+            f'\n{MA}BASIC INFO{END}\n',
+            f'\n{MA}FREQUENCY FILTER{END}\n',
+            f'\n{MA}ESTIMATION RESULT{END}\n',
+        ]
+
+        tables = [
+            basic_table,
+            filter_table,
+            estimates_table,
+        ]
+
+        msg = f'{MA}<NMREsPyBruker object at {hex(id(self))}>{END}\n'
+
+        for title, table in zip(titles, tables):
+            if table:
+                msg += title + table
 
         return msg
 
@@ -1080,15 +1061,19 @@ class NMREsPyBruker:
         """Retrieve attributes that may be assigned the value ``None``. Return
         None/raise error depending on the value of ``kill``"""
 
-        # determine if attribute is not None
-        if self.__dict__[name] is not None:
-            return self.__dict__[name]
-
-        else:
+        if self.__dict__[name] is None:
             if kill is True:
                 raise AttributeIsNoneError(name, method)
             else:
                 return None
+
+        else:
+            return self.__dict__[name]
+
+
+
+
+
 
 # TODO ========================================================
 # make_fid:
