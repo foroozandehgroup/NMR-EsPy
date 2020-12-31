@@ -72,15 +72,15 @@ def _write_txt(info, table, path, descrip, timestamp):
     """
 
     info = iter(info)
-
+    dim = next(info)
     datapath = next(info)
-    sw_h = next(info)
-    sw_p = next(info)
-    off_h = next(info)
-    off_p = next(info)
-    sfo = next(info)
-    bf = next(info)
-    nuc = next(info)
+    sws_h = next(info)
+    sws_p = next(info)
+    offs_h = next(info)
+    offs_p = next(info)
+    sfos = next(info)
+    bfs = next(info)
+    nucs = next(info)
     region_h = next(info)
     region_p = next(info)
 
@@ -88,61 +88,63 @@ def _write_txt(info, table, path, descrip, timestamp):
     msg = f'{timestamp}\n' # time and date
     if descrip:
         # user-provided description
-        msg += f'{descrip}\n\nExperiment Information:\n'
+        msg += f'\nDescription:\n{descrip}\n\nExperiment Information:\n'
     else:
         msg += '\nExperiment Information:\n'
 
-    msg += f'data path:               {datapath}\n'
+    titles = ['Data Path:']
+    values = [datapath]
 
-    if dim == 1:
+    param_titles = [
+        'Sweep Width:',
+        'Transmitter Offset:',
+        'Transmitter Frequency:',
+        'Basic Frequency:',
+        'Nucleus:'
+    ]
 
+    for title in param_titles:
+        for i in range(dim):
+            if i == 0:
+                titles.append(title)
+            else:
+                titles.append('')
 
-        # unpack values from tuple
-        sw_h, sw_p = sw_h[0], sw_p[0]
-        off_h, off_p = off_h[0], off_p[0]
-        sfo = sfo[0]
-        bf = bf[0]
-        msg += f'sweep width:             {sw_h:.4f}Hz ({sw_p:.4f}ppm)\n'
-        msg += f'trans. frequency:        {sfo:.4f}MHz\n'
-        msg += f'basic trans. frequency:  {bf:.4f}MHz\n'
-        msg += f'trans. offset:           {off_h:.4f}Hz ({off_p:.4f}ppm)\n\n'
+    params = zip(sws_h, sws_p , offs_h, offs_p, sfos, bfs, nucs)
+    for sw_h, sw_p, off_h, off_p, sfo, bf, nuc in params:
+        try:
+            sw_vals.append(f'{sw_h:.4f}Hz ({sw_p:.4f}ppm) (F{i + 1})')
+            off_vals.append(f'{off_h:.4f}Hz ({off_p:.4f}ppm) (F{i + 1})')
+            sfo_vals.append(f'{sfo:.4f}MHz (F{i + 1})')
+            bf_vals.append(f'{bf:.4f}MHz (F{i + 1})')
+            nuc_vals.append(f'{nuc} (F{i + 1})')
+        except NameError:
+            sw_vals = [f'{sw_h:.4f}Hz ({sw_p:.4f}ppm) (F{i + 1})']
+            off_vals = [f'{off_h:.4f}Hz ({off_p:.4f}ppm) (F{i + 1})']
+            sfo_vals = [f'{sfo:.4f}MHz (F{i + 1})']
+            bf_vals = [f'{bf:.4f}MHz (F{i + 1})']
+            nuc_vals = [f'{nuc} (F{i + 1})']
 
-
-        msg += 'Region Considered:\n'
-        if region_p and region_h:
-            msg += f'{region_h[0][0]:.4f} - {region_h[0][1]:.4f}Hz'
-            msg += f' ({region_p[0][0]:.4f} - {region_p[0][1]:.4f}ppm)\n\n'
-        else:
-            msg += f'full spectrum\n\n'
-
-    elif dim == 2:
-        msg += f'sweep width (F1):            {sw_h[0]:.4f}Hz ({sw_p[0]:.4f}ppm)\n'
-        msg += f'sweep width (F2):            {sw_h[1]:.4f}Hz ({sw_p[1]:.4f}ppm)\n'
-        msg += f'trans. frequency (F1):       {sfo[0]:.4f}MHz\n'
-        msg += f'trans. frequency (F2):       {sfo[1]:.4f}MHz\n'
-        msg += f'basic trans. frequency (F1): {bf[0]:.4f}MHz\n'
-        msg += f'basic trans. frequency (F2): {bf[1]:.4f}MHz\n'
-        msg += f'trans. offset (F1):          {off_h[0]:.4f}Hz ({off_p[0]:.4f}ppm)\n'
-        msg += f'trans. offset (F2):          {off_h[1]:.4f}Hz ({off_p[1]:.4f}ppm)\n\n'
-
-
-        msg += 'Region Considered:\n'
-        if region_p and region_h:
-            msg += f'F1: {region_h[0][0]:.4f} - {region_h[0][1]:.4f}Hz'
-            msg += f' ({region_p[0][0]:.4f} - {region_p[0][1]:.4f}ppm)\n'
-            msg += f'F2: {region_h[1][0]:.4f} - {region_h[1][1]:.4f}Hz'
-            msg += f' ({region_p[1][0]:.4f} - {region_p[1][1]:.4f}ppm)\n\n'
-        else:
-            msg += f'full spectrum\n\n'
+    values += sw_vals + off_vals + sfo_vals + bf_vals + nuc_vals
 
 
-    # write table of parameters-
-    # Determine width of each column (pads)
-    cats = len(table[0]) # number of table categories
-    pads = [1] * cats
-    for entry in table:
-        for i, e in enumerate(entry):
-            pads[i] = len(e) + 1 if len(e) + 1 > pads[i] else pads[i]
+    if region_p and region_h:
+        for i, (reg_h, reg_p) in enumerate(zip(region_h, region_p)):
+            if i == 0:
+                titles.append('Region Considered:')
+            else:
+                titles.append('')
+
+            values.append(
+                f'{reg_h[0]:.4f} - {reg_h[1]:.4f}Hz '
+                f'({reg_p[0]:.4f} - {reg_p[1]:.4f}ppm) '
+                f'(F{i+1})'
+            )
+    else:
+        titles.append('Region Considered:')
+        values.append('Full Spectral Region')
+
+    msg += aligned_tabular([titles, values])
 
     # table colunm headers
     if dim == 1:
@@ -155,30 +157,22 @@ def _write_txt(info, table, path, descrip, timestamp):
                    'frequency 2 (ppm)', 'damping factor 1',
                    'damping factor 2', 'integrals', 'normalised integrals']
 
-    # ensure the column paddings are not smaller than the header len + 1
-    for i, header in enumerate(headers):
-        pads[i] = len(header) + 1 if len(header) + 1 > pads[i] else pads[i]
-        # construct column titles
-        msg += '{:<{p}}│'.format(header, p=pads[i])
-    msg = msg[:-1] + '\n' # rm final vertical bar and add newline
+    # transpose the table of values
+    columns = list(map(list, (zip(*table))))
 
-    # horizontal bar below headers
-    for pad in pads:
-        msg += '─' * pad + '┼'
-    msg = msg[:-1] + '\n' # rm final cross bar and add newline
-
-    # Appends contents to table
-    for entry in table: # each row
-        for i, e in enumerate(entry): # each element of the row
-            msg += '{:<{p}}│'.format(e, p=pads[i])
-        msg = msg[:-1] + '\n' # rm final vertical bar and add newline
+    msg += '\nEstimation Result:\n'
+    msg += aligned_tabular(columns, titles=headers)
 
     # blurb at bottom of file
-    msg += '\nEstimation performed using NMR-EsPy\nAuthor: Simon Hulse ~ '
-    msg += 'simon.hulse@chem.ox.ac.uk\nIf used in any publications, please'
-    msg += ' cite:\n<Ref to paper>\nFor more information, visit our group'
-    msg += ' website:\nhttp://foroozandeh.chem.ox.ac.uk/home\n'
+    msg += \
+    """\nEstimation performed using NMR-EsPy
+Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk
+If used in any publications, please cite:
+<Ref to paper>
+For more information, visit our group website:
+http://foroozandeh.chem.ox.ac.uk/home"""
 
+    # save message to textfile
     with open(path, 'w') as file:
         file.write(msg)
 

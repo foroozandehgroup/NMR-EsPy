@@ -261,12 +261,21 @@ class NMREsPyBruker:
             self.get_bf(),
             self.get_nucleus(),
         )
-        for i, (sw_h, sw_p, off_h, off_p, sfo, bf, nuc) in enumerate(params):
-            basic_vals.append(f'{sw_h:.4f}Hz ({sw_p:.4f}ppm) (F{i + 1})')
-            basic_vals.append(f'{off_h:.4f}Hz ({off_p:.4f}ppm) (F{i + 1})')
-            basic_vals.append(f'{sfo:.4f}MHz (F{i + 1})')
-            basic_vals.append(f'{bf:.4f}MHz (F{i + 1})')
-            basic_vals.append(f'{nuc} (F{i + 1})')
+        for sw_h, sw_p, off_h, off_p, sfo, bf, nuc in params:
+            try:
+                sw_vals.append(f'{sw_h:.4f}Hz ({sw_p:.4f}ppm) (F{i + 1})')
+                off_vals.append(f'{off_h:.4f}Hz ({off_p:.4f}ppm) (F{i + 1})')
+                sfo_vals.append(f'{sfo:.4f}MHz (F{i + 1})')
+                bf_vals.append(f'{bf:.4f}MHz (F{i + 1})')
+                nuc_vals.append(f'{nuc} (F{i + 1})')
+            except:
+                sw_vals = [f'{sw_h:.4f}Hz ({sw_p:.4f}ppm) (F{i + 1})']
+                off_vals = [f'{off_h:.4f}Hz ({off_p:.4f}ppm) (F{i + 1})']
+                sfo_vals = [f'{sfo:.4f}MHz (F{i + 1})']
+                bf_vals = [f'{bf:.4f}MHz (F{i + 1})']
+                nuc_vals = [f'{nuc} (F{i + 1})']
+
+        basic_vals += sw_vals + off_vals + sfo_vals + bf_vals + nuc_vals
 
         basic_table = _misc.aligned_tabular([basic_cats, basic_vals])
 
