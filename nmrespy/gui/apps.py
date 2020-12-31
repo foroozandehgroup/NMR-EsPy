@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.9
 
 # Application for using NMR-EsPy
 # Simon Hulse
@@ -15,6 +15,8 @@ import random
 import subprocess
 import sys
 import webbrowser
+
+print(sys.path)
 
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
@@ -35,6 +37,8 @@ import matplotlib.colors as mcolors
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
 
 import nmrespy
 import nmrespy.load as load
@@ -3726,3 +3730,8 @@ class LabelEdit(tk.Frame):
     #                            force_overwrite=True, format='pdf')
     # if pickle == '1':
     #     info.pickle_save(fname=file, dir=dir, force_overwrite=True)
+
+if __name__ == '__main__':
+
+    setup_app = NMREsPyApp()
+    setup_app.mainloop()

@@ -132,6 +132,26 @@ def aligned_tabular(columns, titles=None):
 
     return msg
 
+def convert(value, sw, off, n, sfo, conversion):
+
+    if conversion == 'idx->hz':
+        return float(off + (sw / 2) - ((value * sw) / n))
+
+    elif conversion == 'idx->ppm':
+        return float((off + sw / 2 - value * sw / n) / sfo)
+
+    elif conversion == 'ppm->idx':
+        return int(round((off + (sw / 2) - sfo * value) * (n / sw)))
+
+    elif conversion == 'ppm->hz':
+        return value * sfo
+
+    elif conversion == 'hz->idx':
+        return int((n / sw) * (off + (sw / 2) - value))
+
+    elif conversion == 'hz->ppm':
+        return value / sfo
+
 
 def mkfid(para, n, sw, offset, dim):
     """
