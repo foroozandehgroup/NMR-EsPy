@@ -1,7 +1,7 @@
 .. _plot:
 
 nmrespy._plot
-^^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 Module providing functionality for plotting NMR-EsPy results
 
@@ -16,5 +16,3 @@ Module providing functionality for plotting NMR-EsPy results
    _check_valid_mpl_color
    _get_osc_cols
    _generate_xlabel
-
-

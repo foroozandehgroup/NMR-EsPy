@@ -505,11 +505,7 @@ def _timestamp():
 
 
 def _get_path(fname, dir, fmt, force_overwrite):
-    """_get_path(fname, dir, format, force_overwrite)
-
-    Description
-    -----------
-    Generate the path to save textfile/pdf to
+    """Generate the path to save textfile/pdf to
 
     Parameters
     ----------
@@ -537,11 +533,7 @@ def _get_path(fname, dir, fmt, force_overwrite):
 
 
 def _strval(value, sf, sci_lims):
-    """_strval(value, sf, sci_lims)
-
-    Description
-    -----------
-    Convert float to formatted string
+    """Convert float to formatted string
 
     Parameters
     ----------

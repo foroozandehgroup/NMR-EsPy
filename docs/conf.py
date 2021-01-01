@@ -39,7 +39,7 @@ extensions = ['sphinx.ext.autodoc',
 
 imgmath_latex_premable = '\\usepackage{nicefrac}\n'
 
-
+master_doc = 'index'
 
 todo_include_todos = True
 

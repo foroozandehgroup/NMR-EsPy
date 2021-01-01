@@ -121,6 +121,15 @@ class WarnFrame(MyToplevel):
         close_button.grid(row=1, column=1, padx=10, pady=(0,10))
 
 
+class AutoVivification(dict):
+    """Implementation of perl's autovivification feature."""
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item)
+        except KeyError:
+            value = self[item] = type(self)()
+            return value
+
 
 class Restrictor():
     """Resict naivgation within a defined range (used to prevent
@@ -327,173 +336,209 @@ class NMREsPyApp(tk.Tk):
             self.spectrum = self.info.get_data(pdata_key='1r') \
                             + 1j * self.info.get_data(pdata_key='1i')
 
-        # unpack useful parameters into attributes
-        # as 1D data, these will be one-element tuples
-        self.shifts = self.info.get_shifts(unit='ppm')[0] # shifts for plot
-        self.sw_p = self.info.get_sw(unit='ppm')[0] # sweep width
-        self.off_p = self.info.get_offset(unit='ppm')[0] # transmitter offset
-        self.n = self.spectrum.shape[0] # number of points
+        # constants
+        self.consts = AutoVivification()
 
-        # TODO For consitency with the rest of my code, it's probably
-        # a good idea to use 2-tuples for the regions, rather than left
-        # and right bonunds
+        for u in ['hz', 'ppm']:
+            self.consts['sw'][u] = self.info.get_sw(unit=u)[0]
+            self.consts['off'][u] = self.info.get_offset(unit=u)[0]
+            self.consts['shifts'][u] = self.info.get_shifts(unit=u)[0]
 
-        # initialise region of interest and noise region boundaries
-        # values in array indices
-        self.lb = int(np.floor(7 * self.n / 16)) # left bound
-        self.rb = int(np.floor(9 * self.n / 16)) # right bound
-        self.lnb = int(np.floor(1 * self.n / 16)) # left noise bound
-        self.rnb = int(np.floor(2 * self.n / 16)) # right noise bound
+        self.consts['n'] = self.spectrum.shape[0]
+        self.consts['sfo'] = self.info.get_sfo()[0]
 
-        # loop 'coz I'm lazy...
-        for s in ['lb', 'rb', 'lnb', 'rnb']:
-            # convert boundaries from array indices to ppm
-            # forms attributes called:
-            # lb_ppm, rb_ppm, lnb_ppm, rnb_ppm
-            self.__dict__[f'{s}_ppm'] = _misc.conv_ppm_idx(
-                    self.__dict__[s], self.sw_p, self.off_p, self.n,
-                    direction='idx->ppm',
-            )
+        # region for filtration and noise region
+        init_bounds = [
+            int(np.floor(7 * self.consts['n'] / 16)), # left bound
+            int(np.floor(9 * self.consts['n'] / 16)), # right bound
+            int(np.floor(1 * self.consts['n'] / 16)), # left noise bound
+            int(np.floor(2 * self.consts['n'] / 16)), # right noise bound
+        ]
 
-            # generate string vars of the bounds in ppm
-            # forms attributes called:
-            # lb_var, rb_var, lnb_var, rnb_var
-            self.__dict__[f'{s}_var'] = tk.StringVar()
-            init = self.__dict__[f'{s}_ppm']
-            self.__dict__[f'{s}_var'].set(f'{init:.3f}')
+        self.region = AutoVivification()
+        for s, init in zip(['lb', 'rb', 'lnb', 'rnb'], init_bounds):
+            for u in ['idx', 'hz', 'ppm']:
+                if u == 'idx':
+                    self.region['bounds'][s][u] = init
+                else:
+                    self.region['bounds'][s][u] = self.convert(
+                        init, f'idx->{u}'
+                    )
 
-        # number of points the region comprises
-        self.region_size = self.rb - self.lb
+                self.region['boundvars'][s][u] = tk.StringVar()
+                self.region['boundvars'][s][u].set(
+                    f"{self.region['bounds'][s][u]:.4f}"
+                )
+
+        self.region['size'] = self.region['bounds']['rb']['idx'] - \
+                              self.region['bounds']['lb']['idx']
 
         # phase correction parameters
-        self.pivot = self.n // 2 # location of pivot
+        self.phase = AutoVivification()
 
-        # convert pivot to ppm
-        self.pivot_ppm = _misc.conv_ppm_idx(
-                self.pivot, self.sw_p, self.off_p, self.n,
-                direction='idx->ppm',
-        )
+        self.phase['pivot']['idx'] = int(self.consts['n'] // 2)
 
-        # zero- and first-order phase corrections (radians)
-        self.p0 = 0.
-        self.p1 = 0.
+        for u in ['idx', 'hz', 'ppm']:
+            self.phase['pivotvar'][u] = tk.StringVar()
+            if u == 'idx':
+                self.phase['pivotvar'][u].set(
+                    str(self.phase['pivot'][u])
+                )
+            else:
+                self.phase['pivot'][u] = self.convert(
+                    self.phase['pivot']['idx'], conversion=f'idx->{u}'
+                )
+                self.phase['pivotvar'][u].set(
+                    f"{self.phase['pivot'][u]:.4f}"
+                )
 
-        # generate string vars of the pivot and phases
-        self.pivot_var = tk.StringVar()
-        self.pivot_var.set(f'{self.pivot_ppm:.3f}')
-        self.p0_var = tk.StringVar()
-        self.p0_var.set(f'{self.p0:.3f}')
-        self.p1_var = tk.StringVar()
-        self.pivot_var.set(f'{self.p1:.3f}')
+        for s in ['p0', 'p1']:
+            for u in ['rad', 'ppm']:
+                self.phase['phases'][s][u] = 0.
+                self.phase['phasevars'][s][u] = tk.StringVar()
+                self.phase['phasevars'][s][u].set(
+                    f"{self.phase['phases'][s][u]:.4f}"
+                )
 
-        # specifies whether to cut the filtered spectrum or not, prior to
-        # ifft. By default, cut will be applied
-        self.cut = tk.IntVar()
-        self.cut.set(1)
+        # advanced settings
+        self.adsettings = AutoVivification()
+
+        self.adsettings['cut']['value'] = True
+        self.adsettings['cut']['var'] = tk.IntVar()
+        self.adsettings['cut']['var'].set(1)
 
         # ratio of length of cut signal and filter length
-        self.cut_ratio = tk.StringVar()
-        self.cut_ratio.set('2.5')
+        self.adsettings['cut_ratio']['value'] = 2.5
+        self.adsettings['cut_ratio']['var'] = tk.StringVar()
+        self.adsettings['cut_ratio']['var'].set('2.5')
 
-        # number of points to be used for MPM and NLP
-        self.mpm_points_var = tk.StringVar()
-        self.nlp_points_var = tk.StringVar()
-
-        # determine the size of the signal given the current situation
-        # division by 2 is necessary as virtual echo is halved
-        signal_size = int(
-            np.floor(float(self.cut_ratio.get()) * self.region_size / 2)
+        self.adsettings['max_points'] = int(
+            (self.adsettings['cut_ratio']['value'] * self.region['size']) // 2
         )
 
-        # set default values for mpm_points_var and nlp_points_var
-        if signal_size <= 4096:
-            self.mpm_points_var.set(str(signal_size))
-            self.nlp_points_var.set(str(signal_size))
-        elif signal_size <= 8192:
-            self.mpm_points_var.set('4096')
-            self.nlp_points_var.set(str(signal_size))
+        # number of points to be used for MPM and NLP
+        if self.adsettings['max_points'] <= 4096:
+            self.adsettings['mpm points']['value'] = self.adsettings['max_points']
+            self.adsettings['nlp points']['value'] = self.adsettings['max_points']
+        elif self.adsettings['max_points'] <= 8192:
+            self.adsettings['mpm points']['value'] = 4096
+            self.adsettings['nlp points']['value'] = self.adsettings['max_points']
         else:
-            self.mpm_points_var.set('4096')
-            self.nlp_points_var.set('8192')
+            self.adsettings['mpm points']['value'] = 4096
+            self.adsettings['nlp points']['value'] = 8192
 
-        # maximum number of points possible based on signal size, whether
-        # to cut the signal, and the cut size/filter size ratio
-        self.max_points = tk.StringVar()
-        self.max_points.set(str(signal_size))
+        for s in ['mpm', 'nlp']:
+            self.adsettings[f'{s} points']['var'] = tk.StringVar()
+            self.adsettings[f'{s} points']['var'].set(
+                str(self.adsettings[f'{s} points']['value'])
+            )
 
         # number of oscillators (M) string variable
-        self.M_var = tk.StringVar()
-        self.M_var.set('')
+        self.adsettings['oscillators']['value'] = 0
+        self.adsettings['oscillators']['var'] = tk.StringVar()
+        self.adsettings['oscillators']['var'].set('')
 
         # specifies whether or not to use the MDL to estimate M
-        self.use_mdl = tk.IntVar()
-        self.use_mdl.set(1)
+        self.adsettings['mdl']['value'] = True
+        self.adsettings['mdl']['var'] = tk.IntVar()
+        self.adsettings['mdl']['var'].set(1)
 
         # idnitity of the NLP algorithm to use
-        self.nlp_algorithm = tk.StringVar()
-        self.nlp_algorithm.set('Trust Region')
+        self.adsettings['nlp_algorithm']['value'] = 'trust_region'
+        self.adsettings['nlp_algorithm']['var'] = tk.StringVar()
+        self.adsettings['nlp_algorithm']['var'].set('Trust Region')
 
         # maximum iterations of NLP algorithm
-        self.max_iterations = tk.StringVar()
-        self.max_iterations.set('100')
+        self.adsettings['max_iterations']['value'] = 100
+        self.adsettings['max_iterations']['var'] = tk.StringVar()
+        self.adsettings['max_iterations']['var'].set('100')
 
         # whether or not to include phase variance in NLP cost func
-        self.phase_variance = tk.IntVar()
-        self.phase_variance.set(1)
+        self.adsettings['phase_variance']['value'] = True
+        self.adsettings['phase_variance']['var'] = tk.IntVar()
+        self.adsettings['phase_variance']['var'].set(1)
 
         # whether or not to purge negligible oscillators
-        self.use_amp_thold = tk.IntVar()
-        self.use_amp_thold.set(0)
+        self.adsettings['use_amp_thold']['value'] = False
+        self.adsettings['use_amp_thold']['var'] = tk.IntVar()
+        self.adsettings['use_amp_thold']['var'].set(0)
 
         # amplitude threshold for purging negligible oscillators
-        self.amplitude_thold = tk.StringVar()
-        self.amplitude_thold.set('0.001')
+        self.adsettings['amp_thold']['value'] = 0.001
+        self.adsettings['amp_thold']['var'] = tk.StringVar()
+        self.adsettings['amp_thold']['var'].set('0.001')
 
         # whether or not to merge excessively close opscillators
-        self.use_freq_thold = tk.IntVar()
-        self.use_freq_thold.set(1)
+        self.adsettings['use_freq_thold']['value'] = True
+        self.adsettings['use_freq_thold']['var'] = tk.IntVar()
+        self.adsettings['use_freq_thold']['var'].set(1)
 
         # frequency threshold for merging excessively close oscillators
-        self.frequency_thold = tk.StringVar()
-        self.frequency_thold.set(f'{1 / self.sw_p:.4f}')
+        for u in ['hz', 'ppm']:
+            self.adsettings['freq_thold']['value'][u] = 1 / self.consts['sw'][u]
+            self.adsettings['freq_thold']['var'][u] = tk.StringVar()
+            self.adsettings['freq_thold']['var'][u].set(
+                f"{self.adsettings['freq_thold']['value'][u]:.4f}"
+            )
+
+        self.setupfigure = AutoVivification()
 
         # plot spectrum
-        # construct figure of appropriate size and dpi
-        self.fig = Figure(figsize=(6,3.5), dpi=170)
+        self.setupfigure['fig'] = Figure(figsize=(6,3.5), dpi=170)
         # add axes to figure
-        self.ax = self.fig.add_subplot(111)
-        # plot spectrum
-        self.spectrum_plot = self.ax.plot(
-            self.shifts, np.real(self.spectrum), color='k', lw=0.6
+        self.setupfigure['ax'] =self.setupfigure['fig'].add_subplot(111)
+
+        self.setupfigure['plot'] = self.setupfigure['ax'].plot(
+            self.consts['shifts']['ppm'], np.real(self.spectrum),
+            color='k', lw=0.6,
         )[0]
 
         # set x-limits as edges of spectral window
-        self.xlim = (self.shifts[0], self.shifts[-1])
-        self.ax.set_xlim(self.xlim)
+        self.setupfigure['xlim'] = (
+            self.consts['shifts'][0],
+            self.consts['shifts'][-1]
+        )
+
+        self.setupfigure['ax'].set_xlim(self.setupfigure['xlim'])
 
         # Get current y-limit. Will reset y-limits to this value after the
         # very tall noise_region and filter_region rectangles have been added
         # to the plot
-        self.ylim_init = self.ax.get_ylim()
+        self.setupfigure['init_ylim'] = self.setupfigure['ax'].get_ylim()
 
         # highlight the spectral region to be filtered (green)
         # Rectangle's first 3 args: bottom left coords, width, height
-        self.filter_region = Rectangle(
-            (self.rb_ppm, -20*self.ylim_init[1]),
-            self.lb_ppm - self.rb_ppm,
-            40*self.ylim_init[1],
-            facecolor=REGIONCOLOR
+        bottom_left = (
+            self.region['bounds']['rb']['ppm'],
+            -20 * self.setupfigure['init_ylim'][1],
         )
-        self.ax.add_patch(self.filter_region)
+        width = self.region['bounds']['lb']['ppm'] - self.region['bounds']['rb']['ppm']
+        height = 40 * self.setupfigure['init_ylim'][1]
+
+        self.setupfigure['rectanlges']['region'] = Rectangle(
+            bottom_left, width, height, facecolor=REGIONCOLOR
+        )
+        self.setupfigure['ax'].add_patch(
+            self.setupfigure['rectanlges']['region']
+        )
 
         # highlight the noise region (blue)
-        self.noise_region = Rectangle(
-            (self.rnb_ppm, -20*self.ylim_init[1]),
-            self.lnb_ppm - self.rnb_ppm,
-            40*self.ylim_init[1],
-            facecolor=NOISEREGIONCOLOR
+        bottom_left = (
+            self.region['bounds']['rnb']['ppm'],
+            -20 * self.setupfigure['init_ylim'][1],
         )
-        self.ax.add_patch(self.noise_region)
+        width = self.region['bounds']['lnb']['ppm'] - self.region['bounds']['rnb']['ppm']
+
+        self.setupfigure['rectanlges']['noise_region'] = Rectangle(
+            bottom_left, width, height, facecolor=NOISEREGIONCOLOR
+        )
+        self.setupfigure['ax'].add_patch(
+            self.setupfigure['rectanlges']['noise_region']
+        )
+
+        ###
+        # YOU ARE HERE
+        ###
 
         # plot pivot line
         # alpha set to 0 to make invisible initially
@@ -556,6 +601,33 @@ class NMREsPyApp(tk.Tk):
         self.frames['LogoFrame'].grid(
             row=2, column=0, padx=10, pady=10, sticky='w'
         )
+
+    def convert(self, value, conversion):
+        print(value)
+        sw = self.consts['sw']['hz']
+        off = self.consts['off']['hz']
+        n = self.consts['n']
+        sfo = self.consts['sfo']
+
+
+        if conversion == 'idx->hz':
+            return float(off + (sw / 2) - ((value * sw) / n))
+
+        elif conversion == 'idx->ppm':
+            return float((off + sw / 2 - value * sw / n) / sfo)
+
+        elif conversion == 'ppm->idx':
+            return int(round((off + (sw / 2) - sfo * value) * (n / sw)))
+
+        elif conversion == 'ppm->hz':
+            return value * sfo
+
+        elif conversion == 'hz->idx':
+            return int((n / sw) * (off + (sw / 2) - value))
+
+        elif conversion == 'hz->ppm':
+            return value / sfo
+
 
 
     def ud_max_points(self):

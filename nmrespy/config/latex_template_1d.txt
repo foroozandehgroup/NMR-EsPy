@@ -23,6 +23,8 @@ urlcolor   = urlblue,%
 \setlength\parindent{0pt}
 \renewcommand{\ss}{\textsuperscript}
 
+\pagenumbering{gobble}
+
 \begin{document}
 \begin{figure}[!ht]
   % MF group logo
@@ -73,7 +75,7 @@ urlcolor   = urlblue,%
 % blurb
 \small
 \begin{tcolorbox}
-  Estimation perfomred using \textsc{NMR-EsPy}.\\
+  Estimation performed using \textsc{NMR-EsPy}.\\
   Author: Simon Hulse\\
   For more information, see the
   \href{https://nmr-espy.readthedocs.io/en/latest/}{documentation}, or email:

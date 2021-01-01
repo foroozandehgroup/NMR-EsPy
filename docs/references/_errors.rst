@@ -1,7 +1,7 @@
 .. _errors:
 
 nmrespy._errors
-^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
 Provides various custom error classes for greater clairty when
 something bad happends.
@@ -19,5 +19,3 @@ something bad happends.
    PhaseVarianceAmbiguityError
    AttributeIsNoneError
    LaTeXFailedError
-
-
