@@ -9,8 +9,5 @@ results.
 
 .. currentmodule:: nmrespy.core
 
-.. autosummary::
-   :toctree: generated/
-
-   NMREsPyBruker
-
+.. autoclass:: NMREsPyBruker
+   :members:
