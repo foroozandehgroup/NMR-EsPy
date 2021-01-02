@@ -144,6 +144,9 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
     else: # dim = 2
         cf = {'f' : _f_2d, 'g' : _g_2d, 'h' : _h_2d}
 
+    _f_and_derivatives(theta0_act, *opt_args)
+    exit()
+
     if method == 'trust_region':
         res = minimize(fun=cf['f'], x0=theta0_act,  args=opt_args,
                        method='trust-constr', jac=cf['g'], hess=cf['h'],
@@ -214,6 +217,254 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
             data, dim, theta, sw, off, phase_variance, method, mode, bound,
             maxit, amp_thold, freq_thold, fprint, negative_amps, False, start
         )
+
+def _f_and_derivatives(
+    para_active, data, tp, M, para_passive, idx, phase_variance
+):
+    # TODO: make it optional to compute hessian
+
+    # reconstruct correctly ordered parameter vector from
+    # optimisable and non-optimisable parameters.
+    para = _construct_para(para_active, para_passive, M, idx)
+
+    Z = np.exp(np.outer(tp, (1j*2*np.pi*para[2*M:3*M] - para[3*M:])))
+
+    # array of M N-length vectors. Each vector is the contriobution of
+    # an individual oscillator to the model
+    model_per_oscillator = Z * (para[:M] * np.exp(1j * para[M:2*M]))
+
+    n = len(idx)
+
+    # first derivatives
+    fd = np.zeros((*data.shape, M * n), dtype='complex')
+    # second derivatives
+    sd = np.zeros((*data.shape, M * int((n * (n + 1)) / 2)), dtype='complex')
+
+    # fun times ahead...
+    # this section computes all the first and second derivatives
+    # it is able to handle any all parameter types, or any subset of
+    # parameter types
+
+    # at points in the code denoted ---x y z---, the parameters to be
+    # optimised has been established
+
+    if 0 in idx:
+        fd[..., :M] = model_per_oscillator / para[:M] # a
+        # (a-a is trivially zero)
+
+        if 1 in idx:
+            fd[..., M:2*M] = 1j * model_per_oscillator # φ
+            sd[..., M:2*M] = 1j * fd[..., :M] # a-φ
+
+            if 2 in idx:
+                fd[..., 2*M:3*M] = np.einsum(
+                    'ij,i->ij', model_per_oscillator, (1j * 2 * np.pi * tp[0])
+                ) # f
+
+                sd[..., 2*M:3*M] = fd[..., 2*M:3*M] / para[:M] # a-f
+
+                if 3 in idx:
+                    # ---a φ f η---
+                    fd[..., 3*M:] = np.einsum(
+                        'ij,i->ij', model_per_oscillator, -tp[0]
+                    ) # η
+                    sd[..., 3*M:4*M] = fd[..., 3*M:4*M] / para[:M] # a-η
+                    sd[..., 4*M:5*M] = 1j * fd[..., :M] # φ-φ
+                    sd[..., 5*M:6*M] = 1j * fd[..., 2*M:3*M] # φ-f
+                    sd[..., 6*M:7*M] = 1j * fd[..., 3*M:4*M] # φ-η
+                    sd[..., 7*M:8*M] = np.einsum(
+                        'ij,i->ij', fd[..., 2*M:3*M], (1j * 2 * np.pi * tp[0])
+                    ) # f-f
+                    sd[..., 8*M:9*M] = np.einsum(
+                        'ij,i->ij', fd[..., 2*M:3*M], -tp[0]
+                    ) # f-η
+                    sd[..., 9*M:] = np.einsum(
+                        'ij,i->ij', fd[..., 3*M:], -tp[0]
+                    ) # η-η
+
+                else:
+                    # ---a φ f---
+                    sd[..., 3*M:4*M] = 1j * fd[..., :M] # φ-φ
+                    sd[..., 4*M:5*M] = 1j * fd[..., 2*M:] # φ-f
+                    sd[..., 5*M:] = np.einsum(
+                        'ij,i->ij', fd[..., 2*M:], (1j * 2 * np.pi * tp[0])
+                    ) # f-f
+
+            elif 3 in idx:
+                # ---a φ η---
+                fd[..., 2*M:] = np.einsum(
+                    'ij,i->ij', model_per_oscillator, -tp[0]
+                ) # η
+                sd[..., 2*M:3*M] = fd[..., 2*M:] / para[:M] # a-η
+                sd[..., 3*M:4*M] = 1j * fd[..., :M] # φ-φ
+                sd[..., 4*M:5*M] = 1j * fd[..., 2*M:] # φ-η
+                sd[..., 5*M:] = np.einsum(
+                    'ij,i->ij', fd[..., 2*M:], -tp[0]
+                ) # η-η
+
+            else:
+                # ---a φ---
+                sd[..., 2*M:] = 1j * fd[..., M:] # φ-φ
+
+        elif 2 in idx:
+            fd[..., M:2*M] = np.einsum(
+                'ij,i->ij', model_per_oscillator, (1j * 2 * np.pi * tp[0])
+            ) # f
+
+            sd[..., M:2*M] = fd[..., M:2*M] / para[:M] # a-f
+
+            if 3 in idx:
+                # ---a f η---
+                fd[..., 2*M:] = np.einsum(
+                    'ij,i->ij', model_per_oscillator, -tp[0]
+                ) # η
+                sd[..., 2*M:3*M] = fd[..., 2*M:] / para[:M] # a-η
+                sd[..., 3*M:4*M] = np.einsum(
+                    'ij,i->ij', fd[..., M:2*M], (1j * 2 * np.pi * tp[0])
+                ) # f-f
+                sd[..., 4*M:5*M] = np.einsum(
+                    'ij,i->ij', fd[..., M:2*M], -tp[0]
+                ) # f-η
+                sd[..., 5*M:] = np.einsum(
+                    'ij,i->ij', fd[..., 2*M:], -tp[0]
+                ) # η-η
+
+            else:
+                # ---a f---
+                sd[..., 2*M:] = np.einsum(
+                    'ij,i->ij', fd[..., M:], (1j * 2 * np.pi * tp[0])
+                ) # f-f
+
+        elif 3 in idx:
+            # ---a η---
+            fd[..., M:] = np.einsum(
+                'ij,i->ij', model_per_oscillator, -tp[0]
+            ) # η
+            sd[..., 2*M:] = np.einsum(
+                'ij,i->ij', fd[..., M:], -tp[0]
+            ) # η-η
+
+        # ---a only---
+
+    elif 1 in idx:
+        fd[..., :M] = 1j * model_per_oscillator # φ
+        sd[..., :M] = 1j * fd[..., :M] # φ-φ
+
+        if 2 in idx:
+            fd[..., M:2*M] = np.einsum(
+                'ij,i->ij', model_per_oscillator, (1j * 2 * np.pi * tp[0])
+            ) # f
+            sd[..., M:2*M] = 1j * fd[..., M:2*M] / para[:M] # φ-f
+
+            if 3 in idx:
+                # ---φ f η---
+                fd[..., 2*M:] = np.einsum(
+                    'ij,i->ij', model_per_oscillator, -tp[0]
+                ) # η
+                sd[..., 2*M:3*M] = fd[..., 2*M:] / para[:M] # φ-η
+                sd[..., 3*M:4*M] = np.einsum(
+                    'ij,i->ij', fd[..., M:2*M], (1j * 2 * np.pi * tp[0])
+                ) # f-f
+                sd[..., 4*M:5*M] = np.einsum(
+                    'ij,i->ij', fd[..., M:2*M], -tp[0]
+                ) # f-η
+                sd[..., 5*M:] = np.einsum(
+                    'ij,i->ij', fd[..., 2*M:], -tp[0]
+                ) # η-η
+
+            else:
+                # ---φ f---
+                sd[..., 2*M:] = np.einsum(
+                    'ij,i->ij', fd[..., M:], (1j * 2 * np.pi * tp[0])
+                ) # f-f
+
+        elif 3 in idx:
+            # ---φ η---
+            fd[..., M:] = np.einsum(
+                'ij,i->ij', model_per_oscillator, -tp[0]
+            ) # η
+            sd[..., M:2*M] = fd[..., M:] / para[:M] # φ-η
+            sd[..., 2*M:] = np.einsum(
+                'ij,i->ij', fd[..., M:], -tp[0]
+            ) # η-η
+
+        # ---φ only---
+
+    elif 2 in idx:
+        fd[..., :M] = np.einsum(
+            'ij,i->ij', model_per_oscillator, (1j * 2 * np.pi * tp[0])
+        ) # f
+        sd[..., :M] = 1j * fd[..., :M] / para[:M] # f-f
+
+        if 3 in idx:
+            # ---f η---
+            fd[..., M:] = np.einsum(
+                'ij,i->ij', model_per_oscillator, -tp[0]
+            ) # η
+            sd[..., M:2*M] = np.einsum(
+                'ij,i->ij', fd[..., :M], -tp[0]
+            ) # f-η
+            sd[..., 2*M:] = np.einsum(
+                'ij,i->ij', fd[..., M:], -tp[0]
+            ) # η-η
+
+        # ---f only---
+
+    else:
+        # ---η only---
+        fd[..., :] = np.einsum(
+            'ij,i->ij', model_per_oscillator, -tp[0]
+        ) # η
+        sd[..., :] = np.einsum(
+            'ij,i->ij', fd[..., :], -tp[0]
+        ) # η-η
+
+
+    residual = data - np.sum(model_per_oscillator, axis=1)
+
+    # cost function
+    func = np.real(residual.conj().T @ residual)
+
+    # gradient of cost function
+    grad = -2 * np.real(fd.conj().T @ residual)
+
+    # hessian of cost function
+    hess = np.zeros((n*M, n*M))
+
+    # elements in the Hessian which have non-zero model second derivatives
+    # these lie along diagonals n*M off the main
+    # diagonal, where n is an integer, and 0 is included
+    diags = -2 * np.real(sd.conj().T @ residual)
+
+    # determine indices of elements which have non-zero model second derivs
+    # (specfically, those in upper triangle)
+    diag_idx_0, diag_idx_1 = _generate_diag_indices(n, M)
+
+    hess[diag_idx_0, diag_idx_1] = diags
+
+    # division by 2 to ensure elements on main diagonal aren't doubled
+    # after transposition
+    hess[_diag_indices(hess, k=0)] = hess[_diag_indices(hess, k=0)] / 2
+
+    # transose (hessian is symmetric)
+    hess += hess.T
+    hess += 2 * np.real(np.einsum('ki,kj->ij', fd.conj(), fd))
+
+    if phase_variance:
+        if 0 in idx:
+            phase_idx = np.arange(M, 2*M)
+        else:
+            phase_idx = np.arange(M)
+
+        mu = np.sum(para[phase_idx]) / M
+        func += (np.sum(para[phase_idx] ** 2) / M) - (mu ** 2)
+        grad[phase_idx] = grad[phase_idx] + ((2 / M) * (para[phase_idx] - mu))
+        hess[phase_idx, phase_idx] += (2/(M**2 * np.pi))
+        hess[_diag_indices(hess, k=0)[0][phase_idx],
+             _diag_indices(hess, k=0)[1][phase_idx]] += 2 / (M * np.pi)
+
+    return func, grad, hess
+
 
 
 
@@ -458,7 +709,7 @@ def _h_1d(para_act, *args):
         if 0 in idx:
             hess[M:2*M, M:2*M] += (2/(M**2 * np.pi))
             hess[_diag_indices(hess, k=0)[0][M:2*M],
-                 _diag_indices(hess, k=0)[1][M:2*M]] += 2 / M
+                 _diag_indices(hess, k=0)[1][M:2*M]] += 2 / (M * np.pi)
         # amplitudes are not being optimised (phases between 0 and M)
         else:
             hess[:M, :M] += (2/(M**2))
