@@ -144,9 +144,6 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
     else: # dim = 2
         cf = {'f' : _f_2d, 'g' : _g_2d, 'h' : _h_2d}
 
-    _f_and_derivatives(theta0_act, *opt_args)
-    exit()
-
     if method == 'trust_region':
         res = minimize(fun=cf['f'], x0=theta0_act,  args=opt_args,
                        method='trust-constr', jac=cf['g'], hess=cf['h'],
@@ -464,8 +461,6 @@ def _f_and_derivatives(
              _diag_indices(hess, k=0)[1][phase_idx]] += 2 / (M * np.pi)
 
     return func, grad, hess
-
-
 
 
 def _f_1d(para_act, *args):
