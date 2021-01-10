@@ -161,8 +161,8 @@ class DataType(MyToplevel):
         self.logoframe.grid(row=0, column=0, rowspan=2)
 
         # frame for option boxes and descriptors
-        self.mainframe = MyFrame(self)
-        self.mainframe.grid(row=0, column=1)
+        self.main_frame = MyFrame(self)
+        self.main_frame.grid(row=0, column=1)
 
         # frame for save/cancel buttons
         self.buttonframe = MyFrame(self)
@@ -180,48 +180,48 @@ class DataType(MyToplevel):
         self.logo.grid(row=0, column=0, padx=10, pady=10)
 
         message = MyLabel(
-            self.mainframe, text='Which data would you like to analyse?',
-            font=('Helvetica', '12', 'bold'),
+            self.main_frame, text='Which data would you like to analyse?',
+            font=(MAINFONT, '12', 'bold'),
         )
         message.grid(
             column=0, row=0, columnspan=2, padx=10, pady=(10,0)
         )
 
         pdata_label = MyLabel(
-            self.mainframe, text='Processed Data'
+            self.main_frame, text='Processed Data'
         )
         pdata_label.grid(
             column=0, row=1, padx=(10,0), pady=(10,0), sticky='w'
         )
 
         pdatapath = MyLabel(
-            self.mainframe, text=f'{self.pdatapath}/1r', font=('Courier', 11),
+            self.main_frame, text=f'{self.pdatapath}/1r', font=('Courier', 11),
         )
         pdatapath.grid(column=0, row=2, padx=(10, 0), sticky='w')
 
         self.pdata = tk.IntVar()
         self.pdata.set(1)
         self.pdata_box = MyCheckbutton(
-            self.mainframe, variable=self.pdata, command=self.click_pdata,
+            self.main_frame, variable=self.pdata, command=self.click_pdata,
         )
         self.pdata_box.grid(
             column=1, row=1, rowspan=2, padx=10, sticky='nsw'
         )
 
-        fid_label = MyLabel(self.mainframe, text='Raw FID')
+        fid_label = MyLabel(self.main_frame, text='Raw FID')
         fid_label.grid(
             column=0, row=3, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         fidpath = MyLabel(
-            self.mainframe, text=f'{self.fidpath}/fid', font=('Courier', 11),
+            self.main_frame, text=f'{self.fidpath}/fid', font=('Courier', 11),
         )
         fidpath.grid(column=0, row=4, padx=(10, 0), sticky='w')
 
         self.fid = tk.IntVar()
         self.fid.set(0)
         self.fid_box = MyCheckbutton(
-            self.mainframe, variable=self.fid, command=self.click_fid,
+            self.main_frame, variable=self.fid, command=self.click_fid,
         )
         self.fid_box.grid(
             column=1, row=3, rowspan=2, padx=10, sticky='nsw'
@@ -312,12 +312,17 @@ class NMREsPyApp(tk.Tk):
         # constants
         self.consts = AutoVivification()
 
+        self.consts['n'] = self.spectrum.shape[0]
         for u in ['hz', 'ppm']:
             self.consts['sw'][u] = self.info.get_sw(unit=u)[0]
             self.consts['off'][u] = self.info.get_offset(unit=u)[0]
             self.consts['shifts'][u] = self.info.get_shifts(unit=u)[0]
 
-        self.consts['n'] = self.spectrum.shape[0]
+        for name in ['sw', 'off']:
+            self.consts[name]['idx'] = self.convert(
+                self.consts[name]['hz'], conversion='hz->idx',
+            )
+
         self.consts['sfo'] = self.info.get_sfo()[0]
         self.consts['nucleus'] = self.info.get_nucleus()[0]
 
@@ -382,6 +387,7 @@ class NMREsPyApp(tk.Tk):
         self.adsettings['cut']['value'] = True
         self.adsettings['cut']['var'] = tk.IntVar()
         self.adsettings['cut']['var'].set(1)
+
 
         # ratio of length of cut signal and filter length
         self.adsettings['cut_ratio']['value'] = 2.5
@@ -456,12 +462,17 @@ class NMREsPyApp(tk.Tk):
         self.adsettings['use_freq_thold']['var'].set(1)
 
         # frequency threshold for merging excessively close oscillators
-        for u in ['hz', 'ppm']:
-            self.adsettings['freq_thold']['value'][u] = 1 / self.consts['sw'][u]
+        for u in ['idx', 'hz', 'ppm']:
+            self.adsettings['freq_thold']['value'][u] = \
+                self.consts['sw'][u] / self.consts['n']
             self.adsettings['freq_thold']['var'][u] = tk.StringVar()
-            self.adsettings['freq_thold']['var'][u].set(
-                f"{self.adsettings['freq_thold']['value'][u]:.4f}"
-            )
+
+            if u == 'idx':
+                string = str(self.adsettings['freq_thold']['value']['idx'])
+            else:
+                string = f"{self.adsettings['freq_thold']['value'][u]:.4f}"
+
+            self.adsettings['freq_thold']['var'][u].set(string)
 
         self.setupfigure = AutoVivification()
 
@@ -574,27 +585,26 @@ class NMREsPyApp(tk.Tk):
             row=1, column=0, columnspan=2, sticky='ew'
         )
 
-
-        # frame with customaisation tabs (region selection, phase data,
-        # advanced estimation settings)
         self.frames['TabFrame'] = TabFrame(parent=container, ctrl=self)
         self.frames['TabFrame'].grid(
             row=2, column=0, columnspan=2, sticky='ew'
         )
-        #
-        # # frame with cancel/help/run buttons. Also has some contact info
-        # self.frames['SetupButtonFrame'] = SetupButtonFrame(
-        #     parent=container, ctrl=self
-        # )
-        # self.frames['SetupButtonFrame'].grid(row=2, column=1, sticky='s')
-        #
-        # # frame with NMR-EsPy logo and MF group logo
-        # self.frames['LogoFrame'] = LogoFrame(
-        #     parent=container, ctrl=self, scale=0.06
-        # )
-        # self.frames['LogoFrame'].grid(
-        #     row=2, column=0, padx=10, pady=10, sticky='w'
-        # )
+
+        # frame with NMR-EsPy logo and MF group logo
+        self.frames['LogoFrame'] = LogoFrame(
+            parent=container, ctrl=self, scale=0.06
+        )
+        self.frames['LogoFrame'].grid(
+            row=3, column=0, padx=10, pady=10, sticky='w'
+        )
+
+        # frame with cancel/help/run buttons. Also has some contact info
+        self.frames['SetupButtonFrame'] = SetupButtonFrame(
+            parent=container, ctrl=self
+        )
+        self.frames['SetupButtonFrame'].grid(row=3, column=1, sticky='s')
+
+
 
     def convert(self, value, conversion):
         sw = self.consts['sw']['hz']
@@ -619,7 +629,6 @@ class NMREsPyApp(tk.Tk):
 
         elif conversion == 'hz->ppm':
             return value / sfo
-
 
     def update_bound(self, name, idx):
 
@@ -707,6 +716,7 @@ class NMREsPyApp(tk.Tk):
 
         self.frames['PlotFrame'].canvas.draw_idle()
 
+
     def ud_max_points(self):
         """Update the maximum number of points StringVar"""
 
@@ -756,6 +766,69 @@ class NMREsPyApp(tk.Tk):
         return int(
             (self.adsettings['cut_ratio']['value'] * self.region['size']) // 2
         )
+
+
+    def run(self):
+        """Set up the estimation routine"""
+
+        # get parameters
+        region = (
+            self.region['bounds']['lb']['idx'],
+            self.region['bounds']['rb']['idx'],
+        )
+
+        noise_region = (
+            self.region['bounds']['lnb']['idx'],
+            self.region['bounds']['rnb']['idx'],
+        )
+
+        pivot = self.phase['pivot']['ppm']
+        p0 = self.phase['phases']['p0']['rad']
+        p1 = self.phase['phases']['p1']['rad']
+
+
+        cut = self.adsettings['cut']['value']
+        if cut:
+            cut_ratio = self.adsettings['cut_ratio']['value']
+        else:
+            cut_ratio = None
+
+        mpm_points = (self.adsettings['mpm_points']['value'],)
+        nlp_points = (self.adsettings['mpm_points']['value'],)
+
+        # get number of oscillators for initial guess (or determine whether
+        # to use MDL)
+        M_in = self.adsettings['oscillators']['value']
+
+        method = self.adsettings['nlp_algorithm']['value']
+        maxit = self.adsettings['max_iterations']['value']
+        phase_variance = self.adsettings['phase_variance']['value']
+
+        if self.adsettings['use_amp_thold']['value']:
+            amp_thold = self.adsettings['amp_thold']['value']
+        else:
+            amp_thold = None
+
+        self.withdraw()
+
+        self.info.frequency_filter(
+            region=region, noise_region=noise_region, p0=p0, p1=p1,
+            cut=cut, cut_ratio=cut_ratio, region_units='idx',
+        )
+
+        self.info.matrix_pencil(trim=mpm_points, M_in=M_in)
+
+        self.info.nonlinear_programming(
+            trim=nlp_points, maxit=maxit, method=method,
+            phase_variance=phase_variance, amp_thold=amp_thold,
+        )
+
+        self.info.pickle_save(
+            fname='tmp.pkl', dir=TMPDIR, force_overwrite=True
+        )
+
+        ResultFrame(parent=self, ctrl=self)
+
 
 class PlotFrame(MyFrame):
     """Contains a plot, along with navigation toolbar"""
@@ -825,12 +898,12 @@ class TabFrame(MyFrame):
                     'configure': {
                         'padding': [10, 3],
                         'background': NOTEBOOKCOLOR,
-                        'font': ('Helvetica', 11)
+                        'font': (MAINFONT, 11)
                     },
                     'map': {
                         'background': [('selected', ACTIVETABCOLOR)],
                         'expand': [("selected", [1, 1, 1, 0])],
-                        'font': [('selected', ('Helvetica', 11, 'bold'))],
+                        'font': [('selected', (MAINFONT, 11, 'bold'))],
                         'foreground': [('selected', 'white')],
                     }
                 }
@@ -885,7 +958,7 @@ class RegionFrame(MyFrame):
     """Frame inside SetupApp notebook - for altering region boundaries"""
 
     def __init__(self, parent, ctrl):
-        MyFrame.__init__(self, parent, bg=NOTEBOOKCOLOR)
+        super().__init__(parent, bg=NOTEBOOKCOLOR)
         self.ctrl = ctrl
 
         # make scales expandable
@@ -1021,7 +1094,7 @@ class PhaseFrame(MyFrame):
     """Frame inside SetupApp notebook - for phase correction of data"""
 
     def __init__(self, parent, ctrl):
-        super().__init__(parent)
+        super().__init__(parent, bg=NOTEBOOKCOLOR)
         self.ctrl = ctrl
 
         # make scales expandable
@@ -1170,95 +1243,125 @@ class AdvancedSettingsFrame(MyToplevel):
         super().__init__(parent)
         self.ctrl = ctrl
 
-        filter_title = MyLabel(self, text='Filtered Signal', bold=True)
-        filter_title.grid(
+        self.main_frame = MyFrame(self)
+        self.main_frame.grid(row=1, column=0)
+
+        adsettings_title = MyLabel(
+            self.main_frame, text='Advanced Settings',
+            font=(MAINFONT, 14, 'bold'),
+        )
+        adsettings_title.grid(
             row=0, column=0, columnspan=2, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        cut_label = MyLabel(self, text='Cut signal:')
-        cut_label.grid(row=1, column=0, padx=(10,0), pady=(10,0), sticky='w')
+        filter_title = MyLabel(
+            self.main_frame, text='Signal Filter Options', bold=True,
+        )
+        filter_title.grid(
+            row=1, column=0, columnspan=2, padx=(10,0), pady=(10,0), sticky='w',
+        )
+
+        cut_label = MyLabel(self.main_frame, text='Cut signal:')
+        cut_label.grid(row=2, column=0, padx=(10,0), pady=(10,0), sticky='w')
 
         self.cut_checkbutton = MyCheckbutton(
-            self, variable=self.ctrl.adsettings['cut']['var'],
+            self.main_frame, variable=self.ctrl.adsettings['cut']['var'],
             command=self.ud_cut,
         )
         self.cut_checkbutton.grid(
-            row=1, column=1, padx=10, pady=(10,0), sticky='w',
+            row=2, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
         ratio_label = MyLabel(
-            self, text='Cut width/filter width ratio:',
+            self.main_frame, text='Cut width/filter width ratio:',
         )
-        ratio_label.grid(row=2, column=0, padx=(10,0), pady=(10,0), sticky='w')
+        ratio_label.grid(row=3, column=0, padx=(10,0), pady=(10,0), sticky='w')
 
         self.ratio_entry = MyEntry(
-            self, textvariable=self.ctrl.adsettings['cut_ratio']['var'],
+            self.main_frame,
+            return_command=self.ud_cut_ratio,
+            return_args=(),
+            textvariable=self.ctrl.adsettings['cut_ratio']['var'],
         )
-        self.ratio_entry.bind('<Return>', (lambda event: self.ud_cut_ratio()))
-        self.ratio_entry.grid(row=2, column=1, padx=10, pady=(10,0), sticky='w')
+        self.ratio_entry.grid(row=3, column=1, padx=10, pady=(10,0), sticky='w')
 
-        mpm_title = MyLabel(self, text='Matrix Pencil', bold=True)
+        mpm_title = MyLabel(self.main_frame, text='Matrix Pencil', bold=True)
         mpm_title.grid(
-            row=3, column=0, columnspan=2, padx=(10,0), pady=(10,0), sticky='w',
+            row=4, column=0, columnspan=2, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        datapoint_label = MyLabel(self, text='Datapoints to consider*:')
+        datapoint_label = MyLabel(self.main_frame, text='Datapoints to consider*:')
         datapoint_label.grid(
-            row=4, column=0, padx=(10,0), pady=(10,0), sticky='w',
-        )
-
-        self.mpm_points_entry = MyEntry(
-            self, textvariable=self.ctrl.adsettings['mpm_points']['var'],
-        )
-        self.mpm_points_entry.grid(
-            row=4, column=1, padx=10, pady=(10,0), sticky='w',
-        )
-
-        oscillator_label = MyLabel(self, text='Number of oscillators:')
-        oscillator_label.grid(
             row=5, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        self.oscillator_entry = MyEntry(self, state='disabled',
-            textvariable=self.ctrl.adsettings['oscillators']['var'],
+        self.mpm_points_entry = MyEntry(
+            self.main_frame,
+            return_command=self.ud_points,
+            return_args=('mpm',),
+            textvariable=self.ctrl.adsettings['mpm_points']['var'],
         )
-        self.oscillator_entry.grid(
+        self.mpm_points_entry.grid(
             row=5, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
-        use_mdl_label = MyLabel(self, text='Use MDL:')
-        use_mdl_label.grid(
+        oscillator_label = MyLabel(
+            self.main_frame, text='Number of oscillators:',
+        )
+        oscillator_label.grid(
             row=6, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        self.mdl_checkbutton = MyCheckbutton(
-            self, variable=self.ctrl.adsettings['mdl']['var'],
-            command=self.ud_mdl_button,
+        self.oscillator_entry = MyEntry(
+            self.main_frame,
+            return_command=self.ud_oscillators, return_args=(),
+            state='disabled',
+            textvariable=self.ctrl.adsettings['oscillators']['var'],
         )
-        self.mdl_checkbutton.grid(
+        self.oscillator_entry.grid(
             row=6, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
-        nlp_title = MyLabel(self, text='Nonlinear Programming', bold=True)
-        nlp_title.grid(
-            row=7, column=0, columnspan=2, padx=10, pady=(10,0), sticky='w',
+        use_mdl_label = MyLabel(self.main_frame, text='Use MDL:')
+        use_mdl_label.grid(
+            row=7, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        datapoint_label = MyLabel(self, text='Datapoints to consider*:')
+        self.mdl_checkbutton = MyCheckbutton(
+            self.main_frame, variable=self.ctrl.adsettings['mdl']['var'],
+            command=self.ud_mdl_button,
+        )
+        self.mdl_checkbutton.grid(
+            row=7, column=1, padx=10, pady=(10,0), sticky='w',
+        )
+
+        nlp_title = MyLabel(
+            self.main_frame, text='Nonlinear Programming', bold=True,
+        )
+        nlp_title.grid(
+            row=8, column=0, columnspan=2, padx=10, pady=(10,0), sticky='w',
+        )
+
+        datapoint_label = MyLabel(
+            self.main_frame, text='Datapoints to consider*:',
+        )
         datapoint_label.grid(
-            row=8, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=9, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
         self.nlp_points_entry = MyEntry(
-            self, textvariable=self.ctrl.adsettings['nlp_points']['var'],
+            self.main_frame,
+            return_command=self.ud_points,
+            return_args=('nlp',),
+            textvariable=self.ctrl.adsettings['nlp_points']['var'],
         )
         self.nlp_points_entry.grid(
-            row=8, column=1, padx=10, pady=(10,0), sticky='w',
+            row=9, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
-        nlp_method_label = MyLabel(self, text='NLP algorithm:')
+        nlp_method_label = MyLabel(self.main_frame, text='NLP algorithm:')
         nlp_method_label.grid(
-            row=9, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=10, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
         options = ('Trust Region', 'L-BFGS')
@@ -1267,7 +1370,8 @@ class AdvancedSettingsFrame(MyToplevel):
         # that inherited from tk.OptionMenu
         # had to customise manually after generating an instance
         self.algorithm_menu = tk.OptionMenu(
-            self, self.ctrl.adsettings['nlp_algorithm']['var'], *options
+            self.main_frame, self.ctrl.adsettings['nlp_algorithm']['var'],
+            *options
         )
 
         self.algorithm_menu['bg'] = 'white'
@@ -1281,105 +1385,150 @@ class AdvancedSettingsFrame(MyToplevel):
         # change the max. number of iterations after changing NLP
         # algorithm
         self.ctrl.adsettings['nlp_algorithm']['var'].trace(
-            'w', self.ud_max_iterations,
+            'w', self.ud_nlp_algorithm,
         )
 
         self.algorithm_menu.grid(
-            row=9, column=1, padx=10, pady=(10,0), sticky='w',
-        )
-
-        max_iterations_label = MyLabel(self, text='Maximum iterations:')
-        max_iterations_label.grid(
-            row=10, column=0, padx=(10,0), pady=(10,0), sticky='w',
-        )
-
-        self.max_iterations_entry = MyEntry(
-            self, textvariable=self.ctrl.adsettings['max_iterations']['var'],
-        )
-        self.max_iterations_entry.grid(
             row=10, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
-        phase_variance_label = MyLabel(self, text='Optimise phase variance:')
-        phase_variance_label.grid(
+        max_iterations_label = MyLabel(self.main_frame, text='Maximum iterations:')
+        max_iterations_label.grid(
             row=11, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        self.phase_var_checkbutton = MyCheckbutton(
-            self, variable=self.ctrl.adsettings['phase_variance']['var'],
-            command=self.ud_phase_variance,
+        self.max_iterations_entry = MyEntry(
+            self.main_frame,
+            return_command=self.ud_max_iterations,
+            return_args=(),
+            textvariable=self.ctrl.adsettings['max_iterations']['var'],
         )
-        self.phase_var_checkbutton.grid(
+        self.max_iterations_entry.grid(
             row=11, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
-        # amplitude/frequency thresholds
-        amplitude_thold_label = MyLabel(self, text='Amplitude threshold:')
-        amplitude_thold_label.grid(
+        phase_variance_label = MyLabel(self.main_frame, text='Optimise phase variance:')
+        phase_variance_label.grid(
             row=12, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        self.amplitude_thold_frame = MyFrame(self)
-        self.amplitude_thold_frame.columnconfigure(1, weight=1)
-        self.amplitude_thold_frame.grid(row=12, column=1, sticky='ew')
-
-        self.amplitude_thold_entry = MyEntry(
-            self.amplitude_thold_frame, state='disabled',
-            textvariable=self.ctrl.adsettings['amp_thold']['var'],
+        self.phase_var_checkbutton = MyCheckbutton(
+            self.main_frame, variable=self.ctrl.adsettings['phase_variance']['var'],
+            command=self.ud_phase_variance,
         )
-        self.amplitude_thold_entry.grid(
-            row=0, column=0, padx=(10,0), pady=(10,0), sticky='w',
+        self.phase_var_checkbutton.grid(
+            row=12, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
-        self.amplitude_thold_checkbutton = MyCheckbutton(
-            self.amplitude_thold_frame,
-            variable=self.ctrl.adsettings['use_amp_thold']['var'],
-            command=lambda name='amp': self.ud_thold_button(name),
-        )
-        self.amplitude_thold_checkbutton.grid(
-            row=0, column=1, pady=(10,0), padx=10, sticky='w',
-        )
-
-        frequency_thold_label = MyLabel(self, text='Frequency threshold:')
-        frequency_thold_label.grid(
+        # amplitude/frequency thresholds
+        amp_thold_label = MyLabel(self.main_frame, text='Amplitude threshold:')
+        amp_thold_label.grid(
             row=13, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        self.frequency_thold_frame = MyFrame(self)
-        self.frequency_thold_frame.columnconfigure(1, weight=1)
-        self.frequency_thold_frame.grid(row=13, column=1, sticky='ew')
+        self.amp_thold_frame = MyFrame(self.main_frame)
+        self.amp_thold_frame.columnconfigure(1, weight=1)
+        self.amp_thold_frame.grid(row=13, column=1, sticky='ew')
 
-        self.frequency_thold_entry = MyEntry(
-            self.frequency_thold_frame,
-            textvariable=self.ctrl.adsettings['freq_thold']['var']['ppm'],
+        self.amp_thold_entry = MyEntry(
+            self.amp_thold_frame, state='disabled',
+            return_command=self.ud_amp_thold, return_args=(),
+            textvariable=self.ctrl.adsettings['amp_thold']['var'],
         )
-        self.frequency_thold_entry.grid(
+        self.amp_thold_entry.grid(
             row=0, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
-        self.frequency_thold_checkbutton = MyCheckbutton(
-            self.frequency_thold_frame,
-            variable=self.ctrl.adsettings['use_freq_thold']['var'],
-            command=lambda name='freq': self.ud_thold_button(name),
+        self.amp_thold_checkbutton = MyCheckbutton(
+            self.amp_thold_frame,
+            variable=self.ctrl.adsettings['use_amp_thold']['var'],
+            command=lambda name='amp': self.ud_thold_button(name),
         )
-        self.frequency_thold_checkbutton.grid(
+        self.amp_thold_checkbutton.grid(
             row=0, column=1, pady=(10,0), padx=10, sticky='w',
         )
 
+
+        ## May reincorporate later on
+        # freq_thold_label = MyLabel(self.main_frame, text='Frequency threshold:')
+        # freq_thold_label.grid(
+        #     row=14, column=0, padx=(10,0), pady=(10,0), sticky='w',
+        # )
+        #
+        # self.freq_thold_frame = MyFrame(self.main_frame)
+        # self.freq_thold_frame.columnconfigure(1, weight=1)
+        # self.freq_thold_frame.grid(row=14, column=1, sticky='ew')
+        #
+        # self.freq_thold_entry = MyEntry(
+        #     self.freq_thold_frame,
+        #     textvariable=self.ctrl.adsettings['freq_thold']['var']['ppm'],
+        # )
+        # self.freq_thold_entry.grid(
+        #     row=0, column=0, padx=(10,0), pady=(10,0), sticky='w',
+        # )
+        #
+        # self.freq_thold_checkbutton = MyCheckbutton(
+        #     self.freq_thold_frame,
+        #     variable=self.ctrl.adsettings['use_freq_thold']['var'],
+        #     command=lambda name='freq': self.ud_thold_button(name),
+        # )
+        # self.freq_thold_checkbutton.grid(
+        #     row=0, column=1, pady=(10,0), padx=10, sticky='w',
+        # )
+        # # ============================================================
+
+        self.button_frame = MyFrame(self)
+        self.button_frame.columnconfigure(2, weight=1)
+        self.button_frame.grid(row=2, column=0, sticky='ew')
+
         max_label = MyLabel(
-            self, text='*Max points to consider:', font=('Helvetica', 9),
+            self.button_frame, text='*Max points to consider:',
+            font=(MAINFONT, 9),
         )
         max_label.grid(
-            row=14, column=0, padx=(10,0), pady=(20,10), sticky='w',
+            row=0, column=0, padx=(10,0), pady=(20,10), sticky='w',
         )
 
         self.max_points_label_mpm = MyLabel(
-            self, bold=True, font=('Helvetica', 9),
+            self.button_frame, bold=True, font=(MAINFONT, 9, 'bold'),
             textvariable=self.ctrl.adsettings['max_points']['var'],
         )
         self.max_points_label_mpm.grid(
-            row=14, column=1, padx=10, pady=(20,10), sticky='w',
+            row=0, column=1, padx=(3,0), pady=(20,10), sticky='w',
         )
+
+        self.close_button = MyButton(
+            self.button_frame, text='Close', command=self.destroy
+        )
+        self.close_button.grid(row=0, column=2, padx=10, pady=(20,10), sticky='e')
+
+
+
+    def _check_int(self, value):
+
+        try:
+            int_value = int(value)
+            float_value = float(value)
+
+            if int_value == float_value:
+                return True
+            else:
+                return False
+
+        except:
+            return False
+
+
+    def _check_float(self, value):
+
+        try:
+            float_value = float(value)
+            return True
+        except:
+            return False
+
+    def _reset(self, obj):
+        obj['var'].set(set(obj['value']))
 
 
     def ud_cut(self):
@@ -1393,19 +1542,36 @@ class AdvancedSettingsFrame(MyToplevel):
 
         self.ctrl.ud_max_points()
 
+
     def ud_cut_ratio(self):
 
         # check the value can be interpreted as a float
-        try:
-            cut_ratio = float(self.ctrl.adsettings['cut_ratio']['var'].get())
-            self.ctrl.adsettings['cut_ratio']['value'] = cut_ratio
-
+        str_value = self.ctrl.adsettings['cut_ratio']['var'].get()
+        if self._check_float(str_value) and float(str_value) >= 1.0:
+            float_value = float(str_value)
+            self.ctrl.adsettings['cut_ratio']['value'] = float_value
             self.ctrl.ud_max_points()
 
-        except:
+        else:
             self.ctrl.adsettings['cut_ratio']['var'].set(
                 str(self.ctrl.adsettings['cut_ratio']['value'])
             )
+
+
+    def ud_points(self, name):
+
+        str_value = self.ctrl.adsettings[f'{name}_points']['var'].get()
+        if self._check_int(str_value) and \
+        0 < int(str_value) <= self.ctrl.adsettings['max_points']['value']:
+            int_value = int(str_value)
+            self.ctrl.adsettings[f'{name}_points']['value'] = int_value
+            self.ctrl.adsettings[f'{name}_points']['var'].set(str(int_value))
+
+        else:
+            self.ctrl.adsettings[f'{name}_points']['var'].set(
+                str(self.ctrl.adsettings[f'{name}_points']['value'])
+            )
+
 
     def ud_mdl_button(self):
         """For when the user clicks on the checkbutton relating to use the
@@ -1414,24 +1580,45 @@ class AdvancedSettingsFrame(MyToplevel):
         if int(self.ctrl.adsettings['mdl']['var'].get()):
             self.ctrl.adsettings['mdl']['value'] = True
             self.oscillator_entry['state'] = 'disabled'
+            self.ctrl.adsettings[f'oscillators']['value'] = 0
+            self.ctrl.adsettings[f'oscillators']['var'].set('')
         else:
             self.ctrl.adsettings['mdl']['value'] = False
             self.oscillator_entry['state'] = 'normal'
 
 
-    def ud_thold_button(self, name):
-        """For when the user clicks on the checkbutton relating to whether
-        or not to impose an amplitude threshold"""
+    def ud_oscillators(self):
 
-        if int(self.ctrl.adsettings[f'use_{name}_thold']['var'].get()):
-            self.ctrl.adsettings[f'use_{name}_thold']['value'] = True
-            self.amplitude_thold_entry['state'] = 'normal'
+        str_value = self.ctrl.adsettings['oscillators']['var'].get()
+        if self._check_int(str_value) and int(str_value) > 0:
+            int_value = int(str_value)
+            self.ctrl.adsettings[f'oscillators']['value'] = int_value
+            self.ctrl.adsettings[f'oscillators']['var'].set(str(int_value))
+
         else:
-            self.ctrl.adsettings[f'use_{name}_thold']['value'] = False
-            self.amplitude_thold_entry['state'] = 'disabled'
+            if self.ctrl.adsettings[f'oscillators']['value'] == 0:
+                self.ctrl.adsettings[f'oscillators']['var'].set('')
+            else:
+                self.ctrl.adsettings[f'oscillators']['var'].set(
+                    str(self.ctrl.adsettings[f'oscillators']['value'])
+                )
 
 
-    def ud_max_iterations(self, *args):
+    def ud_max_iterations(self):
+
+        str_value = self.ctrl.adsettings['max_iterations']['var'].get()
+        if self._check_int(str_value) and int(str_value) > 0:
+            int_value = int(str_value)
+            self.ctrl.adsettings[f'max_iterations']['value'] = int_value
+            self.ctrl.adsettings[f'max_iterations']['var'].set(str(int_value))
+
+        else:
+            self.ctrl.adsettings[f'max_iterations']['var'].set(
+                str(self.ctrl.adsettings[f'max_iterations']['value'])
+            )
+
+
+    def ud_nlp_algorithm(self, *args):
         """Called when user changes the NLP algorithm. Sets the default
         number of maximum iterations for the given method"""
 
@@ -1446,6 +1633,7 @@ class AdvancedSettingsFrame(MyToplevel):
             self.ctrl.adsettings['max_iterations']['value'] = 500
             self.ctrl.adsettings['max_iterations']['var'].set('500')
 
+
     def ud_phase_variance(self):
 
         if int(self.ctrl.adsettings['phase_variance']['var'].get()):
@@ -1454,10 +1642,37 @@ class AdvancedSettingsFrame(MyToplevel):
             self.ctrl.adsettings['phase_variance']['value'] = False
 
 
-class RootButtonFrame(tk.Frame):
+    def ud_thold_button(self, name):
+        """For when the user clicks on the checkbutton relating to whether
+        or not to impose an amplitude threshold"""
+
+        if int(self.ctrl.adsettings[f'use_{name}_thold']['var'].get()):
+            self.ctrl.adsettings[f'use_{name}_thold']['value'] = True
+            self.__dict__[f'{name}_thold_entry']['state'] = 'normal'
+        else:
+            self.ctrl.adsettings[f'use_{name}_thold']['value'] = False
+            self.__dict__[f'{name}_thold_entry']['state'] = 'disabled'
+
+
+    def ud_amp_thold(self):
+
+        str_value = self.ctrl.adsettings['amp_thold']['var'].get()
+
+        if self._check_float(str_value):
+            float_value = float(str_value)
+
+            if 0.0 <= float_value < 1.0:
+                self.ctrl.adsettings['amp_thold']['value'] = float_value
+                self.ctrl.ud_max_points()
+                return
+
+        self._reset(self.ctrl.adsettings['amp_thold'])
+
+
+class RootButtonFrame(MyFrame):
 
     def __init__(self, parent, ctrl):
-        MyFrame.__init__(self, parent)
+        super().__init__(parent)
         self.ctrl = ctrl
 
         self.cancel_button = MyButton(
@@ -1478,24 +1693,23 @@ class RootButtonFrame(tk.Frame):
         # command varies - will need to be defined from the class that
         # inherits from this
         # for example, see SetupButtonFrame
-        self.save_button = tk.Button(
-            self, text='Run', width=8, bg='#9eda88',
-            highlightbackground='black'
+        self.save_button = MyButton(
+            self, text='Run', bg=BUTTONGREEN, command=self.ctrl.run
         )
         self.save_button.grid(
             row=1, column=2, padx=10, pady=(10,0), sticky='e'
         )
 
-        contact_info_1 = tk.Label(
-            self, text='For queries/feedback, contact', bg='white'
+        contact_info_1 = MyLabel(
+            self, text='For queries/feedback, contact',
         )
         contact_info_1.grid(
             row=2, column=0, columnspan=3, padx=10, pady=(10,0), sticky='w'
         )
 
-        contact_info_2 = tk.Label(
-            self, text='simon.hulse@chem.ox.ac.uk', bg='white', font='Courier',
-            fg='blue', cursor='hand1',
+        contact_info_2 = MyLabel(
+            self, text='simon.hulse@chem.ox.ac.uk', font='Courier', fg='blue',
+            cursor='hand1',
         )
         contact_info_2.bind(
             '<Button-1>', lambda e: webbrowser.open_new(EMAILLINK)
@@ -1511,163 +1725,10 @@ class SetupButtonFrame(RootButtonFrame):
     and running NMR-EsPy"""
 
     def __init__(self, parent, ctrl):
-        RootButtonFrame.__init__(self, parent, ctrl)
+        super().__init__(parent, ctrl)
         self.ctrl = ctrl
-        self.save_button['command'] = self.run
+        self.save_button['command'] = self.ctrl.run
 
-    def run(self):
-        """Set up the estimation routine"""
-
-        # get parameters
-        spectrum = self.ctrl.spectrum_plot.get_ydata()
-
-        region = (self.ctrl.lb, self.ctrl.rb)
-        noise_region = (self.ctrl.lnb, self.ctrl.rnb)
-
-        pivot = self.ctrl.pivot
-        p0 = self.ctrl.p0
-        p1 = self.ctrl.p1
-
-
-        cut = int(self.ctrl.cut.get())
-        if cut:
-            cut_ratio = float(self.ctrl.cut_ratio.get())
-        else:
-            cut_ratio = None
-
-        max_points = int(self.ctrl.max_points.get())
-
-        # check mpm_points and nlp_points are valid (ints)
-        try:
-            mpm_points = (int(self.ctrl.mpm_points_var.get()),)
-        except:
-            msg = 'The number of points for the MPM is not valid' \
-                  + f' (\'{mpm_points}\' could not be converted to an integer)'
-            WarnFrame(self.ctrl, msg)
-            return
-
-        try:
-            nlp_points = (int(self.ctrl.nlp_points_var.get()),)
-        except:
-            msg = 'The number of points for nonlinear programming is not' \
-                  + f' valid (\'{nlp_points}\' could not be converted to an' \
-                  + ' integer)'
-            WarnFrame(self.ctrl, msg)
-            return
-
-        # check mpm_points and nlp_points are not larger than permitted by
-        # the signal's full size
-        if mpm_points[0] > max_points:
-            msg = 'The number of points for the MPM is too large' \
-                  + ' (it should be less than or equal to' \
-                  + f' {max_points})'
-            WarnFrame(self.ctrl, msg)
-            return
-
-        if nlp_points[0] > max_points:
-            msg = 'The number of points for the nonlinear programming is too' \
-                  + ' large (it should be less than or equal to' \
-                  + f' {max_points})'
-            WarnFrame(self.ctrl, msg)
-            return
-
-        # get number of oscillators for initial guess (or determine whether
-        # to use MDL)
-        if int(self.ctrl.use_mdl.get()):
-            M_in = 0
-        else:
-            try:
-                M_in = int(self.ctrl.M_var.get())
-            except:
-                 msg = f'The number of oscillators for the MPM (\'{M_in}\')' \
-                       + ' could not be interpreted as an integer.'
-                 WarnFrame(self.ctrl, msg)
-                 return
-
-        algorithm = self.ctrl.nlp_algorithm.get()
-        if algorithm == 'Trust Region':
-            algorithm = 'trust_region'
-        elif algorithm == 'L-BFGS':
-            algorithm = 'lbfgs'
-
-        try:
-            max_iterations = int(self.ctrl.max_iterations.get())
-        except:
-            msg = 'The number of maximum iterations for nonlinear programming' \
-                  + f' (\'{self.ctrl.max_iterations.get()}\') could not be' \
-                  + ' interpreted as an integer.'
-            WarnFrame(self.ctrl, msg)
-            return
-
-        phase_variance = bool(int(self.ctrl.phase_variance.get()))
-
-        use_amp_thold = int(self.ctrl.use_amp_thold.get())
-
-        if use_amp_thold:
-            amplitude_thold = self.ctrl.amplitude_thold.get()
-            if amplitude_thold == '':
-                amplitude_thold = None
-            else:
-                try:
-                    amplitude_thold = float(amplitude_thold)
-                except:
-                    msg = f'The amplitude threshold (\'{amplitude_thold}\')' \
-                          + ' could not be interpreted as a float.'
-                    WarnFrame(self.ctrl, msg)
-                    return
-
-        else:
-            amplitude_thold = None
-
-        use_freq_thold = int(self.ctrl.use_freq_thold.get())
-
-        if use_freq_thold:
-            frequency_thold = self.ctrl.frequency_thold.get()
-            if frequency_thold == '':
-                frequency_thold = None
-            else:
-                try:
-                    frequency_thold = float(frequency_thold)
-                except:
-                    msg = f'The frequency threshold (\'{frequency_thold}\')' \
-                          + ' could not be interpreted as a float.'
-                    WarnFrame(self.ctrl, msg)
-                    return
-
-        else:
-            frequency_thold = None
-
-        self.ctrl.withdraw()
-
-        # self.ctrl.info.frequency_filter(
-        #     region=region, noise_region=noise_region, p0=p0, p1=p1,
-        #     cut=cut, cut_ratio=cut_ratio, region_units='idx'
-        # )
-        #
-        # x = []
-        # y = []
-
-        for i in range(11):
-            self.ctrl.info.frequency_filter(
-                region=region, noise_region=noise_region, p0=p0, p1=p1,
-                cut=cut, cut_ratio=cut_ratio + i*0.5, region_units='idx'
-            )
-
-
-        self.ctrl.info.matrix_pencil(trim=mpm_points, M_in=M_in)
-
-        self.ctrl.info.nonlinear_programming(
-            trim=nlp_points, maxit=max_iterations, method=algorithm,
-            phase_variance=phase_variance, amp_thold=amplitude_thold,
-            freq_thold=frequency_thold
-        )
-
-
-        self.ctrl.info.pickle_save(
-            fname='tmp.pkl', dir=GUIDIR, force_overwrite=True
-        )
-
-        ResultFrame(parent=self.ctrl, ctrl=self.ctrl)
 
 
 class ResultFrame(MyToplevel):
@@ -1763,11 +1824,11 @@ class ResultButtonFrame(RootButtonFrame):
         SaveFrame(parent=self, ctrl=self.ctrl)
 
 
-class LogoFrame(tk.Frame):
+class LogoFrame(MyFrame):
     """Contains the NMR-EsPy logo (who doesn't like a bit of publicity)"""
 
     def __init__(self, parent, ctrl, scale=0.08):
-        MyFrame.__init__(self, parent)
+        super().__init__(parent)
         self.ctrl = ctrl
 
         self.nmrespy_img = get_PhotoImage(
@@ -2131,13 +2192,13 @@ class EditParams(tk.Toplevel):
         self.udbutton = tk.Button(self.tmpframe, text='Save', width=3,
                                   bg='#9eda88', highlightbackground='black',
                                   command=lambda i=i: self.ud_manual(i),
-                                  font=('Helvetica', 10))
+                                  font=(MAINFONT, 10))
         self.udbutton.pack(fill=tk.BOTH, expand=1, side=tk.LEFT, pady=(2,0))
 
         self.cancelbutton = tk.Button(self.tmpframe, text='Cancel', width=3,
                                     bg='#ff9894', highlightbackground='black',
                                     command=lambda i=i: self.cancel_manual(i),
-                                    font=('Helvetica', 10))
+                                    font=(MAINFONT, 10))
         self.cancelbutton.pack(fill=tk.BOTH, expand=1, side=tk.RIGHT,
                                padx=(3,10), pady=(2,0))
 
@@ -2388,7 +2449,7 @@ class SplitFrame(tk.Toplevel):
         # separatio, amplitude ratio)
         title = tk.Label(self, bg='white',
                          text=f'Splitting Oscillator {index + 1}:',
-                         font=('Helvetica', 12, 'bold'))
+                         font=(MAINFONT, 12, 'bold'))
         title.grid(row=0, column=0, columnspan=3, sticky='w', padx=10,
                    pady=(10,0))
 
@@ -2833,7 +2894,7 @@ class GeneralFrame(tk.Frame):
         self['bg'] = 'white'
 
         tk.Label(
-            self, text='GeneralFrame', font=('Helvetica', 20, 'bold'), bg='white'
+            self, text='GeneralFrame', font=(MAINFONT, 20, 'bold'), bg='white'
         ).pack(padx=30, pady=30)
 
 
@@ -2845,7 +2906,7 @@ class AxesFrame(tk.Frame):
         self['bg'] = 'white'
 
         tk.Label(
-            self, text='AxesFrame', font=('Helvetica', 20, 'bold'), bg='white'
+            self, text='AxesFrame', font=(MAINFONT, 20, 'bold'), bg='white'
         ).pack(padx=30, pady=30)
 
 
@@ -2860,7 +2921,7 @@ class LinesFrame(tk.Frame):
         items += [f'osc{i+1}' for i in range(self.ctrl.info.theta.shape[0])]
 
         tk.Label(
-            self, text='Color:', font=('Helvetica', 12, 'bold'), bg='white'
+            self, text='Color:', font=(MAINFONT, 12, 'bold'), bg='white'
         ).grid(row=0, column=1, padx=10, pady=(10,0), sticky='w')
 
         self.frames = {}
@@ -2877,7 +2938,7 @@ class LinesFrame(tk.Frame):
             lwframe.grid(row=1, column=0)
 
             tk.Label(
-                lwframe, text='Linewidth:', font=('Helvetica', 12, 'bold'),
+                lwframe, text='Linewidth:', font=(MAINFONT, 12, 'bold'),
                 bg='white'
             ).grid(row=0, column=0, padx=(10,0), pady=(10,0), sticky='w')
 
@@ -2920,7 +2981,7 @@ class LabelsFrame(tk.Frame):
         self['bg'] = 'white'
 
         tk.Label(
-            self, text='LabelsFrame', font=('Helvetica', 20, 'bold'), bg='white'
+            self, text='LabelsFrame', font=(MAINFONT, 20, 'bold'), bg='white'
         ).pack(padx=30, pady=30)
 
 
@@ -3222,7 +3283,7 @@ class LineEdit(tk.Frame):
 
         # --- FRAME 3: Linewidth ----------------------------------------------
         self.lw_ttl = tk.Label(self.lwframe, text='Linewidth', bg='white',
-                               font=('Helvetica', 12))
+                               font=(MAINFONT, 12))
 
         self.lw_scale = tk.Scale(
             self.lwframe, from_=0, to=2.5, orient=tk.HORIZONTAL,
@@ -3245,7 +3306,7 @@ class LineEdit(tk.Frame):
 
         # --- FRAME 4: Linestyle Optionmenu -----------------------------------
         self.ls_ttl = tk.Label(self.lsframe, text='Linestyle', bg='white',
-                               font=('Helvetica', 12))
+                               font=(MAINFONT, 12))
 
         self.ls_options = ('solid', 'dotted', 'dashed', 'dashdot')
         self.ls_str = tk.StringVar()
@@ -3333,7 +3394,7 @@ class LineMultiEdit(tk.Frame):
         self.colorbotframe.rowconfigure(1, weight=1)
 
         self.color_ttl = tk.Label(self.colortopframe, text='Color Cycle',
-                                  bg='white', font=('Helvetica', 12))
+                                  bg='white', font=(MAINFONT, 12))
         self.color_ttl.grid(row=0, column=0)
 
         self.colorlist = tk.Listbox(self.colorbotframe)
@@ -3354,7 +3415,7 @@ class LineMultiEdit(tk.Frame):
 
         # --- FRAME 2: Linewidth ----------------------------------------------
         self.lw_ttl = tk.Label(self.lwframe, text='Linewidth', bg='white',
-                               font=('Helvetica', 12))
+                               font=(MAINFONT, 12))
 
         self.lw_scale = tk.Scale(self.lwframe, from_=0, to=5, orient=tk.HORIZONTAL,
                                  showvalue=0, bg='white', sliderlength=15, bd=0,
@@ -3374,7 +3435,7 @@ class LineMultiEdit(tk.Frame):
 
         # --- FRAME 4: Linestyle Optionmenu -----------------------------------
         self.ls_ttl = tk.Label(self.lsframe, text='Linestyle', bg='white',
-                               font=('Helvetica', 12))
+                               font=(MAINFONT, 12))
 
         self.ls_options = ('solid', 'dotted', 'dashed', 'dashdot')
         self.ls_str = tk.StringVar()
@@ -3599,7 +3660,7 @@ class LabelEdit(tk.Frame):
 
         # --- LABEL TEXT ----------------------------------------------
         self.txt_ttl = tk.Label(self.txtframe, text='Label Text', bg='white',
-                                font=('Helvetica', 12))
+                                font=(MAINFONT, 12))
 
         self.txt_ent = tk.Entry(self.txtframe, bg='white', width=10,
                                 highlightthickness=0)
@@ -3612,7 +3673,7 @@ class LabelEdit(tk.Frame):
 
         # --- LABEL SIZE ----------------------------------------------
         self.size_ttl = tk.Label(self.sizeframe, text='Label Size', bg='white',
-                                font=('Helvetica', 12))
+                                font=(MAINFONT, 12))
 
         self.size_scale = tk.Scale(self.sizeframe, from_=1, to=48,
                                    orient=tk.HORIZONTAL, showvalue=0,
@@ -3641,7 +3702,7 @@ class LabelEdit(tk.Frame):
         self.posbotframe.grid(row=1, column=0, sticky='ew')
 
         self.pos_ttl = tk.Label(self.postopframe, text='Label Position',
-                                bg='white', font=('Helvetica', 12))
+                                bg='white', font=(MAINFONT, 12))
 
         xlim = self.ax.get_xlim()
         ylim = self.ax.get_ylim()

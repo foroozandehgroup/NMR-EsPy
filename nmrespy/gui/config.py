@@ -4,6 +4,7 @@ import nmrespy
 # useful paths to various directories
 NMRESPYDIR = os.path.dirname(nmrespy.__file__)
 GUIDIR = os.path.join(NMRESPYDIR, 'gui')
+TMPDIR = os.path.join(GUIDIR, 'tmp')
 IMAGESDIR = os.path.join(NMRESPYDIR, 'images')
 
 # web links
@@ -11,6 +12,9 @@ MFGROUPLINK = 'http://foroozandeh.chem.ox.ac.uk/home'
 NMRESPYLINK = 'https://nmr-espy.readthedocs.io/en/latest/index.html'
 GUIDOCLINK = 'https://nmr-espy.readthedocs.io/en/latest/gui.html'
 EMAILLINK = r"mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query"
+
+# GUI font
+MAINFONT = 'Helvetica'
 
 # colors related to plot
 BGCOLOR = '#e4eaef'

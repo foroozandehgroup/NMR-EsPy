@@ -5,7 +5,7 @@ Customised widgets for NMR-EsPy GUI.
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
-from .config import BGCOLOR
+from .config import BGCOLOR, MAINFONT
 
 def generate(cls, keys, values, kwargs):
 
@@ -50,9 +50,9 @@ class MyLabel(tk.Label):
         keys = ('bg', 'font')
 
         if bold:
-            values = (BGCOLOR, ('Helvetica', '11', 'bold'))
+            values = (BGCOLOR, (MAINFONT, '11', 'bold'))
         else:
-            values = (BGCOLOR, ('Helvetica', '11'))
+            values = (BGCOLOR, (MAINFONT, '11'))
 
         generate(self, keys, values, kwargs)
 
@@ -97,10 +97,42 @@ class MyScale(tk.Scale):
         generate(self, keys, values, kwargs)
 
 
-class MyEntry(tk.Entry):
+# class MyEntry(tk.Entry):
+#
+#     def __init__(self, parent, **kwargs):
+#         super().__init__(parent)
+#
+#         keys = (
+#             'width', 'highlightthickness', 'highlightbackground',
+#             'disabledbackground', 'disabledforeground', 'bg',
+#         )
+#         values = (7, 1, 'black', '#505050', '#505050', 'white')
+#
+#         generate(self, keys, values, kwargs)
 
-    def __init__(self, parent, **kwargs):
+
+# This is a work in progress:
+# I am hoping to set up entry widgets so that if a user changes the input,
+# the tex becomes red. Only once they have pressed <Return> does the text
+# go back to the default black
+
+class MyEntry(tk.Entry):
+    """Entry widget with some aesthetic teweaks.
+
+    ``return_command`` specifies a callable to be bound to the widget
+    for when the user presses <Return>. If the callable has any arguments,
+    these should be provided as a tuple into ``return_args``.
+    The upshot of these commands is the text becomes red once the user
+    changes the input, and goes back to black once <Return> has been
+    pressed. The idea is to warn the user that they haven't saved their
+    changes since altering the entry widget.
+    """
+
+    def __init__(self, parent, return_command=None, return_args=None, **kwargs):
         super().__init__(parent)
+
+        self.return_command = return_command
+        self.return_args = return_args
 
         keys = (
             'width', 'highlightthickness', 'highlightbackground',
@@ -110,48 +142,16 @@ class MyEntry(tk.Entry):
 
         generate(self, keys, values, kwargs)
 
+        if self.return_command:
+            self.bind('<Key>', lambda event: self.key_press())
+            self.bind('<Return>', lambda event: self.return_press())
 
-# This is a work in progress:
-# I am hoping to set up entry widgets so that if a user changes the input,
-# the tex becomes red. Only once they have pressed <Return> does the text
-# go back to the default black
+    def key_press(self):
+        self['fg'] = 'red'
 
-# class MyEntry(tk.Entry):
-#     """Entry widget with some aesthetic teweaks.
-#
-#     ``return_command`` specifies a callable to be bound to the widget
-#     for when the user presses <Return>. If the callable has any arguments,
-#     these should be provided as a tuple into ``return_args``.
-#     The upshot of these commands is the text becomes red once the user
-#     changes the input, and goes back to black once <Return> has been
-#     pressed. The idea is to warn the user that they haven't saved their
-#     changes since altering the entry widget.
-#     """
-#
-#     def __init__(self, parent, return_command=None, return_args=None, **kwargs):
-#         super().__init__(parent)
-#
-#         self.return_command = return_command
-#         self.return_args = return_args
-#
-#         keys = (
-#             'width', 'highlightthickness', 'highlightbackground',
-#             'disabledbackground', 'disabledforeground', 'bg',
-#         )
-#         values = (7, 1, 'black', '#505050', '#505050', 'white')
-#
-#         generate(self, keys, values, kwargs)
-#
-#         if self.return_command and self.return_args:
-#             self.bind('<Key>', lambda event: self.key_press(event))
-#             self.bind('<Return>', lambda event: self.return_press())
-#
-#     def key_press(self, event):
-#         self['fg'] = 'red'
-#
-#     def return_press(self):
-#         self['fg'] = 'black'
-#         self.return_command(*self.return_args)
+    def return_press(self):
+        self['fg'] = 'black'
+        self.return_command(*self.return_args)
 
 class MyOptionMenu(tk.OptionMenu):
 
