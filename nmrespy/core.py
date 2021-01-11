@@ -279,6 +279,9 @@ class NMREsPyBruker:
 
         basic_table = _misc.aligned_tabular([basic_cats, basic_vals])
 
+        titles = [f'\n{MA}BASIC INFO{END}\n',]
+        tables = [basic_table]
+        
         # frequency filter info
         if self.get_virtual_echo(kill=False) is None:
             pass
@@ -318,6 +321,9 @@ class NMREsPyBruker:
 
             filter_table = _misc.aligned_tabular([filter_cats, filter_vals])
 
+            titles += [f'\n{MA}FREQUENCY FILTER{END}\n']
+            tables += [filter_table]
+
         # Parameter arrays (inital guess and NLP result)
         theta0 = self.get_theta0(kill=False)
         if theta0 is None:
@@ -340,19 +346,8 @@ class NMREsPyBruker:
 
             estimates_table = _misc.aligned_tabular([estimate_cats, estimate_vals])
 
-
-
-        titles = [
-            f'\n{MA}BASIC INFO{END}\n',
-            f'\n{MA}FREQUENCY FILTER{END}\n',
-            f'\n{MA}ESTIMATION RESULT{END}\n',
-        ]
-
-        tables = [
-            basic_table,
-            filter_table,
-            estimates_table,
-        ]
+            titles += [f'\n{MA}ESTIMATION RESULT{END}\n']
+            tables += [estimates_table]
 
         msg = f'{MA}<NMREsPyBruker object at {hex(id(self))}>{END}\n'
 
