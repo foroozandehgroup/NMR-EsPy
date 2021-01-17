@@ -154,7 +154,7 @@ def nlp(data, dim, theta0, sw, off, phase_variance, method, mode, bound, maxit,
         fp = int(fp / 3) # make fp = 1 for verbose output
         res = minimize(fun=cf['f'], x0=theta0_act,  args=opt_args,
                        method='L-BFGS-B', jac=cf['g'], bounds=bounds,
-                       options={'maxiter': maxit, 'iprint': fp})
+                       options={'maxiter': maxit, 'iprint': fp, 'disp':True})
 
     theta_act = res['x'] # extract solution from result dict
 

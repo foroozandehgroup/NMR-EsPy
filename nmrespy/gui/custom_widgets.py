@@ -5,7 +5,7 @@ Customised widgets for NMR-EsPy GUI.
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
-from .config import BGCOLOR, MAINFONT
+from .config import BGCOLOR, MAINFONT, READONLYENTRYCOLOR, BUTTONDEFAULT
 
 def generate(cls, keys, values, kwargs):
 
@@ -63,10 +63,20 @@ class MyButton(tk.Button):
     def __init__(self, parent, **kwargs):
         super().__init__(parent)
 
-        keys = ('width', 'highlightbackground', 'bg')
-        values = (8, 'black', '#6699cc')
+        keys = (
+            'width', 'highlightbackground', 'bg',
+            'disabledforeground',
+        )
+        values = (8, 'black', BUTTONDEFAULT, '#a0a0a0')
 
         generate(self, keys, values, kwargs)
+
+        # there isnt a disabledbackground variable for tk.Button
+        # for some reason
+        # have to manually change color upon change of state
+        if self['state'] == 'disabled':
+            self['bg'] = '#e0e0e0'
+
 
 
 class MyCheckbutton(tk.Checkbutton):
@@ -97,25 +107,6 @@ class MyScale(tk.Scale):
         generate(self, keys, values, kwargs)
 
 
-# class MyEntry(tk.Entry):
-#
-#     def __init__(self, parent, **kwargs):
-#         super().__init__(parent)
-#
-#         keys = (
-#             'width', 'highlightthickness', 'highlightbackground',
-#             'disabledbackground', 'disabledforeground', 'bg',
-#         )
-#         values = (7, 1, 'black', '#505050', '#505050', 'white')
-#
-#         generate(self, keys, values, kwargs)
-
-
-# This is a work in progress:
-# I am hoping to set up entry widgets so that if a user changes the input,
-# the tex becomes red. Only once they have pressed <Return> does the text
-# go back to the default black
-
 class MyEntry(tk.Entry):
     """Entry widget with some aesthetic teweaks.
 
@@ -136,9 +127,10 @@ class MyEntry(tk.Entry):
 
         keys = (
             'width', 'highlightthickness', 'highlightbackground',
-            'disabledbackground', 'disabledforeground', 'bg',
+            'bg', 'readonlybackground'
         )
-        values = (7, 1, 'black', '#505050', '#505050', 'white')
+        values = (
+            7, 1, 'black', 'white', READONLYENTRYCOLOR)
 
         generate(self, keys, values, kwargs)
 
@@ -190,3 +182,62 @@ class MyNavigationToolbar(NavigationToolbar2Tk):
 
     def set_message(self, msg):
         pass
+
+
+class MyTable(MyFrame):
+
+    def __init__(self, parent, titles, contents, **kwargs):
+
+        super().__init__(parent, **kwargs)
+
+        self.table_frame = MyFrame(self)
+        self.table_frame.grid(column=0, row=0, padx=(0,10), pady=10)
+
+        self.title_labels = {}
+        self.labels = {}
+        self.entries = {}
+
+        rows, columns = len(contents), len(contents[0])
+
+        max_width = 0
+
+        for row in range(rows+1):
+            for column in range(columns+1):
+                if row != 0 and column == 0:
+                    # oscillator labels (1, 2, 3, etc.)
+                    self.labels[row] = MyLabel(
+                        self.table_frame, text=f"{row}", bold=True,
+                    )
+
+                    if row == rows + 1:
+                        pady = 2
+                    else:
+                        pady = (2, 0)
+
+                    self.labels[row].grid(
+                        column=column, row=row, ipadx=10, pady=pady, sticky='w',
+                    )
+
+                elif row == 0 and column != 0:
+                    self.table_frame.columnconfigure(column, weight=1)
+                    # column titles
+                    text = titles[column-1]
+                    self.title_labels[text] = MyLabel(
+                        self.table_frame, text=text, bold=True,
+                    )
+
+                    self.title_labels[text].grid(
+                        column=column, row=row, sticky='w', pady=(2,0),
+                    )
+
+                elif row != 0 and column != 0:
+                    if column == 1:
+                        self.entries[row] = {}
+
+                    self.entries[row][text] = MyEntry(
+                        self.table_frame, textvariable=contents[row-1][column-1],
+                        width=14, readonlybackground='#a0a0a0', state='readonly',
+                    )
+                    self.entries[row][text].grid(
+                        row=row, column=column, sticky='ew',
+                    )

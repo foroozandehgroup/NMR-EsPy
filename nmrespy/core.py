@@ -281,7 +281,7 @@ class NMREsPyBruker:
 
         titles = [f'\n{MA}BASIC INFO{END}\n',]
         tables = [basic_table]
-        
+
         # frequency filter info
         if self.get_virtual_echo(kill=False) is None:
             pass
@@ -1024,10 +1024,11 @@ class NMREsPyBruker:
         :py:meth:`matrix_pencil` has not been called on the class instance.
         """
 
+
         return self._get_nondefault_param('theta0', 'matrix_pencil()', kill)
 
 
-    def get_theta(self, kill=True):
+    def get_theta(self, frequency_unit='hz', kill=True):
         """Return the parameter estimate derived using
         :py:meth:`nonlinear_programming`
 
@@ -1057,8 +1058,26 @@ class NMREsPyBruker:
         instance.
         """
 
-        return self._get_nondefault_param('theta', 'nonlinear_programming()',
-                                          kill)
+        if frequency_unit == 'hz':
+            return self._get_nondefault_param(
+                'theta', 'nonlinear_programming()', kill,
+            )
+
+        elif frequency_unit == 'ppm':
+            theta = self._get_nondefault_param(
+                'theta', 'nonlinear_programming()', kill,
+            )
+
+            for osc in theta:
+                for column in range(2, 2 + self.get_dim()):
+                    osc[column] = self._unit_convert(
+                        (osc[column],), convert=f'hz->ppm',
+                    )[0]
+
+            return theta
+
+        else:
+            raise InvalidUnitError('hz', 'ppm')
 
 
     def _get_nondefault_param(self, name, method, kill):
@@ -1322,7 +1341,6 @@ class NMREsPyBruker:
                 ve_sw.append(abs(min_h - max_h))
                 ve_off.append((min_h + max_h) / 2)
 
-            cut_slice = tuple(cut_slice)
             filtered_spectrum = filtered_spectrum[cut_slice]
 
             self.ve_n = tuple(ve_n)
@@ -1338,11 +1356,15 @@ class NMREsPyBruker:
 
         for ax in range(self.get_dim()):
             self.virtual_echo = \
-                ifft(ifftshift(self.virtual_echo, axes=ax), axis=ax)
+            ifft(ifftshift(self.virtual_echo, axes=ax), axis=ax)
 
         half = \
             tuple([np.s_[0:n//2] for n in self.virtual_echo.shape]
                )
+
+        # reuduce the intensity if cut is True (applies to 1D only at the moment)
+        if cut == True:
+            self.virtual_echo /= n / (2.5 * bw)
 
         self.half_echo = 2 * self.virtual_echo[half]
         # print(f'cut ratio: {cut_ratio}, norm ratio: {n1 / norm(self.half_echo) * (self.get_n()[0] // 2) / self.half_echo.shape[0]}')

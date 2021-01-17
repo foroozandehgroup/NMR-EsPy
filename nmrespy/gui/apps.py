@@ -43,6 +43,9 @@ import nmrespy._plot as _plot
 from nmrespy.gui.config import *
 from nmrespy.gui.custom_widgets import *
 
+# flag for testing the result frame easily
+TEST_RESULT = True
+
 
 def get_PhotoImage(path, scale=1.0):
     """Generate a TKinter-compatible photo image, given a path, and a scaling
@@ -71,6 +74,43 @@ def get_PhotoImage(path, scale=1.0):
     return ImageTk.PhotoImage(image)
 
 
+def value_var_dict(value, var_object):
+    """Generates a dict with keys 'value' and 'var'. The value corresponds to
+    some quantity. The var is a corresponding StringVar or IntVar.
+
+    Parameters
+    ----------
+    value: int, float, bool, etc.
+        The quantity of interest
+
+    var_object: str or int
+        The value to set the tkinter variable to. If a str, the variable will
+        be a StringVar, if an int, the variable will be an IntVar
+
+    Returns
+    -------
+    value_var_dict: dict
+    """
+
+    if isinstance(var_object, str):
+        var = tk.StringVar()
+    elif isinstance(var_object, int):
+        var = tk.IntVar()
+
+    var.set(var_object)
+    return {'value': value, 'var': var}
+
+
+class AutoVivification(dict):
+    """Implementation of perl's autovivification feature."""
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item)
+        except KeyError:
+            value = self[item] = type(self)()
+            return value
+
+
 class WarnFrame(MyToplevel):
     """A window in case the user does something silly."""
 
@@ -93,15 +133,6 @@ class WarnFrame(MyToplevel):
         )
         close_button.grid(row=1, column=1, padx=10, pady=(0,10))
 
-
-class AutoVivification(dict):
-    """Implementation of perl's autovivification feature."""
-    def __getitem__(self, item):
-        try:
-            return dict.__getitem__(self, item)
-        except KeyError:
-            value = self[item] = type(self)()
-            return value
 
 
 class Restrictor():
@@ -145,39 +176,610 @@ class Restrictor():
                 self.limits[axis] = self.get_lim()[axis]
 
 
+class NMREsPyApp(tk.Tk):
+    """App for using NMR-EsPy."""
+
+    # This is the controller
+    # when you see self.ctrl in other classes in this file, it refers
+    # to this class
+    def __init__(self):
+
+        super().__init__()
+        self.title('NMR-EsPy - Setup Calculation')
+        self.protocol('WM_DELETE_WINDOW', self.destroy)
+        self.withdraw()
+
+        if TEST_RESULT:
+            self.dtype = 'pdata'
+            # self.path = '/home/simon/Documents/DPhil/data/Camphor/1/pdata/1'
+            self.path = '/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1'
+
+        else:
+            # open window to ask user for data type (fid or pdata)
+            # acquires dtype attribute
+            DataType(self)
+
+        # creates set of attributes requred for setup window
+        self.generate_initial_variables()
+
+        if TEST_RESULT:
+            self.run()
+
+        else:
+            # self.setup is a toplevel for setting up the calculation
+            self.setup = MyToplevel(self)
+            self.setup.resizable(True, True)
+            self.setup.columnconfigure(0, weight=1)
+            self.setup.rowconfigure(0, weight=1)
+
+            self.setup_frames = {}
+            self.setup_frames['plot_frame'] = PlotFrame(
+                parent=self.setup, figure=self.setupfig['fig'],
+            )
+            self.setup_frames['toolbar_frame'] = SetupToolbarFrame(
+                parent=self.setup, canvas=self.setup_frames['plot_frame'].canvas,
+                ctrl=self,
+            )
+            self.setup_frames['tab_frame'] = TabFrame(
+                parent=self.setup, ctrl=self,
+            )
+            self.setup_frames['logo_frame'] = LogoFrame(
+                parent=self.setup, scale=0.06,
+            )
+            self.setup_frames['button_frame'] = SetupButtonFrame(
+                parent=self.setup, ctrl=self,
+            )
+
+            self.setup_frames['plot_frame'].grid(
+                row=0, column=0, columnspan=2, sticky='nsew',
+            )
+            self.setup_frames['toolbar_frame'].grid(
+                row=1, column=0, columnspan=2, sticky='ew',
+            )
+            self.setup_frames['tab_frame'].grid(
+                row=2, column=0, columnspan=2, sticky='ew',
+            )
+            self.setup_frames['logo_frame'].grid(
+                row=3, column=0, padx=10, pady=10, sticky='w',
+            )
+            self.setup_frames['button_frame'].grid(
+                row=3, column=1, sticky='s',
+            )
+
+            self.wait_window(self.setup)
+
+
+        self.generate_result_variables()
+
+        self.result = MyToplevel(self)
+        self.result.resizable(True, True)
+        self.result.columnconfigure(0, weight=1)
+        self.result.rowconfigure(0, weight=1)
+
+        self.result_frames = {}
+        self.result_frames['plot_frame'] = PlotFrame(
+            parent=self.result, figure=self.resultfig['fig'],
+        )
+        self.result_frames['toolbar_frame'] = RootToolbarFrame(
+            parent=self.result, canvas=self.result_frames['plot_frame'].canvas,
+            ctrl=self,
+        )
+        self.result_frames['logo_frame'] = LogoFrame(
+            parent=self.result, scale=0.06,
+        )
+        self.result_frames['button_frame'] = ResultButtonFrame(
+            parent=self.result, ctrl=self,
+        )
+
+        self.result_frames['plot_frame'].grid(
+            row=0, column=0, columnspan=2, sticky='nsew',
+        )
+        self.result_frames['toolbar_frame'].grid(
+            row=1, column=0, columnspan=2, sticky='ew',
+        )
+        self.result_frames['logo_frame'].grid(
+            row=3, column=0, padx=10, pady=10, sticky='w',
+        )
+        self.result_frames['button_frame'].grid(
+            row=3, column=1, sticky='s',
+        )
+
+
+    def generate_initial_variables(self):
+
+        # generate self.info: NMREsPyBruker class instance
+        # FID data - transform to frequency domain
+        if self.dtype == 'fid':
+            self.info = load.import_bruker_fid(self.path, ask_convdta=False)
+            self.spectrum = np.flip(fftshift(fft(self.info.get_data())))
+
+        # pdata - combine real and imaginary components
+        else:
+            self.info = load.import_bruker_pdata(self.path)
+            self.spectrum = self.info.get_data(pdata_key='1r') \
+                            + 1j * self.info.get_data(pdata_key='1i')
+
+        # constants
+        self.n = self.spectrum.shape[0]
+        self.sfo = self.info.get_sfo()[0]
+        self.nucleus = self.info.get_nucleus()[0]
+        self.sw, self.off, self.shifts = {}, {}, {}
+        for unit in ['hz', 'ppm']:
+            self.sw[unit] = self.info.get_sw(unit=unit)[0]
+            self.off[unit] = self.info.get_offset(unit=unit)[0]
+            self.shifts[unit] = self.info.get_shifts(unit=unit)[0]
+
+        self.active_units = {'freq': 'ppm', 'angle': 'rad'}
+
+        self.bounds = AutoVivification()
+
+        # bounds for filtration and noise regions
+        if TEST_RESULT:
+            init_bounds = [
+                11843, # left bound
+                12142, # right bound
+                1762, # left noise bound
+                2210, # right noise bound
+            ]
+
+        else:
+            init_bounds = [
+                int(np.floor(7 * self.n / 16)), # left bound
+                int(np.floor(9 * self.n / 16)), # right bound
+                int(np.floor(1 * self.n / 16)), # left noise bound
+                int(np.floor(2 * self.n / 16)), # right noise bound
+            ]
+
+        for name, init in zip(['lb', 'rb', 'lnb', 'rnb'], init_bounds):
+            for unit in ['idx', 'hz', 'ppm']:
+                if unit == 'idx':
+                    value, var_str = init, str(init)
+                else:
+                    value = self.convert(init, f'idx->{unit}')
+                    var_str = f"{value:.4f}"
+
+                self.bounds[name][unit] = value_var_dict(value, var_str)
+
+        self.region_size = self.bounds['rb']['idx']['value'] - \
+                           self.bounds['lb']['idx']['value']
+
+        # phase correction parameters
+        self.pivot = {}
+
+        pivot = int(self.n // 2)
+        for unit in ['idx', 'hz', 'ppm']:
+            if unit == 'idx':
+                value, value_str = pivot, str(pivot)
+            else:
+                value = self.convert(pivot, f'idx->{unit}')
+                value_str = f"{value:.4f}"
+
+            self.pivot[unit] = value_var_dict(value, var_str)
+
+        self.phases = AutoVivification()
+
+        for name in ['p0', 'p1']:
+            for unit in ['rad', 'deg']:
+                self.phases[name][unit] = value_var_dict(0., f"{0.:.4f}")
+
+        self.cut = value_var_dict(True, 1)
+        self.cut_ratio = value_var_dict(2.5, '2.5')
+
+        max_points = self.cut_size()
+        self.max_points = value_var_dict(max_points, str(max_points))
+
+        # number of points to be used for MPM and NLP
+        self.trim = {}
+
+        if max_points <= 4096:
+            for name in ['mpm', 'nlp']:
+                self.trim[name] = value_var_dict(max_points, str(max_points))
+        elif max_points <= 8192:
+            self.trim['mpm'] = value_var_dict(4096, '4096')
+            self.trim['nlp'] = value_var_dict(max_points, str(max_points))
+        else:
+            self.trim['mpm'] = value_var_dict(4096, '4096')
+            self.trim['nlp'] = value_var_dict(8192, '8192')
+
+        # number of oscillators (M) string variable
+        self.M_in = value_var_dict(0, '')
+
+        # specifies whether or not to use the MDL to estimate M
+        self.mdl = value_var_dict(True, 1)
+
+        # idnitity of the NLP algorithm to use
+        self.method = value_var_dict('trust_region', 'Trust Region')
+
+        # maximum iterations of NLP algorithm
+        self.maxit = value_var_dict(100, '100')
+
+        # whether or not to include phase variance in NLP cost func
+        self.phase_variance = value_var_dict(True, 1)
+
+        # whether or not to purge negligible oscillators
+        self.use_amp_thold = value_var_dict(False, 0)
+
+        # amplitude threshold for purging negligible oscillators
+        self.amp_thold = value_var_dict(0.001, '0.001')
+
+        self.setupfig = {}
+
+        # plot spectrum
+        self.setupfig['fig'] = Figure(figsize=(6,3.5), dpi=170)
+        self.setupfig['ax'] = self.setupfig['fig'].add_subplot(111)
+        self.setupfig['plot_line'] = self.setupfig['ax'].plot(
+            self.shifts['ppm'], np.real(self.spectrum), color='k', lw=0.6,
+        )[0]
+
+        # set x-limits as edges of spectral window
+        self.setupfig['xlim'] = (self.shifts['ppm'][0], self.shifts['ppm'][-1])
+        self.setupfig['ax'].set_xlim(self.setupfig['xlim'])
+
+        # prevent user panning/zooming beyond spectral window
+        Restrictor(self.setupfig['ax'], x=lambda x: x<= self.setupfig['xlim'][0])
+        Restrictor(self.setupfig['ax'], x=lambda x: x>= self.setupfig['xlim'][1])
+
+        # Get current y-limit. Will reset y-limits to this value after the
+        # very tall noise_region and filter_region rectangles have been added
+        # to the plot
+        self.setupfig['init_ylim'] = self.setupfig['ax'].get_ylim()
+
+        # highlight the spectral region to be filtered (green)
+        # Rectangle's first 3 args: bottom left coords, width, height
+        bottom_left = (
+            self.bounds['lb']['ppm']['value'],
+            -20 * self.setupfig['init_ylim'][1],
+        )
+        width = self.bounds['rb']['ppm']['value'] - \
+                self.bounds['lb']['ppm']['value']
+        height = 40 * self.setupfig['init_ylim'][1]
+
+        self.setupfig['region'] = Rectangle(
+            bottom_left, width, height, facecolor=REGIONCOLOR,
+        )
+        self.setupfig['ax'].add_patch(self.setupfig['region'])
+
+        # highlight the noise region (blue)
+        bottom_left = (
+            self.bounds['lnb']['ppm']['value'],
+            -20 * self.setupfig['init_ylim'][1],
+        )
+        width = self.bounds['rnb']['ppm']['value'] - \
+                self.bounds['lnb']['ppm']['value']
+
+        self.setupfig['noise_region'] = Rectangle(
+            bottom_left, width, height, facecolor=NOISEREGIONCOLOR
+        )
+        self.setupfig['ax'].add_patch(self.setupfig['noise_region'])
+
+        # plot pivot line
+        # alpha set to 0 to make invisible initially
+        x = 2 * [self.pivot['ppm']['value']]
+        y = [
+            -20 * self.setupfig['init_ylim'][1],
+             20 * self.setupfig['init_ylim'][1],
+        ]
+
+        self.setupfig['pivot_line'] = self.setupfig['ax'].plot(
+            x, y, color=PIVOTCOLOR, alpha=0, lw=1,
+        )[0]
+
+        # reset y limit
+        self.setupfig['ax'].set_ylim(self.setupfig['init_ylim'])
+
+        # aesthetic tweaks to plot
+        self.setupfig['fig'].patch.set_facecolor(BGCOLOR)
+        self.setupfig['ax'].set_facecolor(PLOTCOLOR)
+        self.setupfig['ax'].tick_params(axis='x', which='major', labelsize=6)
+        self.setupfig['ax'].locator_params(axis='x', nbins=10)
+        self.setupfig['ax'].set_yticks([])
+
+        for direction in ('top', 'bottom', 'left', 'right'):
+            self.setupfig['ax'].spines[direction].set_color('k')
+
+        # label plot x-axis with nucleus identity
+        comps = filter(None, re.split(r'(\d+)', self.nucleus))
+
+        # xlabel of the form $^{1}$H (ppm)
+        self.setupfig['ax'].set_xlabel(
+            f'$^{{{next(comps)}}}${next(comps)} (ppm)', fontsize=8
+        )
+
+
+    def generate_result_variables(self):
+
+        self.theta = self.info.get_theta()
+
+        self.resultfig = {}
+        for key, value in zip(('fig', 'ax', 'lines', 'labels'), self.info.plot_result()):
+            self.resultfig[key] = value
+
+        self.resultfig['fig'].set_size_inches(6, 3.5)
+        self.resultfig['fig'].set_dpi(170)
+
+        Restrictor(
+            self.resultfig['ax'],
+            x=lambda x: x<= self.bounds['rb']['ppm']['value'],
+        )
+        Restrictor(
+            self.resultfig['ax'],
+            x=lambda x: x>= self.bounds['lb']['ppm']['value'],
+        )
+
+        self.resultfig['fig'].patch.set_facecolor(BGCOLOR)
+        self.resultfig['ax'].set_facecolor(PLOTCOLOR)
+        self.resultfig['ax'].tick_params(axis='x', which='major', labelsize=6)
+        self.resultfig['ax'].locator_params(axis='x', nbins=10)
+        self.resultfig['ax'].set_xlabel(
+            self.resultfig['ax'].get_xlabel(), fontsize=8,
+        )
+
+
+
+    def convert(self, value, conversion):
+
+        sw = self.sw['hz']
+        off = self.off['hz']
+        n = self.n
+        sfo = self.sfo
+
+        if conversion == 'idx->hz':
+            return float(off + (sw / 2) - ((value * sw) / n))
+
+        elif conversion == 'idx->ppm':
+            return float((off + sw / 2 - value * sw / n) / sfo)
+
+        elif conversion == 'ppm->idx':
+            return int(round((off + (sw / 2) - sfo * value) * (n / sw)))
+
+        elif conversion == 'ppm->hz':
+            return value * sfo
+
+        elif conversion == 'hz->idx':
+            return int((n / sw) * (off + (sw / 2) - value))
+
+        elif conversion == 'hz->ppm':
+            return value / sfo
+
+
+    def update_bound(self, name, idx):
+
+        self.bounds[name]['idx']['value'] = idx
+        self.bounds[name]['idx']['var'].set(str(idx))
+
+        for unit in ['hz', 'ppm']:
+            self.bounds[name][unit]['value'] = self.convert(idx, f'idx->{unit}')
+            self.bounds[name][unit]['var'].set(
+                f"{self.bounds[name][unit]['value']:.4f}"
+            )
+
+        if 'n' in name:
+            reg = 'noise_region'
+        else:
+            reg = 'region'
+
+        if reg == 'region':
+            self.region_size = self.bounds['rb']['idx']['value'] - \
+                               self.bounds['lb']['idx']['value']
+            self.ud_max_points()
+
+        active_unit = self.active_units['freq']
+        left = self.bounds[f'l{name[1:]}'][active_unit]['value']
+        right = self.bounds[f'r{name[1:]}'][active_unit]['value']
+
+        self.setupfig[reg].set_x(left)
+        self.setupfig[reg].set_width(right - left)
+
+        self.update_plot()
+
+
+    def update_pivot(self, idx):
+
+        self.pivot['idx']['value'] = idx
+        self.pivot['idx']['var'].set(str(idx))
+
+        for unit in ['ppm', 'hz']:
+            self.pivot[unit]['value'] = self.convert(idx, f'idx->{unit}')
+            self.pivot[unit]['var'].set(f"{self.pivot[unit]['value']:.4f}")
+
+        active_unit = self.active_units['freq']
+
+        x = 2 * [self.pivot[active_unit]['value']]
+        self.setupfig['pivot_line'].set_xdata(x)
+
+        self.phase_correct()
+
+
+    def update_p0_p1(self, rad, name):
+
+        self.phases[name]['rad']['value'] = rad
+        self.phases[name]['rad']['var'].set(f'{rad:.4f}')
+        self.phases[name]['deg']['value'] = rad*180 / np.pi
+        self.phases[name]['deg']['var'].set(f'{rad*180 / np.pi:.4f}')
+
+        self.phase_correct()
+
+
+    def phase_correct(self):
+
+        pivot = self.pivot['idx']['value']
+        p0 = self.phases['p0']['rad']['value']
+        p1 = self.phases['p1']['rad']['value']
+        n = self.n
+
+        corrector = np.exp(1j * (p0 + p1 * np.arange(-pivot, -pivot+n, 1) / n))
+        data = np.real(self.spectrum * corrector)
+        self.setupfig['plot_line'].set_ydata(data)
+
+        self.update_plot()
+
+
+    def ud_max_points(self):
+        """Update the maximum number of points StringVar"""
+
+        if self.cut['value'] == True:
+            # check range is suitable. If not, set it within the spectrum
+            # divide by two as halving signal in frequency_filter
+            cut_size = self.cut_size()
+
+            # determine respective low and high bounds
+            lb = self.bounds['lb']['idx']['value']
+            rb = self.bounds['rb']['idx']['value']
+            low = int((lb + rb) // 2) - int(np.ceil(cut_size / 2))
+            high = low + cut_size
+
+            if low < 0:
+                low = 0
+            if high > self.n - 1:
+                high = self.n - 1
+
+            self.max_points['value'] = high - low
+
+        else:
+            self.max_points['value'] = self.n // 2
+
+        self.max_points['var'].set(str(self.max_points['value']))
+
+        for name, default in zip(('mpm', 'nlp'), (4096, 8192)):
+            if self.trim[name]['value'] > self.max_points['value'] \
+            or self.max_points['value'] <= default:
+                self.trim[name]['value'] = self.max_points['value']
+                self.trim[name]['var'].set(str(self.max_points['value']))
+
+
+    def update_plot(self):
+        self.setup_frames['plot_frame'].canvas.draw_idle()
+
+
+    def cut_size(self):
+        return int((self.cut_ratio['value'] * self.region_size) // 2)
+
+
+    def run(self):
+        """Set up the estimation routine"""
+
+        # get parameters
+        region = (
+            self.bounds['lb']['idx']['value'],
+            self.bounds['rb']['idx']['value'],
+        )
+
+        noise_region = (
+            self.bounds['lnb']['idx']['value'],
+            self.bounds['rnb']['idx']['value'],
+        )
+
+        pivot = self.pivot['ppm']['value']
+        p0 = self.phases['p0']['rad']['value']
+        p1 = self.phases['p1']['rad']['value']
+
+
+        cut = self.cut['value']
+        if cut:
+            cut_ratio = self.cut_ratio['value']
+        else:
+            cut_ratio = None
+
+        trim_mpm = (self.trim['mpm']['value'],)
+        trim_nlp = (self.trim['nlp']['value'],)
+
+        # get number of oscillators for initial guess (or determine whether
+        # to use MDL)
+        M_in = self.M_in['value']
+
+        method = self.method['value']
+        maxit = self.maxit['value']
+        phase_variance = self.phase_variance['value']
+
+        if self.use_amp_thold['value']:
+            amp_thold = self.amp_thold['value']
+        else:
+            amp_thold = None
+
+        if TEST_RESULT:
+            pass
+        else:
+            self.setup.withdraw()
+
+        self.info.frequency_filter(
+            region=region, noise_region=noise_region, p0=p0, p1=p1,
+            cut=cut, cut_ratio=cut_ratio, region_units='idx',
+        )
+
+        self.info.matrix_pencil(trim=trim_mpm, M_in=M_in)
+
+        self.info.nonlinear_programming(
+            trim=trim_nlp, maxit=maxit, method=method,
+            phase_variance=phase_variance, amp_thold=amp_thold,
+        )
+
+        self.info.pickle_save(
+            fname='tmp.pkl', dir=TMPDIR, force_overwrite=True
+        )
+
+        if TEST_RESULT:
+            pass
+        else:
+            self.setup.destroy()
+
+
+class LogoFrame(MyFrame):
+    """Contains the NMR-EsPy logo (who doesn't like a bit of publicity)"""
+
+    def __init__(self, parent, logos='both', scale=0.08):
+
+        super().__init__(parent)
+
+        col = 0
+        padx = 0
+
+        if logos in ['both', 'nmrespy']:
+            self.nmrespy_img = get_PhotoImage(
+                os.path.join(IMAGESDIR, 'nmrespy_full.png'), scale
+            )
+            self.nmrespy_logo = MyLabel(
+                self, image=self.nmrespy_img, cursor='hand1'
+            )
+            self.nmrespy_logo.bind(
+                '<Button-1>', lambda e: webbrowser.open_new(NMRESPYLINK)
+            )
+            self.nmrespy_logo.grid(row=0, column=col)
+
+            col += 1
+            padx = (40, 0)
+
+        if logos in ['both', 'mfgroup']:
+            self.mfgroup_img = get_PhotoImage(
+                os.path.join(IMAGESDIR, 'mf_logo.png'), scale*10
+            )
+            self.mfgroup_logo = MyLabel(
+                self, image=self.mfgroup_img, cursor='hand1'
+            )
+
+            self.mfgroup_logo.bind(
+                '<Button-1>', lambda e: webbrowser.open_new(MFGROUPLINK)
+            )
+            self.mfgroup_logo.grid(row=0, column=col, padx=padx)
+
+
 class DataType(MyToplevel):
     """GUI for asking user whether they want to analyse the raw FID or
     pdata"""
 
-    def __init__(self, parent):
+    def __init__(self, ctrl):
 
-        super().__init__(parent)
+        super().__init__(ctrl)
 
-        # parent is the controler in this case (NMREsPyApp)
-        self.ctrl = parent
-
-        # frame for the NMR-EsPy logo
-        self.logoframe = MyFrame(self)
-        self.logoframe.grid(row=0, column=0, rowspan=2)
-
-        # frame for option boxes and descriptors
-        self.main_frame = MyFrame(self)
-        self.main_frame.grid(row=0, column=1)
-
-        # frame for save/cancel buttons
-        self.buttonframe = MyFrame(self)
-        self.buttonframe.grid(row=1, column=1, sticky='e')
+        self.ctrl = ctrl
 
         # open info file. Gives paths to fid file and pdata directory
         with open(os.path.join(GUIDIR, 'tmp/info.txt'), 'r') as fh:
             self.fidpath, self.pdatapath = fh.read().split(' ')
 
-        # nmrespy logo
-        self.img = get_PhotoImage(
-            os.path.join(IMAGESDIR, 'nmrespy_full.png'), 0.06
-        )
-        self.logo = MyLabel(self.logoframe, image=self.img)
-        self.logo.grid(row=0, column=0, padx=10, pady=10)
+        # frame for the NMR-EsPy logo
+        self.logo_frame = LogoFrame(self, logos='nmrespy', scale=0.07)
+
+        self.main_frame = MyFrame(self)
 
         message = MyLabel(
             self.main_frame, text='Which data would you like to analyse?',
@@ -227,8 +829,10 @@ class DataType(MyToplevel):
             column=1, row=3, rowspan=2, padx=10, sticky='nsw'
         )
 
+        self.button_frame = MyFrame(self)
+
         self.confirmbutton = MyButton(
-            self.buttonframe, text='Confirm', command=self.confirm,
+            self.button_frame, text='Confirm', command=self.confirm,
             bg=BUTTONGREEN,
         )
         self.confirmbutton.grid(
@@ -236,12 +840,17 @@ class DataType(MyToplevel):
         )
 
         self.cancelbutton = MyButton(
-            self.buttonframe, text='Cancel', command=self.ctrl.destroy,
+            self.button_frame, text='Cancel', command=self.ctrl.destroy,
             bg=BUTTONRED,
         )
         self.cancelbutton.grid(column=0, row=0, pady=10, sticky='e')
 
+        self.logo_frame.grid(row=0, column=0, rowspan=2, padx=10, pady=10)
+        self.main_frame.grid(row=0, column=1)
+        self.button_frame.grid(row=1, column=1, sticky='e')
+
         self.ctrl.wait_window(self)
+
 
     def click_fid(self):
         fidval = self.fid.get()
@@ -264,578 +873,16 @@ class DataType(MyToplevel):
         else:
             self.ctrl.dtype = 'pdata'
             self.ctrl.path = self.pdatapath
-        self.ctrl.deiconify()
+
         self.destroy()
 
-
-class NMREsPyApp(tk.Tk):
-    """App for using NMR-EsPy."""
-
-    # This is the controller
-    # when you see self.ctrl throughout other classes in this file, it refers
-    # to this class
-    def __init__(self):
-        super().__init__()
-        self.title('NMR-EsPy - Setup Calculation')
-        self.protocol('WM_DELETE_WINDOW', self.destroy)
-
-        # # open window to ask user for data type (fid or pdata)
-        # # acquires dtype attribute
-        self.withdraw()
-        DataType(parent=self)
-
-        # main container: everything goes into here
-        container = MyFrame(self)
-        # make resizeable in both dimensions
-        container.pack(side='top', fill='both', expand=True)
-
-        # make first row and first column of container resizeable.
-        # this corresponds to:
-        # Plotframe (x and y)
-        # Tabframe (x)
-        # Logoframe (x)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
-
-        # generate self.info: NMREsPyBruker class instance
-        # FID data - transform to frequency domain
-        if self.dtype == 'fid':
-            self.info = load.import_bruker_fid(self.path, ask_convdta=False)
-            self.spectrum = np.flip(fftshift(fft(self.info.get_data())))
-
-        # pdata - combine real and imaginary components
-        else:
-            self.info = load.import_bruker_pdata(self.path)
-            self.spectrum = self.info.get_data(pdata_key='1r') \
-                            + 1j * self.info.get_data(pdata_key='1i')
-
-        # constants
-        self.consts = AutoVivification()
-
-        self.consts['n'] = self.spectrum.shape[0]
-        for u in ['hz', 'ppm']:
-            self.consts['sw'][u] = self.info.get_sw(unit=u)[0]
-            self.consts['off'][u] = self.info.get_offset(unit=u)[0]
-            self.consts['shifts'][u] = self.info.get_shifts(unit=u)[0]
-
-        for name in ['sw', 'off']:
-            self.consts[name]['idx'] = self.convert(
-                self.consts[name]['hz'], conversion='hz->idx',
-            )
-
-        self.consts['sfo'] = self.info.get_sfo()[0]
-        self.consts['nucleus'] = self.info.get_nucleus()[0]
-
-        self.active_units = {'freq': 'ppm', 'angle': 'rad'}
-
-        # region for filtration and noise region
-        init_bounds = [
-            int(np.floor(7 * self.consts['n'] / 16)), # left bound
-            int(np.floor(9 * self.consts['n'] / 16)), # right bound
-            int(np.floor(1 * self.consts['n'] / 16)), # left noise bound
-            int(np.floor(2 * self.consts['n'] / 16)), # right noise bound
-        ]
-
-        self.region = AutoVivification()
-        for s, init in zip(['lb', 'rb', 'lnb', 'rnb'], init_bounds):
-            for u in ['idx', 'hz', 'ppm']:
-                if u == 'idx':
-                    self.region['bounds'][s][u] = init
-                else:
-                    self.region['bounds'][s][u] = self.convert(
-                        init, f'idx->{u}'
-                    )
-
-                self.region['boundvars'][s][u] = tk.StringVar()
-                self.region['boundvars'][s][u].set(
-                    f"{self.region['bounds'][s][u]:.4f}"
-                )
-
-        self.region['size'] = self.region['bounds']['rb']['idx'] - \
-                              self.region['bounds']['lb']['idx']
-
-        # phase correction parameters
-        self.phase = AutoVivification()
-
-        self.phase['pivot']['idx'] = int(self.consts['n'] // 2)
-
-        for u in ['idx', 'hz', 'ppm']:
-            self.phase['pivotvar'][u] = tk.StringVar()
-            if u == 'idx':
-                self.phase['pivotvar'][u].set(
-                    str(self.phase['pivot'][u])
-                )
-            else:
-                self.phase['pivot'][u] = self.convert(
-                    self.phase['pivot']['idx'], conversion=f'idx->{u}'
-                )
-                self.phase['pivotvar'][u].set(
-                    f"{self.phase['pivot'][u]:.4f}"
-                )
-
-        for s in ['p0', 'p1']:
-            for u in ['rad', 'deg']:
-                self.phase['phases'][s][u] = 0.
-                self.phase['phasevars'][s][u] = tk.StringVar()
-                self.phase['phasevars'][s][u].set(
-                    f"{self.phase['phases'][s][u]:.4f}"
-                )
-
-        # advanced settings
-        self.adsettings = AutoVivification()
-
-        self.adsettings['cut']['value'] = True
-        self.adsettings['cut']['var'] = tk.IntVar()
-        self.adsettings['cut']['var'].set(1)
-
-
-        # ratio of length of cut signal and filter length
-        self.adsettings['cut_ratio']['value'] = 2.5
-        self.adsettings['cut_ratio']['var'] = tk.StringVar()
-        self.adsettings['cut_ratio']['var'].set('2.5')
-
-        self.adsettings['max_points']['value'] = self._cut_size()
-        self.adsettings['max_points']['var'] = tk.StringVar()
-        self.adsettings['max_points']['var'].set(
-            str(self.adsettings['max_points']['value'])
-        )
-
-        # number of points to be used for MPM and NLP
-        if self.adsettings['max_points']['value'] <= 4096:
-            self.adsettings['mpm points']['value'] = \
-                self.adsettings['max_points']['value']
-            self.adsettings['nlp_points']['value'] = \
-                self.adsettings['max_points']['value']
-
-        elif self.adsettings['max_points']['value'] <= 8192:
-            self.adsettings['mpm_points']['value'] = 4096
-            self.adsettings['nlp_points']['value'] = \
-                self.adsettings['max_points']['value']
-        else:
-            self.adsettings['mpm_points']['value'] = 4096
-            self.adsettings['nlp_points']['value'] = 8192
-
-        for s in ['mpm', 'nlp']:
-            self.adsettings[f'{s}_points']['var'] = tk.StringVar()
-            self.adsettings[f'{s}_points']['var'].set(
-                str(self.adsettings[f'{s}_points']['value'])
-            )
-
-        # number of oscillators (M) string variable
-        self.adsettings['oscillators']['value'] = 0
-        self.adsettings['oscillators']['var'] = tk.StringVar()
-        self.adsettings['oscillators']['var'].set('')
-
-        # specifies whether or not to use the MDL to estimate M
-        self.adsettings['mdl']['value'] = True
-        self.adsettings['mdl']['var'] = tk.IntVar()
-        self.adsettings['mdl']['var'].set(1)
-
-        # idnitity of the NLP algorithm to use
-        self.adsettings['nlp_algorithm']['value'] = 'trust_region'
-        self.adsettings['nlp_algorithm']['var'] = tk.StringVar()
-        self.adsettings['nlp_algorithm']['var'].set('Trust Region')
-
-        # maximum iterations of NLP algorithm
-        self.adsettings['max_iterations']['value'] = 100
-        self.adsettings['max_iterations']['var'] = tk.StringVar()
-        self.adsettings['max_iterations']['var'].set('100')
-
-        # whether or not to include phase variance in NLP cost func
-        self.adsettings['phase_variance']['value'] = True
-        self.adsettings['phase_variance']['var'] = tk.IntVar()
-        self.adsettings['phase_variance']['var'].set(1)
-
-        # whether or not to purge negligible oscillators
-        self.adsettings['use_amp_thold']['value'] = False
-        self.adsettings['use_amp_thold']['var'] = tk.IntVar()
-        self.adsettings['use_amp_thold']['var'].set(0)
-
-        # amplitude threshold for purging negligible oscillators
-        self.adsettings['amp_thold']['value'] = 0.001
-        self.adsettings['amp_thold']['var'] = tk.StringVar()
-        self.adsettings['amp_thold']['var'].set('0.001')
-
-        # whether or not to merge excessively close opscillators
-        self.adsettings['use_freq_thold']['value'] = True
-        self.adsettings['use_freq_thold']['var'] = tk.IntVar()
-        self.adsettings['use_freq_thold']['var'].set(1)
-
-        # frequency threshold for merging excessively close oscillators
-        for u in ['idx', 'hz', 'ppm']:
-            self.adsettings['freq_thold']['value'][u] = \
-                self.consts['sw'][u] / self.consts['n']
-            self.adsettings['freq_thold']['var'][u] = tk.StringVar()
-
-            if u == 'idx':
-                string = str(self.adsettings['freq_thold']['value']['idx'])
-            else:
-                string = f"{self.adsettings['freq_thold']['value'][u]:.4f}"
-
-            self.adsettings['freq_thold']['var'][u].set(string)
-
-        self.setupfigure = AutoVivification()
-
-        # plot spectrum
-        self.setupfigure['fig'] = Figure(figsize=(6,3.5), dpi=170)
-        # add axes to figure
-        self.setupfigure['ax'] =self.setupfigure['fig'].add_subplot(111)
-
-        self.setupfigure['plot'] = self.setupfigure['ax'].plot(
-            self.consts['shifts']['ppm'], np.real(self.spectrum),
-            color='k', lw=0.6,
-        )[0]
-
-        # set x-limits as edges of spectral window
-        self.setupfigure['xlim'] = (
-            self.consts['shifts']['ppm'][0],
-            self.consts['shifts']['ppm'][-1]
-        )
-
-        self.setupfigure['ax'].set_xlim(self.setupfigure['xlim'])
-
-        # prevent user panning/zooming beyond spectral window
-        Restrictor(self.setupfigure['ax'], x=lambda x: x<= self.setupfigure['xlim'][0])
-        Restrictor(self.setupfigure['ax'], x=lambda x: x>= self.setupfigure['xlim'][1])
-
-        # Get current y-limit. Will reset y-limits to this value after the
-        # very tall noise_region and filter_region rectangles have been added
-        # to the plot
-        self.setupfigure['init_ylim'] = self.setupfigure['ax'].get_ylim()
-
-        # highlight the spectral region to be filtered (green)
-        # Rectangle's first 3 args: bottom left coords, width, height
-        bottom_left = (
-            self.region['bounds']['lb']['ppm'],
-            -20 * self.setupfigure['init_ylim'][1],
-        )
-        width = self.region['bounds']['rb']['ppm'] - self.region['bounds']['lb']['ppm']
-        height = 40 * self.setupfigure['init_ylim'][1]
-
-        self.setupfigure['rectangles']['region'] = Rectangle(
-            bottom_left, width, height, facecolor=REGIONCOLOR
-        )
-        self.setupfigure['ax'].add_patch(
-            self.setupfigure['rectangles']['region']
-        )
-
-        # highlight the noise region (blue)
-        bottom_left = (
-            self.region['bounds']['rnb']['ppm'],
-            -20 * self.setupfigure['init_ylim'][1],
-        )
-        width = self.region['bounds']['lnb']['ppm'] - self.region['bounds']['rnb']['ppm']
-
-        self.setupfigure['rectangles']['noise_region'] = Rectangle(
-            bottom_left, width, height, facecolor=NOISEREGIONCOLOR
-        )
-        self.setupfigure['ax'].add_patch(
-            self.setupfigure['rectangles']['noise_region']
-        )
-
-        # plot pivot line
-        # alpha set to 0 to make invisible initially
-        x = 2 * [self.phase['pivot']['ppm']]
-        y = [
-            -20 * self.setupfigure['init_ylim'][1],
-             20 * self.setupfigure['init_ylim'][1],
-        ]
-
-        self.setupfigure['pivot'] = self.setupfigure['ax'].plot(
-            x, y, color=PIVOTCOLOR, alpha=0, lw=1
-        )[0]
-
-        # reset y limit
-        self.setupfigure['ax'].set_ylim(self.setupfigure['init_ylim'])
-
-        # aesthetic tweaks to plot
-        self.setupfigure['fig'].patch.set_facecolor(BGCOLOR)
-        self.setupfigure['ax'].set_facecolor(PLOTCOLOR)
-        self.setupfigure['ax'].tick_params(axis='x', which='major', labelsize=6)
-        self.setupfigure['ax'].locator_params(axis='x', nbins=10)
-        self.setupfigure['ax'].set_yticks([])
-
-        for direction in ('top', 'bottom', 'left', 'right'):
-            self.setupfigure['ax'].spines[direction].set_color('k')
-
-        # label plot x-axis with nucleus identity
-        comps = filter(None, re.split(r'(\d+)', self.consts['nucleus']))
-
-        # xlabel of the form $^{1}$H (ppm)
-        self.setupfigure['ax'].set_xlabel(
-            f'$^{{{next(comps)}}}${next(comps)} (ppm)', fontsize=8
-        )
-
-        # dict to store frames that will go inside container
-        self.frames = {}
-
-        # frame with plot. N.B. this frame is resizable (row 0, col 0)
-        self.frames['PlotFrame'] = PlotFrame(
-            parent=container, ctrl=self, figure=self.setupfigure['fig'],
-        )
-        self.frames['PlotFrame'].grid(
-            row=0, column=0, columnspan=2, sticky='nsew'
-        )
-
-        # construct navigation toolbar
-        self.frames['ToolbarFrame'] = ToolbarFrame(
-            parent=container, ctrl=self,
-        )
-        self.frames['ToolbarFrame'].grid(
-            row=1, column=0, columnspan=2, sticky='ew'
-        )
-
-        self.frames['TabFrame'] = TabFrame(parent=container, ctrl=self)
-        self.frames['TabFrame'].grid(
-            row=2, column=0, columnspan=2, sticky='ew'
-        )
-
-        # frame with NMR-EsPy logo and MF group logo
-        self.frames['LogoFrame'] = LogoFrame(
-            parent=container, ctrl=self, scale=0.06
-        )
-        self.frames['LogoFrame'].grid(
-            row=3, column=0, padx=10, pady=10, sticky='w'
-        )
-
-        # frame with cancel/help/run buttons. Also has some contact info
-        self.frames['SetupButtonFrame'] = SetupButtonFrame(
-            parent=container, ctrl=self
-        )
-        self.frames['SetupButtonFrame'].grid(row=3, column=1, sticky='s')
-
-
-
-    def convert(self, value, conversion):
-        sw = self.consts['sw']['hz']
-        off = self.consts['off']['hz']
-        n = self.consts['n']
-        sfo = self.consts['sfo']
-
-        if conversion == 'idx->hz':
-            return float(off + (sw / 2) - ((value * sw) / n))
-
-        elif conversion == 'idx->ppm':
-            return float((off + sw / 2 - value * sw / n) / sfo)
-
-        elif conversion == 'ppm->idx':
-            return int(round((off + (sw / 2) - sfo * value) * (n / sw)))
-
-        elif conversion == 'ppm->hz':
-            return value * sfo
-
-        elif conversion == 'hz->idx':
-            return int((n / sw) * (off + (sw / 2) - value))
-
-        elif conversion == 'hz->ppm':
-            return value / sfo
-
-    def update_bound(self, name, idx):
-
-        self.region['bounds'][name]['idx'] = idx
-
-        for unit in ['idx', 'hz', 'ppm']:
-            if unit == 'idx':
-                self.region['boundvars'][name][unit].set(str(idx))
-            else:
-                self.region['bounds'][name][unit] = value = self.convert(
-                    idx, f'idx->{unit}'
-                )
-                self.region['boundvars'][name][unit].set(f'{value:.4f}')
-
-        bottom_left = self.region['bounds']['rb']['ppm'],
-        -20 * self.setupfigure['init_ylim'][1],
-
-        if 'n' in name:
-            reg = 'noise_region'
-        else:
-            reg = 'region'
-
-        if reg == 'region':
-            self.region['size'] = self.region['bounds']['rb']['idx'] - \
-                                  self.region['bounds']['lb']['idx']
-            self.ud_max_points()
-
-        active_unit = self.active_units['freq']
-        self.setupfigure['rectangles'][reg].set_x(
-            self.region['bounds'][f'l{name[1:]}'][active_unit]
-        )
-        self.setupfigure['rectangles'][reg].set_width(
-            self.region['bounds'][f'r{name[1:]}'][active_unit] -
-            self.region['bounds'][f'l{name[1:]}'][active_unit]
-        )
-
-        self.frames['PlotFrame'].canvas.draw_idle()
-
-
-    def update_pivot(self, idx):
-
-        self.phase['pivot']['idx'] = idx
-
-        for unit in ['idx', 'ppm', 'hz']:
-            if unit == 'idx':
-                self.phase['pivotvar']['idx'].set(str(idx))
-            else:
-                self.phase['pivot'][unit] = value = self.convert(
-                    idx, f'idx->{unit}',
-                )
-                self.phase['pivotvar'][unit].set(f'{value:.4f}')
-
-        active_unit = self.active_units['freq']
-
-        x = 2 * [self.phase['pivot'][active_unit]]
-        self.setupfigure['pivot'].set_xdata(x)
-        self.frames['PlotFrame'].canvas.draw_idle()
-
-        self.phase_correct()
-
-
-    def update_p0_p1(self, rad, name):
-
-        self.phase['phases'][name]['rad'] = rad
-        self.phase['phasevars'][name]['rad'].set(f'{rad:.4f}')
-        self.phase['phases'][name]['deg'] = rad * 180 / np.pi
-        self.phase['phasevars'][name]['deg'].set(f'{rad * 180 / np.pi:.4f}')
-
-        self.phase_correct()
-
-    def phase_correct(self):
-
-        pivot = self.phase['pivot']['idx']
-        p0 = self.phase['phases']['p0']['rad']
-        p1 = self.phase['phases']['p1']['rad']
-        n = self.consts['n']
-
-        self.setupfigure['plot'].set_ydata(
-            np.real(
-                self.spectrum * np.exp(
-                    1j * (p0 + p1 * np.arange(-pivot, -pivot + n, 1) / n)
-                )
-            )
-        )
-
-        self.frames['PlotFrame'].canvas.draw_idle()
-
-
-    def ud_max_points(self):
-        """Update the maximum number of points StringVar"""
-
-        if int(self.adsettings['cut']['var'].get()):
-            # check range is suitable. If not, set it within the spectrum
-            # divide by two as halving signal in frequency_filter
-            cut_size = self._cut_size()
-
-            # determine respective low and high bounds
-            lb = self.region['bounds']['lb']['idx']
-            rb = self.region['bounds']['rb']['idx']
-            low = int((lb + rb) // 2) - int(np.ceil(cut_size / 2))
-            high = low + cut_size
-
-            if low < 0:
-                low = 0
-            if high > self.consts['n'] - 1:
-                high = self.consts['n'] - 1
-
-            self.adsettings['max_points']['value'] = high - low
-
-        else:
-            self.adsettings['max_points']['value'] = self.consts['n'] // 2
-
-        self.adsettings['max_points']['var'].set(
-            str(self.adsettings['max_points']['value'])
-        )
-
-        for s, default in zip(('mpm', 'nlp'), (4096, 8192)):
-            if self.adsettings[f'{s}_points']['value'] > \
-            self.adsettings['max_points']['value']:
-                self.adsettings[f'{s}_points']['value'] = \
-                    self.adsettings['max_points']['value']
-                self.adsettings[f'{s}_points']['var'].set(
-                    str(self.adsettings['max_points']['value'])
-                )
-
-            elif self.adsettings['max_points']['value'] <= default:
-                self.adsettings[f'{s}_points']['value'] = \
-                    self.adsettings['max_points']['value']
-                self.adsettings[f'{s}_points']['var'].set(
-                    str(self.adsettings['max_points']['value'])
-                )
-
-
-    def _cut_size(self):
-        return int(
-            (self.adsettings['cut_ratio']['value'] * self.region['size']) // 2
-        )
-
-
-    def run(self):
-        """Set up the estimation routine"""
-
-        # get parameters
-        region = (
-            self.region['bounds']['lb']['idx'],
-            self.region['bounds']['rb']['idx'],
-        )
-
-        noise_region = (
-            self.region['bounds']['lnb']['idx'],
-            self.region['bounds']['rnb']['idx'],
-        )
-
-        pivot = self.phase['pivot']['ppm']
-        p0 = self.phase['phases']['p0']['rad']
-        p1 = self.phase['phases']['p1']['rad']
-
-
-        cut = self.adsettings['cut']['value']
-        if cut:
-            cut_ratio = self.adsettings['cut_ratio']['value']
-        else:
-            cut_ratio = None
-
-        mpm_points = (self.adsettings['mpm_points']['value'],)
-        nlp_points = (self.adsettings['mpm_points']['value'],)
-
-        # get number of oscillators for initial guess (or determine whether
-        # to use MDL)
-        M_in = self.adsettings['oscillators']['value']
-
-        method = self.adsettings['nlp_algorithm']['value']
-        maxit = self.adsettings['max_iterations']['value']
-        phase_variance = self.adsettings['phase_variance']['value']
-
-        if self.adsettings['use_amp_thold']['value']:
-            amp_thold = self.adsettings['amp_thold']['value']
-        else:
-            amp_thold = None
-
-        self.withdraw()
-
-        self.info.frequency_filter(
-            region=region, noise_region=noise_region, p0=p0, p1=p1,
-            cut=cut, cut_ratio=cut_ratio, region_units='idx',
-        )
-
-        self.info.matrix_pencil(trim=mpm_points, M_in=M_in)
-
-        self.info.nonlinear_programming(
-            trim=nlp_points, maxit=maxit, method=method,
-            phase_variance=phase_variance, amp_thold=amp_thold,
-        )
-
-        self.info.pickle_save(
-            fname='tmp.pkl', dir=TMPDIR, force_overwrite=True
-        )
-
-        ResultFrame(parent=self, ctrl=self)
 
 
 class PlotFrame(MyFrame):
     """Contains a plot, along with navigation toolbar"""
 
-    def __init__(self, parent, ctrl, figure):
+    def __init__(self, parent, figure):
         super().__init__(parent)
-        self.ctrl = ctrl
 
         # make figure canvas expandable
         self.rowconfigure(0, weight=1)
@@ -847,17 +894,24 @@ class PlotFrame(MyFrame):
         self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
 
 
-class ToolbarFrame(MyFrame):
+class RootToolbarFrame(MyFrame):
 
-    def __init__(self, parent, ctrl):
+    def __init__(self, parent, canvas, ctrl):
         super().__init__(parent)
+
+        self.parent = parent
         self.ctrl = ctrl
+
         self.columnconfigure(0, weight=1)
 
-        self.toolbar = MyNavigationToolbar(
-            self.ctrl.frames['PlotFrame'].canvas, parent=self,
-        )
+        self.toolbar = MyNavigationToolbar(canvas, parent=self)
         self.toolbar.grid(row=0, column=0, sticky='w', padx=(10,0), pady=(0,5))
+
+
+class SetupToolbarFrame(RootToolbarFrame):
+
+    def __init__(self, parent, canvas, ctrl):
+        super().__init__(parent, canvas, ctrl)
 
         self.adsettings_button = MyButton(
             parent=self, text='Advanced Settings', width=16,
@@ -868,9 +922,7 @@ class ToolbarFrame(MyFrame):
         )
 
     def advanced_settings(self):
-        AdvancedSettingsFrame(parent=self.ctrl, ctrl=self.ctrl)
-
-
+        AdvancedSettingsFrame(parent=self.parent, ctrl=self.ctrl)
 
 
 class TabFrame(MyFrame):
@@ -920,19 +972,15 @@ class TabFrame(MyFrame):
             '<<NotebookTabChanged>>', lambda event: self.switch_tab()
         )
 
-        # dictionary of notebook frames
-        self.nbframes = {}
+        self.region_frame = RegionFrame(parent=self.notebook, ctrl=self.ctrl)
+        self.notebook.add(
+            self.region_frame, text='Region Selection', sticky='nsew',
+        )
 
-        for F, title in zip(
-            # (RegionFrame, PhaseFrame, AdvancedSettingsFrame),
-            (RegionFrame, PhaseFrame),
-            ('Region Selection', 'Phase Correction')
-        ):
-
-            self.nbframes[F.__name__] = F(parent=self.notebook, ctrl=self.ctrl)
-            self.notebook.add(
-                self.nbframes[F.__name__], text=title, sticky='nsew',
-            )
+        self.phase_frame = PhaseFrame(parent=self.notebook, ctrl=self.ctrl)
+        self.notebook.add(
+            self.phase_frame, text='Phase Correction', sticky='nsew',
+        )
 
 
     def switch_tab(self):
@@ -946,12 +994,12 @@ class TabFrame(MyFrame):
         if tab == 0: regions, pivot = 1, 0
         else: regions, pivot = 0, 1
 
-        self.ctrl.setupfigure['rectangles']['region'].set_alpha(regions)
-        self.ctrl.setupfigure['rectangles']['noise_region'].set_alpha(regions)
-        self.ctrl.setupfigure['pivot'].set_alpha(pivot)
+        self.ctrl.setupfig['region'].set_alpha(regions)
+        self.ctrl.setupfig['noise_region'].set_alpha(regions)
+        self.ctrl.setupfig['pivot_line'].set_alpha(pivot)
 
         # draw updated figure
-        self.ctrl.frames['PlotFrame'].canvas.draw_idle()
+        self.ctrl.update_plot()
 
 
 class RegionFrame(MyFrame):
@@ -992,19 +1040,16 @@ class RegionFrame(MyFrame):
             else:
                 troughcolor = NOISEREGIONCOLOR
 
-            # scale atts are called: lb_scale, rb_scale, lnb_scale, rnb_scale
             self.scales[name] = scale = MyScale(
-                    self, from_=0, to=self.ctrl.consts['n'] - 1,
+                    self, from_=0, to=self.ctrl.n - 1, troughcolor=troughcolor,
                     bg=NOTEBOOKCOLOR, highlightthickness=1,
-                    troughcolor=troughcolor,
                     command=lambda idx, name=name: self.update_scale(idx, name),
                 )
-            scale.set(self.ctrl.region['bounds'][name]['idx'])
+            scale.set(self.ctrl.bounds[name]['idx']['value'])
 
-            # entry atts are called: lb_entry, rb_entry, lnb_entry, rnb_entry
             self.entries[name] = entry = MyEntry(
-                    self, textvariable=self.ctrl.region['boundvars'][name]['ppm'],
-                )
+                self, textvariable=self.ctrl.bounds[name]['ppm']['var'],
+            )
             entry.bind(
                 '<Return>', (lambda event, name=name: self.update_entry(name)),
             )
@@ -1027,7 +1072,7 @@ class RegionFrame(MyFrame):
         unit = self.ctrl.active_units['freq']
 
         try:
-            value = self.ctrl.region['boundvars'][name][unit].get()
+            value = self.ctrl.bounds[name][unit]['var'].get()
             if unit == 'idx':
                 idx = int(value)
             else:
@@ -1051,20 +1096,20 @@ class RegionFrame(MyFrame):
         idx = int(idx)
         if not self.check_valid_index(idx, name):
             if name[0] == 'l':
-                idx = self.ctrl.region['bounds'][f'r{name[1:]}']['idx'] - 1
+                idx = self.ctrl.bounds[f'r{name[1:]}']['idx']['value'] - 1
             else:
-                idx = self.ctrl.region['bounds'][f'l{name[1:]}']['idx'] + 1
+                idx = self.ctrl.bounds[f'l{name[1:]}']['idx']['value'] + 1
             self.scales[name].set(idx)
 
         self.ctrl.update_bound(name, idx)
 
 
     def reset_bound(self, name, unit):
-        value = self.ctrl.region['bounds'][name][unit]
+        value = self.ctrl.bounds[name][unit]['value']
         if unit == 'idx':
-            self.ctrl.region['boundvars'][name][unit].set(str(value))
+            self.ctrl.bounds[name][unit]['var'].set(str(value))
         else:
-            self.ctrl.region['boundvars'][name][unit].set(f'{value:.4f}')
+            self.ctrl.bounds[name][unit]['var'].set(f'{value:.4f}')
 
 
     def check_valid_index(self, idx, name):
@@ -1075,17 +1120,14 @@ class RegionFrame(MyFrame):
         # twist is the thing that is changing
         if name[0] == 'l':
             left = idx
-            right = self.ctrl.region['bounds'][f'r{name[1:]}']['idx']
+            right = self.ctrl.bounds[f'r{name[1:]}']['idx']['value']
         else:
-            left = self.ctrl.region['bounds'][f'l{name[1:]}']['idx']
+            left = self.ctrl.bounds[f'l{name[1:]}']['idx']['value']
             right = idx
 
-        if left < right: # all good, update bound attribute
-            self.ctrl.region['bounds'][name]['idx'] = idx
-        else:
-            return False
-
-        if 0 <= idx <= self.ctrl.consts['n'] - 1:
+        if left < right and 0 <= idx <= self.ctrl.n - 1:
+            # all good, update bound attribute
+            self.ctrl.bounds[name]['idx']['value'] = idx
             return True
         return False
 
@@ -1114,7 +1156,7 @@ class PhaseFrame(MyFrame):
             if name == 'pivot':
                 troughcolor = PIVOTCOLOR
                 from_ = 0
-                to = self.ctrl.consts['n'] - 1
+                to = self.ctrl.n - 1
                 resolution = 1
 
             # p0 and p1 scales
@@ -1133,15 +1175,14 @@ class PhaseFrame(MyFrame):
                     self, troughcolor=troughcolor, from_=from_, to=to,
                     resolution=resolution, bg=NOTEBOOKCOLOR,
                     command=lambda value, name=name: self.update_scale(value, name),
-                )
-
-
+            )
 
             if name == 'pivot':
-                scale.set(self.ctrl.phase['pivotvar']['idx'].get())
-                var = self.ctrl.phase['pivotvar']['ppm']
+                scale.set(self.ctrl.pivot['idx']['value'])
+                var = self.ctrl.pivot['ppm']['var']
             else:
-                var = self.ctrl.phase['phasevars'][name]['rad']
+                scale.set(0)
+                var = self.ctrl.phases[name]['rad']['var']
 
             self.entries[name] = entry = MyEntry(self, textvariable=var)
             entry.bind(
@@ -1175,7 +1216,7 @@ class PhaseFrame(MyFrame):
 
         if name == 'pivot':
             unit = self.ctrl.active_units['freq']
-            value = self.ctrl.phase['pivotvar'][unit].get()
+            value = self.ctrl.pivot[unit]['var'].get()
 
             try:
                 if unit == 'idx':
@@ -1184,7 +1225,7 @@ class PhaseFrame(MyFrame):
                     idx = self.ctrl.convert(float(value), f'{unit}->idx')
 
 
-                if 0 <= idx <= self.ctrl.consts['n'] - 1:
+                if 0 <= idx <= self.ctrl.n - 1:
                     self.scales['pivot'].set(idx)
                     self.crtl.update_pivot(idx)
                 else:
@@ -1195,7 +1236,7 @@ class PhaseFrame(MyFrame):
 
         else:
             unit = self.ctrl.active_units['angle']
-            value = self.ctrl.phase['phasevars'][name][unit].get()
+            value = self.ctrl.phases[name][unit]['var'].get()
 
             try:
                 if unit == 'rad':
@@ -1220,18 +1261,18 @@ class PhaseFrame(MyFrame):
 
     def reset_pivot(self, unit):
         if unit == 'idx':
-            self.ctrl.phase['pivotvar']['idx'].set(
-                str(self.ctrl.phase['pivot']['idx'])
+            self.ctrl.pivot['idx']['var'].set(
+                str(self.ctrl.pivot['idx']['value'])
             )
         else:
-            self.ctrl.phase['pivotvar'][unit].set(
-                f"{self.ctrl.phase['pivot'][unit]:.4f}"
+            self.ctrl.pivot[unit]['var'].set(
+                f"{self.ctrl.pivot[unit]['value']:.4f}"
             )
 
 
     def reset_phase(self, name, unit):
-        self.ctrl.phase['phasevars'][name][unit].set(
-            f"{self.ctrl.phase['phases'][name][unit]:.4f}"
+        self.ctrl.phases[name][unit]['var'].set(
+            f"{self.ctrl.phases[name][unit]['value']:.4f}"
         )
 
 
@@ -1265,7 +1306,7 @@ class AdvancedSettingsFrame(MyToplevel):
         cut_label.grid(row=2, column=0, padx=(10,0), pady=(10,0), sticky='w')
 
         self.cut_checkbutton = MyCheckbutton(
-            self.main_frame, variable=self.ctrl.adsettings['cut']['var'],
+            self.main_frame, variable=self.ctrl.cut['var'],
             command=self.ud_cut,
         )
         self.cut_checkbutton.grid(
@@ -1281,7 +1322,7 @@ class AdvancedSettingsFrame(MyToplevel):
             self.main_frame,
             return_command=self.ud_cut_ratio,
             return_args=(),
-            textvariable=self.ctrl.adsettings['cut_ratio']['var'],
+            textvariable=self.ctrl.cut_ratio['var'],
         )
         self.ratio_entry.grid(row=3, column=1, padx=10, pady=(10,0), sticky='w')
 
@@ -1299,7 +1340,7 @@ class AdvancedSettingsFrame(MyToplevel):
             self.main_frame,
             return_command=self.ud_points,
             return_args=('mpm',),
-            textvariable=self.ctrl.adsettings['mpm_points']['var'],
+            textvariable=self.ctrl.trim['mpm']['var'],
         )
         self.mpm_points_entry.grid(
             row=5, column=1, padx=10, pady=(10,0), sticky='w',
@@ -1316,7 +1357,7 @@ class AdvancedSettingsFrame(MyToplevel):
             self.main_frame,
             return_command=self.ud_oscillators, return_args=(),
             state='disabled',
-            textvariable=self.ctrl.adsettings['oscillators']['var'],
+            textvariable=self.ctrl.M_in['var'],
         )
         self.oscillator_entry.grid(
             row=6, column=1, padx=10, pady=(10,0), sticky='w',
@@ -1328,7 +1369,7 @@ class AdvancedSettingsFrame(MyToplevel):
         )
 
         self.mdl_checkbutton = MyCheckbutton(
-            self.main_frame, variable=self.ctrl.adsettings['mdl']['var'],
+            self.main_frame, variable=self.ctrl.mdl['var'],
             command=self.ud_mdl_button,
         )
         self.mdl_checkbutton.grid(
@@ -1353,7 +1394,7 @@ class AdvancedSettingsFrame(MyToplevel):
             self.main_frame,
             return_command=self.ud_points,
             return_args=('nlp',),
-            textvariable=self.ctrl.adsettings['nlp_points']['var'],
+            textvariable=self.ctrl.trim['nlp']['var'],
         )
         self.nlp_points_entry.grid(
             row=9, column=1, padx=10, pady=(10,0), sticky='w',
@@ -1370,8 +1411,7 @@ class AdvancedSettingsFrame(MyToplevel):
         # that inherited from tk.OptionMenu
         # had to customise manually after generating an instance
         self.algorithm_menu = tk.OptionMenu(
-            self.main_frame, self.ctrl.adsettings['nlp_algorithm']['var'],
-            *options
+            self.main_frame, self.ctrl.method['var'], *options
         )
 
         self.algorithm_menu['bg'] = 'white'
@@ -1384,15 +1424,14 @@ class AdvancedSettingsFrame(MyToplevel):
 
         # change the max. number of iterations after changing NLP
         # algorithm
-        self.ctrl.adsettings['nlp_algorithm']['var'].trace(
-            'w', self.ud_nlp_algorithm,
-        )
-
+        self.ctrl.method['var'].trace('w', self.ud_nlp_algorithm)
         self.algorithm_menu.grid(
             row=10, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
-        max_iterations_label = MyLabel(self.main_frame, text='Maximum iterations:')
+        max_iterations_label = MyLabel(
+            self.main_frame, text='Maximum iterations:',
+        )
         max_iterations_label.grid(
             row=11, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
@@ -1401,19 +1440,21 @@ class AdvancedSettingsFrame(MyToplevel):
             self.main_frame,
             return_command=self.ud_max_iterations,
             return_args=(),
-            textvariable=self.ctrl.adsettings['max_iterations']['var'],
+            textvariable=self.ctrl.maxit['var'],
         )
         self.max_iterations_entry.grid(
             row=11, column=1, padx=10, pady=(10,0), sticky='w',
         )
 
-        phase_variance_label = MyLabel(self.main_frame, text='Optimise phase variance:')
+        phase_variance_label = MyLabel(
+            self.main_frame, text='Optimise phase variance:',
+        )
         phase_variance_label.grid(
             row=12, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
         self.phase_var_checkbutton = MyCheckbutton(
-            self.main_frame, variable=self.ctrl.adsettings['phase_variance']['var'],
+            self.main_frame, variable=self.ctrl.phase_variance['var'],
             command=self.ud_phase_variance,
         )
         self.phase_var_checkbutton.grid(
@@ -1433,23 +1474,21 @@ class AdvancedSettingsFrame(MyToplevel):
         self.amp_thold_entry = MyEntry(
             self.amp_thold_frame, state='disabled',
             return_command=self.ud_amp_thold, return_args=(),
-            textvariable=self.ctrl.adsettings['amp_thold']['var'],
+            textvariable=self.ctrl.amp_thold['var'],
         )
         self.amp_thold_entry.grid(
             row=0, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
         self.amp_thold_checkbutton = MyCheckbutton(
-            self.amp_thold_frame,
-            variable=self.ctrl.adsettings['use_amp_thold']['var'],
-            command=lambda name='amp': self.ud_thold_button(name),
+            self.amp_thold_frame, variable=self.ctrl.use_amp_thold['var'],
+            command=self.ud_amp_thold_button,
         )
         self.amp_thold_checkbutton.grid(
             row=0, column=1, pady=(10,0), padx=10, sticky='w',
         )
 
-
-        ## May reincorporate later on
+        ## May reincorporate later on ========================================
         # freq_thold_label = MyLabel(self.main_frame, text='Frequency threshold:')
         # freq_thold_label.grid(
         #     row=14, column=0, padx=(10,0), pady=(10,0), sticky='w',
@@ -1475,7 +1514,7 @@ class AdvancedSettingsFrame(MyToplevel):
         # self.freq_thold_checkbutton.grid(
         #     row=0, column=1, pady=(10,0), padx=10, sticky='w',
         # )
-        # # ============================================================
+        # # ==================================================================
 
         self.button_frame = MyFrame(self)
         self.button_frame.columnconfigure(2, weight=1)
@@ -1491,7 +1530,7 @@ class AdvancedSettingsFrame(MyToplevel):
 
         self.max_points_label_mpm = MyLabel(
             self.button_frame, bold=True, font=(MAINFONT, 9, 'bold'),
-            textvariable=self.ctrl.adsettings['max_points']['var'],
+            textvariable=self.ctrl.max_points['var'],
         )
         self.max_points_label_mpm.grid(
             row=0, column=1, padx=(3,0), pady=(20,10), sticky='w',
@@ -1533,11 +1572,11 @@ class AdvancedSettingsFrame(MyToplevel):
 
     def ud_cut(self):
 
-        if int(self.ctrl.adsettings['cut']['var'].get()):
-            self.ctrl.adsettings['cut']['value'] = True
+        if int(self.ctrl.cut['var'].get()):
+            self.ctrl.cut['value'] = True
             self.ratio_entry['state'] = 'normal'
         else:
-            self.ctrl.adsettings['cut']['value'] = False
+            self.ctrl.cut['value'] = False
             self.ratio_entry['state'] = 'disabled'
 
         self.ctrl.ud_max_points()
@@ -1546,30 +1585,28 @@ class AdvancedSettingsFrame(MyToplevel):
     def ud_cut_ratio(self):
 
         # check the value can be interpreted as a float
-        str_value = self.ctrl.adsettings['cut_ratio']['var'].get()
+        str_value = self.ctrl.cut_ratio['var'].get()
         if self._check_float(str_value) and float(str_value) >= 1.0:
             float_value = float(str_value)
-            self.ctrl.adsettings['cut_ratio']['value'] = float_value
+            self.ctrl.cut_ratio['value'] = float_value
             self.ctrl.ud_max_points()
 
         else:
-            self.ctrl.adsettings['cut_ratio']['var'].set(
-                str(self.ctrl.adsettings['cut_ratio']['value'])
-            )
+            self.ctrl.cut_ratio['var'].set(str(self.ctrl.cut_ratio['value']))
 
 
     def ud_points(self, name):
 
-        str_value = self.ctrl.adsettings[f'{name}_points']['var'].get()
+        str_value = self.ctrl.trim[name]['var'].get()
         if self._check_int(str_value) and \
-        0 < int(str_value) <= self.ctrl.adsettings['max_points']['value']:
+        0 < int(str_value) <= self.ctrl.max_points['value']:
             int_value = int(str_value)
-            self.ctrl.adsettings[f'{name}_points']['value'] = int_value
-            self.ctrl.adsettings[f'{name}_points']['var'].set(str(int_value))
+            self.ctrl.trim[name]['value'] = int_value
+            self.ctrl.trim[name]['var'].set(str(int_value))
 
         else:
-            self.ctrl.adsettings[f'{name}_points']['var'].set(
-                str(self.ctrl.adsettings[f'{name}_points']['value'])
+            self.ctrl.trim[name]['var'].set(
+                str(self.ctrl.trim[name]['value'])
             )
 
 
@@ -1577,102 +1614,99 @@ class AdvancedSettingsFrame(MyToplevel):
         """For when the user clicks on the checkbutton relating to use the
         MDL"""
 
-        if int(self.ctrl.adsettings['mdl']['var'].get()):
-            self.ctrl.adsettings['mdl']['value'] = True
+        if int(self.ctrl.mdl['var'].get()):
+            self.ctrl.mdl['value'] = True
             self.oscillator_entry['state'] = 'disabled'
-            self.ctrl.adsettings[f'oscillators']['value'] = 0
-            self.ctrl.adsettings[f'oscillators']['var'].set('')
+            self.ctrl.M_in['value'] = 0
+            self.ctrl.M_in['var'].set('')
         else:
-            self.ctrl.adsettings['mdl']['value'] = False
+            self.ctrl.mdl['value'] = False
             self.oscillator_entry['state'] = 'normal'
 
 
     def ud_oscillators(self):
 
-        str_value = self.ctrl.adsettings['oscillators']['var'].get()
+        str_value = self.ctrl.M_in['var'].get()
         if self._check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
-            self.ctrl.adsettings[f'oscillators']['value'] = int_value
-            self.ctrl.adsettings[f'oscillators']['var'].set(str(int_value))
+            self.ctrl.M_in['value'] = int_value
+            self.ctrl.M_in['var'].set(str(int_value))
 
         else:
-            if self.ctrl.adsettings[f'oscillators']['value'] == 0:
-                self.ctrl.adsettings[f'oscillators']['var'].set('')
+            if self.ctrl.M_in['value'] == 0:
+                self.ctrl.M_in['var'].set('')
             else:
-                self.ctrl.adsettings[f'oscillators']['var'].set(
-                    str(self.ctrl.adsettings[f'oscillators']['value'])
-                )
+                self.ctrl.M_in['var'].set(str(self.ctrl.M_in['value']))
 
 
     def ud_max_iterations(self):
 
-        str_value = self.ctrl.adsettings['max_iterations']['var'].get()
+        str_value = self.ctrl.maxit['var'].get()
         if self._check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
-            self.ctrl.adsettings[f'max_iterations']['value'] = int_value
-            self.ctrl.adsettings[f'max_iterations']['var'].set(str(int_value))
+            self.ctrl.maxit['value'] = int_value
+            self.ctrl.maxit['var'].set(str(int_value))
 
         else:
-            self.ctrl.adsettings[f'max_iterations']['var'].set(
-                str(self.ctrl.adsettings[f'max_iterations']['value'])
-            )
+            self.ctrl.maxit['var'].set(str(self.ctrl.maxit['value']))
 
 
     def ud_nlp_algorithm(self, *args):
         """Called when user changes the NLP algorithm. Sets the default
         number of maximum iterations for the given method"""
 
-        method = self.ctrl.adsettings['nlp_algorithm']['var'].get()
+        method = self.ctrl.method['var'].get()
         if method == 'Trust Region':
-            self.ctrl.adsettings['nlp_algorithm']['value'] = 'trust_region'
-            self.ctrl.adsettings['max_iterations']['value'] = 100
-            self.ctrl.adsettings['max_iterations']['var'].set('100')
+            self.ctrl.method['value'] = 'trust_region'
+            self.ctrl.maxit['value'] = 100
+            self.ctrl.maxit['var'].set('100')
 
         elif method == 'L-BFGS':
-            self.ctrl.adsettings['nlp_algorithm']['value'] = 'lbfgs'
-            self.ctrl.adsettings['max_iterations']['value'] = 500
-            self.ctrl.adsettings['max_iterations']['var'].set('500')
+            self.ctrl.method['value'] = 'lbfgs'
+            self.ctrl.maxit['value'] = 500
+            self.ctrl.maxit['var'].set('500')
 
 
     def ud_phase_variance(self):
 
-        if int(self.ctrl.adsettings['phase_variance']['var'].get()):
-            self.ctrl.adsettings['phase_variance']['value'] = True
+        if int(self.ctrl.phase_variance['var'].get()):
+            self.ctrl.phase_variance['value'] = True
         else:
-            self.ctrl.adsettings['phase_variance']['value'] = False
+            self.ctrl.phase_variance['value'] = False
 
 
-    def ud_thold_button(self, name):
+    def ud_amp_thold_button(self):
         """For when the user clicks on the checkbutton relating to whether
         or not to impose an amplitude threshold"""
 
-        if int(self.ctrl.adsettings[f'use_{name}_thold']['var'].get()):
-            self.ctrl.adsettings[f'use_{name}_thold']['value'] = True
-            self.__dict__[f'{name}_thold_entry']['state'] = 'normal'
+        if int(self.ctrl.use_amp_thold['var'].get()):
+            self.ctrl.use_amp_thold['value'] = True
+            self.amp_thold_entry['state'] = 'normal'
         else:
-            self.ctrl.adsettings[f'use_{name}_thold']['value'] = False
-            self.__dict__[f'{name}_thold_entry']['state'] = 'disabled'
+            self.ctrl.use_amp_thold['value'] = False
+            self.amp_thold_entry['state'] = 'disabled'
 
 
     def ud_amp_thold(self):
 
-        str_value = self.ctrl.adsettings['amp_thold']['var'].get()
+        str_value = self.ctrl.amp_thold['var'].get()
 
         if self._check_float(str_value):
             float_value = float(str_value)
 
             if 0.0 <= float_value < 1.0:
-                self.ctrl.adsettings['amp_thold']['value'] = float_value
+                self.ctrl.amp_thold['value'] = float_value
                 self.ctrl.ud_max_points()
                 return
 
-        self._reset(self.ctrl.adsettings['amp_thold'])
+        self._reset(self.ctrl.amp_thold)
 
 
 class RootButtonFrame(MyFrame):
 
     def __init__(self, parent, ctrl):
         super().__init__(parent)
+        self.parent = parent
         self.ctrl = ctrl
 
         self.cancel_button = MyButton(
@@ -1726,75 +1760,7 @@ class SetupButtonFrame(RootButtonFrame):
 
     def __init__(self, parent, ctrl):
         super().__init__(parent, ctrl)
-        self.ctrl = ctrl
         self.save_button['command'] = self.ctrl.run
-
-
-
-class ResultFrame(MyToplevel):
-    """App for dealing with result of estimation. Enables user to tweak
-    oscillators (and re-run the optimisation with the updated parameter array),
-    customise the final plot, and save results."""
-
-    def __init__(self, parent, ctrl):
-        MyToplevel.__init__(self, parent)
-        self.ctrl = ctrl
-
-        self.title('NMR-EsPy - Result')
-        self.protocol('WM_DELETE_WINDOW', self.ctrl.destroy)
-
-
-        # main container: everything goes inside here
-        container = MyFrame(self)
-        container.pack(side='top', fill='both', expand=True)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
-
-        # plot result
-        self.fig, self.ax, self.lines, self.labels = self.ctrl.info.plot_result()
-        # edit figure resolution and size
-        self.fig.set_dpi(170)
-        self.fig.set_size_inches(6, 3.5)
-
-        # restrict x-axis to spectral window of interest
-        xlim = self.ax.get_xlim()
-        Restrictor(self.ax, x=lambda x: x<= xlim[0]) # restrict left
-        Restrictor(self.ax, x=lambda x: x>= xlim[1]) # restrict right
-
-        # contain all frames inside dictionary (makes it easy to acquire
-        # attributes whilst in different classes)
-        self.frames = {}
-
-        # append all frames to the window
-        self.frames['PlotFrame'] = PlotFrame(
-            parent=container, ctrl=self.ctrl, figure=self.fig,
-        )
-        self.frames['PlotFrame'].grid(
-            row=0, column=0, columnspan=2, sticky='nsew'
-        )
-
-        self.frames['LogoFrame'] = LogoFrame(
-            parent=container, ctrl=self.ctrl, scale=0.06
-        )
-        self.frames['LogoFrame'].grid(
-            row=1, column=0, padx=10, pady=10, sticky='w'
-        )
-
-        self.frames['ResultButtonFrame'] = ResultButtonFrame(
-            parent=container, ctrl=self.ctrl
-        )
-        self.frames['ResultButtonFrame'].grid(row=1, column=1, sticky='s')
-
-
-
-class RerunSettingsFrame(AdvancedSettingsFrame):
-
-    def __init__(self, parent, ctrl):
-        AdvancedSettingsFrame.__init__(self, parent, ctrl)
-        self.ctrl = ctrl
-        self.rows['0'].grid_forget()
-        self.rows['1'].grid_forget()
-
 
 
 class ResultButtonFrame(RootButtonFrame):
@@ -1802,16 +1768,12 @@ class ResultButtonFrame(RootButtonFrame):
     and running NMR-EsPy"""
 
     def __init__(self, parent, ctrl):
-        RootButtonFrame.__init__(self, parent, ctrl)
-        self.parent = parent
-        self.ctrl = ctrl
-
+        super().__init__(parent, ctrl)
         self.save_button['command'] = self.save_options
         self.save_button['text'] = 'Save'
 
-        self.edit_parameter_button = tk.Button(
-            self, text='Edit Parameter Estimate', width=20, bg='#7fccf3',
-            highlightbackground='black', command=self.edit_parameters
+        self.edit_parameter_button = MyButton(
+            self, text='Edit Parameter Estimate', command=self.edit_parameters,
         )
         self.edit_parameter_button.grid(
             row=0, column=0, columnspan=3, sticky='ew', padx=10, pady=(10,0)
@@ -1824,118 +1786,96 @@ class ResultButtonFrame(RootButtonFrame):
         SaveFrame(parent=self, ctrl=self.ctrl)
 
 
-class LogoFrame(MyFrame):
-    """Contains the NMR-EsPy logo (who doesn't like a bit of publicity)"""
+class RerunSettingsFrame(AdvancedSettingsFrame):
 
-    def __init__(self, parent, ctrl, scale=0.08):
-        super().__init__(parent)
+    def __init__(self, parent, ctrl):
+        AdvancedSettingsFrame.__init__(self, parent, ctrl)
         self.ctrl = ctrl
-
-        self.nmrespy_img = get_PhotoImage(
-            os.path.join(IMAGESDIR, 'nmrespy_full.png'), scale
-        )
-        self.nmrespy_logo = MyLabel(
-            self, image=self.nmrespy_img, cursor='hand1'
-        )
-
-        self.nmrespy_logo.bind(
-            '<Button-1>', lambda e: webbrowser.open_new(NMRESPYLINK)
-        )
-        self.nmrespy_logo.grid(row=0, column=0)
-
-        self.mfgroup_img = get_PhotoImage(
-            os.path.join(IMAGESDIR, 'mf_logo.png'), scale*10
-        )
-        self.mfgroup_logo = MyLabel(
-            self, image=self.mfgroup_img, cursor='hand1'
-        )
-
-        self.mfgroup_logo.bind(
-            '<Button-1>', lambda e: webbrowser.open_new(MFGROUPLINK)
-        )
-        self.mfgroup_logo.grid(row=0, column=1, padx=(40,0))
+        self.rows['0'].grid_forget()
+        self.rows['1'].grid_forget()
 
 
-class EditParams(tk.Toplevel):
+class EditParams(MyToplevel):
     """Window allowing user to edit the estimation result."""
 
     def __init__(self, parent, ctrl):
 
-        tk.Toplevel.__init__(self, parent)
+        super().__init__(parent)
+        self.columnconfigure(0, weight=1)
         self.ctrl = ctrl
-        self['bg'] = 'white'
-        self.resizable(False, False)
         self.grab_set()
 
         # frame to contain the table of parameters
-        self.table = tk.Frame(self, bg='white')
+        self.table = MyFrame(self)
         self.table.grid(row=0, column=0)
         # generate table inside frame
         self.construct_table()
         # frame to contain various buttons: mrege, split, manual edit, close
-        self.buttonframe = tk.Frame(self, bg='white')
-        self.buttonframe.grid(row=1, column=0, sticky='e')
+        self.button_frame = MyFrame(self)
+        self.button_frame.grid(row=1, column=0, sticky='ew')
 
+        for i in range(4):
+            self.button_frame.columnconfigure(i, weight=1)
 
         # Re-run nonlinear programming
-        self.rerunbutton = tk.Button(
-            self.buttonframe, text='Re-run NLP',
-            highlightbackground='black', state='active', command=self.rerun
+        self.rerun_button = MyButton(
+            self.button_frame, text='Re-run NLP', command=self.rerun,
+            bg=BUTTONGREEN,
         )
-        self.rerunbutton.grid(column=0, row=0, rowspan=2, pady=10, stick='ns')
-
-        # add oscillator(s)
-        self.addbutton = tk.Button(
-            self.buttonframe, text='Add Oscillator(s)',
-            highlightbackground='black', state='active', command=self.add
-        )
-        self.addbutton.grid(
-            row=0, column=1, sticky='ew', padx=(10,0), pady=(10,0)
+        self.rerun_button.grid(
+            column=0, row=0, rowspan=2, padx=(10,0), pady=10, sticky='nsew',
         )
 
         # add oscillator(s)
-        self.removebutton = tk.Button(
-            self.buttonframe, text='Remove Oscillator(s)',
-            highlightbackground='black', state='disabled', command=self.remove
+        self.add_button = MyButton(
+            self.button_frame, text='Add', command=self.add,
         )
-        self.removebutton.grid(
-            row=0, column=2, sticky='ew', padx=(10,0), pady=(10,0)
+        self.add_button.grid(
+            row=0, column=1, sticky='ew', padx=(10,0), pady=(10,0),
+        )
+
+        # remove oscillator(s)
+        self.remove_button = MyButton(
+            self.button_frame, text='Remove', state='disabled',
+            command=self.remove,
+        )
+        self.remove_button.grid(
+            row=0, column=2, sticky='ew', padx=(10,0), pady=(10,0),
         )
 
         # manually edit parameters associated with oscillator
-        self.manualbutton = tk.Button(
-            self.buttonframe, text='Edit Manually',
-            highlightbackground='black', state='disabled',
-            command=self.manual_edit
+        self.manual_button = MyButton(
+            self.button_frame, text='Edit Manually', state='disabled',
+            command=self.manual_edit,
         )
-        self.manualbutton.grid(
-            row=0, column=3, sticky='ew', padx=10, pady=(10,0)
+        self.manual_button.grid(
+            row=0, column=3, sticky='ew', padx=10, pady=(10,0),
         )
 
         # split selected oscillator
-        self.splitbutton = tk.Button(
-            self.buttonframe, text='Split Oscillator',
-            highlightbackground='black', state='disabled', command=self.split
+        self.split_button = MyButton(
+            self.button_frame, text='Split', state='disabled',
+            command=self.split,
         )
-        self.splitbutton.grid(
-            row=1, column=1, sticky='ew', padx=(10,0), pady=(10,10)
+        self.split_button.grid(
+            row=1, column=1, sticky='ew', padx=(10,0), pady=(10,10),
         )
 
         # merge selected oscillators
-        self.mergebutton = tk.Button(
-            self.buttonframe, text='Merge Oscillators',
-            highlightbackground='black', state='disabled', command=self.merge
+        self.merge_button = MyButton(
+            self.button_frame, text='Merge', state='disabled',
+            command=self.merge,
         )
-        self.mergebutton.grid(
-            row=1, column=2, sticky='ew', padx=(10,0), pady=(10,10)
+        self.merge_button.grid(
+            row=1, column=2, sticky='ew', padx=(10,0), pady=(10,10),
         )
 
         # close window
-        self.closebutton = tk.Button(
-            self.buttonframe, text='Close', highlightbackground='black',
-            command=self.destroy
+        self.close_button = MyButton(
+            self.button_frame, text='Close', command=self.destroy,
+            bg=BUTTONRED,
         )
-        self.closebutton.grid(
+        self.close_button.grid(
             row=1, column=3, sticky='ew', padx=10, pady=(10,10)
         )
 
@@ -1947,41 +1887,41 @@ class EditParams(tk.Toplevel):
                 widget.destroy()
 
         # column titles
-        column = 0
-        for title in ('#', 'Amplitude', 'Phase', 'Frequency', 'Damping'):
-            label = tk.Label(self.table, bg='white', text=title)
+        titles = ('#', 'Amplitude', 'Phase', 'Frequency', 'Damping')
+        for column, title in enumerate(titles):
+            label = MyLabel(self.table, text=title)
+
+            ipadx = 0
+            padx = (5, 0)
+            pady = (10, 0)
 
             if column == 0:
-                label.grid(
-                    row=0, column=column, ipadx=10, pady=(10,0), sticky='w'
-                )
+                padx, ipadx = 0, 10
             elif column == 4:
-                label.grid(
-                    row=0, column=column, padx=(5,10), pady=(10,0), sticky='w'
-                )
-            else:
-                label.grid(
-                    row=0, column=column, padx=(5,0), pady=(10,0), sticky='w'
-                )
+                padx = (5, 10)
 
-            column += 1
+            label.grid(
+                row=0, column=column, ipadx=ipadx, padx=padx, pady=pady,
+                sticky='w'
+            )
 
         # store oscillator labels, entry widgets, and string variables
         self.table_labels = [] # tk.Label instances (M elements)
         self.table_entries = [] # tk.Entry instances (M x 4 elements)
         self.table_variables = [] # tk.StringVar instances (M x 4 elements)
 
-        for i, oscillator in enumerate(self.ctrl.info.get_theta()):
+        for i, oscillator in enumerate(self.ctrl.info.get_theta(frequency_unit='ppm')):
 
             # first column: oscillator number
-            label = tk.Label(self.table, bg='white', text=f'{i + 1}')
+            label = MyLabel(self.table, text=str(i+1))
             # left click: highlight row (unselect all others)
             label.bind('<Button-1>', lambda entry, i=i: self.left_click(i))
 
             # left click with shift: highlight row, keep other selected rows
             # highlighted
-            label.bind('<Shift-Button-1>',
-                         lambda entry, i=i: self.shift_left_click(i))
+            label.bind(
+                '<Shift-Button-1>', lambda entry, i=i: self.shift_left_click(i),
+            )
 
             label.grid(row=i+1, column=0, ipadx=10, pady=(5,0))
             self.table_labels.append(label)
@@ -1996,18 +1936,20 @@ class EditParams(tk.Toplevel):
 
                 # make read-only color a pale blue (easy to see when row
                 # seleceted)
-                entry = tk.Entry(self.table, textvariable=var, state='disabled',
-                                 readonlybackground='#cde6ff', bg='white',
-                                 width=14)
+                entry = MyEntry(
+                    self.table, textvariable=var, state='disabled', width=14,
+                )
 
                 # conditions affect how entry widget is padded
-                if j == 0:
-                    entry.grid(row=i+1, column=j+1, pady=(5,0))
-                elif j in [1, 2]:
-                    entry.grid(row=i+1, column=j+1, padx=(5,0),pady=(5,0))
-                else: # j = 3
-                    entry.grid(row=i+1, column=j+1, padx=(5,10), pady=(5,0))
+                padx = (5, 10)
+                pady = (5, 0)
 
+                if j == 0:
+                    pady = 0
+                elif j != 3:
+                    padx = (5, 0)
+
+                entry.grid(row=i+1, column=j+1, padx=(5,10), pady=(5,0))
                 entry_row.append(entry)
 
             self.table_entries.append(entry_row)
@@ -2033,15 +1975,14 @@ class EditParams(tk.Toplevel):
         read-only mode. All other entry widgets are set to disabled mode."""
 
         for i, label in enumerate(self.table_labels):
-            if i == index:
-                pass
             # disable all rows that do not match the index
-            else:
+            if i != index:
                 if label['bg'] == 'blue':
-                    label['bg'] = 'white'
+                    label['bg'] = BGCOLOR
                     label['fg'] = 'black'
                     for entry in self.table_entries[i]:
                         entry['state'] = 'disabled'
+
 
         # proceed to highlight the selected row
         self.shift_left_click(index)
@@ -2061,16 +2002,10 @@ class EditParams(tk.Toplevel):
         to read-only mode. Other rows are unaffected.
         """
 
-        fg = 'white'
-        bg = 'blue'
-        state = 'readonly'
-
-        # if row is already selected, change parameters so it becomes
-        # unselected
-        if self.table_labels[index]['fg'] == 'white':
-            fg = 'black'
-            bg = 'white'
-            state = 'disabled'
+        if self.table_labels[index]['fg'] == 'black':
+            fg, bg, state = 'white', 'blue', 'readonly'
+        else:
+            fg, bg, state  = 'black', BGCOLOR, 'disabled'
 
         self.table_labels[index]['fg'] = fg
         self.table_labels[index]['bg'] = bg
@@ -2092,27 +2027,33 @@ class EditParams(tk.Toplevel):
 
         # deactivate all buttons
         if activated_number == 0:
-            self.removebutton['state'] = 'disabled'
-            self.splitbutton['state'] = 'disabled'
-            self.mergebutton['state'] = 'disabled'
-            self.manualbutton['state'] = 'disabled'
+            self.remove_button['state'] = 'disabled'
+            self.split_button['state'] = 'disabled'
+            self.merge_button['state'] = 'disabled'
+            self.manual_button['state'] = 'disabled'
 
         # activate split and manual edit buttons
         # deactivate merge button (can't merge one oscillator...)
         elif activated_number == 1:
-            self.removebutton['state'] = 'normal'
-            self.splitbutton['state'] = 'normal'
-            self.mergebutton['state'] = 'disabled'
-            self.manualbutton['state'] = 'normal'
+            self.remove_button['state'] = 'normal'
+            self.split_button['state'] = 'normal'
+            self.merge_button['state'] = 'disabled'
+            self.manual_button['state'] = 'normal'
 
         # activate merge button
         # deactivate split and manual edit buttons (ambiguous with multiple
         # oscillators selected)
         else: # activated_number > 1
-            self.removebutton['state'] = 'normal'
-            self.splitbutton['state'] = 'disabled'
-            self.mergebutton['state'] = 'normal'
-            self.manualbutton['state'] = 'disabled'
+            self.remove_button['state'] = 'normal'
+            self.split_button['state'] = 'disabled'
+            self.merge_button['state'] = 'normal'
+            self.manual_button['state'] = 'disabled'
+
+        for button in [self.remove_button, self.split_button, self.merge_button, self.manual_button]:
+            if button['state'] == 'normal':
+                button['bg'] = BUTTONDEFAULT
+            else:
+                button['bg'] = '#e0e0e0'
 
 
     def add(self):
@@ -2131,9 +2072,9 @@ class EditParams(tk.Toplevel):
         self.ctrl.info.remove_oscillators(indices)
 
         # update the plot
-        ud_plot(self.ctrl)
-
+        self.ud_plot()
         # destroy and reconstruct the data table to match the new theta
+        # self.reconstruct_table()
         self.construct_table(reconstruct=True)
         # decativate all buttons except close
         self.activate_buttons()
@@ -2240,6 +2181,7 @@ class EditParams(tk.Toplevel):
         self.construct_table(reconstruct=True)
         self.activate_buttons()
 
+
     def cancel_manual(self, i):
         """Cancel manually chaning oscillator parameters."""
 
@@ -2255,6 +2197,7 @@ class EditParams(tk.Toplevel):
         # deactivate row
         self.left_click(i)
 
+
     def get_selected_indices(self):
         """Determine the indices of the rows which are selected."""
 
@@ -2265,6 +2208,35 @@ class EditParams(tk.Toplevel):
 
         return indices
 
+
+    def ud_plot(self):
+        """Reconstructs the result plot after a change to the oscillators is
+        made
+        """
+
+        # get new lines and labels
+        # also obtaining ax to acquire new y-limits
+        for key, value in zip(('lines', 'labels'), self.ctrl.info.plot_result()[2:]):
+            self.ctrl.resultfig[key] = value
+
+        # remove previous lines and labels
+        self.ctrl.resultfig['ax'].lines = []
+        self.ctrl.resultfig['ax'].texts = []
+
+        # plot data line onto axis
+        for line in self.ctrl.resultfig['lines'].values():
+            self.ctrl.resultfig['ax'].plot(
+            line.get_xdata(), line.get_ydata(), color=line.get_color(),
+            lw=line.get_lw(),
+        )
+
+        for label in self.ctrl.resultfig['labels'].values():
+            self.ctrl.resultfig['ax'].text(
+                *label.get_position(), label.get_text()
+            )
+
+        # draw the new plot!
+        self.ctrl.result_frames['plot_frame'].canvas.draw_idle()
 
 class RerunFrame(tk.Toplevel):
 
@@ -2293,114 +2265,119 @@ class RerunFrame(tk.Toplevel):
         self.adsetframe.grid(row=0, column=0)
 
 
-class AddFrame(tk.Toplevel):
+class AddFrame(MyToplevel):
     """Window for adding oscillators.
     Opened after calling :py:meth:`EditParams.add`."""
 
     def __init__(self, parent, ctrl):
-        tk.Toplevel.__init__(self, parent)
+        super().__init__(parent)
         self.parent = parent
         self.ctrl = ctrl
-
-
-        self['bg'] = 'white'
-        self.resizable(False, False)
         self.grab_set()
 
-        self.tableframe = tk.Frame(self, bg='white')
-        self.tableframe.grid(row=0, column=0)
+        self.table_frame = MyFrame(self)
+        self.table_frame.grid(row=0, column=0)
+
+        titles = ('Amplitude', 'Phase', 'Frequency', 'Damping')
+        for column, title in enumerate(titles):
+            label = MyLabel(self.table_frame, text=title)
+
+            if column == 0:
+                padx = (10, 5)
+            elif column == 3:
+                padx = (0, 10)
+            else:
+                padx = (0, 5)
+
+            label.grid(row=0, column=column, padx=padx, pady=(10,0), sticky='w')
 
         self.entries = []
         self.vars = []
 
-        entry_row = []
-        var_row = []
+        self.add_row()
 
-        column = 0
-        for title in ('Amplitude', 'Phase', 'Frequency', 'Damping'):
-            label = tk.Label(self.tableframe, bg='white', text=title)
+        self.button_frame = MyFrame(self)
+        self.button_frame.grid(row=1, column=0, sticky='e')
 
-            var = tk.StringVar()
-            var.set('')
-
-            entry = tk.Entry(
-                self.tableframe, bg='white', width=12, textvariable=var,
-                highlightthickness=0
-            )
-
-            if column == 0:
-                label.grid(
-                    row=0, column=column, padx=(10,5), pady=(10,0), sticky='w'
-                )
-                entry.grid(row=1, column=column, padx=(10,5), pady=(5,0))
-            elif column == 3:
-                label.grid(
-                    row=0, column=column, padx=(0,10), pady=(10,0), sticky='w'
-                )
-                entry.grid(row=1, column=column, padx=(0,10), pady=(5,0))
-            else:
-                label.grid(
-                    row=0, column=column, padx=(0,5), pady=(10,0), sticky='w'
-                )
-                entry.grid(row=1, column=column, padx=(0,5), pady=(5,0))
-
-            var_row.append(var)
-            entry_row.append(entry)
-
-            column += 1
-
-        self.entries.append(entry_row)
-        self.vars.append(var_row)
-
-        self.buttonframe = tk.Frame(self, bg='white')
-        self.buttonframe.grid(row=1, column=0, sticky='e')
-
-        self.add_button = tk.Button(
-            self.buttonframe, text='Add', width=3,
-            highlightbackground='black', command=self.add_row,
+        self.add_button = MyButton(
+            self.button_frame, text='Add', width=3, command=self.add_row,
         )
         self.add_button.grid(row=0, column=0, padx=(0,10), pady=(10,10))
 
-        self.cancel_button = tk.Button(
-            self.buttonframe, text='Cancel', width=8, bg='#ff9894',
-            highlightbackground='black', command=self.destroy,
+        self.cancel_button = MyButton(
+            self.button_frame, text='Cancel', bg=BUTTONRED,
+            command=self.destroy,
         )
         self.cancel_button.grid(row=0, column=1, padx=(0,10), pady=(10,10))
 
-        self.save_button = tk.Button(
-            self.buttonframe, text='Save', width=8, bg='#9eda88',
-            highlightbackground='black', command=self.save,
+        self.save_button = MyButton(
+            self.button_frame, text='Save', width=8, bg=BUTTONGREEN,
+            command=self.save,
         )
         self.save_button.grid(row=0, column=2, padx=(0,10), pady=(10,10))
 
+
     def add_row(self):
+
+        row = len(self.entries) + 1
 
         entry_row = []
         var_row = []
-
-        row = len(self.entries) + 1
 
         for column in range(4):
             var = tk.StringVar()
             var.set('')
 
-            entry = tk.Entry(
-                self.tableframe, bg='white', width=12, textvariable=var,
-                highlightthickness=0
+            entry = MyEntry(
+                self.table_frame, return_command=self.check_param,
+                return_args=(row, column), width=12, textvariable=var,
             )
 
             if column == 0:
-                entry.grid(row=row, column=column, padx=(10,5), pady=(5,0))
+                padx = (10, 5)
             elif column == 3:
-                entry.grid(row=row, column=column, padx=(0,10), pady=(5,0))
+                padx = (0, 10)
             else:
-                entry.grid(row=row, column=column, padx=(0,5), pady=(5,0))
+                padx = (0, 5)
+
+            entry.grid(
+                row=row, column=column, padx=padx, pady=(5,0), sticky='w',
+            )
 
             var_row.append(var)
             entry_row.append(entry)
 
         self.entries.append(entry_row)
         self.vars.append(var_row)
+
+
+    def check_param(self, row, column):
+
+        try:
+            value = float(self.vars[row][column].get())
+
+        except:
+            self.vars[row][column].set('')
+
+        # amplitude
+        if column == 0:
+            if value < 0.:
+                raise
+
+        # phase
+        elif column == 1:
+            if value <= -np.pi or value >= np.pi:
+                # if phase outside acceptable range, then wrap
+                value = (value + np.pi) % (2 * np.pi) - np.pi
+
+        # frequency
+        elif column == 2:
+            pass
+
+        elif column == 3:
+            pass
+
+
 
 
     def save(self):
@@ -2409,7 +2386,8 @@ class AddFrame(tk.Toplevel):
         try:
             for var_row in self.vars:
                 oscillator_row = []
-                for var in var_row:
+                for i, var in enumerate(var_row):
+                    value = var.get()
 
                     oscillator_row.append(float(var.get()))
                 oscillators.append(oscillator_row)
@@ -2610,58 +2588,6 @@ class SplitFrame(tk.Toplevel):
         # reconstruct the parameter table with the updated oscillators
         self.parent.construct_table(reconstruct=True)
         self.destroy()
-
-
-def ud_plot(ctrl):
-    """Reconstructs the result plot after a change to the oscillators is
-    made
-
-    Parameters
-    ----------
-
-    ctrl : nmrespy.topspin.ResultApp
-        controller
-    """
-
-    # get new lines and labels
-    # also obtaining ax to acquire new y-limits
-    _, ax, lines, labels = ctrl.info.plot_result()
-
-    # wipe lines and text instances from the axis
-    ctrl.ax.lines = []
-    ctrl.ax.texts = []
-    # wipe lines and text labels from the ctrl
-    ctrl.lines = {}
-    ctrl.labels = {}
-
-    # plot data line onto axis
-    ctrl.lines['data'] = ctrl.ax.plot(
-        lines['data'].get_xdata(), lines['data'].get_ydata(),
-        color=lines['data'].get_color(), lw=lines['data'].get_lw()
-    )
-
-    # plot oscillator lines and add oscillator text labels
-    # append these to the lines and labels attributes of the ctrl
-    lines_and_labels = zip(list(lines.values())[1:], list(labels.values()))
-    for i, (line, label) in enumerate(lines_and_labels):
-
-        key = f'osc{i+1}'
-        # plot oscillator
-        ctrl.lines[key] = ctrl.ax.plot(
-            line.get_xdata(), line.get_ydata(), color=line.get_color(),
-            lw=line.get_lw()
-        )
-
-        # add oscillator label
-        x, y = label.get_position()
-        ctrl.labels[key] = ctrl.ax.text(x, y, label.get_text())
-
-    # update y-limits to fit new lines
-    ctrl.ax.set_xlim(ax.get_xlim())
-    ctrl.ax.set_ylim(ax.get_ylim())
-    # draw the new plot!
-    ctrl.frames['PlotFrame'].canvas.draw_idle()
-
 
 
 class SaveFrame(tk.Toplevel):
@@ -3863,5 +3789,5 @@ class LabelEdit(tk.Frame):
 
 if __name__ == '__main__':
 
-    setup_app = NMREsPyApp()
-    setup_app.mainloop()
+    app = NMREsPyApp()
+    app.mainloop()
