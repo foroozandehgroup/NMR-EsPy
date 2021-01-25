@@ -132,6 +132,15 @@ def aligned_tabular(columns, titles=None):
 
     return msg
 
+def isiterable(obj):
+    try:
+        iterable = iter(obj)
+        return True
+    except TypeError:
+        return False
+
+
+
 def convert(value, sw, off, n, sfo, conversion):
 
     if conversion == 'idx->hz':

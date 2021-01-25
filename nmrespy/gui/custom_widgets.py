@@ -46,7 +46,7 @@ class MyLabel(tk.Label):
     """Tkinter label with white background by deafult"""
 
     def __init__(self, parent, bold=False, **kwargs):
-        tk.Label.__init__(self, parent)
+        super().__init__(parent)
         keys = ('bg', 'font')
 
         if bold:
@@ -140,9 +140,13 @@ class MyEntry(tk.Entry):
 
     def key_press(self):
         self['fg'] = 'red'
+        self['highlightcolor'] = 'red'
+        self['highlightbackground'] = 'red'
 
     def return_press(self):
         self['fg'] = 'black'
+        self['highlightcolor'] = 'black'
+        self['highlightbackground'] = 'black'
         self.return_command(*self.return_args)
 
 class MyOptionMenu(tk.OptionMenu):
@@ -160,6 +164,19 @@ class MyOptionMenu(tk.OptionMenu):
             self['menu']['bg'] = kwayrgs['bg']
         else:
             self['menu']['bg'] = BGCOLOR
+
+
+class MyText(tk.Text):
+
+    def __init__(self, parent):
+
+        super().__init__(parent)
+
+        keys = ('bg', 'highlightcolor', 'highlightbackground')
+        values = (BGCOLOR, 'black', 'black')
+
+        generate(self, keys, values, kwargs)
+
 
 
 class MyNavigationToolbar(NavigationToolbar2Tk):

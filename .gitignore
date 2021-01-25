@@ -4,5 +4,4 @@ docs/Makefile
 nmrespy/topspin/apps_cp.py
 nmrespy/core_cp.py
 nmrespy/logs/*
-tests
 docs/references/generated/*

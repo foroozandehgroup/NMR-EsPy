@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from copy import deepcopy
-import time
 
 import numpy as np
 from numpy.linalg import norm, svd, eig, pinv, solve, inv
@@ -9,10 +8,152 @@ from scipy.linalg import hankel
 from scipy import sparse
 from scipy.sparse.linalg import svds
 
-from ._timing import _print_time
+import nmrespy._misc as _misc
+from ._errors import *
+from ._timing import timer
 from ._cols import *
 if USE_COLORAMA:
     import colorama
+
+
+class MatrixPencil:
+    """Class for performing the Matrix Pencil Method with the option of model
+    order selection using the Minimum Description Length (MDL). Supports
+    analysis of one-dimensional [1]_ [2]_ or two-dimensional data [3]_ [4]_
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Signal to be considered (unnormalised).
+
+    sw : (float,) or (float, float)
+        The experiment sweep width in each dimension in Hz.
+
+    offset : float, default: 0.0
+        The experiment transmitter offset frequency in Hz.
+
+    M : int, default: 0
+        The number of oscillators. If ``0``, the number of oscilators will
+        be estimated using the MDL.
+
+    fprint : bool
+        Flag specifiying whether to print infomation to the terminal as
+        the method runs.
+
+    References
+    ----------
+    .. [1] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
+       parameters of exponentially damped/undamped sinusoids in noise”. In:
+       IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
+
+    .. [2] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy NMR
+       signals: applications to delayed acquisition data”. In: J. Magn. Reson.
+       128.1 (1997), pp. 30–41.
+
+    .. [3] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
+       enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
+       International Conference on Acoustics, Speech, and Signal Processing.
+       IEEE. 1991, pp. 3073–3076.
+
+    .. [4] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
+       using modified matrix pencil method”. In: IEEE Trans. Signal Process.
+       55.2 (2007), pp. 718–724.
+    """
+    def __init__(data, sw, offset=0.0, M=0):
+
+        # get data and check it is a NumPy array
+        if isinstance(data, np.ndarray):
+            self.data = data
+        else:
+            raise TypeError(f'{R}data should be a numpy ndarray{END}')
+
+        # determine data dimension. If greater than 2, return error
+        self.dim = self.data.ndim
+        if self.dim >= 3:
+            raise MoreThanTwoDimError()
+
+        self.n = self.data.shape()
+
+        # # check sw
+        # if _misc.isiterable(sw):
+        #     if len(sw) == self.dim:
+
+        self.sw = sw
+
+        self.offset = offset
+        self.M_initial = M
+        self.fprint = fprint
+
+
+        # will be used to create a log of the method run
+        self.log = ''
+
+    def mpm(self, pencil_parameter=None, fprint=True):
+        """Performs the appropriate algorithm, based on the data dimension.
+
+        Parameters
+        ----------
+        pencil_parameter : int, tuple or None
+            Pencil parameter(s) used for Hankel data matrix. If the data is
+            1D, should be an int or single-element tuple
+        """
+
+        if self.dim == 1:
+            self._mpm_1d()
+
+        elif self.dim == 2:
+            self._mpm_2d()
+
+    @timer
+    def _mpm_1d(self):
+        if self.fprint:
+            print(f'{G}===============================\n'
+                      'PERFORMING MATRIX PENCIL METHOD\n'
+                     f'==============================={END}')
+
+        # normalise data
+        nm = norm(data)
+        data_normalised = data / nm
+
+        # data size and pencil parameter
+        N = data_normalised.size
+        L = self._pencil_parameter(N, fprint)
+
+        # Hankel matrix of data, with dimensions (N-L) * L
+        r = data_norm[0:N-L]
+        c = data_norm[N-L-1:N]
+        Y = _hankel(r, c, fprint)
+
+        # singular value decomposition of Y
+        s, Vh = _svd(Y, fprint)
+
+        # number of oscillators
+        M = _mdl(M_in, N, L, s, fprint)
+
+        # determine signal poles
+        V = np.transpose(Vh)
+        z = _signal_poles_1d(V, M, fprint)
+
+        # determine complex amplitudes
+        alpha = _complex_amplitudes_1d(z, data_norm, fprint)
+
+        # extract amps, phases, freqs, and damps
+        amp = np.abs(alpha) * nm
+        phase = np.arctan2(np.imag(alpha), np.real(alpha))
+        freq = -(sw / (2 * np.pi)) * np.imag(np.log(z)) + offset
+        damp = - sw * np.real(np.log(z[:]))
+        x0 = (np.vstack((amp, phase, freq, damp))).T
+
+        if fprint:
+            finish = time.time()
+            print(f'==============\n{G}ITMPM complete{END}\n==============')
+            _print_time(finish-start)
+
+        # removal of terms with negative damping factors
+        x0 = _negative_damping(x0, fprint)
+
+        # return parameters, ordered by frequency
+        return x0[np.argsort(x0[:, 2])]
 
 
 def mpm_1d(data, M_in, sw, offset, fprint):
@@ -54,53 +195,7 @@ def mpm_1d(data, M_in, sw, offset, fprint):
        128.1 (1997), pp. 30–41.
     """
 
-    if fprint:
-        start = time.time()
-        print(f'=============\n{G}ITMPM started{END}\n=============')
 
-    # normalise data
-    nm = norm(data)
-    data_norm = data/nm
-
-    # data size and pencil parameter
-    N = data_norm.shape[0]
-    L = _pencil_parameter(N, fprint)
-
-    # Hankel matrix of data, with dimensions (N-L) * L
-    r = data_norm[0:N-L]
-    c = data_norm[N-L-1:N]
-    Y = _hankel(r, c, fprint)
-
-    # singular value decomposition of Y
-    s, Vh = _svd(Y, fprint)
-
-    # number of oscillators
-    M = _mdl(M_in, N, L, s, fprint)
-
-    # determine signal poles
-    V = np.transpose(Vh)
-    z = _signal_poles_1d(V, M, fprint)
-
-    # determine complex amplitudes
-    alpha = _complex_amplitudes_1d(z, data_norm, fprint)
-
-    # extract amps, phases, freqs, and damps
-    amp = np.abs(alpha) * nm
-    phase = np.arctan2(np.imag(alpha), np.real(alpha))
-    freq = -(sw / (2 * np.pi)) * np.imag(np.log(z)) + offset
-    damp = - sw * np.real(np.log(z[:]))
-    x0 = (np.vstack((amp, phase, freq, damp))).T
-
-    if fprint:
-        finish = time.time()
-        print(f'==============\n{G}ITMPM complete{END}\n==============')
-        _print_time(finish-start)
-
-    # removal of terms with negative damping factors
-    x0 = _negative_damping(x0, fprint)
-
-    # return parameters, ordered by frequency
-    return x0[np.argsort(x0[:, 2])]
 
 
 def mpm_2d(data, M_in, sw, offset, fprint):

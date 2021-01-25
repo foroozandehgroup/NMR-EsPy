@@ -3,8 +3,38 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-# Provides _print_time(), for formatted time output to terminal.
+# Provides timer decorator
 
+import time
+
+def timer(f):
+    """f is a callable (function or method)"""
+    def timed(*args, **kwargs):
+        start = time.time()
+        result = f(*args, **kwargs)
+        run_time = convert(time.time() - start)
+        print(f'Time elapsed: {run_time}')
+        return result
+    return timed
+
+def convert(secs):
+    """Takes a time in seconds and converts to min:sec:msec"""
+    mins = int(secs // 60)
+    secs %= 60
+    msecs = int(round(((secs - int(secs)) * 1000)))
+    secs = int(secs)
+
+    return f'{mins} mins, {secs} secs, {msecs} msecs'
+
+# ————————————————————————————————————————————————————————————————————
+# “The story so far:
+# In the beginning the Universe was created.
+# This has made a lot of people very angry and been widely regarded as
+# a bad move.”
+# —————————Douglas Adams, The Restaurant at the End of the Universe———
+
+# TODO
+# to be deprecated
 import numpy as np
 
 def _print_time(time):
@@ -21,10 +51,3 @@ def _print_time(time):
         print(f'Time taken: {mins}:{secs}\n')
     else:
         print(f'Time taken: {secs}.{millisecs}s\n')
-
-# ————————————————————————————————————————————————————————————————————
-# “The story so far:
-# In the beginning the Universe was created.
-# This has made a lot of people very angry and been widely regarded as
-# a bad move.”
-# —————————Douglas Adams, The Restaurant at the End of the Universe———

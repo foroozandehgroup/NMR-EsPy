@@ -3,10 +3,10 @@
 # nmrespy._errors
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# 
+#
 
-from ._cols import *
-if USE_COLORAMA:
+import nmrespy._cols as cols
+if cols.USE_COLORAMA:
     import colorama
 
 
@@ -14,7 +14,7 @@ class MoreThanTwoDimError(Exception):
     """Raise when user tries importing data that is >2D"""
 
     def __init__(self):
-        self.msg = f'{R}nmrespy does\'nt support >2D data.{END}'
+        self.msg = f'{cols.R}nmrespy does\'nt support >2D data.{cols.END}'
         super().__init__(self.msg)
 
 
@@ -23,10 +23,10 @@ class TwoDimUnsupportedError(Exception):
     data yet"""
 
     def __init__(self):
-        self.msg = f'{R}Unfortunately 2D virtual echo creation isn\'t' \
-                   + ' supported yet. Check if there are any more recent' \
-                   + ' versions of nmrespy with this feature:\n' \
-                   + f'{C}http://foroozandeh.chem.ox.ac.uk/home{END}'
+        self.msg = (f'{cols.R}Unfortunately 2D virtual echo creation isn\'t'
+                     ' supported yet. Check if there are any more recent'
+                     ' versions of nmrespy with this feature:\n'
+                    f'{cols.C}{GITHUBPATH}{cols.END}')
         super().__init__(self.msg)
 
 
@@ -34,8 +34,9 @@ class InvalidUnitError(Exception):
     """Raise when the specified unit is invalid"""
 
     def __init__(self, *args):
-        self.msg = f'{R}unit should be one of the following: '
-        self.msg += ', '.join([repr(unit) for unit in args]) + END
+        valid_units = ', '.join([repr(unit) for unit in args])
+        self.msg = (f'{cols.R}unit should be one of the following:'
+                    f' {valid_units}{cols.END}')
         super().__init__(self.msg)
 
 
@@ -43,18 +44,27 @@ class InvalidDirectoryError(Exception):
     """Raise when the a dictionary does not have the requisite files"""
 
     def __init__(self, dir):
-        self.msg = f'{R}{dir} does not contain the necessary files' \
-                   + f' for importing data.{END}'
+        self.msg = (f'{cols.R}{str(dir)} does not contain the necessary files'
+                    f' for importing data.{cols.END}')
+        super().__init__(self.msg)
+
+
+class ParameterNotFoundError(Exception):
+    """Raise when a desired parameter is not present in an acqus/procs file"""
+
+    def __init__(self, param_name, path):
+        self.msg = (f'{cols.R}Could not find parameter {param_name} in file'
+                    f'{str(path)}{cols.END}')
         super().__init__(self.msg)
 
 
 class NoParameterEstimateError(Exception):
-    """Raise when the a dictionary does not have the requisite files"""
+    """Raise when instance does not possess a valid parameter array"""
 
     def __init__(self):
-        self.msg = f'{R}No attribute corresponding to a parameter array' \
-                   + f' could be found. Perhaps you need to run an' \
-                   + f' estimation routine first?{END}'
+        self.msg = (f'{cols.R}No attribute corresponding to a parameter array'
+                    f' could be found. Perhaps you need to run an'
+                    f' estimation routine first?{cols.END}')
         super().__init__(self.msg)
 
 
@@ -63,10 +73,10 @@ class NoSuitableDataError(Exception):
     pdata, and not constructed a virtual echo from it"""
 
     def __init__(self):
-        self.msg = f'{R}No appropriate data to analyse was found.' \
-                   + f' It is possible that this is because you have' \
-                   + f' imported processed data, and have not yet' \
-                   + f' generated a virtual echo from it.{END}'
+        self.msg = (f'{cols.R}No appropriate data to analyse was found.'
+                    f' It is possible that this is because you have'
+                    f' imported processed data, and have not yet'
+                    f' generated a virtual echo from it.{cols.END}')
         super().__init__(self.msg)
 
 
@@ -74,11 +84,11 @@ class PhaseVarianceAmbiguityError(Exception):
     """Raise when phase_variance is True, but 'p' is not specified in mode"""
 
     def __init__(self, mode):
-        self.msg = f'{R}You have specified you want to minimise phase' \
+        self.msg = f'{cols.R}You have specified you want to minimise phase' \
                    + f' varaince (phase_variance=True) but you have not' \
                    + f' asked for the phases to be be optimised' \
                    + f' (mode = \'{mode}\'). The phase variance cannot change' \
-                   + f' if you don\'t include \'p\' in mode.{END}'
+                   + f' if you don\'t include \'p\' in mode.{cols.END}'
         super().__init__(self.msg)
 
 
@@ -87,8 +97,9 @@ class AttributeIsNoneError(Exception):
     is None"""
 
     def __init__(self, attribute, method):
-        self.msg = f'{R}The attribute {attribute} is None. Perhaps you are' \
-                   + f' yet to call {method} on the class instance?{END}'
+        self.msg = (f'{cols.R}The attribute {attribute} is None. Perhaps you'
+                    f'  are yet to call {method} on the class instance?'
+                    f'{cols.END}')
         super().__init__(self.msg)
 
 
@@ -97,9 +108,11 @@ class LaTeXFailedError(Exception):
     but compiling the TeX file failed when pdflatex was called."""
 
     def __init__(self, texpath):
-        self.msg = f'{R}The file {texpath} failed to compile using' \
-                   + f' pdflatex. Make you sure have a LaTeX installation' \
-                   + f' by opening a terminal and entering:\n{C}pdflatex\n' \
-                   + f'{R}If you have pdflatex, run:\n{C}pdflatex {texpath}\n' \
-                   + f'{R}and try to fix whatever it is not happy with{END}'
+        self.msg = (f'{cols.R}The file {texpath} failed to compile using'
+                    f' pdflatex. Make you sure have a LaTeX installation'
+                    f' by opening a terminal and entering:\n{cols.C}'
+                    f' pdflatex\n{cols.R}If you have pdflatex, run:\n'
+                    f' {cols.C}pdflatex {texpath}\n{cols.R}and try to fix'
+                    f' whatever it is not happy with{cols.END}')
+
         super().__init__(self.msg)
