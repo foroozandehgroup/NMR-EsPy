@@ -20,6 +20,8 @@ class TestBruker(unittest.TestCase):
     # later tests
     def setUp(self):
 
+        self.pickle_dir = Path().cwd() / 'pickled_objects'
+
         # PATHS
         # user's home dir - assume this does not contain any of the
         # requisite files
@@ -66,7 +68,7 @@ class TestBruker(unittest.TestCase):
             self.assertIsInstance(info, NMREsPyBruker)
 
         # ---test pickle_load---
-        loaded_info = load.pickle_load('NMREsPyBruker.pkl')
+        loaded_info = load.pickle_load(self.pickle_dir / 'NMREsPyBruker.pkl')
 
 
     def test_get(self):
@@ -78,9 +80,9 @@ class TestBruker(unittest.TestCase):
         pickle_paths = []
         for dtype in dtypes:#
             sublst = []
-            sublst.append(f'shifts_1d_{dtype}_hz.pkl')
-            sublst.append(f'shifts_1d_{dtype}_ppm.pkl')
-            sublst.append(f'tp_1d_{dtype}.pkl')
+            sublst.append(self.pickle_dir / f'shifts_1d_{dtype}_hz.pkl')
+            sublst.append(self.pickle_dir / f'shifts_1d_{dtype}_ppm.pkl')
+            sublst.append(self.pickle_dir / f'tp_1d_{dtype}.pkl')
             pickle_paths.append(iter(sublst))
 
         for inst, path, dtype, n, ppaths in zip(insts, paths, dtypes, ns, pickle_paths):
@@ -146,8 +148,7 @@ class TestBruker(unittest.TestCase):
                 inst.get_p0,
                 inst.get_p1,
                 inst.get_filtered_spectrum,
-                inst.get_virtual_echo,
-                inst.get_half_echo,
+                inst.get_filtered_signal,
                 inst.get_filtered_n,
                 inst.get_filtered_sw,
                 inst.get_filtered_offset,
@@ -160,48 +161,13 @@ class TestBruker(unittest.TestCase):
                     value = method()
                 self.assertIsNone(method(kill=False))
 
+    def test_filter(self):
+        region = [[6.2, 4.5]]
+        noise_region = [[9.7, 9.3]]
+        self.pdata_info.frequency_filter(
+            region=region, noise_region=noise_region, retain_filter_class=True
+        )
 
-
-
-
-    # def test_import_pdata(self):
-    #
-    #     path = os.path.join(datadir, '1/pdata/1')
-    #     info = load.import_bruker_pdata(path)
-    #     self.assertEqual(info.get_dtype(), 'pdata')
-    #     self.assertEqual(info.get_dim(), 1)
-    #     self.assertIsInstance(info.get_data(pdata_key='1r'), np.ndarray)
-    #     self.assertIsInstance(info.get_data(pdata_key='1i'), np.ndarray)
-    #     self.assertEqual(info.get_data(pdata_key='1r').shape, (32768,))
-    #     self.assertEqual(info.get_data(pdata_key='1i').shape, (32768,))
-    #     self.assertEqual(info.get_datapath(), path)
-    #     self.assertEqual(round(info.get_sw()[0], 4), 5494.5055)
-    #     self.assertEqual(round(info.get_sw(unit='ppm')[0], 4), 10.9861)
-    #     self.assertEqual(round(info.get_offset()[0], 4), 2249.2060)
-    #     self.assertEqual(round(info.get_offset(unit='ppm')[0], 4), 4.4972)
-    #     self.assertEqual(round(info.get_bf()[0], 4), 500.1300)
-    #     self.assertEqual(round(info.get_sfo()[0], 4), 500.1322)
-    #     self.assertEqual(info.get_nuc()[0], '1H')
-    #
-    # def test_pickle(self):
-    #
-    #     path = os.path.join(datadir, '1000')
-    #     info = load.import_bruker_fid(path, ask_convdta=False)
-    #     info.pickle_save('pickle_test.pkl')
-    #     info_new = load.pickle_load('pickle_test.pkl')
-    #
-    #     # consider string beyond memory location (will differ)
-    #     self.assertEqual(str(info_new).split('>')[1],
-    #                      str(info).split('>')[1])
-    #     os.remove('pickle_test.pkl')
-    #
-    # def test_mpm(self):
-    #
-    #     path = os.path.join(datadir, '1/pdata/1')
-    #     info = load.import_bruker_pdata(path)
-    #     info.virtual_echo(highs=(5.285,), lows=(5.180,), highs_n=(9.5,),
-    #                       lows_n=(9.2,))
-    #     info.matrix_pencil(trim=(4096,))
 
 
 if __name__ == '__main__':

@@ -22,7 +22,8 @@ from ._cols import *
 if USE_COLORAMA:
     import colorama
 from ._errors import *
-from . import _misc, _mpm, _nlp, _plot, _ve, _write
+from . import _misc, _mpm, _nlp, _plot, _write
+from nmrespy import _filter as filter
 
 
 def logger(f):
@@ -99,7 +100,7 @@ class NMREsPyBruker:
     virtual_echo : numpy.ndarray or None, default: `None`
         Time-domain virtual echo derived using :py:meth:`frequency_filter`
 
-    half_echo : numpy.ndarray or None, default: `None`
+    filtered_signal : numpy.ndarray or None, default: `None`
         First half of ``virtual_echo``, derived using :py:meth:`frequency_filter`
 
     filtered_n : [int] or [int, int] or None, default: `None`
@@ -139,7 +140,7 @@ class NMREsPyBruker:
 
     def __init__(
         self, dtype, data, path, sw, off, n, sfo, nuc, endian, intfloat, dim,
-        filtered_spectrum=None, virtual_echo=None, half_echo=None, filtered_n=None,
+        filtered_spectrum=None, virtual_echo=None, filtered_signal=None, filtered_n=None,
         filtered_sw=None, filtered_off=None, region=None, noise_region=None, p0=None,
         p1=None, theta0=None, theta=None, errors=None
     ):
@@ -156,8 +157,7 @@ class NMREsPyBruker:
         self.intfloat = intfloat
         self.dim = dim
         self.filtered_spectrum = filtered_spectrum
-        self.virtual_echo = virtual_echo
-        self.half_echo = half_echo
+        self.filtered_signal = filtered_signal
         self.filtered_n = filtered_n
         self.filtered_sw = filtered_sw
         self.filtered_off = filtered_off
@@ -194,8 +194,7 @@ class NMREsPyBruker:
         msg += f'{self.intfloat}, '
         msg += f'{self.dim}, '
         msg += f'{self.filtered_spectrum}, '
-        msg += f'{self.virtual_echo}, '
-        msg += f'{self.half_echo}, '
+        msg += f'{self.filtered_signal}, '
         msg += f'{self.filtered_n}, '
         msg += f'{self.filtered_sw}, '
         msg += f'{self.filtered_off}, '
@@ -275,7 +274,7 @@ class NMREsPyBruker:
         tables = [basic_table]
 
         # frequency filter info
-        if self.get_virtual_echo(kill=False) is None:
+        if self.get_filtered_signal(kill=False) is None:
             pass
         else:
             filter_cats = []
@@ -299,15 +298,13 @@ class NMREsPyBruker:
                 )
 
             filter_cats += [
+                'Filtered Signal:',
                 'Filtered Spectrum:',
-                'Virtual Echo:',
-                'Half Echo:',
             ]
 
             filter_vals += [
+                f'array of shape {self.get_filtered_signal().shape}',
                 f'array of shape {self.get_filtered_spectrum().shape}',
-                f'array of shape {self.get_virtual_echo().shape}',
-                f'array of shape {self.get_half_echo().shape}',
             ]
 
 
@@ -782,14 +779,14 @@ class NMREsPyBruker:
         )
 
 
-    def get_virtual_echo(self, kill=True):
-        """Return the virtual echo data generated using
-        :py:meth:`frequency_filter`
+    def get_filtered_signal(self, kill=True):
+        """Return the filtered time-domain data generated using
+        :py:meth:`frequency_filter`.
 
         Parameters
         ----------
         kill : bool, default: True
-            If ``self.virtual_echo`` is ``None``, `kill` specifies how to act:
+            If ``self.filtered_signal`` is ``None``, `kill` specifies how to act:
 
             * If ``kill`` is ``True``, an error is raised.
             * If ``kill`` is ``False``, ``None`` is returned.
@@ -801,48 +798,16 @@ class NMREsPyBruker:
         Raises
         ------
         AttributeIsNoneError
-            Raised if ``self.virtual_echo`` is ``None``, and ``kill`` is ``True``.
+            Raised if ``self.filtered_signal`` is ``None``, and ``kill`` is ``True``.
 
         Notes
         -----
-        If ``self.virtual_echo`` is ``None``, it is likely that
+        If ``self.filtered_signal`` is ``None``, it is likely that
         :py:meth:`frequency` is yet to be called on the class instance.
         """
 
         return self._get_nondefault_param(
-            'virtual_echo', 'frequency()', kill
-        )
-
-
-    def get_half_echo(self, kill=True):
-        """Return the halved virtual echo data generated using
-        :py:meth:`frequency`.
-
-        Parameters
-        ----------
-        kill : bool, default: True
-            If ``self.half_echo`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        filtered_spectrum : numpy.ndarray or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.half_echo`` is ``None``, and ``kill`` is ``True``.
-
-        Notes
-        -----
-        If ``self.half_echo`` is ``None``, it is likely that
-        :py:meth:`frequency` is yet to be called on the class instance.
-        """
-
-        return self._get_nondefault_param(
-            'half_echo', 'frequency()', kill
+            'filtered_signal', 'frequency()', kill
         )
 
 
@@ -1196,8 +1161,8 @@ class NMREsPyBruker:
 
     @logger
     def frequency_filter(
-        self, region, noise_region, p0=0.0, p1=0.0, cut=False, cut_ratio=2.5,
-        region_units='ppm'
+        self, region, noise_region, p0=0.0, p1=0.0, cut=True, cut_ratio=2.5,
+        region_units='ppm', retain_filter_class=False
     ):
         """Generates phased, frequency-filtered data from the original data
         supplied.
@@ -1242,6 +1207,16 @@ class NMREsPyBruker:
             The unit the elements of ``region`` and ``noise_region`` are
             expressed in.
 
+        retain_filter_class : Bool, default: False
+            Frequency filtration is achieved by generating an instance of the
+            class :py:class:`_filter.FrequencyFilter`. If `retain_filter_class`
+            is `True`, this instance is retained, as the attribute
+            `self.frequency_filter`. If `retain_filter_class` is `False`,
+            the instance is not retained. It should be noted that partiuclarly
+            useful atributes are automatically stored as attributes as self.
+            Most end-users are unlikely to require the additional attributes
+            provided by having `retain_filter_class` set to `True`.
+
         Raises
         ------
         TwoDimUnsupportedError
@@ -1252,13 +1227,11 @@ class NMREsPyBruker:
         The values of the class instance's following attributes will be
         updated after the successful running of this method:
 
-        * ``filtered_spectrum`` - The frequency-filtered spectrum used to generate the
-          resultant time domin data
-        * ``virtual_echo`` - Virtual echo, the inverse FT of ``filtered_spectrum``. This
-          signal is conjugate symmetric.
-        * ``half_echo`` - The first half of ``virtual_echo``. This is the signal
-          that is subsequently analysed by default by :py:meth:`matrix_pencil`
-          and :py:meth:`nonlinear_programming`.
+        * ``filtered_signal`` - The filtered time-domain signal generated.
+          This is the signal that is subsequently analysed by default by
+          :py:meth:`matrix_pencil` and :py:meth:`nonlinear_programming`.
+        * ``filtered_spectrum`` - The frequency-filtered spectrum which was
+          used to generate the resultant time domin data
         * ``region`` - The value of ``region`` input to the method, converted to
           the unit of array indices.
         * ``noise_region`` - The value of ``noise_region`` input to the method,
@@ -1269,6 +1242,7 @@ class NMREsPyBruker:
         If ``cut`` is set to ``True``, the following additional attributes
         are also updated:
 
+        * ``filtered_n`` - The number of points in the sliced signal
         * ``filtered_sw`` - The sweep width of the sliced signal, in Hz
         * ``filtered_off`` - The transmitter offset frequency of the sliced signal,
           in Hz.
@@ -1276,6 +1250,7 @@ class NMREsPyBruker:
 
         self._log_method()
 
+        # TODO: support for 2D data. consult Ali, get Tom M to take lead
         if self.get_dim() == 2:
             raise TwoDimUnsupportedError()
 
@@ -1283,34 +1258,21 @@ class NMREsPyBruker:
             raise ValueError(f'{R}region_unit should be \'ppm\', \'idx\','
                              f' or \'hz\'{END}')
 
-        if cut_ratio < 1.:
+        if cut_ratio < 1. and cut == True:
             raise ValueError(f'{R}cut_ratio should not be smaller than 1{END}')
 
-        if cut_ratio < 1.5:
+        if cut_ratio < 2. and cut == True:
             print(f'{O}WARNING: It is advisable that you set cut_ratio to be'
                   f' comfortably higher than 1. (2. or higher should suffice).'
                   f'{END}')
 
-        # zero fill data to double its size
-        zf_data = np.hstack(
-            (self.get_data(), np.zeros(self.get_n(), dtype='complex'))
-        )
-
-        # fourier transform and flip to get spectrum in correct order
-        spectrum = fftshift(fft(zf_data))
-
-        # if 1D, contain inside a tuple so that stuff can be generalised
-        # i.e. (left, right) -> ((left, right))
+        # if 1D, ensure bounds contained inside a list
+        # i.e. [left, right] -> [[left, right]]
+        # TODO: could create method to generalise this
         if self.get_dim() == 1 and isinstance(region[0], (float, int)):
             region = [region]
         if self.get_dim() == 1 and isinstance(noise_region[0], (float, int)):
             noise_region = [noise_region]
-
-        # TODO ===========================================================
-        # might be useful to put some checks in here (i.e. that at
-        # this point in the code, region and noise_region are both a tuple
-        # of 2-tuples)
-        # ================================================================
 
         if region_units == 'idx':
             pass
@@ -1318,107 +1280,36 @@ class NMREsPyBruker:
         else:
             # region_units is either 'ppm' or 'hz'
             # convert contents to array indices
-            region = list(self._unit_convert(
+            region = self._unit_convert(
                 region, convert=f'{region_units}->idx'
-            ))
+            )
 
-            noise_region = list(self._unit_convert(
+            noise_region = self._unit_convert(
                 noise_region, convert=f'{region_units}->idx'
-            ))
+            )
 
-        # double values of indices (as doubled size of signal)
-        for i, (reg_dim, nreg_dim) in enumerate(zip(region, noise_region)):
-            for j, (reg_bound, nreg_bound) in enumerate(zip(reg_dim, nreg_dim)):
-                region[i][j] = 2 * reg_bound
-                noise_region[i][j] = 2 * nreg_bound
+        data = self.get_data()
 
-        # phase data
-        spectrum = np.real(_ve.phase(spectrum[::-1], p0, p1))
-        # generate super gaussian filter
-        superg = _ve.super_gaussian(spectrum.shape, region)
-        # extract noise
-        noise_slice = [np.s_[b[0]:b[1]] for b in noise_region]
-        noise = spectrum[tuple(noise_slice)]
-        # determine noise variance
-        mean = np.mean(noise)
-        variance = np.var(noise)
-        # construct synthetic noise
-        sg_noise = _ve.sg_noise(superg, variance)
+        filter_info = filter.FrequencyFilter(
+            data, region, noise_region, p0, p1, cut, cut_ratio,
+        )
 
-        print(mean)
-        # construct filtered spectrum
-        filtered_spectrum = ((spectrum * superg) + sg_noise + (mean * (-superg + 1))) - mean
-        import matplotlib.pyplot as plt
-        plt.plot(filtered_spectrum)
-        plt.show()
+        # unpack key attributes
+        self.region = filter_info.region
+        self.noise_region = filter_info.region
+        self.p0 = filter_info.p0
+        self.p1 = filter_info.p1
+        self.filtered_signal = filter_info.filtered_signal
+        self.filtered_spectrum = filter_info.filtered_spectrum
 
         if cut:
-            cut_slice = []
-            filtered_n = [] # number of points the cut signal is made of
-            filtered_sw = [] # sweep width of the cut signal
-            filtered_off = [] # offset of the cut signal
+            self.filtered_n = filter_info.filtered_n
+            self.filtered_sw = filter_info.filtered_sw
+            self.filtered_offset = filter_info.filtered_off
 
-            # determine slice indices
-            for n, bounds in zip(self.get_n(), region):
-                center = (bounds[0] + bounds[1]) / 2
-                bw = bounds[1] - bounds[0]
+        if retain_filter_class:
+            self.frequency_filter_info = filter_info
 
-                # minimum and maximum array indices of cut signal
-                min = int(np.floor(center - (bw / 2 * cut_ratio)))
-                max = int(np.ceil(center + (bw / 2 * cut_ratio)))
-
-                if min < 0:
-                    min = 0
-                if max > n + 1:
-                    max = n + 1
-
-                cut_slice.append(np.s_[min:max])
-
-                # convert to ppm
-                # bit of a hack... _unit_convert requires an iterable
-                # as an input
-                min_h = self._unit_convert((min,), convert='idx->hz')[0]
-                max_h = self._unit_convert((max,), convert='idx->hz')[0]
-
-                filtered_n.append(max - min)
-                filtered_sw.append(abs(min_h - max_h))
-                filtered_off.append((min_h + max_h) / 2)
-
-            filtered_spectrum = filtered_spectrum[tuple(cut_slice)]
-
-            self.filtered_n = tuple(filtered_n)
-            self.filtered_sw = tuple(filtered_sw)
-            self.filtered_off = tuple(filtered_off)
-
-        # TODO =====================================
-        # will have to check this 2D ifft is correct
-        # I haven't tested it
-        # ==========================================
-
-        self.virtual_echo = filtered_spectrum
-        import matplotlib.pyplot as plt
-        plt.plot(filtered_spectrum)
-        plt.show()
-
-
-        for ax in range(self.get_dim()):
-            self.virtual_echo = \
-            ifft(ifftshift(self.virtual_echo, axes=ax), axis=ax)
-
-        half = [np.s_[0:int(n // 2)] for n in self.virtual_echo.shape]
-
-
-        # reuduce the intensity if cut is True (applies to 1D only at the moment)
-        if cut == True:
-            self.virtual_echo /= n / (2.5 * bw)
-
-        self.half_echo = 2 * self.virtual_echo[half]
-        # print(f'cut ratio: {cut_ratio}, norm ratio: {n1 / norm(self.half_echo) * (self.get_n()[0] // 2) / self.half_echo.shape[0]}')
-        self.filtered_spectrum = filtered_spectrum
-        self.region = region
-        self.noise_region = noise_region
-        self.p0 = p0
-        self.p1 = p1
 
 
 
@@ -1453,7 +1344,7 @@ class NMREsPyBruker:
         -----
         The method requires appropriate time-domain data to run. If
         frequency-filtered data has been generated by :py:meth:`frequency`
-        (stored in the attribute ``half_echo``), prior to calling this method,
+        (stored in the attribute ``filtered_signal``), prior to calling this method,
         this will be analysed. If no such data is found, but the original data
         is a raw FID (i.e. ``self.get_dtype()`` is ``'fid'``), that will
         analysed. If the original data is processed data (i.e.
@@ -1640,7 +1531,7 @@ class NMREsPyBruker:
         The method requires appropriate time-domain
         data to run. If frequency-filtered data has been
         generated by :py:meth:`frequency` (stored in the attribute
-        ``half_echo``) prior to calling this method, this will be analysed.
+        ``filtered_signal``) prior to calling this method, this will be analysed.
         If no such data is found, but the original data is a raw
         FID (i.e. :py:meth:`get_dtype` returns ``'fid'``), the original FID will
         analysed. If the original data is processed data (i.e.
@@ -2416,8 +2307,8 @@ class NMREsPyBruker:
         return param
 
     def _check_data(self):
-        if self.half_echo is not None:
-            return self.get_half_echo()
+        if self.filtered_signal is not None:
+            return self.get_filtered_signal()
         elif self.dtype == 'fid':
             return self.get_data()
         else:

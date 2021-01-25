@@ -271,9 +271,9 @@ def pickle_load(fname, directory='.'):
        you will be warned.
     """
 
-    if fname[-4:] == '.pkl':
+    if str(fname)[-4:] == '.pkl':
         pass
-    elif '.' in fname:
+    elif '.' in str(fname):
         raise ValueError(f'{R}fname: {fname} - Unexpected file'
                          f' extension.{END}')
     else:
