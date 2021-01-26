@@ -170,14 +170,9 @@ class TestBruker(unittest.TestCase):
 
     def test_matrix_pencil(self):
         # TODO
-        self.pdata_info.view_data(freq_xunit='hz')
-        region = [[4.5, 6.2]]
+        region = [[5.06, 4.76]]
         noise_region = [[9.7, 9.3]]
-        self.pdata_info.frequency_filter(
-            region=region, noise_region=noise_region, retain_filter_class=True
-        )
-        print(self.pdata_info.frequency_filter_info.filtered_signal)
-        print(self.pdata_info.filtered_signal)
+        self.pdata_info.frequency_filter(region, noise_region)
         self.pdata_info.matrix_pencil()
 
 
