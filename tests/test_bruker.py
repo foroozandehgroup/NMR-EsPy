@@ -5,11 +5,85 @@ from pathlib import Path
 import pickle
 
 import numpy as np
+
+from nmrespy import FrequencyConverter
 from nmrespy.core import NMREsPyBruker
 import nmrespy._errors as errors
 import nmrespy.load as load
 
 datadir = Path().absolute() / 'data'
+
+
+class TestConverter(unittest.TestCase):
+
+    def test_errors(self):
+
+        n = [101, 101]
+        sw = [10.,100.]
+        offset = [0., 50.]
+        sfo = [500., 500.]
+
+        # test failures
+        # non-list arguments
+        with self.assertRaises(TypeError):
+            FrequencyConverter(n, 'not_a_list', offset, sfo)
+        # lists not same length
+        with self.assertRaises(ValueError):
+            FrequencyConverter(n, [sw[0]], offset, sfo)
+        # some elements are not numerical values
+        with self.assertRaises(TypeError):
+            FrequencyConverter(n, [sw[0], 'not_a_number'], offset, sfo)
+
+        converter = FrequencyConverter(n, sw, offset, sfo)
+
+        # index -> Hz
+        self.assertEqual(converter._convert_value(0, 0, 'idx->hz'), 5.)
+        self.assertEqual(converter._convert_value(25, 0, 'idx->hz'), 2.5)
+        self.assertEqual(converter._convert_value(50, 0, 'idx->hz'), 0.)
+        self.assertEqual(converter._convert_value(75, 0, 'idx->hz'), -2.5)
+        self.assertEqual(converter._convert_value(100, 0, 'idx->hz'), -5)
+        self.assertEqual(converter._convert_value(0, 1, 'idx->hz'), 100.)
+        self.assertEqual(converter._convert_value(50, 1, 'idx->hz'), 50.)
+        self.assertEqual(converter._convert_value(100, 1, 'idx->hz'), 0.)
+
+        # Hz -> index
+        self.assertEqual(converter._convert_value(-5, 0, 'hz->idx'), 100)
+        self.assertEqual(converter._convert_value(-2.5, 0, 'hz->idx'), 75)
+        self.assertEqual(converter._convert_value(0, 0, 'hz->idx'), 50)
+        self.assertEqual(converter._convert_value(2.5, 0, 'hz->idx'), 25)
+        self.assertEqual(converter._convert_value(5, 0, 'hz->idx'), 0)
+
+        # index -> ppm
+        self.assertEqual(converter._convert_value(0, 0, 'idx->ppm'), 0.01)
+        self.assertEqual(converter._convert_value(25, 0, 'idx->ppm'), 0.005)
+        self.assertEqual(converter._convert_value(50, 0, 'idx->ppm'), 0.)
+        self.assertEqual(converter._convert_value(75, 0, 'idx->ppm'), -0.005)
+        self.assertEqual(converter._convert_value(100, 0, 'idx->ppm'), -0.01)
+
+        # ppm -> index
+        self.assertEqual(converter._convert_value(0.01, 0, 'ppm->idx'), 0)
+        self.assertEqual(converter._convert_value(0.005, 0, 'ppm->idx'), 25)
+        self.assertEqual(converter._convert_value(0., 0, 'ppm->idx'), 50)
+        self.assertEqual(converter._convert_value(-0.005, 0, 'ppm->idx'), 75)
+        self.assertEqual(converter._convert_value(-0.01, 0, 'ppm->idx'), 100)
+
+        # ppm -> Hz
+        self.assertEqual(converter._convert_value(0.01, 0, 'ppm->hz'), 5.)
+        self.assertEqual(converter._convert_value(0.005, 0, 'ppm->hz'), 2.5)
+        self.assertEqual(converter._convert_value(0., 0, 'ppm->hz'), 0.)
+        self.assertEqual(converter._convert_value(-0.005, 0, 'ppm->hz'), -2.5)
+        self.assertEqual(converter._convert_value(-0.01, 0, 'ppm->hz'), -5.)
+
+        # Hz -> ppm
+        self.assertEqual(converter._convert_value(5., 0, 'hz->ppm'), 0.01)
+        self.assertEqual(converter._convert_value(2.5, 0, 'hz->ppm'), 0.005)
+        self.assertEqual(converter._convert_value(0., 0, 'hz->ppm'), 0.)
+        self.assertEqual(converter._convert_value(-2.5, 0, 'hz->ppm'), -0.005)
+        self.assertEqual(converter._convert_value(-5., 0, 'hz->ppm'), -0.01)
+
+        self.assertEqual(converter.convert([50, 50], 'idx->hz'), [0., 50.])
+        self.assertEqual(converter.convert([[25, 50], [75, 100]], 'idx->hz'), [[2.5, 0.], [25., 0.]])
+
 
 class TestBruker(unittest.TestCase):
 
@@ -189,8 +263,9 @@ class TestBruker(unittest.TestCase):
         # TODO
         region = [[5.06, 4.76]]
         noise_region = [[9.7, 9.3]]
-        self.pdata_info.frequency_filter(region, noise_region, cut_ratio=5)
+        self.pdata_info.frequency_filter(region, noise_region, cut_ratio=3)
         self.pdata_info.matrix_pencil()
+        print(self.pdata_info.matrix_pencil_info.get_parameters(unit='ppm'))
 
 
 

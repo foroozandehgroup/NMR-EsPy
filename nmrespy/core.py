@@ -1415,7 +1415,7 @@ class NMREsPyBruker:
         trim = self._check_trim(trim, data)
         data = data[tuple([np.s_[0:int(t)] for t in trim])]
 
-        maxtrix_pencil_info = mpm.MatrixPencil(data, sw, offset, M, fprint)
+        self.matrix_pencil_info = mpm.MatrixPencil(data, sw, offset, self.sfo, M, fprint)
 
 
     @logger

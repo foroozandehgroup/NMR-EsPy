@@ -12,7 +12,7 @@
 # These only support 1D data treatment currently
 # ==============================================
 
-from copy import deepcopy
+import copy
 import functools
 
 import numpy as np
@@ -21,6 +21,7 @@ import scipy.linalg as slinalg
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
+from nmrespy import FrequencyConverter
 import nmrespy._misc as misc
 import nmrespy._errors as errors
 from ._timing import timer
@@ -51,7 +52,7 @@ def start_end_wrapper(f):
     return wrapper
 
 
-class MatrixPencil:
+class MatrixPencil(FrequencyConverter):
     """Class for performing the Matrix Pencil Method with the option of model
     order selection using the Minimum Description Length (MDL). Supports
     analysis of one-dimensional [1]_ [2]_ or two-dimensional data [3]_ [4]_
@@ -64,10 +65,15 @@ class MatrixPencil:
     sw : [float] or [float, float]
         The experiment sweep width in each dimension in Hz.
 
-    offset : [float] or None, default: None
+    offset : [float], [float, float] or None, default: None
         The experiment transmitter offset frequency in Hz.
 
-    M : int, default: 0
+    sfo : [float], [float, float] or None, default: None
+        The experiment transmitter frequency in each dimension in MHz. This is
+        not necessary, however if it set it `None`, no conversion from Hz
+        to ppm will be possible!
+
+    m : int, default: 0
         The number of oscillators. If ``0``, the number of oscilators will
         be estimated using the MDL.
 
@@ -95,7 +101,7 @@ class MatrixPencil:
        55.2 (2007), pp. 718–724.
     """
 
-    def __init__(self, data, sw, offset='zeros', M=0, fprint=True):
+    def __init__(self, data, sw, offset='zeros', sfo=None, m=0, fprint=True):
 
         # check data is a NumPy array
         if not isinstance(data, np.ndarray):
@@ -113,23 +119,35 @@ class MatrixPencil:
         if offset is None:
             offset = [0.0] * self.dim
 
-        for x in (sw, offset):
+        to_check = [sw, offset]
+
+        if sfo != None:
+            self.sfo = sfo
+            to_check.append(sfo)
+
+        for x in to_check:
             if not isinstance(x, list) and len(x) == self.dim:
                 raise TypeError(
                     f'{cols.R}sw and offset should be lists with the same'
                     f' number of elements and dimensions in the data{cols.END}'
                 )
 
+        self.n = list(self.data.shape)
         self.sw = sw
         self.offset = offset
 
-        if not isinstance(M, int) and M >= 0:
+        if self.sfo:
+            self.converter = FrequencyConverter(
+                self.n, self.sw, self.offset, self.sfo
+            )
+
+        if not isinstance(m, int) and m >= 0:
             raise ValueError(
                 f'{cols.R}M should be an integer greater than or equal'
                 f' to 0{cols.END}'
             )
 
-        self.M_init = M
+        self.m_init = m
 
         if not isinstance(fprint, bool):
             raise TypeError(f'{cols.R}fprint should be an Boolean{cols.END}')
@@ -138,11 +156,25 @@ class MatrixPencil:
 
         self._mpm()
 
-    def get_parameters(self, unit='ppm'):
-        return self.parameters
 
-    def get_poles(self):
-        return self.poles
+    def get_parameters(self, unit='hz'):
+
+        if unit == 'hz':
+            return self.parameters
+
+        elif unit == 'ppm':
+            # get frequencies in Hz
+            hz = [list(self.parameters[:, 2])]
+            # convert to ppm
+            ppm = np.array(self.converter.convert(hz, conversion='hz->ppm'))
+
+            parameters_ppm = copy.deepcopy(self.parameters)
+            parameters_ppm[:, 2] = ppm
+            return parameters_ppm
+
+        else:
+            raise errors.InvalidUnitError('hz', 'ppm')
+
 
     @timer
     @start_end_wrapper
@@ -162,11 +194,10 @@ class MatrixPencil:
         self.normed_data = self.data / self.norm
 
         # data size and pencil parameter
-        self.N = self.normed_data.shape
         self._pencil_parameters()
 
         # Hankel matrix of data, Y, with dimensions (N-L) * L
-        self._construct_Y()
+        self._construct_y()
 
         # singular value decomposition of Y
         # returns singular values (M-length vector)
@@ -208,20 +239,20 @@ class MatrixPencil:
 
         if self.dim == 1:
             # optimal when between N/2 and N/3 (see Lin's paper)
-            self.L = [int(np.floor(self.N[0]/3))]
+            self.l = [int(np.floor(self.n[0]/3))]
 
         elif self.dim == 2:
-            self.L = [
-                int(np.floor((self.N[0] + 1) / 2)),
-                int(np.floor((self.N[1] + 1) / 2))
+            self.l = [
+                int(np.floor((self.n[0] + 1) / 2)),
+                int(np.floor((self.n[1] + 1) / 2))
             ]
 
         if self.fprint:
             msg = '--> Pencil Parameter(s): '
-            msg += ' & '.join([str(L) for L in self.L])
+            msg += ' & '.join([str(L) for L in self.l])
             print(msg)
 
-    def _construct_Y(self):
+    def _construct_y(self):
         """
         Wrapper around ``scipy.linalg.hankel()`` [1]_. Constructs Hankel
         data matrix Y.
@@ -231,18 +262,18 @@ class MatrixPencil:
         .. [1] https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.hankel.html
         """
 
-        N = self.N[0]
-        L = self.L[0]
-        row = self.normed_data[0:N-L]
-        column = self.normed_data[N-L-1:N]
+        n = self.n[0]
+        l = self.l[0]
+        row = self.normed_data[0:n-l]
+        column = self.normed_data[n-l-1:n]
 
-        self.Y = slinalg.hankel(column, row)
+        self.y = slinalg.hankel(column, row)
 
         if self.fprint:
             print("--> Hankel data matrix constructed:")
-            print(f'\tSize:   {self.Y.shape[0]} x {self.Y.shape[1]}')
+            print(f'\tSize:   {self.y.shape[0]} x {self.y.shape[1]}')
 
-            gibibytes = self.Y.nbytes / (2**30)
+            gibibytes = self.y.nbytes / (2**30)
 
             if round(gibibytes, 4) >= 0.1:
                 print(f'\tMemory: {round(gibibytes, 4)}GiB')
@@ -264,8 +295,8 @@ class MatrixPencil:
         if self.fprint:
             print('--> Performing Singular Value Decomposition...')
 
-        _, self.sigma, Vh = nlinalg.svd(self.Y)
-        self.V = Vh.T
+        _, self.sigma, vh = nlinalg.svd(self.y)
+        self.v = vh.T
 
 
     def _mdl(self):
@@ -285,30 +316,30 @@ class MatrixPencil:
         if self.fprint:
             print('--> Determining number of oscillators...')
 
-        if self.M_init == 0:
-            N = self.N[0]
-            L = self.L[-1]
+        if self.m_init == 0:
+            n = self.n[0]
+            l = self.l[-1]
             s = self.sigma
-            mdl = np.zeros(L)
+            mdl = np.zeros(l)
 
             if self.fprint:
                 print('\tNumber of oscillators will be estimated using MDL')
 
-            for k in range(L):
+            for k in range(l):
                 mdl[k] = \
-                    - N * np.einsum('i->', np.log(s[k:L])) \
-                    + N * (L-k) * np.log((np.einsum('i->', s[k:L]) / (L-k))) \
-                    + (k * np.log(N) * (2*L-k)) / 2
+                    - n * np.einsum('i->', np.log(s[k:l])) \
+                    + n * (l-k) * np.log((np.einsum('i->', s[k:l]) / (l-k))) \
+                    + (k * np.log(n) * (2*l-k)) / 2
 
-            self.M = np.argmin(mdl)
+            self.m = np.argmin(mdl)
 
         else:
-            self.M = self.M_init
+            self.m = self.m_init
             if self.fprint:
                 print('\tNumber of oscillations has been pre-defined')
 
         if self.fprint:
-            print(f'\tNumber of oscillations: {self.M}')
+            print(f'\tNumber of oscillations: {self.m}')
 
     @timer
     def _signal_poles_1d(self):
@@ -320,13 +351,13 @@ class MatrixPencil:
         if self.fprint:
             print('--> Determining signal poles...')
 
-        Vm = self.V[:, :self.M] # retain M first right singular vectors
-        V1 = Vm[:-1, :] # remove last column
-        V2 = Vm[1:, :] # remove first column
+        vm = self.v[:, :self.m] # retain M first right singular vectors
+        v1 = vm[:-1, :] # remove last column
+        v2 = vm[1:, :] # remove first column
 
         # determine first M signal poles (others should be 0)
-        z, _ = nlinalg.eig(V2 @ nlinalg.pinv(V1))
-        self.poles = z[:self.M]
+        z, _ = nlinalg.eig(v2 @ nlinalg.pinv(v1))
+        self.poles = z[:self.m]
 
     @timer
     def _complex_amplitudes_1d(self):
@@ -337,9 +368,12 @@ class MatrixPencil:
         if self.fprint:
             print('--> Determining complex amplitudes...')
 
-        n = np.arange(self.N[0])
-        Z = (np.power.outer(self.poles, n)).T # Vandermonde matrix of poles
-        self.alpha = nlinalg.pinv(Z) @ self.normed_data
+        n = np.arange(self.n[0])
+
+        # pseudoinverse of Vandermonde matrix of poles multiplied by
+        # vector of complex amplitudes
+        self.alpha = \
+            nlinalg.pinv((np.power.outer(self.poles, n)).T) @ self.normed_data
 
     def _construct_parameter_array(self):
 
@@ -371,7 +405,7 @@ class MatrixPencil:
                   f'\tfactors detected. These have been deleted.\n'
                   f'\tCorrected number of oscillations: {M_after}{cols.END}')
 
-            self.M = M_after
+            self.m = M_after
 
         elif self.fprint:
             print('\tNone found')

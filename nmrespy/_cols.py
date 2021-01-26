@@ -1,6 +1,4 @@
-#!/usr/bin/python3
-
-# nmrespy._cols
+# _cols
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 # Coloured terminal output
