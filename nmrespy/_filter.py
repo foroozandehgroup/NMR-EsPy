@@ -179,7 +179,7 @@ class FrequencyFilter:
         cut_slice = []
         self.filtered_n = [] # number of points the cut signal is made of
         self.filtered_sw = [] # sweep width of the cut signal
-        self.filtered_off = [] # offset of the cut signal
+        self.filtered_offset = [] # offset of the cut signal
 
         # determine slice indices
         for n, c, b in zip(self.filtered_spectrum.shape, self.center, self.bw):
@@ -199,7 +199,7 @@ class FrequencyFilter:
             self.filtered_n.append(max - min)
             # sw and off will be converted to hz inside NMREsPyBruker
             self.filtered_sw.append(max - min)
-            self.filtered_off.append((min + max) / 2)
+            self.filtered_offset.append((min + max) / 2)
 
         self.filtered_spectrum = self.filtered_spectrum[tuple(cut_slice)]
 
@@ -208,10 +208,10 @@ class FrequencyFilter:
 
         # TODO: MAKE 2D COMPATIBLE
 
-        self.uncut_fid = ifft(ifftshift(self.filtered_spectrum))
-        half = tuple(np.s_[0:int(n // 2)] for n in self.uncut_fid.shape)
-        self.uncut_fid = 2 * self.uncut_fid[half]
-        self.uncut_norm = slinalg.norm(self.uncut_fid)
+        self.uncut_signal = ifft(ifftshift(self.filtered_spectrum))
+        half = tuple(np.s_[0:int(n // 2)] for n in self.uncut_signal.shape)
+        self.uncut_signal = 2 * self.uncut_signal[half]
+        self.uncut_norm = slinalg.norm(self.uncut_signal)
 
 
     def _generate_filtered_fid(self):
@@ -230,4 +230,4 @@ class FrequencyFilter:
                 (self.uncut_norm / self.cut_norm) * self.filtered_signal
 
         else:
-            self.filtered_signal = self.uncut_fid
+            self.filtered_signal = self.uncut_signal

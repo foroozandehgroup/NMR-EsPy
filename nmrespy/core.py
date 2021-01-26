@@ -111,7 +111,7 @@ class NMREsPyBruker:
         The sweep width (Hz) of the virtual echo generated using
         :py:meth:`frequency_filter` if ``cut=True``, in each dimension.
 
-    filtered_off : [float] or [float, float] or None, default: `None`
+    filtered_offset : [float] or [float, float] or None, default: `None`
         The transmitter offset (Hz) of the virtual echo generated using
         :py:meth:`frequency_filter` if ``cut=True``, in each dimension.
 
@@ -141,7 +141,7 @@ class NMREsPyBruker:
     def __init__(
         self, dtype, data, path, sw, off, n, sfo, nuc, endian, intfloat, dim,
         filtered_spectrum=None, virtual_echo=None, filtered_signal=None, filtered_n=None,
-        filtered_sw=None, filtered_off=None, region=None, noise_region=None, p0=None,
+        filtered_sw=None, filtered_offset=None, region=None, noise_region=None, p0=None,
         p1=None, theta0=None, theta=None, errors=None
     ):
 
@@ -160,7 +160,7 @@ class NMREsPyBruker:
         self.filtered_signal = filtered_signal
         self.filtered_n = filtered_n
         self.filtered_sw = filtered_sw
-        self.filtered_off = filtered_off
+        self.filtered_offset = filtered_offset
         self.region = region
         self.noise_region = noise_region
         self.p0 = p0
@@ -197,7 +197,7 @@ class NMREsPyBruker:
         msg += f'{self.filtered_signal}, '
         msg += f'{self.filtered_n}, '
         msg += f'{self.filtered_sw}, '
-        msg += f'{self.filtered_off}, '
+        msg += f'{self.filtered_offset}, '
         msg += f'{self.region}, '
         msg += f'{self.noise_region}, '
         msg += f'{self.theta0}, '
@@ -803,17 +803,17 @@ class NMREsPyBruker:
         Notes
         -----
         If ``self.filtered_signal`` is ``None``, it is likely that
-        :py:meth:`frequency` is yet to be called on the class instance.
+        :py:meth:`frequency_filter` is yet to be called on the class instance.
         """
 
         return self._get_nondefault_param(
-            'filtered_signal', 'frequency()', kill
+            'filtered_signal', 'frequency_filter()', kill
         )
 
 
     def get_filtered_n(self, kill=True):
         """Return the number of points of the signal generated using
-        :py:meth:`frequency` with ``cut = True``, in each dimesnion.
+        :py:meth:`frequency_filter` with ``cut = True``, in each dimesnion.
 
         Parameters
         ----------
@@ -835,12 +835,12 @@ class NMREsPyBruker:
         Notes
         -----
         If ``self.n`` is ``None``, it is likely that
-        :py:meth:`frequency`, with ``cut = True`` has not been called on
+        :py:meth:`frequency_filter`, with ``cut = True`` has not been called on
         the class instance.
         """
 
         return self._get_nondefault_param(
-            'filtered_n', 'frequency() with cut=True', kill
+            'filtered_n', 'frequency_filter() with cut=True', kill
         )
 
 
@@ -873,12 +873,12 @@ class NMREsPyBruker:
         Notes
         -----
         If ``self.filtered_sw`` is ``None``, it is likely that
-        :py:meth:`frequency`, with ``cut = True`` has not been called on the
+        :py:meth:`frequency_filter`, with ``cut = True`` has not been called on the
         class instance.
         """
 
         filtered_sw =  self._get_nondefault_param(
-            'filtered_sw', 'frequency() with cut=True', kill
+            'filtered_sw', 'frequency_filter() with cut=True', kill
         )
 
         if unit == 'hz':
@@ -893,7 +893,7 @@ class NMREsPyBruker:
 
     def get_filtered_offset(self, unit='hz', kill=True):
         """Return the transmitter's offest frequency of the signal generated
-        using :py:meth:`frequency` with ``cut = True``, in each
+        using :py:meth:`frequency_filter` with ``cut = True``, in each
         dimesnion.
 
         Parameters
@@ -902,38 +902,38 @@ class NMREsPyBruker:
             The unit of the value(s).
 
         kill : bool, default: True
-            If ``self.filtered_off`` is ``None``, `kill` specifies how to act:
+            If ``self.filtered_offset`` is ``None``, `kill` specifies how to act:
 
             * If ``kill`` is ``True``, an error is raised.
             * If ``kill`` is ``False``, ``None`` is returned.
 
         Returns
         -------
-        filtered_off : (float,), (float, float), or None
+        filtered_offset : (float,), (float, float), or None
 
         Raises
         ------
         AttributeIsNoneError
-            Raised if ``self.filtered_off`` is ``None``, and ``kill`` is ``True``.
+            Raised if ``self.filtered_offset`` is ``None``, and ``kill`` is ``True``.
         InvalidUnitError
             If `unit` is not 'hz' or 'ppm'
 
         Notes
         -----
-        If ``self.filtered_off`` is ``None``, it is likely that
-        :py:meth:`frequency`, with ``cut = True`` has not been called on the
+        If ``self.filtered_offset`` is ``None``, it is likely that
+        :py:meth:`frequency_filter`, with ``cut = True`` has not been called on the
         class instance.
         """
 
-        filtered_off =  self._get_nondefault_param(
-            'filtered_off', 'frequency() with cut=True', kill
+        filtered_offset =  self._get_nondefault_param(
+            'filtered_offset', 'frequency_filter() with cut=True', kill
         )
 
         if unit == 'hz':
-            return filtered_off
+            return filtered_offset
 
         elif unit == 'ppm':
-            return self._unit_convert(filtered_off, convert='hz->ppm')
+            return self._unit_convert(filtered_offset, convert='hz->ppm')
 
         else:
             raise InvalidUnitError('hz', 'ppm')
@@ -1027,14 +1027,15 @@ class NMREsPyBruker:
         """Retrieve attributes that may be assigned the value ``None``. Return
         None/raise error depending on the value of ``kill``"""
 
-        if self.__dict__[name] is None:
+        param = self.__dict__[name]
+        if param is None:
             if kill is True:
                 raise AttributeIsNoneError(name, method)
             else:
                 return None
 
         else:
-            return self.__dict__[name]
+            return param
 
 
 
@@ -1211,11 +1212,10 @@ class NMREsPyBruker:
             Frequency filtration is achieved by generating an instance of the
             class :py:class:`_filter.FrequencyFilter`. If `retain_filter_class`
             is `True`, this instance is retained, as the attribute
-            `self.frequency_filter`. If `retain_filter_class` is `False`,
-            the instance is not retained. It should be noted that partiuclarly
-            useful atributes are automatically stored as attributes as self.
+            `self.frequency_filter_info`. See Notes below for details. If
+            `retain_filter_class` is `False`, the instance is not retained.
             Most end-users are unlikely to require the additional attributes
-            provided by having `retain_filter_class` set to `True`.
+            provided by having this argument set to `True`.
 
         Raises
         ------
@@ -1244,14 +1244,25 @@ class NMREsPyBruker:
 
         * ``filtered_n`` - The number of points in the sliced signal
         * ``filtered_sw`` - The sweep width of the sliced signal, in Hz
-        * ``filtered_off`` - The transmitter offset frequency of the sliced signal,
+        * ``filtered_offset`` - The transmitter offset frequency of the sliced signal,
           in Hz.
+
+        If `retain_filter_class` is set to `True`, the following attribute is
+        ADDED:
+
+        * `frequency_filter_info` - an instance of
+          :py:class:`_filter.FrequencyFilter`. Various attributes are contained
+          within this of relevance to the filtration process. To see them, use
+          ::
+              >>> print(self.frequency_filter_info.__dict__)
         """
 
         self._log_method()
 
+        dim = self.get_dim()
+
         # TODO: support for 2D data. consult Ali, get Tom M to take lead
-        if self.get_dim() == 2:
+        if dim == 2:
             raise TwoDimUnsupportedError()
 
         if region_units not in ['ppm', 'idx', 'hz']:
@@ -1269,24 +1280,34 @@ class NMREsPyBruker:
         # if 1D, ensure bounds contained inside a list
         # i.e. [left, right] -> [[left, right]]
         # TODO: could create method to generalise this
-        if self.get_dim() == 1 and isinstance(region[0], (float, int)):
-            region = [region]
-        if self.get_dim() == 1 and isinstance(noise_region[0], (float, int)):
-            noise_region = [noise_region]
+        if dim == 1:
+            if isinstance(region[0], (float, int)):
+                region = [region]
+            if isinstance(noise_region[0], (float, int)):
+                noise_region = [noise_region]
 
+        # convert region to units of array indices
         if region_units == 'idx':
             pass
-
         else:
-            # region_units is either 'ppm' or 'hz'
-            # convert contents to array indices
             region = self._unit_convert(
                 region, convert=f'{region_units}->idx'
             )
-
             noise_region = self._unit_convert(
                 noise_region, convert=f'{region_units}->idx'
             )
+
+        # order each dimension's bounds in ascending order
+        # i.e. [[a, b], [c, d]] where a < b, c < d
+        for i, (bounds, nbounds) in enumerate(zip(region, noise_region)):
+            # if first element is bigger than second element, flip them
+            if bounds[0] > bounds[1]:
+                region[i] = [bounds[1], bounds[0]]
+            if nbounds[0] > nbounds[1]:
+                noise_region[i] = [nbounds[1], nbounds[0]]
+
+        self.region = region
+        self.noise_region = noise_region
 
         data = self.get_data()
 
@@ -1295,8 +1316,6 @@ class NMREsPyBruker:
         )
 
         # unpack key attributes
-        self.region = filter_info.region
-        self.noise_region = filter_info.region
         self.p0 = filter_info.p0
         self.p1 = filter_info.p1
         self.filtered_signal = filter_info.filtered_signal
@@ -1304,13 +1323,18 @@ class NMREsPyBruker:
 
         if cut:
             self.filtered_n = filter_info.filtered_n
-            self.filtered_sw = filter_info.filtered_sw
-            self.filtered_offset = filter_info.filtered_off
+
+            # sw and offset are converted from number of points to Hz
+            self.filtered_sw = self._unit_convert(
+                filter_info.filtered_sw, convert='idx->hz',
+            )
+            self.filtered_offset = self._unit_convert(
+                filter_info.filtered_offset, convert='idx->hz',
+            )
+            print(self.filtered_offset)
 
         if retain_filter_class:
             self.frequency_filter_info = filter_info
-
-
 
 
     @logger
@@ -1343,13 +1367,13 @@ class NMREsPyBruker:
         Notes
         -----
         The method requires appropriate time-domain data to run. If
-        frequency-filtered data has been generated by :py:meth:`frequency`
+        frequency-filtered data has been generated by :py:meth:`frequency_filter`
         (stored in the attribute ``filtered_signal``), prior to calling this method,
         this will be analysed. If no such data is found, but the original data
         is a raw FID (i.e. ``self.get_dtype()`` is ``'fid'``), that will
         analysed. If the original data is processed data (i.e.
         ``self.get_dtype()`` is ``'pdata'``), and no signal has been generated
-        using :py:meth:`frequency`, an error will be raised.
+        using :py:meth:`frequency_filter`, an error will be raised.
 
         The class attribute ``theta0`` will be updated upon successful running
         of this method. If the  data is 1D, ``self.theta0.shape[1] = 4``,
@@ -1386,19 +1410,7 @@ class NMREsPyBruker:
         # unpack required parameters
         dim = self.get_dim()
 
-        # get sweep width and offset
-        # which set is the correct set will depend on whether the user
-        # called self.frequency with cut=True or False
-        if self.filtered_sw is None:
-            sw = self.get_sw()
-            off = self.get_offset()
-
-        else:
-            sw = self.get_filtered_sw()
-            off = self.get_filtered_offset()
-
-        # look for appropriate data to analyse (see Notes in docstring)
-        data = self._check_data()
+        data, sw, off = self._check_data_sw_offset()
 
         # slice data if user provided a tuple
         trim = self._check_trim(trim, data)
@@ -1530,13 +1542,13 @@ class NMREsPyBruker:
         -----
         The method requires appropriate time-domain
         data to run. If frequency-filtered data has been
-        generated by :py:meth:`frequency` (stored in the attribute
+        generated by :py:meth:`frequency_filter` (stored in the attribute
         ``filtered_signal``) prior to calling this method, this will be analysed.
         If no such data is found, but the original data is a raw
         FID (i.e. :py:meth:`get_dtype` returns ``'fid'``), the original FID will
         analysed. If the original data is processed data (i.e.
         :py:meth:`get_dtype` returns ``'pdata'``), and no signal has been
-        generated using :py:meth:`frequency`, an error will be raised.
+        generated using :py:meth:`frequency_filter`, an error will be raised.
 
         The method also requires an initial guess, stored in the attribute
         ``theta0``. To generate this initial guess, you first need to apply
@@ -2306,13 +2318,49 @@ class NMREsPyBruker:
 
         return param
 
-    def _check_data(self):
-        if self.filtered_signal is not None:
-            return self.get_filtered_signal()
-        elif self.dtype == 'fid':
-            return self.get_data()
-        else:
-            raise NoSuitableDataError()
+    def _check_data_sw_offset(self):
+        """Returns time-domain data, sweep width and offset.
+
+        Returns
+        -------
+        data : np.ndarray
+            The time-domain signal.
+
+        sw : [float] or [float, float]
+            The sweep width in each dimension.
+
+        offset : [float] or [float, float]
+            The offset in each dimension.
+
+        Notes
+        -----
+        The following hierarchical order is used to determine `data`, `sw`
+        and `offset`:
+
+        * If a filtered signal is present, this is returned as `data`.
+        * Otherwise, the originally imported data is returned.
+
+        The appropriate sweep width and offset values are returned, based
+        on whether the the filtered signal was cut (see
+        :py:meth:`frequency_filter` for more info).
+        """
+
+        # check whether filtered_signal signal is None or not
+        filtered_signal = self.get_filtered_signal(kill=False)
+        if isinstance(filtered_signal, np.ndarray):
+            print('yep')
+            # not None -> return filtred signal
+            data = filtered_signal
+
+            # check whether filtered_sw is None or not
+            if self.get_filtered_sw(kill=False):
+                return data, self.get_filtered_sw(), self.get_filtered_offset()
+
+            return data, self.get_sw(), self.get_offset()
+
+        # None -> return original data, sw, and offset
+        return self.get_data(), self.get_sw(), self.get_offset()
+
 
     @staticmethod
     def _check_mode(mode, phase_var):

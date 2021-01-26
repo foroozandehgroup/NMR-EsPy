@@ -13,8 +13,6 @@ datadir = Path().absolute() / 'data'
 
 class TestBruker(unittest.TestCase):
 
-    maxDiff = None
-
     # tests various aspects of nmrespy.load
     # creates an instance of NMRESPyBruker which is considered in
     # later tests
@@ -69,6 +67,14 @@ class TestBruker(unittest.TestCase):
 
         # ---test pickle_load---
         loaded_info = load.pickle_load(self.pickle_dir / 'NMREsPyBruker.pkl')
+
+    # def test_dunder_methods(self):
+    #
+    #     # test __str___
+    #     print(self.fid_info)
+    #
+    #     # test __repr__
+    #     print(repr(self.fid_info))
 
 
     def test_get(self):
@@ -161,12 +167,18 @@ class TestBruker(unittest.TestCase):
                     value = method()
                 self.assertIsNone(method(kill=False))
 
-    def test_filter(self):
-        region = [[6.2, 4.5]]
+
+    def test_matrix_pencil(self):
+        # TODO
+        self.pdata_info.view_data(freq_xunit='hz')
+        region = [[4.5, 6.2]]
         noise_region = [[9.7, 9.3]]
         self.pdata_info.frequency_filter(
             region=region, noise_region=noise_region, retain_filter_class=True
         )
+        print(self.pdata_info.frequency_filter_info.filtered_signal)
+        print(self.pdata_info.filtered_signal)
+        self.pdata_info.matrix_pencil()
 
 
 

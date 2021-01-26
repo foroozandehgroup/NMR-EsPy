@@ -59,6 +59,7 @@ class MatrixPencil:
        using modified matrix pencil method”. In: IEEE Trans. Signal Process.
        55.2 (2007), pp. 718–724.
     """
+
     def __init__(data, sw, offset=0.0, M=0):
 
         # get data and check it is a NumPy array
