@@ -22,7 +22,7 @@ from ._cols import *
 if USE_COLORAMA:
     import colorama
 from ._errors import *
-from . import _misc, _mpm, _nlp, _plot, _write
+from . import _misc, mpm, _nlp, _plot, _write
 from nmrespy import _filter as filter
 
 
@@ -1323,22 +1323,24 @@ class NMREsPyBruker:
 
         if cut:
             self.filtered_n = filter_info.filtered_n
-
             # sw and offset are converted from number of points to Hz
-            self.filtered_sw = self._unit_convert(
-                filter_info.filtered_sw, convert='idx->hz',
-            )
-            self.filtered_offset = self._unit_convert(
-                filter_info.filtered_offset, convert='idx->hz',
-            )
-            print(self.filtered_offset)
+            max_idx, min_idx = filter_info.max_idx, filter_info.min_idx
+            max_hz, min_hz = \
+                [self._unit_convert(x, 'idx->hz') for x in [max_idx, min_idx]]
+
+            self.filtered_sw = []
+            self.filtered_offset = []
+
+            for max, min in zip(max_hz, min_hz):
+                self.filtered_sw.append(abs(max - min))
+                self.filtered_offset.append((max + min) / 2)
 
         if retain_filter_class:
             self.frequency_filter_info = filter_info
 
 
     @logger
-    def matrix_pencil(self, M_in=0, trim=None, func_print=True):
+    def matrix_pencil(self, M=0, trim=None, fprint=True):
         """Implementation of the 1D Matrix Pencil Method [1]_ [2]_ or 2D
         Modified Matrix Enchancement and Matrix Pencil (MMEMP) method [3]_
         [4]_ with the option of Model Order Selection using the Minumum
@@ -1346,7 +1348,7 @@ class NMREsPyBruker:
 
         Parameters
         ----------
-        M_in : int, default: 0
+        M : int, default: 0
             The number of oscillators to use in generating a parameter
             estimate. If M is set to 0, the number of oscillators will be
             estimated using the MDL.
@@ -1359,7 +1361,7 @@ class NMREsPyBruker:
             large, such that the method takes a very long time, or your PC
             has insufficient memory to process it.
 
-        func_print : bool, deafult: True
+        fprint : bool, deafult: True
             If ``True`` (default), the method provides information on
             progress to the terminal as it runs. If ``False``, the method
             will run silently.
@@ -1407,22 +1409,13 @@ class NMREsPyBruker:
 
         self._log_method()
 
-        # unpack required parameters
-        dim = self.get_dim()
-
-        data, sw, off = self._check_data_sw_offset()
+        data, sw, offset = self._check_data_sw_offset()
 
         # slice data if user provided a tuple
         trim = self._check_trim(trim, data)
         data = data[tuple([np.s_[0:int(t)] for t in trim])]
 
-        # 1D ITMPM
-        if dim == 1:
-            self.theta0 = _mpm.mpm_1d(data, M_in, sw[0], off[0], func_print)
-
-        # 2D ITMEMPM
-        elif dim == 2:
-            self.theta0 = _mpm.mpm_2d(data, M_in, sw, off, func_print)
+        maxtrix_pencil_info = mpm.MatrixPencil(data, sw, offset, M, fprint)
 
 
     @logger
@@ -2446,7 +2439,7 @@ class NMREsPyBruker:
             return data.shape
 
 
-    def _unit_convert(self, lst, convert='idx->ppm'):
+    def _unit_convert(self, lst, convert):
         """Converts unit of a list of values
         '|a|->|b|', where |a| and |b| are not the same, and in
         ['idx', 'ppm', 'hz']"""

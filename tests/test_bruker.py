@@ -17,6 +17,11 @@ class TestBruker(unittest.TestCase):
     # creates an instance of NMRESPyBruker which is considered in
     # later tests
     def setUp(self):
+        """Tests nmrespy.load and simulataneously creates two instances
+        for testing in later test methods:
+        self.fid_info
+        self.pdata_info
+        """
 
         self.pickle_dir = Path().cwd() / 'pickled_objects'
 
@@ -68,29 +73,38 @@ class TestBruker(unittest.TestCase):
         # ---test pickle_load---
         loaded_info = load.pickle_load(self.pickle_dir / 'NMREsPyBruker.pkl')
 
-    # def test_dunder_methods(self):
-    #
-    #     # test __str___
-    #     print(self.fid_info)
-    #
-    #     # test __repr__
-    #     print(repr(self.fid_info))
+    def test_dunder_methods(self):
+        """Simply checks no errors are raised when __str__ and __repr__
+        are called"""
+
+        # test __str___
+        string = self.fid_info.__str__()
+        # test __repr__
+        representaiton = self.fid_info.__repr__()
 
 
-    def test_get(self):
+    def test_get_initial(self):
+        """Test the various methods that get infomation from the class.
+        At this stage, attributes related to frequency filtration and
+        estimation will be None"""
+
+        # loop over fid and pdata instances
         insts = [self.fid_info, self.pdata_info]
         paths = [Path().cwd() / 'data/1000', Path().cwd() / 'data/1/pdata/1']
         dtypes = ['fid', 'pdata']
         ns = [32692, 16384]
 
+        # paths to pickled data (chemical shift arrays and time-point arrays
+        # for comparison
         pickle_paths = []
-        for dtype in dtypes:#
+        for dtype in dtypes:
             sublst = []
             sublst.append(self.pickle_dir / f'shifts_1d_{dtype}_hz.pkl')
             sublst.append(self.pickle_dir / f'shifts_1d_{dtype}_ppm.pkl')
             sublst.append(self.pickle_dir / f'tp_1d_{dtype}.pkl')
             pickle_paths.append(iter(sublst))
 
+        # test the get methods!
         for inst, path, dtype, n, ppaths in zip(insts, paths, dtypes, ns, pickle_paths):
             self.assertEqual(inst.get_datapath(), path)
             self.assertEqual(inst.get_datapath(type_='str'), str(path))
@@ -116,9 +130,11 @@ class TestBruker(unittest.TestCase):
             ]
 
             for i, (obj, value) in enumerate(zip(objects, values)):
+                # check objects are length-1 lists
                 self.assertIsInstance(obj, list)
                 self.assertEqual(len(obj), 1)
 
+                # check list elements are the correct value
                 if i in [0, 7]:
                     # n and nucleus (int and str types)
                     self.assertEqual(obj[0], value)
@@ -126,6 +142,7 @@ class TestBruker(unittest.TestCase):
                     # other parameters are floats
                     self.assertEqual(round(obj[0], 3), value)
 
+            # check get_shifts and get_tp
             with open(next(ppaths), 'rb') as fh:
                 shifts_hz = pickle.load(fh)
 
@@ -146,8 +163,8 @@ class TestBruker(unittest.TestCase):
                 np.array_equal(inst.get_tp(), tp)
             )
 
-            # get methods that are None at the point of initialisation using
-            # bruker_load
+            # get methods that correspond to attributes which are  None at
+            # the point of initialisation using bruker_load
             none_methods = [
                 inst.get_region,
                 inst.get_noise_region,
@@ -168,11 +185,11 @@ class TestBruker(unittest.TestCase):
                 self.assertIsNone(method(kill=False))
 
 
-    def test_matrix_pencil(self):
+    def test_filter(self):
         # TODO
         region = [[5.06, 4.76]]
         noise_region = [[9.7, 9.3]]
-        self.pdata_info.frequency_filter(region, noise_region)
+        self.pdata_info.frequency_filter(region, noise_region, cut_ratio=5)
         self.pdata_info.matrix_pencil()
 
 

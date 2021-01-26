@@ -177,9 +177,9 @@ class FrequencyFilter:
     def _cut_spectrum(self):
 
         cut_slice = []
-        self.filtered_n = [] # number of points the cut signal is made of
-        self.filtered_sw = [] # sweep width of the cut signal
-        self.filtered_offset = [] # offset of the cut signal
+        self.filtered_n = []
+        self.max_idx = []
+        self.min_idx = []
 
         # determine slice indices
         for n, c, b in zip(self.filtered_spectrum.shape, self.center, self.bw):
@@ -196,10 +196,12 @@ class FrequencyFilter:
 
             cut_slice.append(np.s_[min:max])
 
-            self.filtered_n.append(max - min)
-            # sw and off will be converted to hz inside NMREsPyBruker
-            self.filtered_sw.append(max - min)
-            self.filtered_offset.append((min + max) / 2)
+            # N.B. these are divided by two on account of initial zero-filling
+            self.filtered_n.append((max - min) / 2)
+            # max_idx and min_idx will be used to generate
+            # sw and offset in Hz, within NMREsPyBruker.frequency_filter
+            self.max_idx.append(max / 2)
+            self.min_idx.append(min / 2)
 
         self.filtered_spectrum = self.filtered_spectrum[tuple(cut_slice)]
 

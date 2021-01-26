@@ -5,17 +5,20 @@
 
 # Provides timer decorator
 
+import functools
 import time
 
 def timer(f):
-    """f is a callable (function or method)"""
+    """Times function f, and prints result once completed."""
+    @functools.wraps(f)
     def timed(*args, **kwargs):
         start = time.time()
         result = f(*args, **kwargs)
         run_time = convert(time.time() - start)
-        print(f'Time elapsed: {run_time}')
+        print(f'\tTime elapsed: {run_time}')
         return result
     return timed
+
 
 def convert(secs):
     """Takes a time in seconds and converts to min:sec:msec"""
