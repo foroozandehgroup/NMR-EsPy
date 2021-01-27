@@ -6,7 +6,7 @@ import pickle
 
 import numpy as np
 
-from nmrespy import FrequencyConverter
+from nmrespy import FrequencyConverter, PathManager
 from nmrespy.core import NMREsPyBruker
 import nmrespy._errors as errors
 import nmrespy.load as load
@@ -83,6 +83,19 @@ class TestConverter(unittest.TestCase):
 
         self.assertEqual(converter.convert([50, 50], 'idx->hz'), [0., 50.])
         self.assertEqual(converter.convert([[25, 50], [75, 100]], 'idx->hz'), [[2.5, 0.], [25., 0.]])
+
+
+# class TestPathManager(unittest.TestCase):
+#
+#     def test_check_path(self):
+#
+#         # make file
+#         newfile = Path().expanduser() / 'newfile.txt'
+#         newfile.touch()
+#
+#         duplicatefile = PathManager(str(Path().expanduser()), 'newfile.txt')
+#         path = duplicatefile.check_file()
+
 
 
 class TestBruker(unittest.TestCase):
@@ -265,7 +278,8 @@ class TestBruker(unittest.TestCase):
         noise_region = [[9.7, 9.3]]
         self.pdata_info.frequency_filter(region, noise_region, cut_ratio=3)
         self.pdata_info.matrix_pencil()
-        print(self.pdata_info.matrix_pencil_info.get_parameters(unit='ppm'))
+        self.pdata_info.save_logfile(fname='logfile.log')
+
 
 
 

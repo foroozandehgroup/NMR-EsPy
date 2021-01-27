@@ -30,7 +30,6 @@ import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
 
-
 def start_end_wrapper(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import pickle
 import re
+import shutil
 import sys
 
 import matplotlib
@@ -29,8 +30,9 @@ from nmrespy import _filter as filter
 def logger(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        with open(os.path.join(NMRESPYPATH, 'logs/tmp.log'), 'w') as fh:
-            fh.write(f'{f.__name__} {args[1:]} {kwargs}\n')
+        path = args[0].logpath
+        with open(path, 'a') as fh:
+            fh.write(f'--> {f.__name__} {args[1:]} {kwargs}\n')
         return f(*args, **kwargs)
     return wrapper
 
@@ -170,12 +172,16 @@ class NMREsPyBruker:
         self.errors = errors
 
         # setup file for logging method calls
-        curr = datetime.datetime.now()
-        stamp = curr.strftime('%y%m%d%H%M%S')
-        self.logpath = Path(NMRESPYPATH) / f'logs/{stamp}.log'
+        now = datetime.datetime.now()
+        timestamp = now.strftime('%y%m%d%H%M%S')
+        self.logpath = Path(NMRESPYPATH) / f'logs/{timestamp}.log'
 
-        header = 'logfile for NMREsPyBruker instance\n'
-        header += f"{curr.strftime('%d-%m-%y %H:%M:%S')}\n"
+        header = (
+            '==================================\n'
+            'Logfile for NMREsPyBruker instance\n'
+            '==================================\n'
+           f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}\n"
+        )
         with open(self.logpath, 'w') as fh:
             fh.write(header)
 
@@ -1257,8 +1263,6 @@ class NMREsPyBruker:
               >>> print(self.frequency_filter_info.__dict__)
         """
 
-        self._log_method()
-
         dim = self.get_dim()
 
         # TODO: support for 2D data. consult Ali, get Tom M to take lead
@@ -1406,8 +1410,6 @@ class NMREsPyBruker:
            frequencies using modified matrix pencil method”. In: IEEE Trans.
            Signal Process. 55.2 (2007), pp. 718–724.
         """
-
-        self._log_method()
 
         data, sw, offset = self._check_data_sw_offset()
 
@@ -2227,8 +2229,6 @@ class NMREsPyBruker:
             will be given equal amplitudes.
         """
 
-        self._log_method()
-
         # get frequency_Sep in correct units
         if unit == 'hz':
             pass
@@ -2283,23 +2283,43 @@ class NMREsPyBruker:
         self.__dict__[result_name] = result[np.argsort(result[..., 2])]
 
 
-    # ---Internal use methods---
-    def _log_method(self):
-        """Records method calls"""
-        tmppath = os.path.join(NMRESPYPATH, 'logs/tmp.log')
-        with open(tmppath, 'r') as tmpfh:
-            new_call = tmpfh.read()
-        os.remove(tmppath)
+    def save_logfile(self, fname=None, dir='.', force_overwrite=False):
+        """Saves log file of class instance usage to a specified path.
 
-        try:
-            with open(self.logpath, 'r') as logfh_r:
-                old_calls = logfh_r.read()
+        Parameters
+        ----------
+        fname : str or None, default: None
+            Name of log file. If `None`, the default filename, specified
+            by a timestamp, is used. This default filename is given by
+            ``str(self.logpath)``.
 
-        except FileNotFoundError:
-            old_calls = ''
+        dir : str, default: '.'
+            The path to the directory to save the file to. Deault if the
+            current working directory.
+        """
 
-        with open(self.logpath, 'w') as logfh_w:
-            logfh_w.write(old_calls + new_call)
+        if fname is None:
+            fname = str(self.logpath.name)
+        elif not isinstance(fname, str):
+            raise TypeError(f'{R}fname should be a string or None{END}')
+
+        if not isinstance(dir, str):
+            raise TypeError(f'{R}dir should be a string or None{END}')
+
+        path_manager = PathManager(fname, dir)
+
+        result = path_manager.check_file(force_overwrite)
+
+        if result == 0:
+            pass
+        elif result == 1:
+            print(f'{O}Log file will not be saved to the specified path{END}')
+            return
+        elif result == 2:
+            raise ValueError(f'{R}dir ({dir}) does not exist{END}')
+        print(path_manager.path)
+        shutil.copyfile(self.logpath, path_manager.path)
+
 
 
     @staticmethod
@@ -2420,7 +2440,7 @@ class NMREsPyBruker:
                              f' \'theta0\'{END}')
 
     def _check_trim(self, trim, data):
-        if trim is not None:
+        if trim != None:
             trim = self._check_int_float(trim)
             # check trim is not larger than full signal size in any dim
             for i, (t, n) in enumerate(zip(trim, data.shape)):

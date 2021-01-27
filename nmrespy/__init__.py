@@ -1,5 +1,6 @@
 import itertools
 import os
+from pathlib import Path
 
 import nmrespy._cols as cols
 from ._version import __version__
@@ -97,7 +98,6 @@ class FrequencyConverter:
         # list for storing final converted contents (will be returned as tuple)
         converted_lst = []
         for dim, elem in enumerate(lst):
-            print(dim)
 
             # try/except block enables code to work with both lists and
             # lists of lists
@@ -140,7 +140,6 @@ class FrequencyConverter:
 
 
     def _convert_value(self, value, dim, conversion):
-        print(repr(dim))
         n = self.n[dim]
         sw = self.sw[dim]
         off = self.offset[dim]
@@ -163,3 +162,71 @@ class FrequencyConverter:
 
         elif conversion == 'hz->ppm':
             return value / sfo
+
+
+class PathManager:
+
+    def __init__(self, fname, dir):
+        """
+        Parameters
+        ----------
+        fname : str
+            Filename.
+        dir : str
+            Directory.
+        """
+
+        self.fname = Path(fname)
+        self.dir = Path(dir)
+        self.path = self.dir / self.fname
+
+    def check_file(self, force_overwrite=False):
+        """Checks whether the file dir/fname already exists.
+        If it does, ask user for permission to overwrite.
+        Can return the following codes:
+        0 : file doesn't exist/can be overwritten and dir exists
+        1 : file already exists and cannot be overwritten
+        2 : dir does not exist
+        """
+
+        if not self.dir.is_dir():
+            return 2
+
+        if self.path.is_file() and not force_overwrite:
+            overwrite = self.ask_overwrite()
+            if not overwrite:
+                print(f'{cols.O}Overwrite denied{cols.END}')
+                return 1
+
+        return 0
+
+    def ask_overwrite(self):
+
+        prompt = (
+            f'{cols.O}The file {str(self.path)} already exists. Overwrite?\n'
+            f'Enter [y] or [n]:{cols.END} '
+        )
+
+        return get_yes_no(prompt)
+
+    def check_dir(self):
+        """Determines if a path is a directory that exists."""
+
+        return self.dir.is_dir()
+
+
+
+
+def get_yes_no(prompt):
+    """Ask user to input 'yes' or 'no' (Y/y or N/n). Repeatedly does this
+    until a valid response is recieved"""
+
+    response = input(prompt).lower()
+    if response == 'y':
+        return True
+    elif response == 'n':
+        return False
+    else:
+        get_yes_no(
+            f'{cols.R}Invalid input. Please enter [y] or [n]:{cols.END} '
+        )
