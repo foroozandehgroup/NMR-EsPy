@@ -1417,7 +1417,11 @@ class NMREsPyBruker:
         trim = self._check_trim(trim, data)
         data = data[tuple([np.s_[0:int(t)] for t in trim])]
 
-        self.matrix_pencil_info = mpm.MatrixPencil(data, sw, offset, self.sfo, M, fprint)
+        self.matrix_pencil_info = mpm.MatrixPencil(
+            data, sw, offset, self.sfo, M, fprint
+        )
+        
+        self.theta0 = self.matrix_pencil_info.get_parameters()
 
 
     @logger
@@ -2317,8 +2321,17 @@ class NMREsPyBruker:
             return
         elif result == 2:
             raise ValueError(f'{R}dir ({dir}) does not exist{END}')
-        print(path_manager.path)
-        shutil.copyfile(self.logpath, path_manager.path)
+
+        try:
+            shutil.copyfile(self.logpath, path_manager.path)
+            print(
+                f'{G}Log file succesfully saved to'
+                f' {str(path_manager.path)}{END}'
+            )
+
+        # trouble copying file...
+        except Exception as e:
+            raise e
 
 
 

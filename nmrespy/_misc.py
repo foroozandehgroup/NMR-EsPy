@@ -3,14 +3,14 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-from copy import deepcopy
+import copy
 import os
 
 import numpy as np
 from scipy.integrate import simps
 
-from ._cols import *
-if USE_COLORAMA:
+import nmrespy._cols as cols
+if cols.USE_COLORAMA:
     import colorama
 
 
@@ -64,91 +64,100 @@ def aligned_tabular(columns, titles=None):
 
     return msg
 
-def isiterable(obj):
-    try:
-        iterable = iter(obj)
-        return True
-    except TypeError:
-        return False
 
-
-
-def convert(value, sw, off, n, sfo, conversion):
-
-    if conversion == 'idx->hz':
-        return float(off + (sw / 2) - ((value * sw) / n))
-
-    elif conversion == 'idx->ppm':
-        return float((off + sw / 2 - value * sw / n) / sfo)
-
-    elif conversion == 'ppm->idx':
-        return int(round((off + (sw / 2) - sfo * value) * (n / sw)))
-
-    elif conversion == 'ppm->hz':
-        return value * sfo
-
-    elif conversion == 'hz->idx':
-        return int((n / sw) * (off + (sw / 2) - value))
-
-    elif conversion == 'hz->ppm':
-        return value / sfo
-
-
-def mkfid(para, n, sw, offset, dim):
-    """
-    mkfid(para, n, sw, offset, dim)
-
-    ───Description─────────────────────────────
-    Constructs a discrete time-domain signal (FID), as a summation of
+def make_fid(parameters, n, sw, offset=None):
+    """Constructs a discrete time-domain signal (FID), as a summation of
     exponentially damped complex sinusoids, along with the corresponding
     time-points at which the signal was sampled.
 
-    ───Parameters──────────────────────────────
-    para - numpy.ndarray
-        Parameter array, of shape (M, 4) or (M, 6).
-    n - int
-        Number of points to construct signals from.
-    sw - float
-        Sweep width (Hz) in each dimension.
-    offset - float
-        Offset frequency (Hz) in each dimension.
-    dim - int
-        Signal dimension. Should be 1 or 2
+    Parameters
+    ----------
+    parameters : numpy.ndarray
+        Parameter array, with ``parameters.shape == (M, 4)`` for a 1D FID,
+        or ``parameters.shape == (M, 4)`` for a 2D FID, where `M` is the number
+        of oscillators.
 
-    ───Returns─────────────────────────────────
-    fid - numpy.ndarray
+    n : [int], [int, int]
+        Number of points to construct signal from in each dimension.
+
+    sw : [float], [float, float]
+        Sweep width in each dimension, in Hz.
+
+    offset : [float], [float, float], or None, default: None
+        Transmitter offset frequency in each dimension, in Hz. If set to
+        `None`, the offset frequency will be set to 0Hz in each dimension.
+
+
+    Returns
+    fid : numpy.ndarray
         The synthetic time-domain signal.
-    tp - numpy.ndarray or tuple
-        The time points the FID is sampled at in each dimension. If
-        dim is 1, this is an ndarray. If dim is 2, this is a tuple of
-        two ndarrays.
+
+    tp : [numpy.ndarray], [numpy.ndarray, numpy.ndarray]
+        The time points the FID is sampled at in each dimension.
     """
 
-    if dim == 1:
-        # time points
-        tp = np.linspace(0, float(n[0]-1) / sw[0], int(n[0]))
+    if not isinstance(parameters, np.ndarray) or parameters.ndim != 2:
+        raise TypeError(
+            f'{cols.R}parameters should be a numpy ndarray with 2'
+            f' dimesions.{cols.END}'
+        )
 
-        para_new = deepcopy(para)
-        # shift to have centre frequency at zero
-        para_new[..., 2] = -para_new[..., 2] + offset[0]
-        Z = np.exp(np.outer(tp, (1j * 2 * np.pi * para_new[..., 2] -
-                   para_new[..., 3])))
-        alpha = para_new[..., 0] * np.exp(1j * para[..., 1])
-        fid = np.matmul(Z, alpha).flatten()
+    if not parameters.shape[1] in [4, 6]:
+        raise ValueError(
+            f'{cols.R}parameters should statisfy parameters.shape[1] == 4'
+            f' (1D FID) or parameters.shape[1] == 6 (2D FID).{cols.END}'
+        )
+
+    # FID dimension
+    dim = int(parameters.shape[1] / 2) - 1
+
+    if offset is None:
+        offset = [0.] * dim
+
+    def _check_valid_arg(value, name, type_, dim):
+
+        errmsg = (
+            f'{cols.R}{name} should be a list of length {dim} with values of'
+            f' type {type_.__name__}{cols.END}'
+        )
+
+        if isinstance(value, type_) and dim == 1:
+            return [value]
+        elif isinstance(value, list) and len(n) == dim:
+            for elem in value:
+                if not isinstance(elem, type_):
+                    raise TypeError(errmsg)
+            return value
+        else:
+            raise TypeError(errmsg)
+
+    n = _check_valid_arg(n, 'n', int, dim)
+    offset = _check_valid_arg(offset, 'offset', float, dim)
+    sw = _check_valid_arg(sw, 'sw', float, dim)
+
+    amp = parameters[:, 0]
+    phase = parameters[:, 1]
+    freq = [parameters[:, 2+i] + offset[i] for i in range(dim)]
+    damp = [parameters[:, dim+2+i] for i in range(dim)]
+    tp = [np.linspace(0, float(n_) / sw_, n_) for n_, sw_ in zip(n, sw)]
+
+    if dim == 1:
+        # Vandermonde matrix of poles
+        Z = np.exp(np.outer(tp[0], (1j*2*np.pi*freq[0] - damp[0])))
+
+        # vector of complex ampltiudes
+        alpha = amp * np.exp(1j * phase)
+
+        fid = Z @ alpha
 
     if dim == 2:
-        # time points
-        tp1 = np.linspace(0, float(n[0]-1 / sw[0]), n[0])
-        tp2 = np.linspace(0, float(n[1]-1 / sw[1]), n[1])
+        # Vandermonde matrices
+        Z1 = np.exp(np.outer(tp[0], (1j*2*np.pi*freq[0] - damp[0])))
+        Z2t = np.exp(np.outer((1j*2*np.pi*freq[1] - damp[1]), tp[1]))
 
-        # adjust based on transmitter offset
-        para[..., 2] = para[..., 2] - offset[0]
-        para[..., 3] = para[..., 3] - offset[1]
-        Z1 = np.exp(np.outer(tp1, (1j * 2 * np.pi * para[..., 2] -
-                                      para[..., 4])))
-        Z2t = np.exp(np.outer((1j * 2 * np.pi * para[..., 3] -
-                               para[..., 5]), tp2))
-        A = np.diag(para[..., 0] * np.exp(1j * para[..., 1]))
-        fid = np.matmul(Z1, np.matmul(A, Z2t))
+        # diagonal matrix of complex amplitudes
+        A = np.diag(amp * np.exp(1j * phase))
+
+        fid = Z1 @ A @ Z2t
 
     return fid

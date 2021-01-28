@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 
 import nmrespy._cols as cols
-from ._version import __version__
+
+# uncomment once on PyPI
+# from ._version import __version__
 
 
 NMRESPYPATH = os.path.dirname(__file__)
@@ -165,28 +167,47 @@ class FrequencyConverter:
 
 
 class PathManager:
+    """Class for performing checks on paths.
 
+    Parameters
+    ----------
+    fname : str
+        Filename.
+    dir : str
+        Directory.
+    """
     def __init__(self, fname, dir):
-        """
-        Parameters
-        ----------
-        fname : str
-            Filename.
-        dir : str
-            Directory.
-        """
 
         self.fname = Path(fname)
         self.dir = Path(dir)
         self.path = self.dir / self.fname
 
     def check_file(self, force_overwrite=False):
-        """Checks whether the file dir/fname already exists.
-        If it does, ask user for permission to overwrite.
-        Can return the following codes:
-        0 : file doesn't exist/can be overwritten and dir exists
-        1 : file already exists and cannot be overwritten
-        2 : dir does not exist
+        """Performs checks on the path file dir/fname
+
+        Parameters
+        ----------
+        force_overwrite : bool, default: False
+            Specifies whether to ask the user if they are happy for the file
+            `self.path` to be overwritten if it already exists in their
+            filesystem.
+
+        Returns
+        -------
+        return_code : int
+            See notes for details
+
+        Notes
+        -----
+        This method first checks whether dir exists. It does, it check whether
+        the file `dir/fname` exists. If it does, the user is asked for permission
+        to overwrite, `force_overwrite` is `False`. THe following codes can
+        be returned:
+
+        * ``0`` `dir/fname` doesn't exist/can be overwritten, and `dir` exists.
+        * ``1`` `dir/fname` already exists and the user does not give
+          permission to overwrite.
+        * ``2`` `dir` does not exist.
         """
 
         if not self.dir.is_dir():
@@ -201,6 +222,8 @@ class PathManager:
         return 0
 
     def ask_overwrite(self):
+        """Asks the user if the are happy to overwrite the file given
+        by the path `self.path`"""
 
         prompt = (
             f'{cols.O}The file {str(self.path)} already exists. Overwrite?\n'
@@ -208,13 +231,6 @@ class PathManager:
         )
 
         return get_yes_no(prompt)
-
-    def check_dir(self):
-        """Determines if a path is a directory that exists."""
-
-        return self.dir.is_dir()
-
-
 
 
 def get_yes_no(prompt):

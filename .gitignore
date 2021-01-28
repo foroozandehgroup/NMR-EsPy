@@ -5,3 +5,4 @@ nmrespy/topspin/apps_cp.py
 nmrespy/core_cp.py
 nmrespy/logs/*
 docs/references/generated/*
+tests

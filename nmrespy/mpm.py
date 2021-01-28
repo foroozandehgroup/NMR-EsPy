@@ -3,15 +3,6 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-# ==============================================
-# SGH 26-1-21
-# I have tagged various methods as follows:
-#
-# TODO: MAKE 2D COMPATIBLE
-#
-# These only support 1D data treatment currently
-# ==============================================
-
 import copy
 import functools
 
@@ -21,8 +12,7 @@ import scipy.linalg as slinalg
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-from nmrespy import FrequencyConverter
-import nmrespy._misc as misc
+from nmrespy import *
 import nmrespy._errors as errors
 from ._timing import timer
 import nmrespy._cols as cols
@@ -113,8 +103,9 @@ class MatrixPencil(FrequencyConverter):
         # determine data dimension. If greater than 2, return error
         self.dim = self.data.ndim
         if self.dim >= 3:
-            raise MoreThanTwoDimError()
+            raise errors.MoreThanTwoDimError()
 
+        # if offset is None, set it to zero in each dimension
         if offset is None:
             offset = [0.0] * self.dim
 
@@ -128,7 +119,7 @@ class MatrixPencil(FrequencyConverter):
             if not isinstance(x, list) and len(x) == self.dim:
                 raise TypeError(
                     f'{cols.R}sw and offset should be lists with the same'
-                    f' number of elements and dimensions in the data{cols.END}'
+                    f' number of elements as dimensions in the data{cols.END}'
                 )
 
         self.n = list(self.data.shape)
@@ -166,7 +157,6 @@ class MatrixPencil(FrequencyConverter):
             hz = [list(self.parameters[:, 2])]
             # convert to ppm
             ppm = np.array(self.converter.convert(hz, conversion='hz->ppm'))
-
             parameters_ppm = copy.deepcopy(self.parameters)
             parameters_ppm[:, 2] = ppm
             return parameters_ppm
@@ -192,18 +182,18 @@ class MatrixPencil(FrequencyConverter):
         self.norm = nlinalg.norm(self.data)
         self.normed_data = self.data / self.norm
 
-        # data size and pencil parameter
+        # pencil parameter
         self._pencil_parameters()
 
         # Hankel matrix of data, Y, with dimensions (N-L) * L
         self._construct_y()
 
         # singular value decomposition of Y
-        # returns singular values (M-length vector)
-        # and right singular values (LxL size matrix)
+        # returns singular values: min(N-L, L)-length vector
+        # and right singular vectors (LxL size matrix)
         self._svd()
 
-        # number of oscillators
+        # determine number of oscillators
         self._mdl()
 
         self._signal_poles_1d()
@@ -215,6 +205,9 @@ class MatrixPencil(FrequencyConverter):
 
         # removal of terms with negative damping factors
         self._negative_damping()
+
+        # at this point, the result is contained in self.parameters
+        # this can be access by the self.get_parameters() method
 
 
     @timer
@@ -274,7 +267,7 @@ class MatrixPencil(FrequencyConverter):
 
             gibibytes = self.y.nbytes / (2**30)
 
-            if round(gibibytes, 4) >= 0.1:
+            if gibibytes >= 0.1:
                 print(f'\tMemory: {round(gibibytes, 4)}GiB')
             else:
                 print(f'\tMemory: {round(gibibytes * (2**10), 4)}MiB')
