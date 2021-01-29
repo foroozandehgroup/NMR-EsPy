@@ -4,14 +4,41 @@
 # simon.hulse@chem.ox.ac.uk
 
 import copy
-import os
+import functools
 
 import numpy as np
-from scipy.integrate import simps
 
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+
+
+def start_end_wrapper(start_text, end_text):
+
+    def decorator(f):
+
+        @functools.wraps(f)
+        def inner(*args, **kwargs):
+
+            inst = args[0]
+            if inst.fprint is False:
+                return f(*args, **kwargs)
+
+            print(f"{cols.G}{len(start_text) * '='}\n"
+                  f"{start_text}\n"
+                  f"{len(start_text) * '='}{cols.END}")
+
+            result = f(*args, **kwargs)
+
+            print(f"{cols.G}{len(end_text) * '='}\n"
+                  f"{end_text}\n"
+                  f"{len(end_text) * '='}{cols.END}")
+
+            return result
+
+        return inner
+
+    return decorator
 
 
 def aligned_tabular(columns, titles=None):

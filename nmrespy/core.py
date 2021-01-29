@@ -1420,7 +1420,7 @@ class NMREsPyBruker:
         self.matrix_pencil_info = mpm.MatrixPencil(
             data, sw, offset, self.sfo, M, fprint
         )
-        
+
         self.theta0 = self.matrix_pencil_info.get_parameters()
 
 
@@ -1582,8 +1582,6 @@ class NMREsPyBruker:
         """
 
         # TODO: include freq threshold
-
-        self._log_method()
 
         # unpack parameters
         dim = self.get_dim()
@@ -2386,47 +2384,6 @@ class NMREsPyBruker:
 
         # None -> return original data, sw, and offset
         return self.get_data(), self.get_sw(), self.get_offset()
-
-
-    @staticmethod
-    def _check_mode(mode, phase_var):
-
-        errmsg = f'\n{R}mode should be None or a string containing' \
-                 + f' only the characters \'a\', \'p\', \'f\', and' \
-                 + f' \'d\'. NO character should be repeated{END}'
-
-        if mode is None:
-            return 'apfd'
-
-        elif isinstance(mode, str):
-            # could use regex here, but I haven't looked into it enough
-            # to know what I'm doing...
-            if any(c not in 'apfd' for c in mode):
-                raise ValueError(errmsg)
-            else:
-                # check each character doesn't appear more than once
-                count = {}
-                for c in mode:
-                    if c in count:
-                        count[c] += 1
-                    else:
-                        count[c] = 1
-
-                for key in count:
-                    if count[key] > 1:
-                        raise ValueError(errmsg)
-
-                # gets upset when phase variance is switched on, but phases
-                # are not to be optimised (the user is being unclear about
-                # their purpose and I don't like uncertainty)
-                if phase_var is True and 'p' not in mode:
-                    raise PhaseVarianceAmbiguityError(mode)
-
-                return mode
-
-            raise ValueError(errmsg)
-
-        raise TypeError(errmsg)
 
 
     def _check_result(self, result_name):

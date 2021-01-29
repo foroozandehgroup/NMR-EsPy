@@ -3,6 +3,8 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
+"""Definitions of fidelities, gradients, and Hessians."""
+
 import numpy as np
 
 def f_1d(active, *args):
@@ -16,6 +18,7 @@ def f_1d(active, *args):
 
     args : list_iterator
         Contains elements in the following order:
+
         * **data:** `numpy.ndarray.` Array of the original FID data.
         * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
         * **m:** `int.` Number of oscillators
@@ -67,6 +70,7 @@ def g_1d(active, *args):
 
     args : list_iterator
         Contains elements in the following order:
+
         * **data:** `numpy.ndarray.` Array of the original FID data.
         * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
         * **m:** `int.` Number of oscillators
@@ -214,6 +218,7 @@ def h_1d(active, *args):
 
     args : list_iterator
         Contains elements in the following order:
+        
         * **data:** `numpy.ndarray.` Array of the original FID data.
         * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
         * **m:** `int.` Number of oscillators
@@ -510,7 +515,7 @@ def _diagonal_indices(arr, k=0):
 
     Parameters
     ----------
-    a : numpy.ndarray
+    arr : numpy.ndarray
         Square array (Hessian matrix)
 
     k : int

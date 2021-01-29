@@ -3,8 +3,11 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
+"""User API for performing nonlinear programming"""
+
 import copy
 import functools
+import operator
 
 import numpy as np
 from numpy.fft import fft, fftshift
@@ -13,31 +16,11 @@ import scipy.optimize as optimize
 
 from nmrespy import *
 from nmrespy.nlp import _funcs
+from nmrespy._misc import start_end_wrapper
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
 from nmrespy._timing import timer
-
-
-def start_end_wrapper(f):
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-
-        inst = args[0]
-        if inst.fprint is False:
-            return f(*args, **kwargs)
-
-        print(f'{cols.G}================================\n'
-                       'PERFORMING NONLINEAR PROGRAMMING\n'
-                      f'================================{cols.END}')
-
-        result = f(*args, **kwargs)
-
-        print(f'{cols.G}==============================\n'
-                       'NONLINEAR PROGRAMMING COMPLETE\n'
-                      f'=============================={cols.END}')
-        return result
-    return wrapper
 
 
 class NonlinearProgramming(FrequencyConverter):
@@ -50,11 +33,42 @@ class NonlinearProgramming(FrequencyConverter):
         Signal to be considered (unnormalised).
 
     theta0 : numpy.ndarray
-        Initial parameter guess. This should be an array with
-        ``theta0.ndim == 2`` and:
+        Initial parameter guess. The following forms are accepted:
 
-        * ``theta0.shape[1] == 4`` for 1D data.
-        * ``theta0.shape[1] == 6`` for 2D data.
+        * **1-dimensional data:**
+
+            1. ::
+
+                  theta0 = numpy.array([
+                      [a_1, φ_1, f_1, η_1],
+                      [a_2, φ_2, f_2, η_2],
+                      ...,
+                      [a_m, φ_m, f_m, η_m],
+                  ])
+            2. ::
+
+                  theta0 = np.array(
+                      [a1, a2, ..., am, φ1, ..., φm, f1, ..., fm, η1, ... ηm]
+                  )
+
+        * **2-dimensional data:**
+
+            1. ::
+
+                theta0 = numpy.array([
+                    [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
+                    [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
+                    ...,
+                    [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
+                ])
+            2. ::
+
+                theta0 = np.array(
+                    [
+                        a1, a2, ..., am, φ1, ..., φm, f1_1, ..., f1_m,
+                        f2_1, ..., f2_m, η1_1, ... η1_m, η2_1, ... η2_m
+                    ]
+                )
 
     sw : [float] or [float, float]
         The experiment sweep width in each dimension in Hz.
@@ -77,8 +91,8 @@ class NonlinearProgramming(FrequencyConverter):
         Optimisation algorithm to use. See notes for more details.
 
     mode : str, default: 'apfd'
-        String composed of any combination of characters 'a', 'p', 'f', 'd'.
-        Used to determine which parameter types to optimise, and which to
+        String composed of any combination of characters `'a'`, `'p'`, `'f'`,
+        `'d'`. Used to determine which parameter types to optimise, and which to
         remain fixed.
 
     bound : bool, default: False
@@ -97,7 +111,7 @@ class NonlinearProgramming(FrequencyConverter):
         \\lVert \\boldsymbol{a} \\rVert`` will be removed from the
         parameter array, where :math:`\\lVert \\boldsymbol{a} \\rVert`
         is the norm of the vector of all the oscillator amplitudes. It is
-        advised to set ``amp_thold`` at least a couple of orders of
+        advised to set `amp_thold` at least a couple of orders of
         magnitude below 1.
 
     freq_thold : float or None
@@ -129,18 +143,10 @@ class NonlinearProgramming(FrequencyConverter):
     fprint : bool, default: True
         If `True`, the method provides information on progress to
         the terminal as it runs. If `False`, the method will run silently.
-
-    Returns
-    -------
-    x : numpy.ndarray
-        The result of the NLP routine, with shape ``(M_new, 4)`` for 1D data or
-        ``(M_new, 6)`` for 2D data, where ``M_new<= M``.
-
-    errors : numpy.ndarray
-        An array with the same shape as ``x``, with elements corresponding to
-        errors for each parameter
     """
 
+    start_txt = 'NONLINEAR PROGRAMMING STARTED'
+    end_txt = 'NONLINEAR PROGRAMMING COMPLETE'
 
     def __init__(
         self, data, theta0, sw, sfo=None, offset=None, phase_variance=True,
@@ -162,22 +168,36 @@ class NonlinearProgramming(FrequencyConverter):
         if self.dim >= 3:
             raise errors.MoreThanTwoDimError()
 
-        # check theta0 is:
-        # 1) NumPy array
-        # 2) Of the correct shape (M, 4) or (M, 6)
-        if not isinstance(theta0, np.ndarray) and theta0.ndim == 2:
+        # check theta0 is NumPy array
+        if not isinstance(theta0, np.ndarray):
             raise TypeError(
-                f'{cols.R}theta0 should be a two-dimensional ndarray{cols.END}'
+                f'{cols.R}theta0 should be a numpy ndarray{cols.END}'
             )
 
-        axis1 = 2 * self.dim + 2
-        if not theta0.shape[1] == axis1:
-            raise TypeError(
-                f'{cols.R}The second axis of theta0 should be of size {axis1}'
-                f'{cols.END}'
+        # number of points in signal
+        self.n = list(self.data.shape)
+
+        # p is 4 if 1D, 6 if 2D
+        p = 2 * self.dim + 2
+
+        # check theta0 is of correct shape
+        # permitted shape 1. (see docstring)
+        if theta0.ndim == 2 and theta0.shape[1] == p:
+            # vectorise: (m, p) -> (p*m,)
+            self.theta0 = theta0.flatten(order='F')
+
+        # permitted shape 2. (see docstring)
+        elif theta0.dim == 1 and theta0 % p == 0:
+            self.theta0 = theta0
+
+        else:
+            raise ValueError(
+                f'{cols.R}The shape of theta0 is invalid. It should either'
+                f' be of shape (m, {p}) or (m*{p},){cols.END}'
             )
 
-        self.theta0 = theta0
+        # number of oscillators
+        self.m = int(self.theta0.size / p)
 
         # if offset is None, set it to zero in each dimension
         if offset is None:
@@ -185,6 +205,7 @@ class NonlinearProgramming(FrequencyConverter):
 
         to_check = [sw, offset]
 
+        # if transmitter frequency is not NOne, include it in checking
         if sfo != None:
             self.sfo = sfo
             to_check.append(sfo)
@@ -192,11 +213,11 @@ class NonlinearProgramming(FrequencyConverter):
         for x in to_check:
             if not isinstance(x, list) and len(x) == self.dim:
                 raise TypeError(
-                    f'{cols.R}sw and offset should be lists with the same'
-                    f' number of elements as dimensions in the data{cols.END}'
+                    f'{cols.R}sw and offset (and sfo if specified) should be'
+                    f' lists with the same number of elements as dimensions in'
+                    f' the data.{cols.END}'
                 )
 
-        self.n = list(self.data.shape)
         self.sw = sw
         self.offset = offset
 
@@ -275,7 +296,7 @@ class NonlinearProgramming(FrequencyConverter):
         self.fprint = fprint
 
         # good to go!
-        self._nlp()
+        self._init_nlp()
 
 
     @staticmethod
@@ -287,11 +308,11 @@ class NonlinearProgramming(FrequencyConverter):
         if not isinstance(mode, str):
             return False
 
-        # could use regex here
-        if any(c not in 'apfd' for c in mode):
+        # check if mode is empty or contains and invalid character
+        if any(c not in 'apfd' for c in mode) or mode == '':
             return False
 
-        # check each character doesn't appear more than once
+        # check if mode contains a repeated character
         count = {}
         for c in mode:
             if c in count.keys():
@@ -322,57 +343,38 @@ class NonlinearProgramming(FrequencyConverter):
             )
         return thold
 
-    @start_end_wrapper
     @timer
-    def _nlp(self):
+    @start_end_wrapper(start_txt, end_txt)
+    def _init_nlp(self):
         """Runs nonlinear programming"""
 
         # normalise data
         self.norm = nlinalg.norm(self.data)
         self.normed_data = self.data / self.norm
 
-        # number of points in signal
-        self.n = list(self.normed_data.shape)
+        # divide amplitudes by data norm
+        theta0_edit = copy.deepcopy(self.theta0)
+        theta0_edit[:self.m] = theta0_edit[:self.m] / self.norm
 
-        # number of oscillators
-        self.m = self.theta0.shape[0]
+        # shift oscillator frequencies to centre about 0
+        theta0_edit = self._shift_offset(theta0_edit, 'center')
 
-        # shift frequencies to centre at 0
-        self._scale_theta0()
 
-        # time poits in each dimension
+        # time points in each dimension
         self.tp = [
-            np.linspace(0, float(n) / sw, n) for n, sw in zip(self.n, self.sw)
+            np.linspace(0, float(n-1) / sw, n) for n, sw in zip(self.n, self.sw)
         ]
 
         # determine 'active' and 'passive' parameters based on self.mode
-        self._impl_mode()
+        self.active_idx, self.passive_idx = self._get_active_passive_indices()
 
-        # vectorise active and passive arrays
-        act, pas = len(self.active), len(self.passive)
-        self.active_theta0 = np.reshape(
-            self.active_theta0, (act * self.m), order='F',
-        )
-        self.passive_theta0 = np.reshape(
-            self.passive_theta0, (pas * self.m), order='F',
-        )
-
-        if self.bound:
-            # generate bounds for bounded optimisation
-            self._get_bounds()
-        else:
-            # unbounded optimisation
-            self.bounds = None
-
-        # extra arguments to feed into fidelity, grad and hessian functions
-        self.optimiser_args = (
-            self.normed_data, # normalised data
-            self.tp, # timepoints for construction of model
-            self.m, # number of oscillators DO I NEED THIS!?
-            self.passive_theta0, # parameters not to be optimised
-            self.active, # indices denoting parameters to be optimised
-            self.phase_variance, # include phase variance in function or not
-        )
+        # takes the scaled parameter array self.scale_theta0,
+        # of shape (self.m, 4) or (self.m, 6), and does the following:
+        # 1) vectorises
+        # 2) splits up into vector of active parameters and vector of
+        #    passive parameters
+        self.active, self.passive = \
+            self._split_active_passive(theta0_edit)
 
         # determine cost function, gradient, and hessian
         self.calls = {}
@@ -380,43 +382,179 @@ class NonlinearProgramming(FrequencyConverter):
         self.calls['gradient'] = _funcs.g_1d if self.dim == 1 else _funcs.g_2d
         self.calls['hessian'] = _funcs.h_1d if self.dim == 1 else _funcs.h_2d
 
-        # optimise! generates self.result
+        self._optimise()
+
+
+    def _optimise(self):
+
+        self.optimiser_args = (
+            self.normed_data, # normalised data
+            self.tp, # timepoints for construction of model
+            self.m, # number of oscillators
+            self.passive, # parameters not to be optimised
+            self.active_idx, # indices denoting parameters to be optimised
+            self.phase_variance, # include phase variance in function or not
+        )
+
+        self.bounds = self._get_bounds()
         self._run_optimiser()
 
+        terminate = self._check_negative_amps()
 
-    def _scale_theta0(self):
-        """shifts frequencies to centre at 0, and normalises aplitudes"""
-        self.scale_theta0 = copy.deepcopy(self.theta0)
+        if terminate:
+            self.errors = self._get_errors()
+            self.result = self._merge_active_passive(self.active, self.passive)
+            self.result[:self.m] *= self.norm
+            print(self.result)
 
-        # divide amps by data norm
-        self.scale_theta0[:,0] = self.theta0[:,0] / self.norm
+        else:
+            self._optimise()
 
-        # shift frequencies
+
+    def _shift_offset(self, params, direction):
+        """shifts frequencies to centre to or displace from 0
+
+        Parameters
+        ----------
+        params : numpy.ndarray
+            Full parameter array
+
+        direction : 'center' or 'displace'
+            `'center'` shifts frerquencies such that the central frequency
+            is set to zero. `'displace'` moves frequencies away from zero,
+            to be reflected by offset.
+        """
+
         for i, off in enumerate(self.offset):
-            self.scale_theta0[:,2+i] = -self.theta0[:,2+i] + off
+            slice = self._get_slice([2+i])
 
-    def _impl_mode(self):
+            if direction == 'center':
+                params[slice] = params[slice] - off
+            elif direction == 'displace':
+                params[slice] = params[slice] + off
 
-        self.active = []
+        return params
+
+
+    def _get_slice(self, idx, osc_idx='all'):
+        """
+        Parameters
+        ----------
+        idx : list
+            Parameter types to be targeted. Valid ints are `0` to `3`
+            (included) for a 1D signal, and `0` to `5` for a 2D signal
+
+        osc_idx : 'all' or list, default: 'all'
+            Oscillators to be targeted. Can be either `'all'`, where all
+            oscillators are indexed, or a list of ints, in order to select
+            a subset of oscillators. Valid ints are `0` to `self.m - 1`
+            (included).
+
+        Returns
+        -------
+        slice : numpy.ndarray
+            Array slice.
+        """
+        # array of osccilators to index
+        if osc_idx == 'all':
+            osc_idx = list(range(self.m))
+
+        slice = []
+        for i in idx:
+            slice += [i*self.m + j for j in osc_idx]
+
+        return slice
+
+    def _get_active_passive_indices(self):
+
+        active_idx = []
         for c in self.mode:
             if c == 'a':
-                self.active.append(0)
+                active_idx.append(0)
             elif c == 'p':
-                self.active.append(1)
+                active_idx.append(1)
             elif c == 'f':
                 for i in range(self.dim):
-                    self.active.append(2 + i)
+                    active_idx.append(2 + i)
             elif c == 'd':
                 for i in range(self.dim):
-                    self.active.append(2 + self.dim + i)
+                    active_idx.append(2 + self.dim + i)
 
-        self.passive = []
-        for i in range(2 * (self.dim + 1)):
-            if i not in self.active:
-                self.passive.append(i)
+        # initialise passive index array as containing all valid values,
+        # and remove all values that are found in active index array
+        passive_idx = list(range(2 * (self.dim + 1)))
+        for i in active_idx:
+            passive_idx.remove(i)
 
-        self.active_theta0 = self.scale_theta0[:, self.active]
-        self.passive_theta0 = self.scale_theta0[:, self.passive]
+        return active_idx, passive_idx
+
+
+    def _merge_active_passive(self, active_vec, passive_vec):
+        """Given the active and passive parameters in vector form, merge to
+        form the complete parameter vector
+
+        Parameters
+        ----------
+        active_vec : numpy.ndarray
+            Active vector.
+
+        passive_vec : numpy,ndarray
+            Passive vector.
+
+        Returns
+        -------
+        merged_vec : numpy.ndarray
+            Merged (complete) vector.
+        """
+
+        try:
+            passive_slice = self._get_slice(self.passive_idx)
+
+        # ValueError is raised if the are no passive parameters
+        # simply return the active vector
+        except ValueError:
+            return active_vec
+
+        active_slice = self._get_slice(self.active_idx)
+
+        merged_vec = np.zeros(self.m * (2 * self.dim + 2))
+        merged_vec[active_slice] = active_vec
+        merged_vec[passive_slice] = passive_vec
+
+        return merged_vec
+
+
+    def _split_active_passive(self, merged_vec):
+        """Given a full vector of parameters, split to form vectors of active
+        and passive parameters.
+
+        Parameters
+        ----------
+        merged_vec : numpy.ndarray
+            Full parameter vector
+
+        Returns
+        ----------
+        active_vec : numpy.ndarray
+            Active vector.
+
+        passive_vec : numpy,ndarray
+            Passive vector.
+        """
+
+        try:
+            passive_slice = self._get_slice(self.passive_idx)
+
+        # ValueError is raised if there are no passive parameters
+        # simply return the full vector as the active vector, and an empty
+        # vector as the passive vector
+        except ValueError:
+            return merged_vec, np.array([])
+
+        active_slice = self._get_slice(self.active_idx)
+
+        return merged_vec[active_slice], merged_vec[passive_slice]
+
 
     def _get_bounds(self):
         """Constructs a list of bounding constraints to set for each
@@ -428,6 +566,9 @@ class NonlinearProgramming(FrequencyConverter):
         * damping: 0 < η < ∞
         """
 
+        if not self.bound:
+            return None
+
         # generate list of all potential bounds
         # amplitude and phase bounds
         all_bounds = [(0, np.inf)] * self.m + [(-np.pi, np.pi)] * self.m
@@ -438,9 +579,11 @@ class NonlinearProgramming(FrequencyConverter):
         all_bounds += [(0, np.inf)] * (self.dim * self.m)
 
         # retrieve relevant bounds based on mode
-        self.bounds = []
-        for i in self.active:
-            self.bounds += all_bounds[i*self.m : (i+1)*self.m]
+        bounds = []
+        for i in self.active_idx:
+            bounds += all_bounds[i*self.m : (i+1)*self.m]
+
+        return bounds
 
     def _run_optimiser(self):
 
@@ -450,7 +593,7 @@ class NonlinearProgramming(FrequencyConverter):
         if self.method == 'trust_region':
             result = optimize.minimize(
                 fun = self.calls['fidelity'],
-                x0 = self.active_theta0,
+                x0 = self.active,
                 args = self.optimiser_args,
                 method = 'trust-constr',
                 jac = self.calls['gradient'],
@@ -465,7 +608,7 @@ class NonlinearProgramming(FrequencyConverter):
         elif self.method == 'lbfgs':
             result = optimize.minimize(
                 fun = self.calls['fidelity'],
-                x0 = self.active_theta0,
+                x0 = self.active,
                 args = self.optimiser_args,
                 method = 'L-BFGS-B',
                 jac = self.calls['gradient'],
@@ -478,5 +621,86 @@ class NonlinearProgramming(FrequencyConverter):
             )
 
         # extract result from optimiser dictionary
-        self.active_theta = result['x']
-        print(result['x'])
+        self.active = result['x']
+
+
+    def _check_negative_amps(self):
+        """Determines which oscillators (if any) have negative amplitudes, and
+        removes/flips these.
+
+        Returns
+        -------
+        term : bool
+            Used by :py:meth:`_nlp` to decide whether to terminate or re-run
+            the optimisation routine.
+        """
+
+        if 0 in self.active_idx:
+            # generates length-1 tuple (unpack)
+            negative_idx = np.nonzero(self.active[:self.m] < 0.0)[0]
+
+            # check if there are any negative amps by determining
+            # if negative_idx is empty or not
+            if not list(negative_idx):
+                return True
+
+            # negative amplitudes exist... deal with these
+            if self.negative_amps == 'remove':
+                # remove parameters corresponding to negative
+                # amplitude oscillators
+                self.active = np.delete(
+                    self.active,
+                    self._get_slice(self.active_idx, osc_idx=negative_idx),
+                )
+
+                self.passive = np.delete(
+                    self.passive,
+                    self._get_slice(self.passive_idx, osc_idx=negative_idx),
+                )
+
+                # remove bounds corresponding to negative oscillators
+                if self.bounds != None:
+                    del self.bounds[_get_slice(
+                        self.passive_idx, osc_idx=negative_idx)
+                    ]
+
+                # update number of oscillators
+                self.m = idx(self.active.size / len(self.active_idx))
+
+                return False
+
+            elif self.negative_amps == 'flip':
+                # make negative amplitude oscillators positive and flip
+                # phase by 180 degrees
+
+                # amplitude slice
+                amp_slice = self._get_slice([0], osc_idx=negative_idx)
+                self.active[amp_slice] = - self.active[amp_slice]
+
+                # flip phase
+                if 1 in self.active_idx:
+                    phase_slice = self._get_slice([1], osc_idx=negative_idx)
+                    self.active[phase_slice] = \
+                        self._pi_flip(self.active[phase_slice])
+
+                else:
+                    phase_slice = self._get_slice([0], osc_idx=negative_idx)
+                    self.passive[phase_slice] = \
+                        self._pi_flip(self.passive[phase_slice])
+
+        return True
+
+    @staticmethod
+    def _pi_flip(arr):
+        """flip array of phases by π raidnas, ensuring the phases remain in
+        the range (-π, π]"""
+        return (arr + 2 * np.pi) % (2 * np.pi) - np.pi
+
+    def _get_errors(self):
+
+        fidelity = self.calls['fidelity'](self.active, *self.optimiser_args)
+        hessian = self.calls['hessian'](self.active, *self.optimiser_args)
+
+        return np.sqrt(fidelity) \
+             + np.sqrt(np.diag(nlinalg.inv(hessian)) \
+             / functools.reduce(operator.mul, self.n))

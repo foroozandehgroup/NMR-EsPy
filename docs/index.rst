@@ -13,7 +13,7 @@ Welcome to NMR-EsPy's documentation!
    :align: center
 
 :Release: |version|
-:Data: |today|
+:Date: |today|
 
 NMR-EsPy (**N**\ uclear **M**\ agnetic **R**\ esonance **Es**\ timation in
 **Py**\ thon) is a Python package for the estimation of parameters that
@@ -40,10 +40,10 @@ obtained by using it:
    :maxdepth: 2
    :caption: Contents:
 
-   theory_overview
-   getting_started
-   walkthrough
-   gui
+   .. theory_overview
+   .. getting_started
+   .. walkthrough
+   .. gui
    references/index
 
 

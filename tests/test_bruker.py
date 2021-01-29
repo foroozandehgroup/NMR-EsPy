@@ -7,6 +7,7 @@ import pickle
 import numpy as np
 
 from nmrespy.nlp.nlp import NonlinearProgramming
+from nmrespy.mpm import MatrixPencil
 # from nmrespy.core import NMREsPyBruker
 import nmrespy._misc as misc
 # import nmrespy._errors as errors
@@ -307,18 +308,24 @@ class TestMakeFid(unittest.TestCase):
             [1., 0., 7., 0.2],
             [2., 0., 2., 0.1]
         ])
-        n = [100]
+        n = [1000]
         sw = [10.]
         offset = [5.]
         sfo = [500.]
 
         fid = misc.make_fid(p, n, sw, offset=offset)
 
+        # mpm = MatrixPencil(
+        #     fid, sw, offset=offset
+        # )
+        # print(mpm.get_parameters())
+
         x0 = np.array([
             [1.1, 0.4, 6.3, 0.25],
             [1.8, -0.2, 3.1, 0.08]
         ])
 
+        # test errors
         nlp = NonlinearProgramming(
             fid, x0, sw, sfo=sfo, offset=offset, phase_variance=False,
         )

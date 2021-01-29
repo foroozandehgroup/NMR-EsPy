@@ -6,3 +6,4 @@ nmrespy/core_cp.py
 nmrespy/logs/*
 docs/references/generated/*
 tests
+venv

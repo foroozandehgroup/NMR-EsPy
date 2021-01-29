@@ -3,6 +3,8 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
+"""Module for computation of signal estimates using the Matrix Pencil Method."""
+
 import copy
 import functools
 
@@ -14,37 +16,18 @@ import scipy.sparse.linalg as splinalg
 
 from nmrespy import *
 import nmrespy._errors as errors
+from ._misc import start_end_wrapper
 from ._timing import timer
 import nmrespy._cols as cols
 
 if cols.USE_COLORAMA:
     import colorama
 
-def start_end_wrapper(f):
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-
-        inst = args[0]
-        if inst.fprint is False:
-            return f(*args, **kwargs)
-
-        print(f'{cols.G}===============================\n'
-                       'PERFORMING MATRIX PENCIL METHOD\n'
-                      f'==============================={cols.END}')
-
-        result = f(*args, **kwargs)
-
-        print(f'{cols.G}=============================\n'
-                       'MATRIX PENCIL METHOD COMPLETE\n'
-                      f'============================={cols.END}')
-        return result
-    return wrapper
-
 
 class MatrixPencil(FrequencyConverter):
     """Class for performing the Matrix Pencil Method with the option of model
-    order selection using the Minimum Description Length (MDL). Supports
-    analysis of one-dimensional [1]_ [2]_ or two-dimensional data [3]_ [4]_
+    order selection using the Minimum Description Length (MDL) [#]_. Supports
+    analysis of one-dimensional [#]_ [#]_ or two-dimensional data [#]_ [#]_
 
     Parameters
     ----------
@@ -66,31 +49,39 @@ class MatrixPencil(FrequencyConverter):
         The number of oscillators. If ``0``, the number of oscilators will
         be estimated using the MDL.
 
-    fprint : bool
+    fprint : bool, default: True
         Flag specifiying whether to print infomation to the terminal as
         the method runs.
 
     References
     ----------
-    .. [1] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
+    .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
+       criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
+       33 (2) (1985) 387–392.
+
+    .. [#] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
        parameters of exponentially damped/undamped sinusoids in noise”. In:
        IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
 
-    .. [2] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy NMR
+    .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy NMR
        signals: applications to delayed acquisition data”. In: J. Magn. Reson.
        128.1 (1997), pp. 30–41.
 
-    .. [3] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
+    .. [#] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
        enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
        International Conference on Acoustics, Speech, and Signal Processing.
        IEEE. 1991, pp. 3073–3076.
 
-    .. [4] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
+    .. [#] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
        using modified matrix pencil method”. In: IEEE Trans. Signal Process.
        55.2 (2007), pp. 718–724.
     """
 
+    start_txt = 'MATRIX PENCIL METHOD STARTED'
+    end_txt = 'MATRIX PENCIL METHOD COMPLETE'
+
     def __init__(self, data, sw, offset='zeros', sfo=None, m=0, fprint=True):
+        """Checks validity of inputs, and if valid, calls :py:meth:`_mpm`"""
 
         # check data is a NumPy array
         if not isinstance(data, np.ndarray):
@@ -126,7 +117,7 @@ class MatrixPencil(FrequencyConverter):
         self.sw = sw
         self.offset = offset
 
-        if self.sfo:
+        if 'sfo' in self.__dict__:
             self.converter = FrequencyConverter(
                 self.n, self.sw, self.offset, self.sfo
             )
@@ -166,7 +157,7 @@ class MatrixPencil(FrequencyConverter):
 
 
     @timer
-    @start_end_wrapper
+    @start_end_wrapper(start_txt, end_txt)
     def _mpm(self):
         """Performs the appropriate algorithm, based on the data dimension."""
 
@@ -177,6 +168,7 @@ class MatrixPencil(FrequencyConverter):
             self._mpm_2d()
 
     def _mpm_1d(self):
+        """Performs 1-dimensional Matrix Pencil Method"""
 
         # normalise data
         self.norm = nlinalg.norm(self.data)
@@ -212,6 +204,12 @@ class MatrixPencil(FrequencyConverter):
 
     @timer
     def _mpm_2d(self):
+        """Performs 2-dimensional Modified Matrix Enhanced Pencil Method.
+
+        .. todo ::
+           To be written
+        """
+
         pass
 
     def _pencil_parameters(self):
@@ -246,12 +244,9 @@ class MatrixPencil(FrequencyConverter):
 
     def _construct_y(self):
         """
-        Wrapper around ``scipy.linalg.hankel()`` [1]_. Constructs Hankel
-        data matrix Y.
-
-        References
-        ----------
-        .. [1] https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.hankel.html
+        Wrapper around `scipy.linalg.hankel <https://docs.scipy.org/doc/\
+        scipy/reference/generated/scipy.linalg.hankel.html>`_ Constructs Hankel
+        data matrix.
         """
 
         n = self.n[0]
@@ -276,12 +271,9 @@ class MatrixPencil(FrequencyConverter):
     @timer
     def _svd(self):
         """
-        Wrapper around ``numpy.linalg.svd()`` [1]_. Computes SVD, and gives
+        Wrapper around `numpy.linalg.svd <https://numpy.org/doc/stable/\
+        reference/generated/numpy.linalg.svd.html>_. Computes SVD, and gives
         time. Also neglects left singular vectors which are not needed.
-
-        References
-        ----------
-        .. [1] https://numpy.org/doc/stable/reference/generated/numpy.linalg.svd.html
         """
 
         if self.fprint:
@@ -293,14 +285,8 @@ class MatrixPencil(FrequencyConverter):
 
     def _mdl(self):
         """
-        Computes the MDL [1]_, with the option of printing information to the
+        Computes the MDL with the option of printing information to the
         terminal.
-
-        References
-        ----------
-        .. [1] M. Wax, T. Kailath, Detection of signals by information theoretic
-           criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
-           33 (2) (1985) 387–392.
         """
 
         # TODO: MAKE 2D COMPATIBLE
@@ -401,6 +387,7 @@ class MatrixPencil(FrequencyConverter):
 
         elif self.fprint:
             print('\tNone found')
+
 
 
 # “Under capitalism, man exploits man.

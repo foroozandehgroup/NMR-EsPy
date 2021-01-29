@@ -4,7 +4,7 @@ from pathlib import Path
 
 import nmrespy._cols as cols
 
-# uncomment once on PyPI
+# TODO uncomment once on PyPI
 # from ._version import __version__
 
 
