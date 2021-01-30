@@ -1,7 +1,7 @@
 .. _mpm:
 
 nmrespy.mpm
-^^^^^^^^^^^^
+^^^^^^^^^^^
 
 .. automodule:: nmrespy.mpm
 

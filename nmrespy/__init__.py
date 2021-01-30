@@ -199,10 +199,10 @@ class PathManager:
 
         Notes
         -----
-        This method first checks whether dir exists. It does, it check whether
-        the file `dir/fname` exists. If it does, the user is asked for permission
-        to overwrite, `force_overwrite` is `False`. THe following codes can
-        be returned:
+        This method first checks whether dir exists. If it does, it checks
+        whether the file `dir/fname` exists. If it does, the user is asked for
+        permission to overwrite, `force_overwrite` is `False`. The following
+        codes can be returned:
 
         * ``0`` `dir/fname` doesn't exist/can be overwritten, and `dir` exists.
         * ``1`` `dir/fname` already exists and the user does not give
