@@ -14,7 +14,7 @@ import scipy.linalg as slinalg
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-from nmrespy import *
+from nmrespy._misc import *
 import nmrespy._errors as errors
 from ._misc import start_end_wrapper
 from ._timing import timer
@@ -80,7 +80,7 @@ class MatrixPencil(FrequencyConverter):
     start_txt = 'MATRIX PENCIL METHOD STARTED'
     end_txt = 'MATRIX PENCIL METHOD COMPLETE'
 
-    def __init__(self, data, sw, offset='zeros', sfo=None, m=0, fprint=True):
+    def __init__(self, data, sw, offset=None, sfo=None, m=0, fprint=True):
         """Checks validity of inputs, and if valid, calls :py:meth:`_mpm`"""
 
         # check data is a NumPy array
@@ -254,7 +254,7 @@ class MatrixPencil(FrequencyConverter):
         row = self.normed_data[0:n-l]
         column = self.normed_data[n-l-1:n]
 
-        self.y = slinalg.hankel(column, row)
+        self.y = slinalg.hankel(row, column)
 
         if self.fprint:
             print("--> Hankel data matrix constructed:")
@@ -298,18 +298,18 @@ class MatrixPencil(FrequencyConverter):
             n = self.n[0]
             l = self.l[-1]
             s = self.sigma
-            mdl = np.zeros(l)
+            self.mdl = np.zeros(l)
 
             if self.fprint:
                 print('\tNumber of oscillators will be estimated using MDL')
 
             for k in range(l):
-                mdl[k] = \
+                self.mdl[k] = \
                     - n * np.einsum('i->', np.log(s[k:l])) \
                     + n * (l-k) * np.log((np.einsum('i->', s[k:l]) / (l-k))) \
                     + (k * np.log(n) * (2*l-k)) / 2
 
-            self.m = np.argmin(mdl)
+            self.m = np.argmin(self.mdl)
 
         else:
             self.m = self.m_init
@@ -357,7 +357,7 @@ class MatrixPencil(FrequencyConverter):
 
         amp = np.abs(self.alpha) * self.norm
         phase = np.arctan2(np.imag(self.alpha), np.real(self.alpha))
-        freq = -(self.sw[0] / (2 * np.pi)) * np.imag(np.log(self.poles)) + self.offset[0]
+        freq = (self.sw[0] / (2 * np.pi)) * np.imag(np.log(self.poles)) + self.offset[0]
         damp = - self.sw[0] * np.real(np.log(self.poles))
 
         self.parameters = (np.vstack((amp, phase, freq, damp))).T

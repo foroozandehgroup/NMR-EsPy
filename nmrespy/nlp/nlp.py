@@ -15,6 +15,7 @@ import numpy.linalg as nlinalg
 import scipy.optimize as optimize
 
 from nmrespy import *
+from nmrespy.fid import get_timepoints
 from nmrespy.nlp import _funcs
 from nmrespy._misc import start_end_wrapper
 import nmrespy._cols as cols
@@ -155,35 +156,37 @@ class NonlinearProgramming(FrequencyConverter):
     ):
         """Initialise the class instance. Checks that all arguments are valid"""
 
-        # check validity of parameters
+        # --- Check validity of parameters -------------------------------
+        # Data should be a NumPy array.
         if not isinstance(data, np.ndarray):
             raise TypeError(
                 f'{cols.R}data should be a numpy ndarray{cols.END}'
             )
-
         self.data = data
 
-        # determine data dimension. If greater than 2, return error
+        # Determine data dimension. If greater than 2, return error.
         self.dim = self.data.ndim
         if self.dim >= 3:
             raise errors.MoreThanTwoDimError()
 
-        # check theta0 is NumPy array
+        # Number of points in signal
+        self.n = list(self.data.shape)
+
+        # theta0 is should be a NumPy array.
         if not isinstance(theta0, np.ndarray):
             raise TypeError(
                 f'{cols.R}theta0 should be a numpy ndarray{cols.END}'
             )
 
-        # number of points in signal
-        self.n = list(self.data.shape)
-
-        # p is 4 if 1D, 6 if 2D
+        # Number of "types" or parameters.
+        # This will be 4 if the signal is 1D, and 6 if 2D.
         p = 2 * self.dim + 2
 
-        # check theta0 is of correct shape
-        # permitted shape 1. (see docstring)
+        # Check that theta0 is of correct shape
+        # Permitted shape 1. (see docstring)
         if theta0.ndim == 2 and theta0.shape[1] == p:
-            # vectorise: (m, p) -> (p*m,)
+            # Vectorise array: (m, p) -> (p*m,)
+            # Column-major (Fortran-style) ordering.
             self.theta0 = theta0.flatten(order='F')
 
         # permitted shape 2. (see docstring)
@@ -195,15 +198,14 @@ class NonlinearProgramming(FrequencyConverter):
                 f'{cols.R}The shape of theta0 is invalid. It should either'
                 f' be of shape (m, {p}) or (m*{p},){cols.END}'
             )
-
-        # number of oscillators
+        # Number of oscillators
         self.m = int(self.theta0.size / p)
 
-        # if offset is None, set it to zero in each dimension
+        # If offset is None, set it to zero in each dimension
         if offset is None:
             offset = [0.0] * self.dim
 
-        to_check = [sw, offset]
+        to_check = [sw, offset] if sfo == None else [sw, offset, sfo]
 
         # if transmitter frequency is not NOne, include it in checking
         if sfo != None:
@@ -220,8 +222,9 @@ class NonlinearProgramming(FrequencyConverter):
 
         self.sw = sw
         self.offset = offset
+        self.sfo = sfo
 
-        if self.sfo:
+        if self.sfo != None:
             self.converter = FrequencyConverter(
                 self.n, self.sw, self.offset, self.sfo
             )
@@ -361,9 +364,7 @@ class NonlinearProgramming(FrequencyConverter):
 
 
         # time points in each dimension
-        self.tp = [
-            np.linspace(0, float(n-1) / sw, n) for n, sw in zip(self.n, self.sw)
-        ]
+        self.tp = get_timepoints(self.n, self.sw)
 
         # determine 'active' and 'passive' parameters based on self.mode
         self.active_idx, self.passive_idx = self._get_active_passive_indices()
@@ -405,7 +406,7 @@ class NonlinearProgramming(FrequencyConverter):
             self.errors = self._get_errors()
             self.result = self._merge_active_passive(self.active, self.passive)
             self.result[:self.m] *= self.norm
-            print(self.result)
+            self.result = self._shift_offset(self.result, 'displace')
 
         else:
             self._optimise()

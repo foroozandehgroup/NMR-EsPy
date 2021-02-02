@@ -23,48 +23,37 @@ from ._cols import *
 if USE_COLORAMA:
     import colorama
 from ._errors import *
-from . import _misc, mpm, _nlp, _plot, _write
+from . import _misc, load, mpm, nlp, _plot, _write
 from nmrespy import _filter as filter
 
 
 def logger(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        path = args[0].logpath
+        path = args[0]._logpath
         with open(path, 'a') as fh:
             fh.write(f'--> {f.__name__} {args[1:]} {kwargs}\n')
         return f(*args, **kwargs)
     return wrapper
 
+np.set_printoptions(precision=32)
 
-class NMREsPyBruker:
-    """A class for consideration of Bruker data.
-
-    .. note::
-        An instance of this class should not be invoked directly. You should
-        use one of the following functions to generate/de-serialise an
-        instance of `NMREsPyBruker`:
-
-        * :py:func:`~nmrespy.load.import_bruker_fid`
-        * :py:func:`~nmrespy.load.import_bruker_pdata`
-        * :py:func:`~nmrespy.load.pickle_load`
-
+class Estimator:
+    """Estimation class
 
     Parameters
     ----------
-    dtype : 'fid', 'pdata'
-        The type of data imported. 'fid' indicates the data is derived
-        from a FID file (fid for 1D data; ser for 2D data). 'pdata'
-        indicates the data is derived from files found in a pdata directory
-        (1r for 1D data; 2rr for 2D data).
+    source : 'bruker_fid', 'bruker_pdata', 'synthetic'
+        The type of data imported. `'bruker_fid'` indicates the data is
+        derived from a FID file (`fid` for 1D data, `ser` for 2D data).
+        `'bruker_pdata'` indicates the data is derived from files found
+        in a `pdata` directory (`1r` for 1D data; `2rr` for 2D data).
+        `'synthetic'` indicates that the data is synthetic.
 
     data : numpy.ndarray
-        The data associated with the binary file in `path`. If `dtype` is
-        `'fid'`, this will be a NumPy array of the FID. If `dtype` is
-        `'pdata'`, this will be the first half of the inverse FT of the data
-        contained in the file ``1r`` or ``2rr``.
+        The data associated with the binary file in `path`.
 
-    path : pathlib.Path
+    path : pathlib.Path or None
         The path to the directory contaioning the NMR data.
 
     sw : [float] or [float, float]
@@ -73,285 +62,175 @@ class NMREsPyBruker:
     off : [float] or [float, float]
         The transmitter's offset frequency in each dimension (Hz).
 
-    n : [int] or [int, int]
-        The number of data-points in each dimension.
-
-    sfo : [float] or [float, float]
+    sfo : [float] or [float, float] or None
         The transmitter frequency in each dimension (MHz)
 
-    nuc : [str] or [str, str]
-        The nucleus in each dimension. Elements will be of the form ``'1H'``,
-        ``'13C'``, ``'15N'``, etc.
+    nuc : [str] or [str, str] or None
+        The nucleus in each dimension. Elements will be of the form
+        `'<mass><element>'`, where `'<mass>'` is the mass number of the
+        isotope and `'<element>'` is the chemical symbol of the element.
 
-    endian : 0, 1
-        The endianess of the binary files. This is equivalent to either
-        BYTORDA or BYTORDP, depending on the data type.
-
-    intfloat : 0, 2
-        The numeric type used to store the data in the binary files.
-        This is equivalent to DTYPA or DTYPP, depending on the data type.
-        0 indicates the data is stored as 4-bit integers. 2 indicates the
-        data is stored as 8-bit floats.
-
-    dim : 1, 2
-        The dimension of the data.
-
-    filtered_spectrum : numpy.ndarray or None, default: `None`
-        Spectral data which has been filtered using :py:meth:`frequency_filter`
-
-    virtual_echo : numpy.ndarray or None, default: `None`
-        Time-domain virtual echo derived using :py:meth:`frequency_filter`
-
-    filtered_signal : numpy.ndarray or None, default: `None`
-        First half of ``virtual_echo``, derived using :py:meth:`frequency_filter`
-
-    filtered_n : [int] or [int, int] or None, default: `None`
-        The size of the virtual echo generated using :py:meth:`frequency_filter`
-        if ``cut=True``
-
-    filtered_sw : [float] or [float, float] or None, default: `None`
-        The sweep width (Hz) of the virtual echo generated using
-        :py:meth:`frequency_filter` if ``cut=True``, in each dimension.
-
-    filtered_offset : [float] or [float, float] or None, default: `None`
-        The transmitter offset (Hz) of the virtual echo generated using
-        :py:meth:`frequency_filter` if ``cut=True``, in each dimension.
-
-    region : [float, float], [[float, float], [float, float]] or None, default: `None`
-        The region of interest specified with :py:meth:`frequency_filter`,
-        in units of array indices.
-
-    noise_region : [float, float], [[float, float], [float, float]] or None, default: `None`
-        The noise region specified with :py:meth:`frequency_filter`, in units
-        of array indices.
-
-    p0 : float or None, default: `None`
-        The zero order phase correction applied to the frequency domain data
-        during :py:meth:`frequency_filter`.
-
-    p1 : float or None, default: `None`
-        The first order phase correction applied to the frequency domain data
-        during :py:meth:`frequency_filter`.
-
-    theta0 : numpy.ndarray or None, default: `None`
-        The parameter estimate derived using :py:meth:`matrix_pencil`
-
-    theta : numpy.ndarray or None, default: `None`
-        The parameter estimate derived using :py:meth:`nonlinear_programming`
+    fmt : str or None
+        The format of the binary file from which the data was obtained.
+        Of the form `'<endian><unitsize>'`, where `'<endian>'` is either
+        `'<'` (little endian) or `'>'` (big endian), and `'<unitsize>'`
+        is either `'i4'` (32-bit integer) or `'f8'` (64-bit float).
     """
 
-    def __init__(
-        self, dtype, data, path, sw, off, n, sfo, nuc, endian, intfloat, dim,
-        filtered_spectrum=None, virtual_echo=None, filtered_signal=None, filtered_n=None,
-        filtered_sw=None, filtered_offset=None, region=None, noise_region=None, p0=None,
-        p1=None, theta0=None, theta=None, errors=None
-    ):
+    def new_bruker(dir):
+        """Generate an instance of :py:class:`Estimator` from a
+        Bruker-formatted data directory.
 
-        self.dtype = dtype
+        Parameters
+        ----------
+        dir : str
+            The path to the data containing the data of interest.
+
+        Returns
+        -------
+        estimator : nmrespy.core.BrukerEstimator
+            An initialised instance of the class.
+
+        Notes
+        -----
+        For a more detailed specification of the directory requirements,
+        see :py:meth:`nmrespy.load.import_bruker`
+        """
+
+        info = load.import_bruker(dir)
+
+        return Estimator(
+            info['source'], info['data'], info['directory'],
+            info['sweep_width'], info['offset'], info['transmitter_frequency'],
+            info['nuclei'], info['binary_format'],
+        )
+
+    def new_synthetic_from_data(data, sw, offset=None, sfo=None):
+
+        # --- Check validity of parameters -------------------------------
+        # Check data is a numpy array
+        if not isinstance(data, np.ndarray):
+            raise TypeError(
+                f'{cols.R}data should be a numpy ndarray{cols.END}'
+            )
+        # Determine data dimension. If greater than 2, return error.
+        if data.ndim >= 3:
+            raise errors.MoreThanTwoDimError()
+
+        dim = data.ndim
+
+        # If offset is None, set it to zero in each dimension
+        if offset == None:
+            offset = [0.0] * dim
+
+        # sw, offset (and sfo if given) should be lists with the same
+        # number of elements as the data dimension
+        to_check = [sw, offset] if sfo is None else [sw, offset, sfo]
+
+        def _check_correct_type(obj, dim):
+            # Checks that the folowing are satisfied:
+            # 1. obj is a list
+            # 2. obj has the same number of elements as dim
+            # 3. obj's elements are all floats
+            if isinstance(obj, list) and len(obj) == dim:
+                for element in obj:
+                    if not isinstance(element, float):
+                        return False
+                return True
+            return False
+
+        for obj in to_check:
+            if not _check_correct_type(obj, dim):
+                raise TypeError(
+                    f'{cols.R}sw, offset, and sfo (if specified) should be'
+                    f' lists of floats with the same number of elements as'
+                    f' dimensions in the data.{cols.END}'
+                )
+
+        return Estimator(
+            'synthetic', data, None, sw, offset, sfo, None, None,
+        )
+
+
+    def new_synthetic_from_parameters(
+        parameters, sw, points, snr=None, offset=None, sfo=None
+    ):
+        """
+        .. todo::
+        """
+        print(f'{cols.O}new_synthetic_from_parameters is not yet'
+              f'implemented!{cols.END}')
+
+
+    def __init__(self, source, data, path, sw, off, sfo, nuc, fmt):
+
+        self.source = source
         self.data = data
+        self.dim = self.data.ndim
+        self.n = list(self.data.shape)
         self.path = path
         self.sw = sw
         self.off = off
-        self.n = n
         self.sfo = sfo
-        self.nucleus = nuc
-        self.endian = endian
-        self.intfloat = intfloat
-        self.dim = dim
-        self.filtered_spectrum = filtered_spectrum
-        self.filtered_signal = filtered_signal
-        self.filtered_n = filtered_n
-        self.filtered_sw = filtered_sw
-        self.filtered_offset = filtered_offset
-        self.region = region
-        self.noise_region = noise_region
-        self.p0 = p0
-        self.p1 = p1
-        self.theta0 = theta0
-        self.theta = theta
-        self.errors = errors
+        self.nuc = nuc
+        self.fmt = fmt
 
-        # setup file for logging method calls
+        # Attributes that info will be assigned to after the user runs
+        # the folowing methods:
+        # 1. frequency_filter (filter_info)
+        # 2. matrix_pencil (mpm_info)
+        # 3. nonlinear_programming (nlp_info)
+        self._filter_info = None
+        self._mpm_info = None
+        self._nlp_info = None
+
+        if self.sfo != None:
+            self._converter = FrequencyConverter(
+                list(data.shape), self.sw, self.off, self.sfo
+            )
+
+        # --- Create file for logging method calls -----------------------
+        # Set path of file to be inside the nmrespy/logs directory
+        # File name is a timestamp: yyyymmddHHMMSS.log
         now = datetime.datetime.now()
-        timestamp = now.strftime('%y%m%d%H%M%S')
-        self.logpath = Path(NMRESPYPATH) / f'logs/{timestamp}.log'
+        self._logpath = Path(NMRESPYPATH) / \
+                       f"logs/{now.strftime('%y%m%d%H%M%S')}.log"
 
+        # Add a header to the log file
         header = (
-            '==================================\n'
-            'Logfile for NMREsPyBruker instance\n'
-            '==================================\n'
+            '==============================\n'
+            'Logfile for Estimator instance\n'
+            '==============================\n'
            f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}\n"
         )
-        with open(self.logpath, 'w') as fh:
+        with open(self._logpath, 'w') as fh:
             fh.write(header)
 
 
     def __repr__(self):
-        msg = f'nmrespy.core.NMREsPyBruker('
-        msg += f'{self.dtype}, '
-        msg += f'{self.data}, '
-        msg += f'{self.path}, '
-        msg += f'{self.sw}, '
-        msg += f'{self.off}, '
-        msg += f'{self.n}, '
-        msg += f'{self.sfo}, '
-        msg += f'{self.nucleus}, '
-        msg += f'{self.endian}, '
-        msg += f'{self.intfloat}, '
-        msg += f'{self.dim}, '
-        msg += f'{self.filtered_spectrum}, '
-        msg += f'{self.filtered_signal}, '
-        msg += f'{self.filtered_n}, '
-        msg += f'{self.filtered_sw}, '
-        msg += f'{self.filtered_offset}, '
-        msg += f'{self.region}, '
-        msg += f'{self.noise_region}, '
-        msg += f'{self.theta0}, '
-        msg += f'{self.theta}, '
-        msg += f'{self.errors})'
+        msg = (
+            f'nmrespy.core.Estimator('
+            f'{self.source}, '
+            f'{self.data}, '
+            f'{self.path}, '
+            f'{self.sw}, '
+            f'{self.off}, '
+            f'{self.n}, '
+            f'{self.sfo}, '
+            f'{self.nuc}, '
+            f'{self.fmt})'
+        )
 
         return msg
 
     def __str__(self):
-
-        # basic information categories
-        basic_cats = [
-            'Path:',
-            'Data type:',
-            'Dimensions:',
-        ]
-
-        # basic information values
-
-        basic_vals = [
-            str(self.get_datapath()),
-            self.get_dtype(),
-            str(self.get_dim()),
-        ]
-
-        data = self.get_data()
-
-        basic_cats.append('Data:')
-        basic_vals.append(f'array of shape {data.shape}')
-
-        titles = [
-            'Sweep Width:',
-            'Transmitter Offset:',
-            'Transmitter Frequency:',
-            'Basic Frequency:',
-            'Nucleus:'
-        ]
-
-        for title in titles:
-            for i in range(self.get_dim()):
-                if i == 0:
-                    basic_cats.append(title)
-                else:
-                    basic_cats.append('')
-
-        params = zip(
-            self.get_sw(),
-            self.get_sw(unit='ppm'),
-            self.get_offset(),
-            self.get_offset(unit='ppm'),
-            self.get_sfo(),
-            self.get_bf(),
-            self.get_nucleus(),
-        )
-        for sw_h, sw_p, off_h, off_p, sfo, bf, nuc in params:
-            try:
-                sw_vals.append(f'{sw_h:.4f}Hz ({sw_p:.4f}ppm) (F{i + 1})')
-                off_vals.append(f'{off_h:.4f}Hz ({off_p:.4f}ppm) (F{i + 1})')
-                sfo_vals.append(f'{sfo:.4f}MHz (F{i + 1})')
-                bf_vals.append(f'{bf:.4f}MHz (F{i + 1})')
-                nuc_vals.append(f'{nuc} (F{i + 1})')
-            except:
-                sw_vals = [f'{sw_h:.4f}Hz ({sw_p:.4f}ppm) (F{i + 1})']
-                off_vals = [f'{off_h:.4f}Hz ({off_p:.4f}ppm) (F{i + 1})']
-                sfo_vals = [f'{sfo:.4f}MHz (F{i + 1})']
-                bf_vals = [f'{bf:.4f}MHz (F{i + 1})']
-                nuc_vals = [f'{nuc} (F{i + 1})']
-
-        basic_vals += sw_vals + off_vals + sfo_vals + bf_vals + nuc_vals
-
-        basic_table = _misc.aligned_tabular([basic_cats, basic_vals])
-
-        titles = [f'\n{MA}BASIC INFO{END}\n',]
-        tables = [basic_table]
-
-        # frequency filter info
-        if self.get_filtered_signal(kill=False) is None:
-            pass
-        else:
-            filter_cats = []
-            filter_vals = []
-
-            region_info = zip(
-                self.get_region(unit='hz'),
-                self.get_region(unit='ppm'),
-            )
-
-            for i, (bnd_hz, bnd_ppm) in enumerate(region_info):
-                if i == 0:
-                    filter_cats.append('Region:')
-                else:
-                    filter_cats.append('')
-
-                filter_vals.append(
-                    f'{bnd_hz[0]:.4f} - {bnd_hz[1]:.4f}Hz '
-                    f'({bnd_ppm[0]:.4f} - {bnd_ppm[1]:.4f}ppm) '
-                    f'(F{i+1})'
-                )
-
-            filter_cats += [
-                'Filtered Signal:',
-                'Filtered Spectrum:',
-            ]
-
-            filter_vals += [
-                f'array of shape {self.get_filtered_signal().shape}',
-                f'array of shape {self.get_filtered_spectrum().shape}',
-            ]
-
-
-            filter_table = _misc.aligned_tabular([filter_cats, filter_vals])
-
-            titles += [f'\n{MA}FREQUENCY FILTER{END}\n']
-            tables += [filter_table]
-
-        # Parameter arrays (inital guess and NLP result)
-        theta0 = self.get_theta0(kill=False)
-        if theta0 is None:
-            pass
-        else:
-            estimate_cats = [
-                'Inital guess (theta0):',
-            ]
-
-            estimate_vals = [
-                f'numpy.ndarray with shape {theta0.shape}'
-            ]
-
-            theta = self.get_theta(kill=False)
-            if theta is None:
-                pass
-            else:
-                estimate_cats.append('Final Result (theta):')
-                estimate_vals.append(f'darray with shape {theta.shape}')
-
-            estimates_table = _misc.aligned_tabular([estimate_cats, estimate_vals])
-
-            titles += [f'\n{MA}ESTIMATION RESULT{END}\n']
-            tables += [estimates_table]
-
-        msg = f'{MA}<NMREsPyBruker object at {hex(id(self))}>{END}\n'
-
-        for title, table in zip(titles, tables):
-            if table:
-                msg += title + table
+        name = str(self.__class__).replace('<class \'', '').replace('\'>', '')
+        msg = msg = f"{MA}<{name} at {hex(id(self))}>{END}\n"
+        dic = self.__dict__
+        for key, value in zip(dic.keys(), dic.values()):
+            msg += f'{cols.MA}{key}{cols.END} : {value}\n'
 
         return msg
-
 
     def get_datapath(self, type_='Path'):
         """Return path of the data directory.
@@ -366,7 +245,7 @@ class NMREsPyBruker:
 
         Returns
         -------
-        datapath : str or pathlib.Path
+        path : str or pathlib.Path
         """
 
         if type_ == 'Path':
@@ -378,17 +257,6 @@ class NMREsPyBruker:
         else:
             raise ValueError(f'{R}type_ should be \'Path\' or \'str\'')
 
-
-    def get_dtype(self):
-        """Return data type.
-
-        Returns
-        -------
-        dtype : 'fid', 'pdata'
-        """
-        return self.dtype
-
-
     def get_data(self):
         """Return the original data.
 
@@ -397,7 +265,6 @@ class NMREsPyBruker:
         data : numpy.ndarray
         """
         return self.data
-
 
     def get_n(self):
         """Return number of points the data is composed of in each
@@ -419,7 +286,7 @@ class NMREsPyBruker:
         """
         return self.dim
 
-
+    @property
     def get_sw(self, unit='hz'):
         """Return the experiment sweep width in each dimension.
 
@@ -2502,3 +2369,49 @@ class NMREsPyBruker:
 
         elif conv == 'hz->ppm':
             return value / sfo
+
+
+
+# Some descriptions of attributes
+    # filtered_spectrum : numpy.ndarray or None, default: `None`
+    #     Spectral data which has been filtered using :py:meth:`frequency_filter`
+    #
+    # virtual_echo : numpy.ndarray or None, default: `None`
+    #     Time-domain virtual echo derived using :py:meth:`frequency_filter`
+    #
+    # filtered_signal : numpy.ndarray or None, default: `None`
+    #     First half of ``virtual_echo``, derived using :py:meth:`frequency_filter`
+    #
+    # filtered_n : [int] or [int, int] or None, default: `None`
+    #     The size of the virtual echo generated using :py:meth:`frequency_filter`
+    #     if ``cut=True``
+    #
+    # filtered_sw : [float] or [float, float] or None, default: `None`
+    #     The sweep width (Hz) of the virtual echo generated using
+    #     :py:meth:`frequency_filter` if ``cut=True``, in each dimension.
+    #
+    # filtered_offset : [float] or [float, float] or None, default: `None`
+    #     The transmitter offset (Hz) of the virtual echo generated using
+    #     :py:meth:`frequency_filter` if ``cut=True``, in each dimension.
+    #
+    # region : [float, float], [[float, float], [float, float]] or None, default: `None`
+    #     The region of interest specified with :py:meth:`frequency_filter`,
+    #     in units of array indices.
+    #
+    # noise_region : [float, float], [[float, float], [float, float]] or None, default: `None`
+    #     The noise region specified with :py:meth:`frequency_filter`, in units
+    #     of array indices.
+    #
+    # p0 : float or None, default: `None`
+    #     The zero order phase correction applied to the frequency domain data
+    #     during :py:meth:`frequency_filter`.
+    #
+    # p1 : float or None, default: `None`
+    #     The first order phase correction applied to the frequency domain data
+    #     during :py:meth:`frequency_filter`.
+    #
+    # theta0 : numpy.ndarray or None, default: `None`
+    #     The parameter estimate derived using :py:meth:`matrix_pencil`
+    #
+    # theta : numpy.ndarray or None, default: `None`
+    #     The parameter estimate derived using :py:meth:`nonlinear_programming`

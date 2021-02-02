@@ -1,18 +1,20 @@
-import os
+# load.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+
+"""Provides functionality for importing NMR data."""
+
 from pathlib import Path
-import pickle
 import re
 
 import numpy as np
 from numpy.fft import ifft, ifftshift
 
 from nmrespy import get_yes_no
-from .core import NMREsPyBruker
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
 import nmrespy._errors as errors
-import nmrespy._misc as misc
 
 
 def import_bruker(directory, ask_convdta=True):
@@ -34,16 +36,14 @@ def import_bruker(directory, ask_convdta=True):
     result : dict
         A dictionary containing items with the following keys:
 
-        * `'datatype'` (str) - The type of data imported (`'fid'` or
-          `'pdata'`).
+        * `'source'` (str) - The type of data imported (`'bruker_fid'` or
+          `'bruker_pdata'`).
         * `'data'` (numpy.ndarray) - The data.
         * `'directory'` (pathlib.Path) - The path to the data directory.
         * `'sweep_width'` (`[float]` or `[float, float]`) - The experiemnt
           sweep width in each dimension (Hz).
         * `'offset'` (`[float]` or `[float, float]`) - The transmitter
           offset frequency in each dimension (Hz).
-        * `'points'` (`[int]` or `[int, int]`)  - The number of datapoints
-          in each dimension.
         * `'transmitter_frequency'` (`[float]` or `[float, float]`) - The
           transmitter frequency in each dimension (MHz).
         * `'nuclei'` (`[str]` or `[str, str]`) - The nucelus in each
@@ -288,15 +288,14 @@ def import_bruker(directory, ask_convdta=True):
     # Nucleus, sweep width, transmitter offset, transmitter frequency.
     nuc, sw, off, sfo = [], [], [], []
     for i in range(1, info['dim']+1):
-        i = '' if 1 else str(i) # 1 -> '', 2 -> '2'
-        d = str(i)
-        file = info['param'][f'acqu{i}s']
+        j = '' if 1 else str(i) # 1 -> '', 2 -> '2'
+        file = info['param'][f'acqu{j}s']
 
         # Nucleus is indicated by <1H>, <13C>, etc.
         nuc.append(re.search('<(.+?)>', _get_param('NUC1', file)).group(1))
         sw.append(float(_get_param('SW_h', file)))
-        off.append(float(_get_param(f'O{d}', file)))
-        sfo.append(float(_get_param(f'SFO{d}', file)))
+        off.append(float(_get_param(f'O{i}', file)))
+        sfo.append(float(_get_param(f'SFO{i}', file)))
 
     # If data is 2D, need at least one of the dimension sizes in order
     # to reshape the data after loading from the binary file. Get
@@ -382,12 +381,11 @@ def import_bruker(directory, ask_convdta=True):
 
     # Compile a dictionary of parameters
     result = {
-        'datatype' : info['dtype'],
+        'source' : f"bruker_{info['dtype']}",
         'data' : data,
         'directory' : d,
         'sweep_width' : sw,
         'offset' : off,
-        'points' : list(data.shape),
         'transmitter_frequency' : sfo,
         'nuclei' : nuc,
         'binary_format' : fmt,

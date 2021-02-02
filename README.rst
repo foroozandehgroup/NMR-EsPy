@@ -1,4 +1,4 @@
-.. image:: nmrespy/pics/nmrespy_full.png
+.. image:: nmrespy/images/nmrespy_full.png
    :height: 2129px
    :width: 3599px
    :scale: 1 %
@@ -28,7 +28,7 @@ to have a look at it you'll need to do the following:
 
   **N.B.** I haven't tested the Windows version in a while. I can't guarantee
   it'll work right now...
-    
+
 * Determine the path to your Python installation's site packages directory:
 
   .. code-block:: bash

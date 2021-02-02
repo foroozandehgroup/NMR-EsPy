@@ -1,5 +1,4 @@
 # nlp.funcs.py
-# fidelity, gradient and hessian callables for nonlinear programming
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
@@ -218,7 +217,7 @@ def h_1d(active, *args):
 
     args : list_iterator
         Contains elements in the following order:
-        
+
         * **data:** `numpy.ndarray.` Array of the original FID data.
         * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
         * **m:** `int.` Number of oscillators
