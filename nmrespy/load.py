@@ -10,11 +10,12 @@ import re
 import numpy as np
 from numpy.fft import ifft, ifftshift
 
-from nmrespy import get_yes_no
+from nmrespy._misc import get_yes_no
+import nmrespy._errors as errors
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
-import nmrespy._errors as errors
+
 
 
 def import_bruker(directory, ask_convdta=True):
@@ -331,7 +332,6 @@ def import_bruker(directory, ask_convdta=True):
             # # Plots a 3-dimensional wireframe of the data. Used for testing
             # # purposes. Should see a plane of 0's right at the end of the
             # # direct dimension
-            #
             # import matplotlib.pyplot as plt
             # from mpl_toolkits.mplot3d import Axes3D
             # fig = plt.figure()
@@ -354,7 +354,52 @@ def import_bruker(directory, ask_convdta=True):
             # x, y = tuple(np.arange(s) for s in data.shape)
             # xx, yy = tuple(arr.T for arr in np.meshgrid(x, y))
             # ax.plot_wireframe(xx, yy, data, color='k')
+            # print('bye')
             # plt.show()
+
+            # =================================================
+            # TODO Correctly handle different detection methods
+            #
+            # The crucial value in the parameters files is
+            # FnMODE, which is an integer value
+            #
+            # The folowing schemes are possible:
+            # 
+            # 0 -> undefined
+            #
+            # 1 -> QF
+            # Successive fids are acquired with incrementing
+            # time interval without changing the receiver phase.
+            #
+            # 2 -> QSEQ
+            # Successive fids will be acquired with incrementing
+            # time interval and receiver phases 0 and 90 degrees.
+            #
+            # 3 -> TPPI
+            # Successive fids will be acquired with incrementing
+            # time interval and receiver phases 0, 90, 180 and
+            # 270 degrees.
+            #
+            # 4 -> States
+            # Successive fids will be acquired incrementing the
+            # time interval after every second fid and receiver
+            # phases 0 and 90 degrees.
+            #
+            # 5 -> States-TPPI
+            # Successive fids will be acquired incrementing the
+            # time interval after every second fid and receiver
+            # phases 0,90,180 and 270 degrees.
+            #
+            # 6 -> Echo-Antiecho
+            # Special phase handling for gradient controlled
+            # experiments.
+            #
+            # See: http://triton.iqfr.csic.es/guide/man/acqref/fnmode.htm
+            #
+            # We will need to figure out how to preprocess each
+            # of these in order to generate correctly formed
+            # time-domain data.
+            # =================================================
 
     # Dealing with processed data.
     else:

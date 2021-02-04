@@ -5,6 +5,8 @@
 
 import copy
 import functools
+import itertools
+from pathlib import Path
 
 import numpy as np
 
@@ -12,7 +14,148 @@ import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
 
-        
+
+class ArgumentChecker:
+    """Checks that user-given arguments are of an appropriate type.
+
+    Parameters
+    ----------
+    arguments : list
+        List of arguments to check.
+
+    names : list
+        List of argument names.
+
+    types : str
+        List of the types of that the args should satisfy:
+
+        * `'parameter'`: Signal parameter array.
+        * `'data'`: Data array
+
+    dim : 1, 2
+        Dimension of the data.
+    """
+
+    def __init__(self, component, dim):
+
+        self.dim = dim
+
+        for obj, name, typ in component:
+            if typ == 'parameter':
+                test = self.check_parameter_array(obj)
+            if typ == 'int_list':
+                test = self.check_list(obj, int)
+            if typ == 'float_list':
+                test = self.check_list(obj, float)
+            if typ == 'bool':
+                test = self.simple_check(obj, bool)
+            if typ == 'int':
+                test = self.simple_check(obj, int)
+            if typ == 'float':
+                test = self.simple_check(obj, float)
+            if type == 'positive_int':
+                test = self.simple_check_positive(obj, int)
+            if type == 'positive_float':
+                test = self.simple_check_positive(obj, float)
+            if typ == 'optimiser_mode':
+                test = self.check_optimiser_mode(obj)
+            if typ == 'optimiser_algorithm':
+                test = obj in ['trust_region', 'lbfgs']
+            if typ == 'zero_to_one':
+                test = isinstance(obj, float) and 0. <= obj < 1.
+            if typ == 'negative_amplidue':
+                test = obj in ['remove', 'flip_phase']
+
+            # Error message to be shown if invalid arguments are found
+            if test is False:
+                try:
+                    # If at least one previous fail has already been found,
+                    # append the new fail to the pre-existing errmsg variable
+                    errmsg += f'--> {name}\n'
+                except NameError:
+                    # First fail: errmsg doesn't exist yet, so initialise
+                    errmsg = (
+                        f'{cols.R}The following arguments are invalid:\n'
+                        f'--> {name}\n'
+                    )
+
+        try:
+            # If errmsg exists, it implies that at least one test failed.
+            # Add a final remark to the message and raise a TypeError.
+            errmsg += (
+                f'Have a look at the documentation for more info.'
+                f'{cols.END}'
+            )
+            raise TypeError(errmsg)
+
+        except NameError:
+            # errmsg doesn't exist, implying no failed tests occurred.
+            pass
+
+    def check_parameter_array(self, obj):
+        """Checks for numpy array of shape (M, 4) or (M, 6)"""
+
+        if not isinstance(obj, np.ndarray):
+            return False
+
+        # Check (M x 4) or (M x 6) array
+        p = 2 * (self.dim + 1)
+        if obj.ndim == 2 and obj.shape[1] == p:
+            return True
+
+        return False
+
+    def check_list(self, obj, typ):
+        """Checks for `[int]`, `[int, int]`, `[float]`, `[float, float]`"""
+        # Check for a ist of the correct shape
+        if not isinstance(obj, list) and len(obj) == self.dim:
+            return False
+        # Check that every element in the list is of the correct type
+        for element in obj:
+            if not isinstance(element, typ):
+                return False
+
+        return True
+
+    @staticmethod
+    def simple_check(obj, typ):
+        """Checks that `obj` is of type `typ`."""
+        return isinstance(obj, typ)
+
+    @staticmethod
+    def simple_check_positive(obj, typ):
+        """Checks that `obj` is of type `typ`."""
+        return isinstance(obj, typ) and obj > 0
+
+    @staticmethod
+    def check_optimiser_mode(obj):
+        """Ensures that the optimisation mode is valid. This should be a
+        string containing only the characters 'a', 'p', 'f', and 'd', without
+        any repetition.
+        """
+        if not isinstance(obj, str):
+            return False
+
+        # check if mode is empty or contains and invalid character
+        if any(c not in 'apfd' for c in obj) or obj == '':
+            return False
+
+        # check if mode contains a repeated character
+        count = {}
+        for c in obj:
+            if c in count.keys():
+                count[c] += 1
+            else:
+                count[c] = 1
+
+        for key in count:
+            if count[key] > 1:
+                return False
+
+        return True
+
+
+
 class FrequencyConverter:
     """Handles converting objects with frequency values between units
 
@@ -198,7 +341,7 @@ class PathManager:
         -----
         This method first checks whether dir exists. If it does, it checks
         whether the file `dir/fname` exists. If it does, the user is asked for
-        permission to overwrite, `force_overwrite` is `False`. The following
+        permission to overwrite, if `force_overwrite` is `False`. The following
         codes can be returned:
 
         * ``0`` `dir/fname` doesn't exist/can be overwritten, and `dir` exists.
@@ -246,7 +389,10 @@ def get_yes_no(prompt):
 
 
 def start_end_wrapper(start_text, end_text):
+    """Decorator which prints a message prior to and after a method.
 
+    Messages are sandwiched between double-lines.
+    """
     def decorator(f):
 
         @functools.wraps(f)
@@ -271,54 +417,3 @@ def start_end_wrapper(start_text, end_text):
         return inner
 
     return decorator
-
-
-def aligned_tabular(columns, titles=None):
-    """Tabularises a list of lists, with the option of including titles.
-
-    Parameters
-    ----------
-    columns : list
-        A list of lists, representing the columns of the table. Each list
-        must be of the same length.
-
-    titles : None or list, default: None
-        Titles for the table. If desired, the ``titles`` should be of the same
-        length as all of the lists in ``columns``.
-
-    Returns
-    -------
-    msg : str
-        A string with the contents of ``columns`` tabularised.
-    """
-
-    if titles:
-        sep = ' │'
-        for i,(title, column) in enumerate(zip(titles, columns)):
-            columns[i] = [title] + column
-
-    else:
-        sep = ' '
-
-    pads = []
-    for column in columns:
-        pads.append(max(len(element) for element in column))
-
-    msg = ''
-    for i, row in enumerate(zip(*columns)):
-        for j, (pad, e1, e2) in enumerate(zip(pads, row, row[1:])):
-            p = pad - len(e1)
-            if j == 0:
-                msg += f"{e1}{p*' '}{sep}{e2}"
-            else:
-                msg += f"{p*' '}{sep}{e2}"
-        if titles and i == 0:
-            for i, pad in enumerate(pads):
-                if i == 0:
-                    msg += f"\n{(pad+1)*'─'}┼"
-                else:
-                    msg += f"{(pad+1)*'─'}┼"
-            msg = msg[:-1]
-        msg += '\n'
-
-    return msg
