@@ -1,0 +1,350 @@
+# filter.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+
+"""frequecy filtration of NMR data using super-Gaussian band-pass filters"""
+
+# ==============================================
+# SGH 25-1-21
+# I have tagged various methods as follows:
+#
+# TODO: MAKE 2D COMPATIBLE
+#
+# These only support 1D data treatment currently
+# ==============================================
+
+import copy
+import itertools
+
+import numpy as np
+from numpy.fft import fft, fftshift, ifft, ifftshift
+import numpy.random as nrandom
+import scipy.linalg as slinalg
+
+from nmrespy._misc import ArgumentChecker, FrequencyConverter, phase_spectrum
+
+
+def super_gaussian(region, shape, p=40.0):
+    """
+    Generates a super-Gaussian for filtration of frequency-domian data.
+
+    .. math::
+
+      g\\left[n_1, \\cdots, n_D\\right] =
+      \\exp \\left[ \\sum\\limits_{d=1}^D -2^{p+1}
+      \\left(\\frac{n_d - c_d}{b_d}\\right)^p\\right]
+
+    Parameters
+    ----------
+    region : [[int, int]] or [[int, int], [int, int]]
+        The region for the filter to span. For each dimension, a list
+        of 2 entries should exist, with the first element specifying the
+        low boundary of the region, and the second element specifying the
+        high boundary of the region (in array indices). Note that for a given
+        dimension :math:`d`,
+
+    shape : [int] or [int, int]
+        The number of elements along each axis.
+
+    p : float, default: 40.0
+        Power of the super-Gaussian. The greater the value, the more box-like
+        the filter.
+
+    Returns
+    -------
+    super_gaussian : numpy.ndarray
+        Super-Gaussian filter.
+
+    center : [int] or [int, int]
+        Index of the center of the filter in each dimension.
+
+    bw : [int] or [int, int]
+        Bandwidth of the filter in each dimension, in terms of the number
+        of points spanned.
+    """
+
+    # Determine center and bandwidth of super gaussian in each dimension
+    center = []
+    bw = []
+    for bounds in region:
+        center.append(int((bounds[0] + bounds[1]) // 2))
+        bw.append(bounds[1] - bounds[0])
+
+    # Construct super gaussian
+    for n, c, b in zip(shape, center, bw):
+        # 1D array of super-Gaussian for particular dimension
+        sg = np.exp(-2**(p+1) * ((np.arange(1, n+1) - c) / b) ** p)
+        try:
+            super_gaussian = super_gaussian[..., None] * sg
+        except NameError:
+            super_gaussian = sg
+
+    return super_gaussian, center, bw
+
+
+class FrequencyFilter:
+    """Fequency filter class.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The time-domain signal.
+
+    region : [[int, int]], [[float, float]], [[int, int], [int, int]] or [[float, float], [float, float]]
+        Boundaries specifying the region to apply the filter to.
+
+    noise_region : (Same type as `region`)
+        Boundaries specifying a region which does not contain any noticable
+        signals (i.e. just containing experiemntal noise).
+
+    region_unit : 'idx', 'ppm' or 'hz', default: 'idx'
+        The units which the boundaries in `region` and `noise_region` are
+        given in.
+
+    sw : [float], [float, float] or None, default: None
+        The sweep width of the signal in each dimension. Required as float list
+        if `region_unit` is `'ppm'` or `'hz'`.
+
+    offset : [float], [float, float] or None, default: None
+        The transmitter offset in each dimension (Hz). Required as float
+        list if `region_unit` is `'ppm'` or `'hz'`.
+
+    sfo : [float], [float, float] or None, default: None
+        The tansmitter frequency in each dimnesion (MHz). Required as float
+        list if `region_unit` is `'ppm'` or `'hz'`.
+
+    p0 : [float], [float, float], or None default: None
+        Zero-order phase correction in each dimension in radians. If `None`,
+        the phase will be set to `0.0` in each dimension.
+
+    p1 : [float] or [float, float], default: [0.0, 0.0]
+        First-order phase correction in each dimension in radians. If `None`,
+        the phase will be set to `0.0` in each dimension.
+
+    cut : bool, default: True
+        If `True`, the filtered frequency-domain data will be trancated
+        prior to inverse Fourier Transformation, reducing the number
+        of signal points. If False, the data is not truncated after FT.
+
+    cut_ratio : float, default: 3.0
+        If `cut` is set to `True`, this gives the ratio of the cut signal's
+        bandwidth and the filter bandwidth. This should be greater than 1.0.
+    """
+
+    def __init__(
+        self, data, region, noise_region, region_unit='idx', sw=None,
+        offset=None, sfo=None, p0=None, p1=None, cut=True,
+        cut_ratio=3.0,
+    ):
+
+
+        # --- Check validity of parameters -------------------------------
+        # Data should be a NumPy array.
+        if not isinstance(data, np.ndarray):
+            raise TypeError(
+                f'{cols.R}data should be a numpy ndarray{cols.END}'
+            )
+        self.data = data
+
+        # Number of points in each dimension
+        self.n = list(data.shape)
+
+        # Determine data dimension. If greater than 2, return error.
+        self.dim = self.data.ndim
+        if self.dim >= 3:
+            raise errors.MoreThanTwoDimError()
+
+        # If phase correction parameters are None, set to zero in each
+        # dimension
+        p0 = p0 if p0 != None else [0.0] * self.dim
+        p1 = p1 if p1 != None else [0.0] * self.dim
+        # Components to give to ArgumentChecker
+        components = [
+            (p0, 'p0', 'float_list'),
+            (p1, 'p1', 'float_list'),
+            (cut, 'cut', 'bool'),
+            (cut_ratio, 'cut_ratio', 'greater_than_one'),
+        ]
+
+        # Type of object that region and noise region should be.
+        # If the unit is idx, the values inside these lists should
+        # be ints. Otherwise, they should be floats
+        if region_unit == 'idx':
+            components.append((region, 'region', 'region_int'))
+            components.append((noise_region, 'noise_region', 'region_int'))
+
+        elif region_unit in ['ppm', 'hz']:
+            components.append((region, 'region', 'region_float'))
+            components.append((noise_region, 'noise_region', 'region_float'))
+            # If region boundaries are specified in ppm or hz, require sweep
+            # width, offset and sfo in order to convert to array indices.
+            components.append((sw, 'sw', 'float_list'))
+            components.append((offset, 'offset', 'float_list'))
+            components.append((sfo, 'sfo', 'float_list'))
+
+        else:
+            raise TypeError(
+                f'{cols.R}region_unit is invalid. Should be one of: \'idx\','
+                f' \'ppm\' or \'hz\'{cols.END}'
+            )
+
+        # Check arguments are valid!
+        ArgumentChecker(components, self.dim)
+
+        self.p0 = p0
+        self.p1 = p1
+        self.cut = cut
+        self.cut_ratio = cut_ratio
+
+        # Generate FrequencyConverter instance, which will carry out
+        # conversion of region bounds to unit of array indices.
+        if sw != None and offset != None and sfo != None:
+            self.converter = FrequencyConverter(self.n, sw, offset, sfo)
+
+            if region_unit in ['ppm', 'hz']:
+                # Convert region and noise_region to array indices
+                self.region = self.converter.convert(
+                    region, f'{region_unit}->idx',
+                )
+                self.noise_region = self.converter.convert(
+                    noise_region, f'{region_unit}->idx',
+                )
+
+            else:
+                # region and noise_region already in unit of array indices
+                self.region = region
+                self.noise_region = noise_region
+
+        # Ensure region bounds are in correct order, i.e. [low, high],
+        # and double values (to reflect zero-filling)
+        for i, (bd, nbd) in enumerate(zip(self.region, self.noise_region)):
+            if bd[0] < bd[1]:
+                self.region[i] = [2 * bd[0], 2 * bd[1]]
+            else:
+                self.region[i] = [2 * bd[1], 2 * bd[0]]
+            if nbd[0] < nbd[1]:
+                self.noise_region[i] = [2 * nbd[0], 2 * nbd[1]]
+            else:
+                self.noise_region[i] = [2 * nbd[1], 2 * nbd[0]]
+
+        # --- Generate frequency-domain data -----------------------------
+        # Zero fill data to double its size in each dimension
+        for axis in range(self.dim):
+            try:
+                self.zf_data = np.concatenate(
+                (self.zf_data, np.zeros_like(self.zf_data)), axis=axis,
+                dtype='complex',
+            )
+            except AttributeError:
+                self.zf_data = np.concatenate(
+                (self.data, np.zeros_like(self.data)), axis=axis,
+                dtype='complex'
+            )
+        # Fourier transform
+        for axis in range(self.dim):
+            try:
+                self.init_spectrum = fftshift(
+                    fft(self.init_spectrum, axis=axis), axes=axis,
+                )
+            except AttributeError:
+                self.init_spectrum = fftshift(
+                    fft(self.zf_data, axis=axis), axes=axis,
+                )
+        # Flip spectral data, to reflect convention in NMR
+        self.init_spectrum = np.flip(self.init_spectrum)
+        # Phase spectrum, and take the real part
+        self.init_spectrum = np.real(
+            phase_spectrum(self.init_spectrum, self.p0, self.p1)
+        )
+
+        # --- Generate super-Gaussian filter and assocaited noise --------
+        # Shape of full filtered spectrum
+        shape = self.init_spectrum.shape
+        self.super_gaussian, self.center, self.bw = \
+            super_gaussian(self.region, shape)
+        # Extract noise
+        noise_slice = tuple(np.s_[bds[0]:bds[1]] for bds in self.noise_region)
+        noise = self.init_spectrum[noise_slice]
+        # Determine noise mean and variance
+        mean = np.mean(noise)
+        variance = np.var(noise)
+        # Generate noise array
+        self.noise = nrandom.normal(0, np.sqrt(variance), size=shape)
+        # Scale noise elements according to corresponding value of the
+        # super-Gaussian filter
+        self.noise = self.noise * (1 - self.super_gaussian)
+        # Correct for veritcal baseline shift
+        # TODO consult Ali - should this be done?
+        self.noise += mean * (1 - self.super_gaussian)
+        # Filter the spectrum!
+        self.filtered_spectrum = \
+            self.init_spectrum * self.super_gaussian + self.noise
+
+        # --- Generate filtered FID --------------------------------------
+        # This FID will have the same shape as the original data
+        # If cut is False, this will be the final signal.
+        # If cut is True, the norm of this signal will be utilised to
+        # correctly scale the final signal derived from a cut spectrum
+
+        uncut_fid = 2 * self._ifft_and_halve(self.filtered_spectrum)
+
+        if cut:
+            cut_slice = []
+            for n, c, b in zip(shape, self.center, self.bw):
+                _min = int(np.floor(c - (b / 2 * self.cut_ratio)))
+                _max = int(np.ceil(c + (b / 2 * self.cut_ratio)))
+                # Ensure the cut region remains within the valid span of
+                # values (0 -> N-1)
+                if _min < 0:
+                    _min = 0
+                if _max >= n:
+                    _max = n - 1
+                cut_slice.append(np.s_[_min:_max])
+            # Cut the filtered spectrum
+            self.filtered_spectrum = self.filtered_spectrum[tuple(cut_slice)]
+            # Generate time-domain signal from spectrum
+            cut_fid = self._ifft_and_halve(self.filtered_spectrum)
+            # Get norms of cut and uncut signals
+            uncut_norm = slinalg.norm(uncut_fid)
+            cut_norm = slinalg.norm(cut_fid)
+            self.filtered_signal = uncut_norm / cut_norm * cut_fid
+
+        else:
+            self.filtered_signal = uncut_fid
+
+
+    def _ifft_and_halve(self, spectrum):
+        """Inverse Fourier transforms frequency-domain data in each dimension,
+        and subsequently halves the data size in each dimension (remove
+        second half of conjgate symmetric signal).
+        """
+        for axis in range(self.dim):
+            try:
+                fid = ifft(
+                    ifftshift(fid, axes=axis), axis=axis,
+                )
+            except NameError:
+                fid = ifft(
+                    ifftshift(spectrum, axes=axis), axis=axis,
+                )
+        # Take first half of the signal in each dimension
+        half_slice = tuple(np.s_[0:int(s // 2)] for s in fid.shape)
+        return fid[half_slice]
+
+
+    def get_filtered_signal(self):
+        """Returns frequency-filtered time domain data."""
+        return self.filtered_signal
+
+    def get_filtered_spectrum(self):
+        """Returns frequency-filtered spectral data."""
+        return self.filtered_spectrum
+
+    def get_super_gaussian(self):
+        """Returns super-Gaussian filter used."""
+        return self.super_gaussian
+
+    def get_synthetic_noise(self):
+        """Returns synthetic Gaussian noise added to the filtered
+        frequency-domain data."""
+        return self.noise

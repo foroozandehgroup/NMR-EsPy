@@ -20,49 +20,67 @@ class ArgumentChecker:
 
     Parameters
     ----------
-    arguments : list
-        List of arguments to check.
+    components: list of 3-tuples
+        Each tuple should contain the following elements:
 
-    names : list
-        List of argument names.
+            * The object to check.
+            * A string to identify the object in any error messages`
+            * A string specifying whaty type the object should be. Valid
+              options are:
 
-    types : str
-        List of the types of that the args should satisfy:
-
-        * `'parameter'`: Signal parameter array.
-        * `'data'`: Data array
+              + `'parameter'`
+              + `'int_list'`
+              + `'float_list'`
+              + `'region_int'`
+              + `'region_float'`
+              + `'bool'`
+              + `'int'`
+              + `'float'`
+              + `'positive_int'`
+              + `'positive_float'`
+              + `'optimiser_mode'`
+              + `'optimiser_algorithm'`
+              + `'zero_to_one'`
+              + `'greater_than_one'`
+              + `'negative_amplidue'`
 
     dim : 1, 2
         Dimension of the data.
     """
 
-    def __init__(self, component, dim):
+    def __init__(self, components, dim, n=None):
 
         self.dim = dim
 
-        for obj, name, typ in component:
+        for obj, name, typ in components:
             if typ == 'parameter':
                 test = self.check_parameter_array(obj)
             if typ == 'int_list':
                 test = self.check_list(obj, int)
             if typ == 'float_list':
                 test = self.check_list(obj, float)
+            if typ == 'region_int':
+                test = self.check_region(obj, int)
+            if typ == 'region_float':
+                test = self.check_region(obj, float)
             if typ == 'bool':
-                test = self.simple_check(obj, bool)
+                test = isinstance(obj, bool)
             if typ == 'int':
-                test = self.simple_check(obj, int)
+                test = isinstance(obj, int)
             if typ == 'float':
-                test = self.simple_check(obj, float)
-            if type == 'positive_int':
-                test = self.simple_check_positive(obj, int)
-            if type == 'positive_float':
-                test = self.simple_check_positive(obj, float)
+                test = isinstance(obj, float)
+            if typ == 'positive_int':
+                test = isinstance(obj, int) and obj > 0
+            if typ == 'positive_float':
+                test = isinstance(obj, float) and obj > 0
             if typ == 'optimiser_mode':
                 test = self.check_optimiser_mode(obj)
             if typ == 'optimiser_algorithm':
                 test = obj in ['trust_region', 'lbfgs']
             if typ == 'zero_to_one':
                 test = isinstance(obj, float) and 0. <= obj < 1.
+            if typ == 'greater_than_one':
+                test = isinstance(obj, float) and obj > 1.0
             if typ == 'negative_amplidue':
                 test = obj in ['remove', 'flip_phase']
 
@@ -117,15 +135,21 @@ class ArgumentChecker:
 
         return True
 
-    @staticmethod
-    def simple_check(obj, typ):
-        """Checks that `obj` is of type `typ`."""
-        return isinstance(obj, typ)
-
-    @staticmethod
-    def simple_check_positive(obj, typ):
-        """Checks that `obj` is of type `typ`."""
-        return isinstance(obj, typ) and obj > 0
+    def check_region(self, obj, typ):
+        """Checks for `[[int, int]]`, `[[int, int], [int, int]]`,
+        `[[float, float]]`, and `[[float, float], [float, float]]`"""
+        # Check for a list of the correct shape
+        if not isinstance(obj, list) and len(obj) == self.dim:
+            return False
+        # Check that every element in the list is a list of length 2
+        for sublist in obj:
+            if not isinstance(sublist, list) and len(sublist) == 2:
+                return False
+            # Check that each bound is of the correct type
+            for element in sublist:
+                if not isinstance(element, typ):
+                    return False
+        return True
 
     @staticmethod
     def check_optimiser_mode(obj):
@@ -216,9 +240,9 @@ class FrequencyConverter:
             `conversion` should be ``'from->to'``, where ``from`` and ``to``
             are not matching, and are one of the following:
 
-            * ``'idx'``: array index
-            * ``'hz'``: Hertz
-            * ``'ppm'``: parts per million
+            * `'idx'`: array index
+            * `'hz'`: Hertz
+            * `'ppm'`: parts per million
 
         Returns
         -------
@@ -229,13 +253,10 @@ class FrequencyConverter:
         if not self._check_valid_conversion(conversion):
             raise ValueError(f'{cols.R}convert is not valid.{cols.END}')
 
-
         if len(self) != len(lst):
             raise ValueError(
                 f'{cols.R}lst should be of length {len(self)}.{cols.END}'
             )
-
-
 
         # list for storing final converted contents (will be returned as tuple)
         converted_lst = []
@@ -372,6 +393,47 @@ class PathManager:
 
         return get_yes_no(prompt)
 
+
+def phase_spectrum(spectrum, p0, p1):
+    """Applies a linear phase correction to `spectrum`.
+
+    Parameters
+    ----------
+    spectrum : numpy.ndarray
+        Spectrum
+
+    p0 : [float] or [float, float]
+        Zero-order phase correction in each dimension, in radians.
+
+    p1 : [float] or [float, float]
+        First-order phase correction in each dimension, in radians.
+
+    Returns
+    -------
+    spectrum_phased : numpy.ndarray
+        Phased spectrum
+
+    Notes
+    -----
+    This was written to be used internally in various places in nmrespy,
+    but could be used elsewhere. Note there is no checking that the inputs
+    are compatible/of the correct form.
+    """
+    if spectrum.ndim == 1:
+        idx = 'i'
+    elif spectrum.ndim == 2:
+        idx = 'ij'
+    print(p0)
+    print(p1)
+    for axis, (p0_, p1_) in enumerate(zip(p0, p1)):
+        print(axis)
+        n = spectrum.shape[axis]
+        # i or j: specifies correct axis for einsum
+        axis = chr(axis + 105)
+        p = np.exp(1j * p0_) * np.exp(1j * p1_ * np.arange(n) / n)
+        spectrum = np.einsum(f'{idx},{axis}->{idx}', spectrum, p)
+
+    return spectrum
 
 def get_yes_no(prompt):
     """Ask user to input 'yes' or 'no' (Y/y or N/n). Repeatedly does this

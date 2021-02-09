@@ -40,10 +40,6 @@ obtained by using it:
    :maxdepth: 2
    :caption: Contents:
 
-   .. theory_overview
-   .. getting_started
-   .. walkthrough
-   .. gui
    references/index
 
 

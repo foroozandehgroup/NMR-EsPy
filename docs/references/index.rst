@@ -1,21 +1,19 @@
 Reference
 =========
 
-User Modules
-^^^^^^^^^^^^
+.. toctree::
+   :maxdepth: 2
+   :caption: User Modules:
 
-:ref:`nmrespy.core <core>` : Provides a fully-incorporated API for
-performing estimation routines.
+   core
+   fid
+   load
+   filter
+   mpm
+   nlp/index
 
-:ref:`nmrespy.fid <fid>` : Construction of FIDs
+.. toctree::
+   :maxdepth: 2
+   :caption: Developer Modules:
 
-:ref:`nmrespy.load <load>` : Importing data
-
-:ref:`nmrespy.mpm <mpm>`: Matrix Pencil Method
-
-:ref:`nmrespy.nlp <nlp_module>`: Nonlinear Programming
-
-Developer Modules
-^^^^^^^^^^^^^^^^^
-
-Most users are unlikely to need to worry about these modules.
+   misc

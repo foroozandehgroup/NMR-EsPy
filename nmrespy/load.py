@@ -364,7 +364,7 @@ def import_bruker(directory, ask_convdta=True):
             # FnMODE, which is an integer value
             #
             # The folowing schemes are possible:
-            # 
+            #
             # 0 -> undefined
             #
             # 1 -> QF

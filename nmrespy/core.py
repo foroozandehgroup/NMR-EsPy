@@ -23,8 +23,7 @@ from ._cols import *
 if USE_COLORAMA:
     import colorama
 from ._errors import *
-from . import _misc, load, mpm, nlp, _plot, _write
-from nmrespy import _filter as filter
+from . import _misc, load, filter, mpm, nlp, _plot, _write
 
 
 def logger(f):
@@ -40,6 +39,13 @@ np.set_printoptions(precision=32)
 
 class Estimator:
     """Estimation class
+
+    .. note::
+       The methods :py:meth:`new_bruker`, :py:meth:`new_synthetic_from_data`
+       and :py:meth:`new_synthetic_from_parameters` generate instances
+       of the class. While you can manually input the listed parameters
+       as arguments to initialise the class. It is more straightforward
+       to use one of these.nmrespy
 
     Parameters
     ----------
@@ -88,8 +94,7 @@ class Estimator:
 
         Returns
         -------
-        estimator : nmrespy.core.BrukerEstimator
-            An initialised instance of the class.
+        estimator : nmrespy.core.Estimator
 
         Notes
         -----

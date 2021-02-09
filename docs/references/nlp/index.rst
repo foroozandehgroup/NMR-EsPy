@@ -1,13 +1,11 @@
-.. _nlp_module:
-
 nmrespy.nlp
 ===========
 
 Nonlinear programming.
 
-Modules
-^^^^^^^
+.. toctree::
+   :maxdepth: 2
+   :caption: Modules:
 
-:ref:`nmrespy.nlp.nlp <nlp>`: User API for performing nonlinear programming.
-
-:ref:`nmrespy.nlp._funcs <funcs>`: Definitions of fidelities, gradients, and Hessians.
+   nlp
+   _funcs
