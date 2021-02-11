@@ -97,9 +97,14 @@ class AttributeIsNoneError(Exception):
     is None"""
 
     def __init__(self, attribute, method):
-        self.msg = (f'{cols.R}The attribute {attribute} is None. Perhaps you'
-                    f'  are yet to call {method} on the class instance?'
-                    f'{cols.END}')
+        self.msg = f'{cols.R}The attribute {attribute} is None.'
+        if method != None:
+            self.msg += (
+                f' Perhaps you are yet to call {method} on the class'
+                f' instance?'
+            )
+
+        self.msg += cols.END
         super().__init__(self.msg)
 
 

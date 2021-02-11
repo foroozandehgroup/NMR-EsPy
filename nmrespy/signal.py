@@ -1,13 +1,17 @@
-# load.py
+# signal.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
+"""Constructing and processing NMR signals"""
+
 import numpy as np
+from numpy.fft import fft, fftshift, ifft, ifftshift
 import numpy.random as nrandom
 
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+from nmrespy._misc import ArgumentChecker
 
 """Provides functionality for constructing synthetic FIDs"""
 
@@ -69,37 +73,28 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True):
     tp : [numpy.ndarray], [numpy.ndarray, numpy.ndarray]
         The time points the FID is sampled at in each dimension.
     """
+
     # --- Check validity of inputs ---------------------------------------
-    # Parameters should be a 2-dimnesional numpy array
-    if not isinstance(parameters, np.ndarray) or parameters.ndim != 2:
-        raise TypeError(
-            f'{cols.R}parameters should be a numpy ndarray with 2'
-            f' dimesions.{cols.END}'
-        )
-    # Parameters should have shape (m, 4) for 1D data or (m, 6) for 2D data
-    if not parameters.shape[1] in [4, 6]:
-        raise ValueError(
-            f'{cols.R}parameters should statisfy parameters.shape[1] == 4'
-            f' (1D FID) or parameters.shape[1] == 6 (2D FID).{cols.END}'
-        )
+    try:
+        dim = len(n)
+    except:
+        raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
-    # FID dimensionality
-    dim = int(parameters.shape[1] / 2) - 1
+    if offset == None:
+        offset = [0.0] * dim
 
-    # If offset is None, assume it is 0Hz in each dimension.
-    if offset is None:
-        offset = [0.] * dim
+    components = [
+        (parameters, 'parameters', 'parameter'),
+        (n, 'n', 'int_list'),
+        (sw, 'sw', 'float_list'),
+        (offset, 'offset', 'float_list'),
+        (decibels, 'decibels', 'bool'),
+    ]
 
-    # Check number of points, sweeep width and offset are of the required
-    # type
-    for obj, name, type_ in zip((n, offset, sw), ('n', 'offset', 'sw'), (int, float, float)):
-        _check_valid_arg(obj, name, type_, dim)
+    if snr != None:
+        components.append((snr, 'snr', 'float'))
 
-    if not isinstance(snr, float) and snr != None:
-        raise TypeError(f'{cols.R}snr should be a float or None{cols.END}')
-
-    if not isinstance(decibels, bool):
-        raise TypeError(f'{cols.R}decibels should be a boolean{cols.END}')
+    ArgumentChecker(components, dim)
 
     # --- Extract amplitudes, phases, frequencies and damping ------------
     amp = parameters[:, 0]
@@ -133,7 +128,7 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True):
     if snr == None:
         return fid, tp
     else:
-        return fid + _make_noise(fid, snr, decibels), tp
+        return fid + make_noise(fid, snr, decibels), tp
 
 
 def get_timepoints(n, sw):
@@ -153,20 +148,18 @@ def get_timepoints(n, sw):
     tp : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
         The time points sampled in each dimension
     """
-    # Determine the desired dim based on the length on n
+
     try:
         dim = len(n)
     except:
-        raise TypeError(f'{cols.R}\'n\' needs to be a list!{cols.END}')
+        raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
-    # check n and sw are both ogf the correct type
-    for obj, name, type_ in zip((n, sw), ('n', 'sw'), (int, float)):
-        _check_valid_arg(obj, name, type_, dim)
+    ArgumentChecker([(n, 'n', 'int_list'), (sw, 'sw', 'float_list')], dim)
 
     return [np.linspace(0, float(n_) / sw_, n_) for n_, sw_ in zip(n, sw)]
 
 
-def get_shifts(n, sw):
+def get_shifts(n, sw, offset):
     """Generates the frequencies that the FT of the FID is sampled at, given
     its sweep-width, and the number of points.
 
@@ -176,30 +169,145 @@ def get_shifts(n, sw):
         The number of points in each dimension.
 
     sw : [float] or [float, float]
-        THe sweep width in each dimension (Hz).
+        The sweep width in each dimension (Hz).
+
+    offset : [float] or [float, float]
+        The transmitter offset in each dimension (Hz).
 
     Returns
     -------
-    tp : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
-        The time points sampled in each dimension
+    shifts : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
+        The chemical shift values sampled in each dimension (Hz).
     """
-    # Determine the desired dim based on the length on n
+
     try:
         dim = len(n)
     except:
-        raise TypeError(f'{cols.R}\'n\' needs to be a list!{cols.END}')
+        raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
-    # check n and sw are both ogf the correct type
-    for obj, name, type_ in zip((n, sw), ('n', 'sw'), (int, float)):
-        _check_valid_arg(obj, name, type_, dim)
+    ArgumentChecker(
+        [(n, 'n', 'int_list'),
+         (sw, 'sw', 'float_list'),
+         (offset, 'offset', 'float_list'),
+        ], dim=dim
+    )
 
-    return [np.linspace(0, float(n_) / sw_, n_) for n_, sw_ in zip(n, sw)]
+    shifts = []
+    for n_, sw_, off in zip(n, sw, offset):
+        shifts.append(
+            np.linspace((-sw_ / 2) + off, (sw_ / 2) + off, n_)
+        )
+
+    return shifts
+
+def ft(fid):
+    """Performs Fourier transformation and flips the resulting spectrum
+    to satisfy NMR convention.
+
+    Parameters
+    ----------
+    fid : numpy.ndarray
+        Time-domain data
+
+    Returns
+    -------
+    spectrum : numpy.ndarray
+        Fourier transform of the data, flipped in each dimension.
+    """
+
+    try:
+        dim = fid.ndim
+    except:
+        raise TypeError(f'{cols.R}fid should be a numpy ndarray{cols.END}')
+
+    ArgumentChecker([(fid, 'fid', 'ndarray')])
+
+    for axis in range(dim):
+        try:
+            spectrum = fft(spectrum, axis=axis)
+        except NameError:
+            spectrum = fft(fid, axis=axis)
+
+    return np.flip(fftshift(spectrum))
+
+def ift(spectrum):
+    """Flips spectral data in each dimension, and then inverse Fourier
+    transforms.
+
+    Parameters
+    ----------
+    spectrum : numpy.ndarray
+        Spectrum
+
+    Returns
+    -------
+    fid : numpy.ndarray
+        Inverse Fourier transform of the spectrum.
+    """
+
+    ArgumentChecker([(spectrum, 'spectrum', 'ndarray')])
+
+    spectrum = ifftshift(np.flip(spectrum))
+    for axis in range(spectrum.ndim):
+        try:
+            fid = ifft(fid, axis=axis)
+        except NameError:
+            fid = ifft(spectrum, axis=axis)
+
+    return fid
 
 
+def phase_spectrum(spectrum, p0, p1):
+    """Applies a linear phase correction to `spectrum`.
 
-def _make_noise(fid, snr, decibels=True):
+    Parameters
+    ----------
+    spectrum : numpy.ndarray
+        Spectrum
+
+    p0 : [float] or [float, float]
+        Zero-order phase correction in each dimension, in radians.
+
+    p1 : [float] or [float, float]
+        First-order phase correction in each dimension, in radians.
+
+    Returns
+    -------
+    phased_spectrum : numpy.ndarray
+    """
+
+    try:
+        dim = len(p0)
+    except:
+        raise TypeError(f'{cols.R}p0 should be iterable.{cols.END}')
+
+    components = [
+        (spectrum, 'spectrum', 'ndarray'),
+        (p0, 'p0', 'float_list'),
+        (p1, 'p1', 'float_list'),
+    ]
+
+    ArgumentChecker(components, dim)
+
+    # Indices for einsum
+    # For 1D: 'i'
+    # For 2D: 'ij'
+    idx = ''.join([chr(i + 105) for i in range(dim)])
+
+    for axis, (p0_, p1_) in enumerate(zip(p0, p1)):
+        n = spectrum.shape[axis]
+        # Determine axis for einsum (i or j)
+        axis = chr(axis + 105)
+        p = np.exp(1j * (p0_ + p1_ * np.arange(n) / n))
+        phased_spectrum = np.einsum(f'{idx},{axis}->{idx}', spectrum, p)
+
+    return phased_spectrum
+
+
+def make_noise(fid, snr, decibels=True):
     """Given a synthetic FID, generate an array of normally distributed
-    noise with zero mean and a variance that abides by the desired SNR.
+    complex noise with zero mean and a variance that abides by the desired
+    SNR.
 
     Parameters
     ----------
@@ -211,14 +319,21 @@ def _make_noise(fid, snr, decibels=True):
 
     decibels : bool, default: True
         If `True`, the snr is taken to be in units of decibels. If `False`,
-        it is taken to be simply the ratio of the singal power over the
-        noise power.
+        it is taken to be simply the ratio of the singal power and noise
+        power.
 
     Returns
     _______
-    nfid : numpy.ndarray
-        Noisy FID
+    noise : numpy.ndarray
     """
+
+    components = [
+        (fid, 'fid', 'ndarray'),
+        (snr, 'snr', 'float'),
+        (decibels, 'decibels', 'bool'),
+    ]
+
+    ArgumentChecker(components)
 
     size = fid.size
     shape = fid.shape
@@ -233,60 +348,41 @@ def _make_noise(fid, snr, decibels=True):
     # to the desired variance.
     # These two are then taken as the real and imaginary noise components
     instances = []
-    variances = []
+    var_discrepancies = []
     for _ in range(100):
         instance = nrandom.normal(loc=0, scale=np.sqrt(var), size=shape)
         instances.append(instance)
-        variances.append(np.var(instance))
+        var_discrepancies.append(np.abs(np.var(instances) - var))
 
-    # determine which instance's variance is the closest to the desired
+    # Determine which instance's variance is the closest to the desired
     # variance
-    differences = np.abs((np.array(variances) - var))
-    first, second, *_ = np.argpartition(differences, 1)
+    first, second, *_ = np.argpartition(var_discrepancies, 1)
 
     # The noise is constructed from the two closest arrays in a variance-sense
     # to the desired SNR
     return instances[first] + 1j * instances[second]
 
 
-def _check_valid_arg(obj, name, type_, dim):
-    """Ensures `obj` is of the correct format.
-
-    Checks the following things:
-
-    1. `obj` is a `list`
-    2. The length of `obj` matches `dim`
-    3. Each element of `obj` is an instance of `type_`
+def generate_random_signal(m, n, sw, snr=None):
+    """A convienince function to generate a synthetic FID with random
+    parameters for testing purposes.
 
     Parameters
     ----------
-    obj : misc
-        The object to be tested
+    m : int
+        Number of oscillators
 
-    name : str
-        The name of the variable. Used in error message if `obj` doesn't
-        pass the checks.
+    n : [int] or [int, int]
+        Number of points in each dimension
 
-    type_ : class
-        The type that the list elements should be.
+    sw : [float] or [float, float]
+        Sweep width in each dimension
 
-    dim : 1, 2
-        The experiment dimension that `obj` relates to.
-
-    Raises
-    ------
-    TypeError if any of the checks fail.
+    snr : float or None, default: None
+        Signal-to-noise ratio (dB)
     """
 
-    # Message for the error if checking fails
-    errmsg = (
-        f'{cols.R}{name} should be a list of length {dim} with values of'
-        f' type {type_.__name__}{cols.END}'
-    )
-    if isinstance(obj, list) and len(obj) == dim:
-        for elem in obj:
-            if not isinstance(elem, type_):
-                raise TypeError(errmsg)
-        return
-    else:
-        raise TypeError(errmsg)
+    try:
+        dim = len(n)
+    except:
+        raise TypeError(f'{cols.R}n should be an iterable{cols.END}')

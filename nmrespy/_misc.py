@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
@@ -44,15 +43,19 @@ class ArgumentChecker:
               + `'greater_than_one'`
               + `'negative_amplidue'`
 
-    dim : 1, 2
-        Dimension of the data.
+    dim : 1, 2 or None, default: None
+        Dimension of the data. Only needs to be specified as `1` or `2`
+        if one or more of the arguments to check have a structure that
+        depends on the data dimension.
     """
 
-    def __init__(self, components, dim, n=None):
+    def __init__(self, components, dim=None, n=None):
 
         self.dim = dim
 
         for obj, name, typ in components:
+            if typ == 'ndarray':
+                test = isinstance(obj, np.ndarray)
             if typ == 'parameter':
                 test = self.check_parameter_array(obj)
             if typ == 'int_list':
@@ -110,6 +113,16 @@ class ArgumentChecker:
             # errmsg doesn't exist, implying no failed tests occurred.
             pass
 
+    def check_dim(func):
+        def inner(self, *args, **kwargs):
+            if self.dim == None:
+                raise ValueError(
+                    f'{cols.R}---BUG--- dim needs to be specified{cols.END}'
+                )
+                print(f'{cols.G}All good{cols.END}')
+        return inner
+
+    @check_dim
     def check_parameter_array(self, obj):
         """Checks for numpy array of shape (M, 4) or (M, 6)"""
 
@@ -123,6 +136,7 @@ class ArgumentChecker:
 
         return False
 
+    @check_dim
     def check_list(self, obj, typ):
         """Checks for `[int]`, `[int, int]`, `[float]`, `[float, float]`"""
         # Check for a ist of the correct shape
@@ -135,6 +149,7 @@ class ArgumentChecker:
 
         return True
 
+    @check_dim
     def check_region(self, obj, typ):
         """Checks for `[[int, int]]`, `[[int, int], [int, int]]`,
         `[[float, float]]`, and `[[float, float], [float, float]]`"""
@@ -199,25 +214,19 @@ class FrequencyConverter:
     """
     def __init__(self, n, sw, offset, sfo):
 
-        # ensure all inputs are same length
-        for obj in (n, sw, offset, sfo):
-            if not isinstance(obj, list):
-                raise TypeError(
-                    f'{cols.R}n, sw, offset and sfo should all be'
-                    f'  lists{cols.END}'
-                )
-            for value in obj:
-                if not isinstance(value, (float, int)):
-                    raise TypeError(
-                        f'{cols.R}The elements of n, sw, offset and sfo'
-                        f' should be numerical types (int, float){cols.END}'
-                    )
+        try:
+            dim = len(n)
+        except:
+            raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
-        if not len(n) == len(sw) == len(offset) == len(sfo):
-            raise ValueError(
-                f'{cols.R}n, sw, offset and sfo should all be of the same'
-                f' length{cols.END}'
-            )
+        components = [
+            (n, 'n', 'int_list'),
+            (sw, 'sw', 'float_list'),
+            (offset, 'offset', 'float_list'),
+            (sfo, 'sfo', 'float_list'),
+        ]
+
+        ArgumentChecker(components, dim)
 
         self.n = n
         self.sw = sw
@@ -393,47 +402,6 @@ class PathManager:
 
         return get_yes_no(prompt)
 
-
-def phase_spectrum(spectrum, p0, p1):
-    """Applies a linear phase correction to `spectrum`.
-
-    Parameters
-    ----------
-    spectrum : numpy.ndarray
-        Spectrum
-
-    p0 : [float] or [float, float]
-        Zero-order phase correction in each dimension, in radians.
-
-    p1 : [float] or [float, float]
-        First-order phase correction in each dimension, in radians.
-
-    Returns
-    -------
-    spectrum_phased : numpy.ndarray
-        Phased spectrum
-
-    Notes
-    -----
-    This was written to be used internally in various places in nmrespy,
-    but could be used elsewhere. Note there is no checking that the inputs
-    are compatible/of the correct form.
-    """
-    if spectrum.ndim == 1:
-        idx = 'i'
-    elif spectrum.ndim == 2:
-        idx = 'ij'
-    print(p0)
-    print(p1)
-    for axis, (p0_, p1_) in enumerate(zip(p0, p1)):
-        print(axis)
-        n = spectrum.shape[axis]
-        # i or j: specifies correct axis for einsum
-        axis = chr(axis + 105)
-        p = np.exp(1j * p0_) * np.exp(1j * p1_ * np.arange(n) / n)
-        spectrum = np.einsum(f'{idx},{axis}->{idx}', spectrum, p)
-
-    return spectrum
 
 def get_yes_no(prompt):
     """Ask user to input 'yes' or 'no' (Y/y or N/n). Repeatedly does this

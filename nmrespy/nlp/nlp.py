@@ -15,7 +15,7 @@ import numpy.linalg as nlinalg
 import scipy.optimize as optimize
 
 from nmrespy import *
-from nmrespy.fid import get_timepoints
+from nmrespy.signal import get_timepoints
 from nmrespy.nlp import _funcs
 from nmrespy._misc import start_end_wrapper, ArgumentChecker, FrequencyConverter
 import nmrespy._cols as cols

@@ -2,16 +2,7 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-"""frequecy filtration of NMR data using super-Gaussian band-pass filters"""
-
-# ==============================================
-# SGH 25-1-21
-# I have tagged various methods as follows:
-#
-# TODO: MAKE 2D COMPATIBLE
-#
-# These only support 1D data treatment currently
-# ==============================================
+"""Frequecy filtration of NMR data using super-Gaussian band-pass filters"""
 
 import copy
 import itertools
@@ -21,7 +12,8 @@ from numpy.fft import fft, fftshift, ifft, ifftshift
 import numpy.random as nrandom
 import scipy.linalg as slinalg
 
-from nmrespy._misc import ArgumentChecker, FrequencyConverter, phase_spectrum
+from nmrespy._misc import ArgumentChecker, FrequencyConverter
+import nmrespy.signal as signal
 
 
 def super_gaussian(region, shape, p=40.0):
@@ -129,6 +121,11 @@ class FrequencyFilter:
     cut_ratio : float, default: 3.0
         If `cut` is set to `True`, this gives the ratio of the cut signal's
         bandwidth and the filter bandwidth. This should be greater than 1.0.
+
+    Notes
+    -----
+    .. todo::
+       Write me!
     """
 
     def __init__(
@@ -136,7 +133,6 @@ class FrequencyFilter:
         offset=None, sfo=None, p0=None, p1=None, cut=True,
         cut_ratio=3.0,
     ):
-
 
         # --- Check validity of parameters -------------------------------
         # Data should be a NumPy array.
@@ -241,25 +237,17 @@ class FrequencyFilter:
                 dtype='complex'
             )
         # Fourier transform
-        for axis in range(self.dim):
-            try:
-                self.init_spectrum = fftshift(
-                    fft(self.init_spectrum, axis=axis), axes=axis,
-                )
-            except AttributeError:
-                self.init_spectrum = fftshift(
-                    fft(self.zf_data, axis=axis), axes=axis,
-                )
-        # Flip spectral data, to reflect convention in NMR
-        self.init_spectrum = np.flip(self.init_spectrum)
+        self.init_spectrum = signal.ft(self.zf_data)
         # Phase spectrum, and take the real part
         self.init_spectrum = np.real(
-            phase_spectrum(self.init_spectrum, self.p0, self.p1)
+            signal.phase_spectrum(self.init_spectrum, self.p0, self.p1)
         )
 
         # --- Generate super-Gaussian filter and assocaited noise --------
-        # Shape of full filtered spectrum
+        # Shape of full spectrum
         shape = self.init_spectrum.shape
+        # Generate super-Guassian, and retrieve the central index and bandwidth
+        # of the filter in each dimension.
         self.super_gaussian, self.center, self.bw = \
             super_gaussian(self.region, shape)
         # Extract noise
@@ -275,7 +263,7 @@ class FrequencyFilter:
         self.noise = self.noise * (1 - self.super_gaussian)
         # Correct for veritcal baseline shift
         # TODO consult Ali - should this be done?
-        self.noise += mean * (1 - self.super_gaussian)
+        # self.noise += mean * (1 - self.super_gaussian)
         # Filter the spectrum!
         self.filtered_spectrum = \
             self.init_spectrum * self.super_gaussian + self.noise
@@ -285,8 +273,9 @@ class FrequencyFilter:
         # If cut is False, this will be the final signal.
         # If cut is True, the norm of this signal will be utilised to
         # correctly scale the final signal derived from a cut spectrum
-
-        uncut_fid = 2 * self._ifft_and_halve(self.filtered_spectrum)
+        uncut_ve = 2 * signal.ift(self.filtered_spectrum)
+        half_slice = tuple(np.s_[0:int(s // 2)] for s in uncut_ve.shape)
+        uncut_fid = uncut_ve[half_slice]
 
         if cut:
             cut_slice = []
@@ -297,40 +286,44 @@ class FrequencyFilter:
                 # values (0 -> N-1)
                 if _min < 0:
                     _min = 0
-                if _max >= n:
-                    _max = n - 1
+                if _max > n:
+                    _max = n
                 cut_slice.append(np.s_[_min:_max])
+
             # Cut the filtered spectrum
             self.filtered_spectrum = self.filtered_spectrum[tuple(cut_slice)]
             # Generate time-domain signal from spectrum
-            cut_fid = self._ifft_and_halve(self.filtered_spectrum)
+            cut_ve = signal.ift(self.filtered_spectrum)
+            half_slice = tuple(np.s_[0:int(s // 2)] for s in cut_ve.shape)
+            cut_fid = cut_ve[half_slice]
+
             # Get norms of cut and uncut signals
             uncut_norm = slinalg.norm(uncut_fid)
             cut_norm = slinalg.norm(cut_fid)
-            self.filtered_signal = uncut_norm / cut_norm * cut_fid
+            print(uncut_norm)
+            print(cut_norm)
+            self.filtered_signal = cut_norm / uncut_norm * cut_fid
+            self.virtual_echo = cut_norm / uncut_norm * cut_ve
+
+            # Determine sweep width and transmitter offset of cut signal
+            # NB division by 2 is to correct for doubling the region bounds
+            # on account of zero filling
+            min_hz, max_hz = \
+                [self.converter.convert([int(x / 2)], 'idx->hz') for x in [_min, _max]]
+            self.sw = [abs(mx - mn) for mx, mn in zip(max_hz, min_hz)]
+            self.offset = [(mx + mn) / 2 for mx, mn in zip(max_hz, min_hz)]
 
         else:
+            self.sw = sw
+            self.offset = offset
             self.filtered_signal = uncut_fid
+            self.virtual_echo = uncut_ve
 
-
-    def _ifft_and_halve(self, spectrum):
-        """Inverse Fourier transforms frequency-domain data in each dimension,
-        and subsequently halves the data size in each dimension (remove
-        second half of conjgate symmetric signal).
-        """
-        for axis in range(self.dim):
-            try:
-                fid = ifft(
-                    ifftshift(fid, axes=axis), axis=axis,
-                )
-            except NameError:
-                fid = ifft(
-                    ifftshift(spectrum, axes=axis), axis=axis,
-                )
-        # Take first half of the signal in each dimension
-        half_slice = tuple(np.s_[0:int(s // 2)] for s in fid.shape)
-        return fid[half_slice]
-
+        # Need to halve region indices to correct for removal of half the
+        # signal
+        for i, (bd, nbd) in enumerate(zip(self.region, self.noise_region)):
+            self.region[i] = [int(bd[0] / 2), int(bd[1] / 2)]
+            self.noise_region[i] = [int(nbd[0] / 2), int(nbd[1] / 2)]
 
     def get_filtered_signal(self):
         """Returns frequency-filtered time domain data."""
@@ -348,3 +341,83 @@ class FrequencyFilter:
         """Returns synthetic Gaussian noise added to the filtered
         frequency-domain data."""
         return self.noise
+
+    def get_virtual_echo(self):
+        """Returns the virtual echo of the filtered spectrum (this signal
+        will be conjugate symmetric)."""
+        return self.virtual_echo
+
+    def get_sw(self, unit='hz'):
+        """Returns the sweep width of the cut signal
+
+        Parameters
+        ----------
+        unit : 'hz', 'ppm', default: 'hz'
+            Unit to express the sweep width in.
+        """
+        if unit == 'hz':
+            return self.sw
+        elif unit == 'ppm':
+            return self.converter.convert(self.sw, f'hz->ppm')
+        else:
+            raise ValueError(
+                f'{cols.R}unit should be \'ppm\' or \'hz\'{cols.END}'
+            )
+
+    def get_offset(self, unit='hz'):
+        """Returns the transmitter offset of the cut signal
+
+        Parameters
+        ----------
+        unit : 'hz', 'ppm', default: 'hz'
+            Unit to express the sweep width in.
+        """
+        if unit == 'hz':
+            return self.offset
+        elif unit == 'ppm':
+            return self.converter.convert(self.offset, f'hz->ppm')
+        else:
+            raise ValueError(
+                f'{cols.R}unit should be \'ppm\' or \'hz\'{cols.END}'
+            )
+
+    def get_region(self, unit='idx'):
+        """Returns the spectral region selected
+
+        Parameters
+        ----------
+        unit : 'idx', 'hz', 'ppm', default: 'idx'
+            Unit to express the region bounds in.
+        """
+        return self._get_region('region', unit)
+
+    def get_noise_region(self, unit='idx'):
+        """Returns the spectral noise region selected
+
+        Parameters
+        ----------
+        unit : 'idx', 'hz', 'ppm', default: 'idx'
+            Unit to express the region bounds in.
+        """
+        return self._get_region('noise_region', unit)
+
+
+    def _get_region(self, name, unit):
+        """Return either `region` or `noise_region`, based on `name`
+
+        Parameters
+        ----------
+        name : 'region' or 'noise_region'
+            Name of attribute to obtain.
+
+        unit : 'idx', 'hz', 'ppm'
+            Unit to express the region bounds in.
+        """
+        if unit == 'idx':
+            return self.__dict__[name]
+        elif unit in ['hz', 'ppm']:
+            return self.converter.convert(self.__dict__[name], f'idx->{unit}')
+        else:
+            raise ValueError(
+                f'{cols.R}unit should be \'idx\', \'ppm\' or \'hz\'{cols.END}'
+            )

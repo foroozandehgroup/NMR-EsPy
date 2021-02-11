@@ -289,7 +289,7 @@ def import_bruker(directory, ask_convdta=True):
     # Nucleus, sweep width, transmitter offset, transmitter frequency.
     nuc, sw, off, sfo = [], [], [], []
     for i in range(1, info['dim']+1):
-        j = '' if 1 else str(i) # 1 -> '', 2 -> '2'
+        j = '' if i == 1 else str(i) # 1 -> '', 2 -> '2'
         file = info['param'][f'acqu{j}s']
 
         # Nucleus is indicated by <1H>, <13C>, etc.

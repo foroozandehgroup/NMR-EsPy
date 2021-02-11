@@ -6,11 +6,11 @@ Reference
    :caption: User Modules:
 
    core
-   fid
    load
    filter
    mpm
    nlp/index
+   signal
 
 .. toctree::
    :maxdepth: 2

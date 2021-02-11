@@ -19,23 +19,34 @@ from numpy.fft import fft, fftshift, ifft, ifftshift
 from scipy.integrate import simps
 
 from nmrespy import *
-from ._cols import *
-if USE_COLORAMA:
+import nmrespy._cols as cols
+if cols.USE_COLORAMA:
     import colorama
-from ._errors import *
-from . import _misc, load, filter, mpm, nlp, _plot, _write
+import nmrespy._errors as errors
 
+from nmrespy._misc import ArgumentChecker, FrequencyConverter
+from nmrespy.filter import FrequencyFilter
+import nmrespy.load as load
+from . import signal, load, filter, mpm, nlp, _plot, _write
 
+# Wrapper for logging method calls
+# A file is generated and placed in
 def logger(f):
+    """Decorator for logging :py:class:`Estimator` method calls"""
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
+        # The first arg is the class instance. Get the path to the logfile.
         path = args[0]._logpath
         with open(path, 'a') as fh:
+            # Append the method call to the log file in the following format:
+            # --> method_name (args) {kwargs}
             fh.write(f'--> {f.__name__} {args[1:]} {kwargs}\n')
+
+        # Run the method...
         return f(*args, **kwargs)
+
     return wrapper
 
-np.set_printoptions(precision=32)
 
 class Estimator:
     """Estimation class
@@ -83,7 +94,7 @@ class Estimator:
         is either `'i4'` (32-bit integer) or `'f8'` (64-bit float).
     """
 
-    def new_bruker(dir):
+    def new_bruker(dir, ask_convdta=True):
         """Generate an instance of :py:class:`Estimator` from a
         Bruker-formatted data directory.
 
@@ -92,9 +103,12 @@ class Estimator:
         dir : str
             The path to the data containing the data of interest.
 
+        ask_convdta : bool
+            See :py:meth:`nmrespy.load.import_bruker`
+
         Returns
         -------
-        estimator : nmrespy.core.Estimator
+        estimator : :py:meth:`nmrespy.core.Estimator`
 
         Notes
         -----
@@ -102,7 +116,7 @@ class Estimator:
         see :py:meth:`nmrespy.load.import_bruker`
         """
 
-        info = load.import_bruker(dir)
+        info = load.import_bruker(dir, ask_convdta=ask_convdta)
 
         return Estimator(
             info['source'], info['data'], info['directory'],
@@ -128,29 +142,15 @@ class Estimator:
         if offset == None:
             offset = [0.0] * dim
 
-        # sw, offset (and sfo if given) should be lists with the same
-        # number of elements as the data dimension
-        to_check = [sw, offset] if sfo is None else [sw, offset, sfo]
+        components = [
+            (sw, 'sw', 'float_list'),
+            (offset, 'offset', 'float_list'),
+        ]
 
-        def _check_correct_type(obj, dim):
-            # Checks that the folowing are satisfied:
-            # 1. obj is a list
-            # 2. obj has the same number of elements as dim
-            # 3. obj's elements are all floats
-            if isinstance(obj, list) and len(obj) == dim:
-                for element in obj:
-                    if not isinstance(element, float):
-                        return False
-                return True
-            return False
+        if sfo != None:
+            components.append((sfo, 'sfo', 'float_list'))
 
-        for obj in to_check:
-            if not _check_correct_type(obj, dim):
-                raise TypeError(
-                    f'{cols.R}sw, offset, and sfo (if specified) should be'
-                    f' lists of floats with the same number of elements as'
-                    f' dimensions in the data.{cols.END}'
-                )
+        ArgumentChecker(components, dim)
 
         return Estimator(
             'synthetic', data, None, sw, offset, sfo, None, None,
@@ -172,7 +172,7 @@ class Estimator:
         self.source = source
         self.data = data
         self.dim = self.data.ndim
-        self.n = list(self.data.shape)
+        self.n = [int(n) for n in self.data.shape]
         self.path = path
         self.sw = sw
         self.off = off
@@ -229,6 +229,7 @@ class Estimator:
         return msg
 
     def __str__(self):
+        """A formatted list of class attributes"""
         name = str(self.__class__).replace('<class \'', '').replace('\'>', '')
         msg = msg = f"{MA}<{name} at {hex(id(self))}>{END}\n"
         dic = self.__dict__
@@ -237,7 +238,7 @@ class Estimator:
 
         return msg
 
-    def get_datapath(self, type_='Path'):
+    def get_datapath(self, type_='Path', kill=True):
         """Return path of the data directory.
 
         Parameters
@@ -248,17 +249,23 @@ class Estimator:
             library/pathlib.html#pathlib.Path>`_. If `'str'`, the returned
             object is an instance of str.
 
+        kill : bool, default: True
+            If the path is `None`, `kill` specifies how the method will act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
+
         Returns
         -------
         path : str or pathlib.Path
         """
 
+        path = self._check_if_none('path', kill)
+
         if type_ == 'Path':
-            return self.path
-
+            return path
         elif type_ == 'str':
-            return str(self.path)
-
+            return str(path) if path != None else None
         else:
             raise ValueError(f'{R}type_ should be \'Path\' or \'str\'')
 
@@ -271,17 +278,6 @@ class Estimator:
         """
         return self.data
 
-    def get_n(self):
-        """Return number of points the data is composed of in each
-        dimesnion.
-
-        Returns
-        -------
-        n : [int] or [int, int]
-        """
-        return self.n
-
-
     def get_dim(self):
         """Return the data dimension.
 
@@ -291,35 +287,33 @@ class Estimator:
         """
         return self.dim
 
-    @property
+    def get_n(self):
+        """Return the number of datapoints in each dimension"""
+        return self.n
+
     def get_sw(self, unit='hz'):
         """Return the experiment sweep width in each dimension.
 
         Parameters
         ----------
         unit : 'hz' or 'ppm', default: 'hz'
-            The unit of the value(s).
 
         Returns
         -------
         sw : [float] or [float, float]
-            The sweep width(s) in the specified unit.
 
         Raises
         ------
         InvalidUnitError
-            If ``unit`` is not ``'hz'`` or ``'ppm'``
+            If `unit` is not `'hz'` or `'ppm'`
         """
 
         if unit == 'hz':
             return self.sw
-
         elif unit == 'ppm':
             return self._unit_convert(self.sw, convert='hz->ppm')
-
         else:
-            raise InvalidUnitError('hz', 'ppm')
-
+            raise errors.InvalidUnitError('hz', 'ppm')
 
     def get_offset(self, unit='hz'):
         """Return the transmitter's offset frequency in each dimesnion.
@@ -327,7 +321,6 @@ class Estimator:
         Parameters
         ----------
         unit : 'hz' or 'ppm', default: 'hz'
-            The unit of the value(s).
 
         Returns
         -------
@@ -336,58 +329,76 @@ class Estimator:
         Raises
         ------
         InvalidUnitError
-            If ``unit`` is not ``'hz'`` or ``'ppm'``
+            If `unit` is not `'hz'` or `'ppm'`
         """
 
         if unit == 'hz':
             return self.off
-
         elif unit == 'ppm':
             return self._unit_convert(self.off, convert='hz->ppm')
-
         else:
-            raise InvalidUnitError('hz', 'ppm')
+            raise errors.InvalidUnitError('hz', 'ppm')
 
-
-    def get_sfo(self):
+    def get_sfo(self, kill=True):
         """Return transmitter frequency for each channel (MHz).
+
+        Parameters
+        ----------
+        kill : bool, default: True
+            If the path is `None`, `kill` specifies how the method will act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
 
         Returns
         -------
         sfo : [float] or [float, float]
         """
 
-        return self.sfo
+        return self._check_if_none('sfo', kill)
 
-
-    def get_bf(self):
+    def get_bf(self, kill=True):
         """Return the transmitter's basic frequency for each channel (MHz).
+
+        Parameters
+        ----------
+        kill : bool, default: True
+            If the path is `None`, `kill` specifies how the method will act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
 
         Returns
         -------
         bf : [float] or [float, float]
         """
 
-        bf = []
+        sfo = self._check_if_none('sfo', kill)
+        if sfo == None:
+            return None
 
-        for sfo, off in zip(self.get_sfo(), self.get_offset()):
-            bf.append(sfo - (off / 1E6))
+        off = self.get_offset()
+        return [s - (o / 1E6) for s, o in zip(sfo, off)]
 
-        return bf
-
-
-    def get_nucleus(self):
+    def get_nucleus(self, kill=True):
         """Return the target nucleus of each channel.
+
+        Parameters
+        ----------
+        kill : bool, default: True
+            If the path is `None`, `kill` specifies how the method will act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
 
         Returns
         -------
         nuc : [str] or [str, str]
         """
 
-        return self.nucleus
+        return self._check_if_none('nuc', kill)
 
-
-    def get_shifts(self, unit='ppm', meshgrid=False):
+    def get_shifts(self, unit='hz', meshgrid=False, kill=True):
         """Return the sampled frequencies consistent with experiment's
         parameters (sweep width, transmitter offset, number of points).
 
@@ -395,6 +406,18 @@ class Estimator:
         ----------
         unit : 'ppm' or 'hz', default: 'ppm'
             The unit of the value(s).
+
+        meshgrid : bool
+            Only appicable for 2D data. If set to `True`, the shifts in
+            each dimension will be fed into `numpy.meshgrid <https://numpy.org/\
+            doc/stable/reference/generated/numpy.meshgrid.html>`_
+
+        kill : bool
+            If `self.sfo` (need to get shifts in ppm) is `None`, `kill`
+            specifies how the method will act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
 
         Returns
         -------
@@ -404,32 +427,42 @@ class Estimator:
         Raises
         ------
         InvalidUnitError
-            If ``unit`` is not ``'hz'`` or ``'ppm'``
+            If `unit` is not `'hz'` or `'ppm'`
 
         Notes
         -----
-        Note that the shifts are returned in ascending order, making them
-        compatible with the data obtained from py:meth:`get_data`
+        The shifts are returned in ascending order.
         """
 
         if unit not in ['ppm', 'hz']:
-            raise InvalidUnitError('ppm', 'hz')
+            raise errors.InvalidUnitError('ppm', 'hz')
 
-        n = self.get_n()
+        shifts = signal.get_shifts(
+            self.get_n(), self.get_sw(), self.get_offset()
+        )
 
-        shifts = []
-        for sw, off, n in zip(
-            self.get_sw(unit=unit), self.get_offset(unit=unit), self.get_n()
-        ):
-            shifts.append(
-                np.linspace(off - (sw / 2), off + (sw / 2), n)
-            )
+        if unit == 'ppm':
+            sfo = self.get_sfo(kill)
+            if sfo == None:
+                return None
+            shifts = [shifts_ / sfo for shifts_ in shifts]
+
+        if self.get_dim() == 2 and meshgrid:
+            return list(np.meshgrid(shifts[0], shifts[1]))
 
         return shifts
 
-    def get_tp(self):
+
+    def get_timepoints(self, meshgrid=False):
         """Return the sampled times consistent with experiment's
         parameters (sweep width, number of points).
+
+        Parameters
+        ----------
+        meshgrid : bool
+            Only appicable for 2D data. If set to `True`, the time-points in
+            each dimension will be fed into `numpy.meshgrid <https://numpy.org/\
+            doc/stable/reference/generated/numpy.meshgrid.html>`_
 
         Returns
         -------
@@ -437,12 +470,9 @@ class Estimator:
             The times sampled along each dimension (seconds).
         """
 
-        tp = []
-        for sw, n in zip(self.get_sw(), self.get_n()):
-            tp.append(
-                np.linspace(0, float(n - 1) / n, n)
-            )
-
+        tp = signal.get_timepoints(self.get_n(), self.get_sw())
+        if meshgrid and self.get_dim() == 2:
+            return list(np.meshgrid(tp[0], tp[1]))
         return tp
 
 
@@ -536,7 +566,7 @@ class Estimator:
             return self._unit_convert(region, convert=f'idx->{unit}')
 
         else:
-            raise InvalidUnitError('idx', 'hz', 'ppm')
+            raise errors.InvalidUnitError('idx', 'hz', 'ppm')
 
 
     def get_p0(self, unit='radians', kill=True):
@@ -622,7 +652,7 @@ class Estimator:
                    * (180 / np.pi)
 
         else:
-            raise InvalidUnitError('radians', 'degrees')
+            raise errors.InvalidUnitError('radians', 'degrees')
 
 
     def get_filtered_spectrum(self, kill=True):
@@ -766,7 +796,7 @@ class Estimator:
             return self._unit_convert(filtered_sw, convert='hz->ppm')
 
         else:
-            raise InvalidUnitError('hz', 'ppm')
+            raise errors.InvalidUnitError('hz', 'ppm')
 
 
     def get_filtered_offset(self, unit='hz', kill=True):
@@ -814,7 +844,7 @@ class Estimator:
             return self._unit_convert(filtered_offset, convert='hz->ppm')
 
         else:
-            raise InvalidUnitError('hz', 'ppm')
+            raise errors.InvalidUnitError('hz', 'ppm')
 
 
     def get_theta0(self, kill=True):
@@ -898,22 +928,42 @@ class Estimator:
             return theta
 
         else:
-            raise InvalidUnitError('hz', 'ppm')
+            raise errors.InvalidUnitError('hz', 'ppm')
 
 
-    def _get_nondefault_param(self, name, method, kill):
-        """Retrieve attributes that may be assigned the value ``None``. Return
-        None/raise error depending on the value of ``kill``"""
+    def _check_if_none(self, name, kill, method=None):
+        """Retrieve attributes that may be assigned the value `None`. Return
+        None/raise error depending on the value of ``kill``
 
-        param = self.__dict__[name]
-        if param is None:
+        Parameters
+        ----------
+        name : str
+            The name of the attribute requested.
+
+        kill : bool
+            Whether or not to raise an error if the desired attribute is
+            `None`.
+
+        method : str or None, default: None
+            The name of the method that needs to be run to obtain the
+            desired attribute. If `None`, it implies that the attribute
+            requested was never given to the class in the first place.
+
+        Returns
+        -------
+        attribute : any
+            The attribute requested.
+        """
+
+        attribute = self.__dict__[name]
+        if attribute is None:
             if kill is True:
-                raise AttributeIsNoneError(name, method)
+                raise errors.AttributeIsNoneError(name, method)
             else:
                 return None
 
         else:
-            return param
+            return attribute
 
 
 
@@ -1040,179 +1090,89 @@ class Estimator:
 
     @logger
     def frequency_filter(
-        self, region, noise_region, p0=0.0, p1=0.0, cut=True, cut_ratio=2.5,
-        region_units='ppm', retain_filter_class=False
+        self, region, noise_region, p0=None, p1=None, cut=True, cut_ratio=3.0,
+        region_unit='ppm',
     ):
         """Generates phased, frequency-filtered data from the original data
         supplied.
 
         Parameters
         ----------
-        region: [[float, float],] or [[float, float],[float, float]]
-            Cut-off points of the spectral region to consider, in ppm.
-            If the signal is 1D, this should be of the form ``[[a,b]]``
-            where ``a`` and ``b`` are the boundaries.
+        region: [[int, int]], [[int, int], [int, int]], [[float, float]] or [[float, float], [float, float]]
+            Cut-off points of the spectral region to consider.
+            If the signal is 1D, this should be of the form `[[a,b]]`
+            where `a` and `b` are the boundaries.
             If the signal is 2D, this should be of the form
-            ``[[a,b], [c,d]]`` where ``a`` and ``b`` are the boundaries in
-            dimension 1, and ``c`` and ``d`` are the boundaries in
+            `[[a,b], [c,d]]` where `a` and `b` are the boundaries in
+            dimension 1, and `c` and `d` are the boundaries in
             dimension 2. The ordering of the bounds in each dimension is
             not important.
 
-        noise_region: [[float, float],] or [[float, float],[float, float]]
+        noise_region: [[int, int]], [[int, int], [int, int]], [[float, float]] or [[float, float], [float, float]]
             Cut-off points of the spectral region to extract the spectrum's
-            noise variance. This should have the same structure as ``region``.
+            noise variance. This should have the same structure as `region`.
 
-        p0 : float, default: 0.0
+        p0 : [float], [float, float], or None, default: None
             Zero order phase correction to apply to the data (radians).
+            If set to `None`, this will be set to zero in each dimension.
 
-        p1 : float, default: 0.0
+        p1 : [float], [float, float], or None, default: None
             First order phase correction to apply to the data (radians).
+            If set to `None`, this will be set to zero in each dimension.
 
-        cut : bool, default: False
-            If ``False``, the final virtual echo will comprise the
-            same number of data points as the original data. Noise will
-            be added to regions that are diminised in magnitude via
-            super-Gaussian filtration. If ``True``, the signal will be sliced,
-            so that only the spectral region specified by ``highs`` and
-            ``lows`` will be retained.
+        cut : bool, default: True
+            If `False`, the filtered signal will comprise the same number of
+            data points as the original data. If `True`, prior to inverse
+            FT, the data will be sliced, with points not in the region
+            specified by `cut_ratio` being removed.
 
         cut_ratio : float, default: 2.5
-            If cut is ``True`` this value defines the ratio between the
-            cut signal's sweep width, and the region width, in each dimesnion.
-            It is reccommended that this is comfortably larger than ``1.``.
-            ``2.`` or higher should be appropriate.
+            If cut is `True`, defines the ratio between the cut signal's sweep
+            width, and the region width, in each dimesnion.
+            It is reccommended that this is comfortably larger than `1.0`.
+            `2.0` or higher should be appropriate.
 
-        region_units : 'ppm', 'hz' or 'idx', default: 'ppm'
-            The unit the elements of ``region`` and ``noise_region`` are
+        region_unit : 'ppm', 'hz' or 'idx', default: 'ppm'
+            The unit the elements of `region` and `noise_region` are
             expressed in.
-
-        retain_filter_class : Bool, default: False
-            Frequency filtration is achieved by generating an instance of the
-            class :py:class:`_filter.FrequencyFilter`. If `retain_filter_class`
-            is `True`, this instance is retained, as the attribute
-            `self.frequency_filter_info`. See Notes below for details. If
-            `retain_filter_class` is `False`, the instance is not retained.
-            Most end-users are unlikely to require the additional attributes
-            provided by having this argument set to `True`.
-
-        Raises
-        ------
-        TwoDimUnsupportedError
-            Raised if the class instance containes 2-dimensional data.
 
         Notes
         -----
-        The values of the class instance's following attributes will be
-        updated after the successful running of this method:
-
-        * ``filtered_signal`` - The filtered time-domain signal generated.
-          This is the signal that is subsequently analysed by default by
-          :py:meth:`matrix_pencil` and :py:meth:`nonlinear_programming`.
-        * ``filtered_spectrum`` - The frequency-filtered spectrum which was
-          used to generate the resultant time domin data
-        * ``region`` - The value of ``region`` input to the method, converted to
-          the unit of array indices.
-        * ``noise_region`` - The value of ``noise_region`` input to the method,
-          converted to the unit of array indices.
-        * ``p0`` - The value of ``p0`` input to the method.
-        * ``p1`` - The value of ``p1`` input to the method.
-
-        If ``cut`` is set to ``True``, the following additional attributes
-        are also updated:
-
-        * ``filtered_n`` - The number of points in the sliced signal
-        * ``filtered_sw`` - The sweep width of the sliced signal, in Hz
-        * ``filtered_offset`` - The transmitter offset frequency of the sliced signal,
-          in Hz.
-
-        If `retain_filter_class` is set to `True`, the following attribute is
-        ADDED:
-
-        * `frequency_filter_info` - an instance of
-          :py:class:`_filter.FrequencyFilter`. Various attributes are contained
-          within this of relevance to the filtration process. To see them, use
-          ::
-              >>> print(self.frequency_filter_info.__dict__)
+        This method assigns the attribute `filter_info` to an instance of
+        :py:class:`nmrespy.filter.FrequencyFilter`. To obtain information
+        on the filtration, use :py:meth:`get_filter_info`.
         """
 
-        dim = self.get_dim()
-
-        # TODO: support for 2D data. consult Ali, get Tom M to take lead
-        if dim == 2:
-            raise TwoDimUnsupportedError()
-
-        if region_units not in ['ppm', 'idx', 'hz']:
-            raise ValueError(f'{R}region_unit should be \'ppm\', \'idx\','
-                             f' or \'hz\'{END}')
-
-        if cut_ratio < 1. and cut == True:
-            raise ValueError(f'{R}cut_ratio should not be smaller than 1{END}')
-
-        if cut_ratio < 2. and cut == True:
-            print(f'{O}WARNING: It is advisable that you set cut_ratio to be'
-                  f' comfortably higher than 1. (2. or higher should suffice).'
-                  f'{END}')
-
-        # if 1D, ensure bounds contained inside a list
-        # i.e. [left, right] -> [[left, right]]
-        # TODO: could create method to generalise this
-        if dim == 1:
-            if isinstance(region[0], (float, int)):
-                region = [region]
-            if isinstance(noise_region[0], (float, int)):
-                noise_region = [noise_region]
-
-        # convert region to units of array indices
-        if region_units == 'idx':
-            pass
-        else:
-            region = self._unit_convert(
-                region, convert=f'{region_units}->idx'
-            )
-            noise_region = self._unit_convert(
-                noise_region, convert=f'{region_units}->idx'
-            )
-
-        # order each dimension's bounds in ascending order
-        # i.e. [[a, b], [c, d]] where a < b, c < d
-        for i, (bounds, nbounds) in enumerate(zip(region, noise_region)):
-            # if first element is bigger than second element, flip them
-            if bounds[0] > bounds[1]:
-                region[i] = [bounds[1], bounds[0]]
-            if nbounds[0] > nbounds[1]:
-                noise_region[i] = [nbounds[1], nbounds[0]]
-
-        self.region = region
-        self.noise_region = noise_region
-
-        data = self.get_data()
-
-        filter_info = filter.FrequencyFilter(
-            data, region, noise_region, p0, p1, cut, cut_ratio,
+        self.filter_info = FrequencyFilter(
+            self.get_data(), region, noise_region, region_unit=region_unit,
+            sw=self.get_sw(), offset=self.get_offset(),
+            sfo=self.get_sfo(kill=False), p0=p0, p1=p1, cut=cut,
+            cut_ratio=cut_ratio,
         )
 
-        # unpack key attributes
-        self.p0 = filter_info.p0
-        self.p1 = filter_info.p1
-        self.filtered_signal = filter_info.filtered_signal
-        self.filtered_spectrum = filter_info.filtered_spectrum
+    def get_filter_info(self, kill=True):
+        """Returns information relating to frequency filtration.
 
-        if cut:
-            self.filtered_n = filter_info.filtered_n
-            # sw and offset are converted from number of points to Hz
-            max_idx, min_idx = filter_info.max_idx, filter_info.min_idx
-            max_hz, min_hz = \
-                [self._unit_convert(x, 'idx->hz') for x in [max_idx, min_idx]]
+        Parameters
+        ----------
+        kill : bool, default: True
+            If `filter_info` is `None`, and `kill` is `True`, an error will
+            be raised. If `kill` is False, `None will be returned`.
 
-            self.filtered_sw = []
-            self.filtered_offset = []
+        Returns
+        -------
+        filter_info : nmrespy.filter.FrequencyFilter
 
-            for max, min in zip(max_hz, min_hz):
-                self.filtered_sw.append(abs(max - min))
-                self.filtered_offset.append((max + min) / 2)
+        Notes
+        -----
+        There are numerous methods associated with `filter_info` for
+        obtaining relavent infomation about the filtration. See
+        :py:class:`nmrespy.filter.FrequencyFilter` for details.
+        """
 
-        if retain_filter_class:
-            self.frequency_filter_info = filter_info
+        return self._check_if_none(
+            'filter_info', kill, method='frequency_filter'
+        )
 
 
     @logger
@@ -2109,7 +2069,7 @@ class Estimator:
         elif unit == 'ppm':
             frequency_sep = frequency_sep * self.get_sfo()
         else:
-            raise InvalidUnitError('hz', 'ppm')
+            raise errors.InvalidUnitError('hz', 'ppm')
 
         result, result_name = self._check_result(result_name)
 

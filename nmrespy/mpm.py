@@ -14,7 +14,7 @@ import scipy.linalg as slinalg
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-from nmrespy._misc import *
+from nmrespy._misc import ArgumentChecker, FrequencyConverter
 import nmrespy._errors as errors
 from ._misc import start_end_wrapper
 from ._timing import timer
@@ -45,8 +45,8 @@ class MatrixPencil(FrequencyConverter):
         not necessary, however if it set it `None`, no conversion from Hz
         to ppm will be possible!
 
-    m : int, default: 0
-        The number of oscillators. If ``0``, the number of oscilators will
+    M : int, default: 0
+        The number of oscillators. If `0`, the number of oscilators will
         be estimated using the MDL.
 
     fprint : bool, default: True
@@ -80,77 +80,91 @@ class MatrixPencil(FrequencyConverter):
     start_txt = 'MATRIX PENCIL METHOD STARTED'
     end_txt = 'MATRIX PENCIL METHOD COMPLETE'
 
-    def __init__(self, data, sw, offset=None, sfo=None, m=0, fprint=True):
+    def __init__(self, data, sw, offset=None, sfo=None, M=0, fprint=True):
         """Checks validity of inputs, and if valid, calls :py:meth:`_mpm`"""
 
-        # check data is a NumPy array
-        if not isinstance(data, np.ndarray):
+        try:
+            self.dim = data.ndim
+            if self.dim >= 3:
+                raise errors.MoreThanTwoDimError()
+        except:
             raise TypeError(
                 f'{cols.R}data should be a numpy ndarray{cols.END}'
             )
 
-        self.data = data
-
-        # determine data dimension. If greater than 2, return error
-        self.dim = self.data.ndim
-        if self.dim >= 3:
-            raise errors.MoreThanTwoDimError()
-
-        # if offset is None, set it to zero in each dimension
-        if offset is None:
+        if offset == None:
             offset = [0.0] * self.dim
 
-        to_check = [sw, offset]
+        components = [
+            (data, 'data', 'ndarray'),
+            (sw, 'sw', 'float_list'),
+            (offset, 'offset', 'float_list'),
+            (m, 'm', 'positive_int'),
+            (fprint, 'fprint', 'bool'),
+        ]
 
         if sfo != None:
-            self.sfo = sfo
-            to_check.append(sfo)
+            components.append((sfo, 'sfo', 'float_list'))
 
-        for x in to_check:
-            if not isinstance(x, list) and len(x) == self.dim:
-                raise TypeError(
-                    f'{cols.R}sw and offset should be lists with the same'
-                    f' number of elements as dimensions in the data{cols.END}'
-                )
+        ArgumentChecker(components, dim=self.dim)
 
+        self.data = data
         self.n = list(self.data.shape)
         self.sw = sw
         self.offset = offset
+        self.sfo = sfo
+        self.M = M
+        self.fprint = fprint
 
-        if 'sfo' in self.__dict__:
+        if sfo != None
             self.converter = FrequencyConverter(
                 self.n, self.sw, self.offset, self.sfo
             )
 
-        if not isinstance(m, int) and m >= 0:
-            raise ValueError(
-                f'{cols.R}M should be an integer greater than or equal'
-                f' to 0{cols.END}'
-            )
-
-        self.m_init = m
-
-        if not isinstance(fprint, bool):
-            raise TypeError(f'{cols.R}fprint should be an Boolean{cols.END}')
-
-        self.fprint = fprint
-
-        self._mpm()
+        if dim == 1:
+            self._mpm_1d()
+        else:
+            self._mpm_2d()
 
 
-    def get_parameters(self, unit='hz'):
+    def get_result(self, freq_unit='hz'):
+        """Obtain the result of the MPM.
+
+        Parameters
+        ----------
+        freq_unit : 'hz' or 'ppm', default: 'hz'
+            The unit of the oscillator frequencies (corresponding to
+            ``result[:, 2]``)
+
+        Returns
+        -------
+        result : numpy.ndarray
+        """
 
         if unit == 'hz':
-            return self.parameters
+            return self.result
 
         elif unit == 'ppm':
-            # get frequencies in Hz
-            hz = [list(self.parameters[:, 2])]
-            # convert to ppm
-            ppm = np.array(self.converter.convert(hz, conversion='hz->ppm'))
-            parameters_ppm = copy.deepcopy(self.parameters)
-            parameters_ppm[:, 2] = ppm
-            return parameters_ppm
+            # Check whether a frequency converter is associated with the
+            # class
+            if not 'converter' in self.__dict__.keys():
+                raise ValueError(
+                    f'{cols.R}Insufficient information to determine'
+                    f' frequencies in ppm. Did you perhaps forget to specify'
+                    f' sfo?{cols.END}')
+
+            result = copy.deepcopy(self.result)
+
+            # Get frequencies in Hz, and format to enable input into
+            # the frequency converter.
+            # Then convert values to ppm and reconvert back to NumPy array
+            ppm = np.array(
+                self.converter.convert(
+                    [list(result[:, 2])], conversion='hz->ppm',
+                )
+            )
+            result[:, 2] = ppm
+            return result
 
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
@@ -158,48 +172,117 @@ class MatrixPencil(FrequencyConverter):
 
     @timer
     @start_end_wrapper(start_txt, end_txt)
-    def _mpm(self):
-        """Performs the appropriate algorithm, based on the data dimension."""
-
-        if self.dim == 1:
-            self._mpm_1d()
-
-        elif self.dim == 2:
-            self._mpm_2d()
-
     def _mpm_1d(self):
         """Performs 1-dimensional Matrix Pencil Method"""
 
-        # normalise data
-        self.norm = nlinalg.norm(self.data)
-        self.normed_data = self.data / self.norm
+        # Normalise data
+        norm = nlinalg.norm(self.data)
+        normed_data = self.data / norm
 
-        # pencil parameter
-        self._pencil_parameters()
+        # Number of points
+        N = self.n[0]
 
-        # Hankel matrix of data, Y, with dimensions (N-L) * L
-        self._construct_y()
+        # Pencil parameter.
+        # Optimal when between N/2 and N/3 (see Lin's paper)
+        L = [int(np.floor(N / 3))]
+        if self.fprint:
+            print(f'--> Pencil Parameter: {L}')
 
-        # singular value decomposition of Y
+        # Construct Hankel matrix
+        row = normed_data[:N-L]
+        column = normed_data[N-L-1:]
+        Y = slinalg.hankel(row, column)
+        if self.fprint:
+            print("--> Hankel data matrix constructed:")
+            print(f'\tSize:   {Y.shape[0]} x {Y.shape[1]}')
+            gibibytes = self.y.nbytes / (2**30)
+            if gibibytes >= 0.1:
+                print(f'\tMemory: {round(gibibytes, 4)}GiB')
+            else:
+                print(f'\tMemory: {round(gibibytes * (2**10), 4)}MiB')
+
+
+        # Singular value decomposition of Y
         # returns singular values: min(N-L, L)-length vector
         # and right singular vectors (LxL size matrix)
-        self._svd()
+        if self.fprint:
+            print('--> Performing Singular Value Decomposition...')
+        sigma, Vh = nlinalg.svd(Y)[1:]
+        V = Vh.T
 
-        # determine number of oscillators
-        self._mdl()
+        # Compute the MDL in order to estimate the number of oscillators
+        if self.fprint:
+            print('--> Determining number of oscillators...')
 
-        self._signal_poles_1d()
+        if self.M == 0:
+            if self.fprint:
+                print('\tNumber of oscillators will be estimated using MDL')
 
-        self._complex_amplitudes_1d()
+            self.mdl = np.zeros(L)
+            for k in range(L):
+                self.mdl[k] = \
+                    - n * np.einsum('i->', np.log(s[k:L])) \
+                    + n * (L-k) * np.log((np.einsum('i->', s[k:L]) / (L-k))) \
+                    + (k * np.log(n) * (2*L-k)) / 2
 
-        # construct Mx4 array of amps, phases, freqs, and damps
-        self._construct_parameter_array()
+            self.M = np.argmin(self.mdl)
 
-        # removal of terms with negative damping factors
-        self._negative_damping()
+        else:
+            if self.fprint:
+                print('\tNumber of oscillations has been pre-defined')
 
-        # at this point, the result is contained in self.parameters
-        # this can be access by the self.get_parameters() method
+        if self.fprint:
+            print(f'\tNumber of oscillations: {self.M}')
+
+        # Determine signal poles
+        if self.fprint:
+            print('--> Determining signal poles...')
+
+        Vm = V[:, :self.M] # Retain M first right singular vectors
+        V1 = Vm[:-1, :] # Remove last column
+        V2 = Vm[1:, :] # Remove first column
+
+        # Determine first M signal poles (others should be 0)
+        z = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][:self.M]
+
+        # Compute complex amplitudes
+        if self.fprint:
+            print('--> Determining complex amplitudes...')
+
+        # Pseudoinverse of Vandermonde matrix of poles multiplied by
+        # vector of complex amplitudes
+        alpha = nlinalg.pinv((np.power.outer(poles, n)).T) @ normed_data
+
+        # Extract amplitudes, phases, frequencies and damping factors
+        amp = np.abs(alpha) * norm
+        phase = np.arctan2(np.imag(alpha), np.real(alpha))
+        freq = \
+            (self.sw[0] / (2 * np.pi)) * np.imag(np.log(poles)) + self.offset[0]
+        damp = - self.sw[0] * np.real(np.log(poles))
+
+        # Collate into (M x 4) array of parameters
+        self.result = (np.vstack((amp, phase, freq, damp))).T
+        # Order oscillators by frequency
+        self.result = self.result[np.argsort(self.result[:, 2])]
+
+        # Check for oscillators with negative damping
+        if self.fprint:
+            print('--> Checking for oscillators with negative damping...')
+
+        m_init = self.result.shape[0]
+        # Indices of oscillators with negative damping factors
+        neg_damp_idx = np.nonzero(self.result[:, 3] < 0.0)[0]
+        self.result = np.delete(self.result, neg_damp_idx, axis=0)
+        self.M = self.result.shape[0]
+
+        if self.m < m_init and self.fprint:
+            print(f'\t{cols.O}WARNING: Oscillations with negative damping\n'
+                  f'\tfactors detected. These have been deleted.\n'
+                  f'\tCorrected number of oscillations: {self.m}{cols.END}')
+
+
+        elif self.fprint:
+            print('\tNone found')
 
 
     @timer
@@ -211,183 +294,6 @@ class MatrixPencil(FrequencyConverter):
         """
 
         pass
-
-    def _pencil_parameters(self):
-        """
-        Determines the pencil parameter(s) for the 1D or 2D MPM
-
-        Returns
-        -------
-        L : [int] or [int, int]
-            Pencil parameter(s)
-
-        Notes
-        -----
-        The pencil parameters are set to be :math:`\\lfloor N_d / 3 \\rfloor`,
-        where :math:`N_d` is the number of data points in dimension :math:`d`.
-        """
-
-        if self.dim == 1:
-            # optimal when between N/2 and N/3 (see Lin's paper)
-            self.l = [int(np.floor(self.n[0]/3))]
-
-        elif self.dim == 2:
-            self.l = [
-                int(np.floor((self.n[0] + 1) / 2)),
-                int(np.floor((self.n[1] + 1) / 2))
-            ]
-
-        if self.fprint:
-            msg = '--> Pencil Parameter(s): '
-            msg += ' & '.join([str(L) for L in self.l])
-            print(msg)
-
-    def _construct_y(self):
-        """
-        Wrapper around `scipy.linalg.hankel <https://docs.scipy.org/doc/\
-        scipy/reference/generated/scipy.linalg.hankel.html>`_ Constructs Hankel
-        data matrix.
-        """
-
-        n = self.n[0]
-        l = self.l[0]
-        row = self.normed_data[0:n-l]
-        column = self.normed_data[n-l-1:n]
-
-        self.y = slinalg.hankel(row, column)
-
-        if self.fprint:
-            print("--> Hankel data matrix constructed:")
-            print(f'\tSize:   {self.y.shape[0]} x {self.y.shape[1]}')
-
-            gibibytes = self.y.nbytes / (2**30)
-
-            if gibibytes >= 0.1:
-                print(f'\tMemory: {round(gibibytes, 4)}GiB')
-            else:
-                print(f'\tMemory: {round(gibibytes * (2**10), 4)}MiB')
-
-
-    @timer
-    def _svd(self):
-        """
-        Wrapper around `numpy.linalg.svd <https://numpy.org/doc/stable/\
-        reference/generated/numpy.linalg.svd.html>_. Computes SVD, and gives
-        time. Also neglects left singular vectors which are not needed.
-        """
-
-        if self.fprint:
-            print('--> Performing Singular Value Decomposition...')
-
-        _, self.sigma, vh = nlinalg.svd(self.y)
-        self.v = vh.T
-
-
-    def _mdl(self):
-        """
-        Computes the MDL with the option of printing information to the
-        terminal.
-        """
-
-        # TODO: MAKE 2D COMPATIBLE
-
-        if self.fprint:
-            print('--> Determining number of oscillators...')
-
-        if self.m_init == 0:
-            n = self.n[0]
-            l = self.l[-1]
-            s = self.sigma
-            self.mdl = np.zeros(l)
-
-            if self.fprint:
-                print('\tNumber of oscillators will be estimated using MDL')
-
-            for k in range(l):
-                self.mdl[k] = \
-                    - n * np.einsum('i->', np.log(s[k:l])) \
-                    + n * (l-k) * np.log((np.einsum('i->', s[k:l]) / (l-k))) \
-                    + (k * np.log(n) * (2*l-k)) / 2
-
-            self.m = np.argmin(self.mdl)
-
-        else:
-            self.m = self.m_init
-            if self.fprint:
-                print('\tNumber of oscillations has been pre-defined')
-
-        if self.fprint:
-            print(f'\tNumber of oscillations: {self.m}')
-
-    @timer
-    def _signal_poles_1d(self):
-        """Computes the poles of a 1D signal, given a matrix of singular
-        values and the number of poles, with the option of printing information
-        to the terminal.
-        """
-
-        if self.fprint:
-            print('--> Determining signal poles...')
-
-        vm = self.v[:, :self.m] # retain M first right singular vectors
-        v1 = vm[:-1, :] # remove last column
-        v2 = vm[1:, :] # remove first column
-
-        # determine first M signal poles (others should be 0)
-        z, _ = nlinalg.eig(v2 @ nlinalg.pinv(v1))
-        self.poles = z[:self.m]
-
-    @timer
-    def _complex_amplitudes_1d(self):
-        """
-        Computes the complex amplitudes of a 1D signal, with the option of printing
-        information (inc. time taken) to the terminal."""
-
-        if self.fprint:
-            print('--> Determining complex amplitudes...')
-
-        n = np.arange(self.n[0])
-
-        # pseudoinverse of Vandermonde matrix of poles multiplied by
-        # vector of complex amplitudes
-        self.alpha = \
-            nlinalg.pinv((np.power.outer(self.poles, n)).T) @ self.normed_data
-
-    def _construct_parameter_array(self):
-
-        amp = np.abs(self.alpha) * self.norm
-        phase = np.arctan2(np.imag(self.alpha), np.real(self.alpha))
-        freq = (self.sw[0] / (2 * np.pi)) * np.imag(np.log(self.poles)) + self.offset[0]
-        damp = - self.sw[0] * np.real(np.log(self.poles))
-
-        self.parameters = (np.vstack((amp, phase, freq, damp))).T
-        # order by frequency
-        self.parameters = self.parameters[np.argsort(self.parameters[:, 2])]
-
-    def _negative_damping(self):
-        """Determines any oscillators with negative damping factors in the
-        parameter array, and removes these from the array.
-        """
-
-        if self.fprint:
-            print('--> Checking for oscillators with negative damping')
-
-        M_before = self.parameters.shape[0]
-        # indices of oscillators with negative damping factors
-        neg_damp_idx = np.nonzero(self.parameters[:, 3] < 0.0)[0]
-        self.parameters = np.delete(self.parameters, neg_damp_idx, axis=0)
-        M_after = self.parameters.shape[0]
-
-        if M_after < M_before and self.fprint:
-            print(f'\t{cols.O}WARNING: Oscillations with negative damping\n'
-                  f'\tfactors detected. These have been deleted.\n'
-                  f'\tCorrected number of oscillations: {M_after}{cols.END}')
-
-            self.m = M_after
-
-        elif self.fprint:
-            print('\tNone found')
-
 
 
 # “Under capitalism, man exploits man.
