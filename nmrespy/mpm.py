@@ -99,7 +99,7 @@ class MatrixPencil(FrequencyConverter):
             (data, 'data', 'ndarray'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
-            (m, 'm', 'positive_int'),
+            (M, 'M', 'positive_int_or_zero'),
             (fprint, 'fprint', 'bool'),
         ]
 
@@ -116,12 +116,12 @@ class MatrixPencil(FrequencyConverter):
         self.M = M
         self.fprint = fprint
 
-        if sfo != None
+        if sfo != None:
             self.converter = FrequencyConverter(
                 self.n, self.sw, self.offset, self.sfo
             )
 
-        if dim == 1:
+        if self.dim == 1:
             self._mpm_1d()
         else:
             self._mpm_2d()
@@ -141,10 +141,10 @@ class MatrixPencil(FrequencyConverter):
         result : numpy.ndarray
         """
 
-        if unit == 'hz':
+        if freq_unit == 'hz':
             return self.result
 
-        elif unit == 'ppm':
+        elif freq_unit == 'ppm':
             # Check whether a frequency converter is associated with the
             # class
             if not 'converter' in self.__dict__.keys():
@@ -184,7 +184,7 @@ class MatrixPencil(FrequencyConverter):
 
         # Pencil parameter.
         # Optimal when between N/2 and N/3 (see Lin's paper)
-        L = [int(np.floor(N / 3))]
+        L = int(np.floor(N / 3))
         if self.fprint:
             print(f'--> Pencil Parameter: {L}')
 
@@ -195,7 +195,7 @@ class MatrixPencil(FrequencyConverter):
         if self.fprint:
             print("--> Hankel data matrix constructed:")
             print(f'\tSize:   {Y.shape[0]} x {Y.shape[1]}')
-            gibibytes = self.y.nbytes / (2**30)
+            gibibytes = Y.nbytes / (2**30)
             if gibibytes >= 0.1:
                 print(f'\tMemory: {round(gibibytes, 4)}GiB')
             else:
@@ -221,9 +221,9 @@ class MatrixPencil(FrequencyConverter):
             self.mdl = np.zeros(L)
             for k in range(L):
                 self.mdl[k] = \
-                    - n * np.einsum('i->', np.log(s[k:L])) \
-                    + n * (L-k) * np.log((np.einsum('i->', s[k:L]) / (L-k))) \
-                    + (k * np.log(n) * (2*L-k)) / 2
+                    - N * np.einsum('i->', np.log(sigma[k:L])) \
+                    + N * (L-k) * np.log((np.einsum('i->', sigma[k:L]) / (L-k))) \
+                    + (k * np.log(N) * (2*L-k)) / 2
 
             self.M = np.argmin(self.mdl)
 
@@ -251,14 +251,14 @@ class MatrixPencil(FrequencyConverter):
 
         # Pseudoinverse of Vandermonde matrix of poles multiplied by
         # vector of complex amplitudes
-        alpha = nlinalg.pinv((np.power.outer(poles, n)).T) @ normed_data
+        alpha = nlinalg.pinv((np.power.outer(z, np.arange(N))).T) @ normed_data
 
         # Extract amplitudes, phases, frequencies and damping factors
         amp = np.abs(alpha) * norm
         phase = np.arctan2(np.imag(alpha), np.real(alpha))
         freq = \
-            (self.sw[0] / (2 * np.pi)) * np.imag(np.log(poles)) + self.offset[0]
-        damp = - self.sw[0] * np.real(np.log(poles))
+            (self.sw[0] / (2 * np.pi)) * np.imag(np.log(z)) + self.offset[0]
+        damp = - self.sw[0] * np.real(np.log(z))
 
         # Collate into (M x 4) array of parameters
         self.result = (np.vstack((amp, phase, freq, damp))).T
@@ -275,7 +275,7 @@ class MatrixPencil(FrequencyConverter):
         self.result = np.delete(self.result, neg_damp_idx, axis=0)
         self.M = self.result.shape[0]
 
-        if self.m < m_init and self.fprint:
+        if self.M < m_init and self.fprint:
             print(f'\t{cols.O}WARNING: Oscillations with negative damping\n'
                   f'\tfactors detected. These have been deleted.\n'
                   f'\tCorrected number of oscillations: {self.m}{cols.END}')

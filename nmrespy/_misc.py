@@ -36,6 +36,7 @@ class ArgumentChecker:
               + `'int'`
               + `'float'`
               + `'positive_int'`
+              + `'positive_int_or_zero'`
               + `'positive_float'`
               + `'optimiser_mode'`
               + `'optimiser_algorithm'`
@@ -74,6 +75,8 @@ class ArgumentChecker:
                 test = isinstance(obj, float)
             if typ == 'positive_int':
                 test = isinstance(obj, int) and obj > 0
+            if typ == 'positive_int_or_zero':
+                test = isinstance(obj, int) and obj >= 0
             if typ == 'positive_float':
                 test = isinstance(obj, float) and obj > 0
             if typ == 'optimiser_mode':
@@ -209,10 +212,11 @@ class FrequencyConverter:
     offset : [float] or [float, float]
         Transmitter offset in each dimension (Hz)
 
-    sfo : [float] or [float, float]
-        Transmitter frequency in each dimension (MHz)
+    sfo : [float] or [float, float] or None, default: None
+        Transmitter frequency in each dimension (MHz). If set to `None`, only
+        conversion between Hz and array indices will be possible.
     """
-    def __init__(self, n, sw, offset, sfo):
+    def __init__(self, n, sw, offset, sfo=None):
 
         try:
             dim = len(n)
@@ -223,8 +227,10 @@ class FrequencyConverter:
             (n, 'n', 'int_list'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
-            (sfo, 'sfo', 'float_list'),
         ]
+
+        if sfo != None:
+            components.append((sfo, 'sfo', 'float_list'))
 
         ArgumentChecker(components, dim)
 
@@ -315,7 +321,14 @@ class FrequencyConverter:
         n = self.n[dim]
         sw = self.sw[dim]
         off = self.offset[dim]
-        sfo = self.sfo[dim]
+        if self.sfo != None:
+            sfo = self.sfo[dim]
+        else:
+            if 'ppm' in conversion:
+                raise ValueError(
+                    f'{cols.R}WARNING tried to convert to/from ppm, when sfo'
+                    f' has not been specified!{cols.END}'
+                )
 
         if conversion == 'idx->hz':
             return float(off + sw * (0.5 - (value / (n - 1))))

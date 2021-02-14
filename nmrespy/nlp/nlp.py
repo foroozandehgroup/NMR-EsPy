@@ -62,51 +62,83 @@ class NonlinearProgramming(FrequencyConverter):
         The experiment sweep width in each dimension in Hz.
 
     offset : [float] or [float, float] or None, default: None
-        The experiment transmitter offset frequency in Hz. If `None`, a list
-        satisfying ``len(offset) == data.ndim`` with each element being `0.`
-        will be used.
+        The experiment transmitter offset frequency in Hz. If `None`,
+        `offset` will be set as ``data.ndim * [0.0]``.
 
     sfo : [float], [float, float] or None, default: None
-        The experiment transmitter frequency in each dimension in MHz. This is
-        not necessary, however if it set it to `None`, no conversion of
-        frequencies from Hz to ppm will be possible!
+        The experiment transmitter frequency in each dimension in MHz.
+        This is not necessary, however if it set it to `None`, no conversion
+        of frequencies from Hz to ppm will be possible!
 
     phase_variance : bool, default: True
         Specifies whether or not to include the variance of oscillator
-        phases into the NLP routine.
+        phases into the NLP routine. The fiedlity (cost function) is
+        given by:
+
+        * `phase_variance` set to `False`:
+
+          .. math::
+
+             \\mathcal{F}\\left(\\boldsymbol{\\theta}\\right) =
+             \\left\\lVert \\boldsymbol{Y} - \\boldsymbol{X} \\right\\rVert_2^2
+
+        * `phase_variance` set to `True`:
+
+          .. math::
+
+             \\mathcal{F}\\left(\\boldsymbol{\\theta}\\right) =
+             \\left\\lVert \\boldsymbol{Y} - \\boldsymbol{X} \\right\\rVert_2^2 +
+             \\mathrm{Var}\\left(\\boldsymbol{\\phi}\\right)
 
     method : 'trust_region' or 'lbfgs', default: 'trust_region'
-        Optimisation algorithm to use. See notes for more details.
+        Optimisation algorithm to use. These utilise
+        `scipy.optimise.minimise <https://docs.scipy.org/doc/scipy/\
+        reference/generated/scipy.optimize.minimize.html>`_, with
+        the method either being `trust-constr <https://docs.scipy.org/doc/\
+        scipy/reference/optimize.minimize-trustconstr.html\
+        #optimize-minimize-trustconstr>`_, or
+        `L-BFGS-B <https://docs.scipy.org/doc/scipy/reference/\
+        optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
     mode : str, default: 'apfd'
         String composed of any combination of characters `'a'`, `'p'`, `'f'`,
-        `'d'`. Used to determine which parameter types to optimise, and which to
-        remain fixed.
+        `'d'`. Used to determine which parameter types to optimise, and which
+        to remain fixed:
+
+        * `'a'`: Amplitudes are optimised
+        * `'p'`: Phases are optimised
+        * `'f'`: Frequencies are optimised
+        * `'d'`: Damping factors are optimised
 
     bound : bool, default: False
         Specifies whether or not to bound the parameters during optimisation.
+        Bounds are given by:
+
+        * :math:`0 \\leq a_m \\leq \\infty`
+        * :math:`-\\pi < \\phi_m \\leq \\pi`
+        * :math:`-f_{\\mathrm{sw}} / 2 + f_{\\mathrm{off}} \\leq f_m \\leq\
+        f_{\\mathrm{sw}} / 2 + f_{\\mathrm{off}}`
+        * :math:`0 \\leq \\eta_m \\leq \\infty`
+
+        :math:`(\\forall m \\in \\{1, \\cdots, M\\})`
 
     max_iterations : int or None, default: None
         A value specifiying the number of iterations the routine may run
         through before it is terminated. If `None`, the default number
-        of maximum iterations is set (`100` if `method` is = `'trust_region'`,
+        of maximum iterations is set (`100` if `method` is `'trust_region'`,
         and `500` if `method` is `'lbfgs'`).
 
     amp_thold : float or None, default: None
-        A threshold that imposes a threshold for deleting oscillators of
+        A value that imposes a threshold for deleting oscillators of
         negligible ampltiude. If `None`, does nothing. If a float, oscillators
         with amplitudes satisfying :math:`a_m < a_{\\mathrm{thold}}
-        \\lVert \\boldsymbol{a} \\rVert`` will be removed from the
-        parameter array, where :math:`\\lVert \\boldsymbol{a} \\rVert`
-        is the norm of the vector of all the oscillator amplitudes. It is
-        advised to set `amp_thold` at least a couple of orders of
+        \\lVert \\boldsymbol{a} \\rVert_2`` will be removed from the
+        parameter array, where :math:`\\lVert \\boldsymbol{a} \\rVert_2`
+        is the Euclidian norm of the vector of all the oscillator amplitudes.
+        It is advised to set `amp_thold` at least a couple of orders of
         magnitude below 1.
 
     freq_thold : float or None
-        .. warning::
-
-           NOT IMPLEMENTED YET
-
         If `None`, does nothing. If a float, oscillator pairs with
         frequencies satisfying
         :math:`\\lvert f_m - f_p \\rvert < f_{\\mathrm{thold}}` will be
@@ -114,19 +146,24 @@ class NonlinearProgramming(FrequencyConverter):
         in the array, with parameters:
 
         * amplitude: :math:`a = a_m + a_p`
-        * phase: :math:`\phi = \\frac{\phi_m + \phi_p}{2}`
-        * frequency: :math:`f = \\frac{f_m + f_p}{2}`
-        * damping: :math:`\eta = \\frac{\eta_m + \eta_p}{2}`
+        * phase: :math:`\\phi = \\left(\\phi_m + \\phi_p\\right) / 2`
+        * frequency: :math:`f = \\left(f_m + f_p\\right) / 2`
+        * damping: :math:`\\eta = \\left(\eta_m + \eta_p\\right) / 2`
+
+        .. warning::
+
+           NOT IMPLEMENTED YET
 
     negative_amps : 'remove' or 'flip_phase', default: 'remove'
         Indicates how to treat oscillators which have gained negative
-        amplitudes during the optimisation. `'remove'` will result
-        in such oscillators being purged from the parameter estimate.
-        The optimisation routine will the be re-run recursively until
-        no oscillators have a negative amplitude. `'flip_phase'` will
-        retain oscillators with negative amplitudes, but the the amplitudes
-        will be turned positive, and a π radians phase shift will be
-        applied to these oscillators.
+        amplitudes during the optimisation.
+
+        * `'remove'` will result in such oscillators being purged from
+          the parameter estimate. The optimisation routine will the be
+          re-run recursively until no oscillators have a negative amplitude.
+        * `'flip_phase'` will retain oscillators with negative amplitudes,
+          but the the amplitudes will be multiplied by -1, and a π radians
+          phase shift will be applied to these oscillators.
 
     fprint : bool, default: True
         If `True`, the method provides information on progress to
@@ -381,8 +418,8 @@ class NonlinearProgramming(FrequencyConverter):
             Parameter types to be targeted. Valid ints are `0` to `3`
             (included) for a 1D signal, and `0` to `5` for a 2D signal
 
-        osc_idx : 'all' or list, default: 'all'
-            Oscillators to be targeted. Can be either `'all'`, where all
+        osc_idx : list or None default: None
+            Oscillators to be targeted. Can be either `None`, where all
             oscillators are indexed, or a list of ints, in order to select
             a subset of oscillators. Valid ints are `0` to `self.m - 1`
             (included).
@@ -393,7 +430,7 @@ class NonlinearProgramming(FrequencyConverter):
             Array slice.
         """
         # Array of osccilators to index
-        if osc_idx == 'all':
+        if osc_idx == None:
             osc_idx = list(range(self.m))
 
         slice = []

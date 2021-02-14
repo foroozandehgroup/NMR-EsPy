@@ -12,9 +12,10 @@ the presence of experimental noise. For the general case of a signal with
 point from the start of acquisition onwards to be:
 
 .. math::
-   y(t_1, \dots, t_D) = \sum_{m=1}^{M} \left\lbrace a_m \exp\left(\mathrm{i} \phi_m\right)
-   \prod_{d=1}^{D} \exp\left[\left(2 \pi \mathrm{i} f_{d,m} - \eta_{d,m}\right)
-   t_d\right]\right\rbrace + w(t_1, \dots, t_D),
+   y(t_1, \\dots, t_D) = \\sum_{m=1}^{M}
+   \\left\\lbrace a_m \\exp\\left(\\mathrm{i} \\phi_m\\right)
+   \\prod_{d=1}^{D} \\exp\\left[\\left(2 \\pi \\mathrm{i} f_{d,m} -
+   \\eta_{d,m}\\right)t_d\\right]\\right\\rbrace + w(t_1, \\dots, t_D),
 
 where
 

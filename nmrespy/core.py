@@ -15,7 +15,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 import numpy as np
-from numpy.fft import fft, fftshift, ifft, ifftshift
+
 from scipy.integrate import simps
 
 from nmrespy import *
@@ -26,8 +26,10 @@ import nmrespy._errors as errors
 
 from nmrespy._misc import ArgumentChecker, FrequencyConverter
 from nmrespy.filter import FrequencyFilter
+from nmrespy.mpm import MatrixPencil
+from nmrespy.nlp.nlp import NonlinearProgramming
 import nmrespy.load as load
-from . import signal, load, filter, mpm, nlp, _plot, _write
+from . import signal, _plot, _write
 
 # Wrapper for logging method calls
 # A file is generated and placed in
@@ -56,7 +58,7 @@ class Estimator:
        and :py:meth:`new_synthetic_from_parameters` generate instances
        of the class. While you can manually input the listed parameters
        as arguments to initialise the class. It is more straightforward
-       to use one of these.nmrespy
+       to use one of these.
 
     Parameters
     ----------
@@ -114,6 +116,33 @@ class Estimator:
         -----
         For a more detailed specification of the directory requirements,
         see :py:meth:`nmrespy.load.import_bruker`
+
+        Example
+        -------
+        .. code:: python3
+
+           >>> from nmrespy.core import Estimator
+           >>> path = "/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1"
+           >>> estimator = Estimator.new_bruker(path)
+           >>> print(estimator)
+           <nmrespy.core.Estimator at 0x7ff2821deb80>
+           source : bruker_pdata
+           data : [ 8.23724176e+06+0.00000000e+00j  9.17136243e+05-4.97070634e+06j
+            -3.95415395e+06+6.85640849e+05j ...  4.70675320e+00-8.16149817e+01j
+            -4.41587513e+01-9.79437505e+00j  5.74582742e+00+5.69385271e+01j]
+           dim : 1
+           n : [16384]
+           path : /opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1
+           sw : [5494.50549450549]
+           off : [2249.20599998768]
+           sfo : [500.132249206]
+           nuc : ['1H']
+           fmt : <i4
+           filter_info : None
+           mpm_info : None
+           nlp_info : None
+           _converter : <nmrespy._misc.FrequencyConverter object at 0x7ff282250910>
+           _logpath : /home/.../python3.8/site-packages/nmrespy/logs/210212183053.log
         """
 
         info = load.import_bruker(dir, ask_convdta=ask_convdta)
@@ -125,6 +154,66 @@ class Estimator:
         )
 
     def new_synthetic_from_data(data, sw, offset=None, sfo=None):
+        """Generate an instance of :py:class:`Estimator` given a NumPy
+        array, and (at the bare minimum), the sweep width.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            Time-domain signal.
+
+        sw : [float] or [float, float]
+            Sweep width in each dimension (Hz).
+
+        offset: [float], [float, float] or None, default: None
+            TranSmitter offset in each dimension (Hz). By default, the offset
+            is set to zero in each dimension.
+
+        sfo : [float], [float, float] or None, default: None
+            The transmitter frequency in each dimension (MHz). Used to
+            convert frequencies to ppm. If `None`, conversion to ppm will
+            not be possible.
+
+        Returns
+        -------
+        estimator : :py:meth:`nmrespy.core.Estimator`
+
+        Example
+        -------
+        .. code:: python3
+
+           >>> import numpy as np
+           >>> from nmrespy.core import Estimator
+           >>> from nmrespy.signal import make_fid
+           >>> parameters = np.array([
+           ...     [1, 0, 3, 0.2],
+           ...     [2, 0, 1, 0.15],
+           ...     [3, 0, -2, 0.2],
+           ... ])
+           >>> sw = [10.0]
+           >>> offset = [0.0]
+           >>> n = [2048]
+           >>> fid, _ = make_fid(parameters, n, sw)
+           >>> estimator = Estimator.new_synthetic_from_data(fid, sw)
+           >>> print(estimator)
+           <nmrespy.core.Estimator at 0x7fc926998e20>
+           source : synthetic
+           data : [ 6.00000000e+00+0.00000000e+00j  2.19679226e+00-7.06717824e-01j
+           -2.51152989e+00-4.11235694e-01j ... -7.59762676e-14-5.51367204e-14j
+           -2.86058106e-14-8.79414766e-14j  2.81452206e-14-8.66344585e-14j]
+           dim : 1
+           n : [2048]
+           path : None
+           sw : [10.0]
+           off : [0.0]
+           sfo : None
+           nuc : None
+           fmt : None
+           filter_info : None
+           mpm_info : None
+           nlp_info : None
+           _logpath : /home/.../python3.8/site-packages/nmrespy/logs/210212184026.log
+        """
 
         # --- Check validity of parameters -------------------------------
         # Check data is a numpy array
@@ -162,13 +251,13 @@ class Estimator:
     ):
         """
         .. todo::
+           THis has not been written yet.
         """
         print(f'{cols.O}new_synthetic_from_parameters is not yet'
               f'implemented!{cols.END}')
 
 
     def __init__(self, source, data, path, sw, off, sfo, nuc, fmt):
-
         self.source = source
         self.data = data
         self.dim = self.data.ndim
@@ -180,19 +269,19 @@ class Estimator:
         self.nuc = nuc
         self.fmt = fmt
 
-        # Attributes that info will be assigned to after the user runs
+        # Attributes that will be assigned to after the user runs
         # the folowing methods:
         # 1. frequency_filter (filter_info)
         # 2. matrix_pencil (mpm_info)
         # 3. nonlinear_programming (nlp_info)
-        self._filter_info = None
-        self._mpm_info = None
-        self._nlp_info = None
-
-        if self.sfo != None:
-            self._converter = FrequencyConverter(
-                list(data.shape), self.sw, self.off, self.sfo
-            )
+        self.filter_info = None
+        self.mpm_info = None
+        self.nlp_info = None
+        # Create a converter object, enabling conversion idx, hz (and ppm,
+        # if sfo is not None)
+        self._converter = FrequencyConverter(
+            list(data.shape), self.sw, self.off, self.sfo
+        )
 
         # --- Create file for logging method calls -----------------------
         # Set path of file to be inside the nmrespy/logs directory
@@ -230,11 +319,15 @@ class Estimator:
 
     def __str__(self):
         """A formatted list of class attributes"""
-        name = str(self.__class__).replace('<class \'', '').replace('\'>', '')
-        msg = msg = f"{MA}<{name} at {hex(id(self))}>{END}\n"
+        print(locals())
+        mod = __class__.__module__
+        qual = __class__.__qualname__
+        msg = f"{cols.MA}<{mod}.{qual} at {hex(id(self))}>{cols.END}\n"
+
         dic = self.__dict__
-        for key, value in zip(dic.keys(), dic.values()):
-            msg += f'{cols.MA}{key}{cols.END} : {value}\n'
+        keys, vals = dic.keys(), dic.values()
+        items = [f'{cols.MA}{k}{cols.END} : {v}' for k, v in zip(keys, vals)]
+        msg += '\n'.join(items)
 
         return msg
 
@@ -475,462 +568,6 @@ class Estimator:
             return list(np.meshgrid(tp[0], tp[1]))
         return tp
 
-
-    def get_region(self, unit='idx', kill=True):
-        """Return the region of interest.
-
-        Parameters
-        ----------
-        unit : 'idx', 'hz', 'ppm', default: 'idx'
-            The unit of the elements.
-
-        kill : bool, default: True
-            If ``self.region`` is ``None``, ``kill`` specifies
-            how to act:
-
-            * If ``True``, an AttributeIsNoneError is raised.
-            * If ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        region : [[float,float]], [[int,int]],
-                 [[float, float],[float, float]], [[int, int],[int, int]],
-                 or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            If ``self.region`` is ``None``, and ``kill`` is ``True``.
-        InvalidUnitError
-            If ``unit`` is not ``'idx'``, ``'hz'``, or ``'ppm'``.
-
-        Notes
-        -----
-        If ``self.region`` is ``None``, it is likely that
-        :py:meth:`frequency_filter` is yet to be called on the class instance.
-        """
-
-        return self._get_region('region', unit, kill)
-
-
-    def get_noise_region(self, unit='idx', kill=True):
-        """Return the noise region.
-
-        Parameters
-        ----------
-        unit : 'idx', 'hz', 'ppm', default: 'idx'
-            The unit of the elements.
-
-        kill : bool, default: True
-            If ``self.region`` is ``None``, ``kill`` specifies
-            how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        noise_region : [[float,float]], [[int,int]],
-                 [[float, float],[float, float]], [[int, int],[int, int]],
-                 or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            If ``self.noise_region`` is ``None``, and ``kill`` is ``True``.
-        InvalidUnitError
-            If ``unit`` is not ``'idx'``, ``'hz'``, or ``'ppm'``.
-
-        Notes
-        -----
-        If ``self.noise_region`` is ``None``, it is likely that
-        :py:meth:`frequency_filter` is yet to be called on the class instance.
-        """
-
-        return self._get_region('noise_region', unit, kill)
-
-
-    def _get_region(self, name, unit, kill):
-        """Called within :py:meth:`get_region` and :py:meth:`get_noise_region`.
-        Retrieves the desired region in the desired unit.
-        """
-
-        region = self._get_nondefault_param(
-            name, 'frequency_filter()', kill
-        )
-
-        if unit == 'idx':
-            return region
-
-        elif unit in ['hz', 'ppm']:
-            return self._unit_convert(region, convert=f'idx->{unit}')
-
-        else:
-            raise errors.InvalidUnitError('idx', 'hz', 'ppm')
-
-
-    def get_p0(self, unit='radians', kill=True):
-        """Return the zero-order phase correction specified using
-        :py:meth:`frequency_filter`.
-
-        Parameters
-        ----------
-        unit : 'radians', 'degrees', default: 'rad'
-            The unit the phase is expressed in.
-
-        kill : bool, default: True
-            If ``self.p0`` is ``None``, ``kill`` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        p0 : float or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``p0`` is ``None``, and ``kill`` is ``True``
-        InvalidUnitError
-            If ``unit`` is not ``'radians'`` or ``'degrees'``
-
-        Notes
-        -----
-        If ``self.p0`` is ``None``, it is likely that :py:meth:`frequency_filter`
-        is yet to be called on the class instance.
-        """
-
-        return self._get_phase('p0', unit, kill)
-
-
-    def get_p1(self, unit='radians', kill=True):
-        """Return the first-order phase correction specified using
-        :py:meth:`frequency_filter`.
-
-        Parameters
-        ----------
-        unit : 'radians', 'degrees', default: 'radians'
-            The unit the phase is expressed in.
-
-        kill : bool, default: True
-            If ``self.p1`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        p1 : float or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.p1`` is ``None``, and ``kill`` is ``True``.
-        InvalidUnitError
-            If ``unit`` is not ``'radians'`` or ``'degrees'``
-
-        Notes
-        -----
-        If ``self.p1`` is ``None``, it is likely that :py:meth:`frequency_filter`
-        is yet to be called on the class instance.
-        """
-
-        return self._get_phase('p1', unit, kill)
-
-
-    def _get_phase(self, name, unit, kill):
-        """Called within :py:meth:`get_p0` and :py:meth:`get_p1`.
-        Retrieves the desired region in the desired unit.
-        """
-
-        if unit == 'radians':
-            return self._get_nondefault_param(name, 'frequency_filter()', kill)
-
-        elif unit == 'degrees':
-            return self._get_nondefault_param(name, 'frequency_filter()', kill) \
-                   * (180 / np.pi)
-
-        else:
-            raise errors.InvalidUnitError('radians', 'degrees')
-
-
-    def get_filtered_spectrum(self, kill=True):
-        """Return the filtered spectral data generated using
-        :py:meth:`frequency_filter`.
-
-        Parameters
-        ----------
-        kill : bool, default: True
-            If ``self.filtered_spectrum`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        filtered_spectrum : numpy.ndarray or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.filtered_spectrum`` is ``None``, and ``kill`` is ``True``.
-
-        Notes
-        -----
-        If ``self.filtered_spectrum`` is ``None``, it is likely that
-        :py:meth:`frequency_filter` is yet to be called on the class instance.
-        """
-
-        return self._get_nondefault_param(
-            'filtered_spectrum', 'frequency_filter()', kill
-        )
-
-
-    def get_filtered_signal(self, kill=True):
-        """Return the filtered time-domain data generated using
-        :py:meth:`frequency_filter`.
-
-        Parameters
-        ----------
-        kill : bool, default: True
-            If ``self.filtered_signal`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        filtered_spectrum : numpy.ndarray or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.filtered_signal`` is ``None``, and ``kill`` is ``True``.
-
-        Notes
-        -----
-        If ``self.filtered_signal`` is ``None``, it is likely that
-        :py:meth:`frequency_filter` is yet to be called on the class instance.
-        """
-
-        return self._get_nondefault_param(
-            'filtered_signal', 'frequency_filter()', kill
-        )
-
-
-    def get_filtered_n(self, kill=True):
-        """Return the number of points of the signal generated using
-        :py:meth:`frequency_filter` with ``cut = True``, in each dimesnion.
-
-        Parameters
-        ----------
-        kill : bool, default: True
-            If ``self.n`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        filtered_n : (int,), (int, int), or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.n`` is ``None``, and ``kill`` is ``True``.
-
-        Notes
-        -----
-        If ``self.n`` is ``None``, it is likely that
-        :py:meth:`frequency_filter`, with ``cut = True`` has not been called on
-        the class instance.
-        """
-
-        return self._get_nondefault_param(
-            'filtered_n', 'frequency_filter() with cut=True', kill
-        )
-
-
-    def get_filtered_sw(self, unit='hz', kill=True):
-        """Return the sweep width of the signal generated using
-        :py:meth:`frequency_filter` with ``cut = True``, in each dimesnion.
-
-        Parameters
-        ----------
-        unit : 'hz', 'ppm', default: 'hz'
-            The unit of the value(s).
-
-        kill : bool, default: True
-            If ``self.filtered_sw`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        filtered_sw : (float,), (float, float), or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.filtered_sw`` is ``None``, and ``kill`` is ``True``.
-        InvalidUnitError
-            If ``unit`` is not ``'hz'`` or ``'ppm'``.
-
-        Notes
-        -----
-        If ``self.filtered_sw`` is ``None``, it is likely that
-        :py:meth:`frequency_filter`, with ``cut = True`` has not been called on the
-        class instance.
-        """
-
-        filtered_sw =  self._get_nondefault_param(
-            'filtered_sw', 'frequency_filter() with cut=True', kill
-        )
-
-        if unit == 'hz':
-            return filtered_sw
-
-        elif unit == 'ppm':
-            return self._unit_convert(filtered_sw, convert='hz->ppm')
-
-        else:
-            raise errors.InvalidUnitError('hz', 'ppm')
-
-
-    def get_filtered_offset(self, unit='hz', kill=True):
-        """Return the transmitter's offest frequency of the signal generated
-        using :py:meth:`frequency_filter` with ``cut = True``, in each
-        dimesnion.
-
-        Parameters
-        ----------
-        unit : 'hz', 'ppm', default: 'hz'
-            The unit of the value(s).
-
-        kill : bool, default: True
-            If ``self.filtered_offset`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        filtered_offset : (float,), (float, float), or None
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.filtered_offset`` is ``None``, and ``kill`` is ``True``.
-        InvalidUnitError
-            If `unit` is not 'hz' or 'ppm'
-
-        Notes
-        -----
-        If ``self.filtered_offset`` is ``None``, it is likely that
-        :py:meth:`frequency_filter`, with ``cut = True`` has not been called on the
-        class instance.
-        """
-
-        filtered_offset =  self._get_nondefault_param(
-            'filtered_offset', 'frequency_filter() with cut=True', kill
-        )
-
-        if unit == 'hz':
-            return filtered_offset
-
-        elif unit == 'ppm':
-            return self._unit_convert(filtered_offset, convert='hz->ppm')
-
-        else:
-            raise errors.InvalidUnitError('hz', 'ppm')
-
-
-    def get_theta0(self, kill=True):
-        """Return the parameter estimate derived using
-        :py:meth:`matrix_pencil`
-
-        Parameters
-        ----------
-        kill : bool, default: True
-            If ``self.theta0`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        theta0 : numpy.ndarray or None
-            An array with ``theta0.shape[1] = 4`` (1D signal) or
-            ``theta0.shape[1] = 6`` (2D signal).
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.theta0`` is ``None``, and ``kill`` is ``True``.
-
-        Notes
-        -----
-        If ``self.theta0`` is ``None``, it is likely that
-        :py:meth:`matrix_pencil` has not been called on the class instance.
-        """
-
-
-        return self._get_nondefault_param('theta0', 'matrix_pencil()', kill)
-
-
-    def get_theta(self, frequency_unit='hz', kill=True):
-        """Return the parameter estimate derived using
-        :py:meth:`nonlinear_programming`
-
-        Parameters
-        ----------
-        kill : bool, default: True
-            If ``self.theta`` is ``None``, `kill` specifies how to act:
-
-            * If ``kill`` is ``True``, an error is raised.
-            * If ``kill`` is ``False``, ``None`` is returned.
-
-        Returns
-        -------
-        theta : numpy.ndarray or None
-            An array with ``theta.shape[1] = 4`` (1D signal) or
-            ``theta.shape[1] = 6`` (2D signal).
-
-        Raises
-        ------
-        AttributeIsNoneError
-            Raised if ``self.theta`` is ``None``, and ``kill`` is ``True``.
-
-        Notes
-        -----
-        If ``self.theta`` is ``None``, it is likely that
-        :py:meth:`nonlinear_programming` has not been called on the class
-        instance.
-        """
-
-        if frequency_unit == 'hz':
-            return self._get_nondefault_param(
-                'theta', 'nonlinear_programming()', kill,
-            )
-
-        elif frequency_unit == 'ppm':
-            theta = deepcopy(self._get_nondefault_param(
-                'theta', 'nonlinear_programming()', kill,
-            ))
-
-            for osc in theta:
-                for column in range(2, 2 + self.get_dim()):
-                    osc[column] = self._unit_convert(
-                        (osc[column],), convert=f'hz->ppm',
-                    )[0]
-            return theta
-
-        else:
-            raise errors.InvalidUnitError('hz', 'ppm')
-
-
     def _check_if_none(self, name, kill, method=None):
         """Retrieve attributes that may be assigned the value `None`. Return
         None/raise error depending on the value of ``kill``
@@ -966,7 +603,6 @@ class Estimator:
             return attribute
 
 
-
     def view_data(self, domain='frequency', freq_xunit='ppm', component='real'):
         """Generate a simple, interactive plot of the data using matplotlib.
 
@@ -984,12 +620,12 @@ class Estimator:
 
         if domain == 'time':
             if dim == 1:
+                xlabel = '$t\\ (s)$'
                 ydata = self.get_data()
                 xdata = self.get_tp()[0]
 
             elif dim == 2:
-                print('TODO')
-                return
+                raise errors.TwoDimUnsupportedError()
 
         elif domain == 'frequency':
             # frequency domain treatment
@@ -997,8 +633,10 @@ class Estimator:
                 ydata = fftshift(fft(self.get_data()))
 
                 if freq_xunit == 'hz':
+                    xlabel = '$\\omega\\ (Hz)$'
                     xdata = self.get_shifts(unit='hz')[0]
                 elif freq_xunit == 'ppm':
+                    xlabel = '$\\omega\\ (ppm)$'
                     xdata = self.get_shifts(unit='ppm')[0]
                 else:
                     msg = f'{R}freq_xunit was not given a valid value' \
@@ -1006,8 +644,7 @@ class Estimator:
                     raise ValueError(msg)
 
             elif dim == 2:
-                print('TODO')
-                return
+                raise errors.TwoDimUnsupportedError()
 
         else:
             msg = f'{R}domain was not given a valid value' \
@@ -1028,9 +665,10 @@ class Estimator:
 
         if domain == 'frequency':
             plt.xlim(xdata[-1], xdata[0])
+        plt.xlabel(xlabel)
         plt.show()
 
-# TODO ========================================================
+# TODO
 # make_fid:
 # include functionality to write to Bruker files, Varian files,
 # JEOL files etc
@@ -1091,7 +729,7 @@ class Estimator:
     @logger
     def frequency_filter(
         self, region, noise_region, p0=None, p1=None, cut=True, cut_ratio=3.0,
-        region_unit='ppm',
+        region_unit='ppm', manual_phase=False, manual_phase_max_p1=None,
     ):
         """Generates phased, frequency-filtered data from the original data
         supplied.
@@ -1136,6 +774,13 @@ class Estimator:
             The unit the elements of `region` and `noise_region` are
             expressed in.
 
+        manual_phase : bool, default: False
+            If set as `True`, the user will be able to set `p0` and `p1`
+            via use of a graphical user interface.
+
+        manual_phase_max_p1 : [float], [float, float] or None, default: None
+            See :py:func:`nmrespy.signal.manual_phase_spectrum`.
+
         Notes
         -----
         This method assigns the attribute `filter_info` to an instance of
@@ -1157,7 +802,7 @@ class Estimator:
         ----------
         kill : bool, default: True
             If `filter_info` is `None`, and `kill` is `True`, an error will
-            be raised. If `kill` is False, `None will be returned`.
+            be raised. If `kill` is False, `None` will be returned.
 
         Returns
         -------
@@ -1174,302 +819,234 @@ class Estimator:
             'filter_info', kill, method='frequency_filter'
         )
 
+    def _get_data_sw_offset(self):
+        """Retrieve data, sweep width and offset, based on whether
+        frequency filtration have been applied.
+
+        Returns
+        -------
+        data : numpy.ndarray
+
+        sw : [float] or [float, float]
+            Sweep width (Hz).
+
+        offset : [float] or [float, float]
+            Transmitter offset (Hz).
+
+        Notes
+        -----
+        * If `self.filter_info` is equal to `None`, `self.data` will be
+          analysed
+        * If `self.filter_info` is an instance of
+          :py:class:`nmrespy.filter.FrequencyFilter`,
+          `self.filter_info.filtered_signal` will be analysed.
+        """
+        filter_info = self.filter_info
+
+        if filter_info == None:
+            data = self.data
+            sw = self.sw
+            offset = self.offset
+
+        elif isinstance(filter_info, FrequencyFilter):
+            data = filter_info.filtered_signal
+            sw = filter_info.sw
+            offset = filter_info.offset
+
+        return data, sw, offset
 
     @logger
     def matrix_pencil(self, M=0, trim=None, fprint=True):
-        """Implementation of the 1D Matrix Pencil Method [1]_ [2]_ or 2D
-        Modified Matrix Enchancement and Matrix Pencil (MMEMP) method [3]_
-        [4]_ with the option of Model Order Selection using the Minumum
-        Descrition Length (MDL).
+        """Implementation of the 1D Matrix Pencil Method [#]_ [#]_ or 2D
+        Modified Matrix Enchancement and Matrix Pencil (MMEMP) method [#]_
+        [#]_ with the option of Model Order Selection using the Minumum
+        Descrition Length (MDL) [#]_.
 
         Parameters
         ----------
         M : int, default: 0
             The number of oscillators to use in generating a parameter
-            estimate. If M is set to 0, the number of oscillators will be
+            estimate. If `M` is set to `0`, the number of oscillators will be
             estimated using the MDL.
 
-        trim : None, (int,), or (int, int), default: None
-            If ``trim`` is a tuple, the analysed data will be sliced such that
-            its shape matches trim, with the initial points in the signal
-            being retained. If ``trim`` is ``None``, the data will not be
+        trim : None, [int], [int, int], or None, default: None
+            If `trim` is a list, the analysed data will be sliced such that
+            its shape matches `trim`, with the initial points in the signal
+            being retained. If `trim` is `None`, the data will not be
             sliced. Consider using this in cases where the full signal is
             large, such that the method takes a very long time, or your PC
             has insufficient memory to process it.
 
-        fprint : bool, deafult: True
-            If ``True`` (default), the method provides information on
-            progress to the terminal as it runs. If ``False``, the method
+        fprint : bool, default: True
+            If `True` (default), the method provides information on
+            progress to the terminal as it runs. If `False`, the method
             will run silently.
 
         Notes
         -----
-        The method requires appropriate time-domain data to run. If
-        frequency-filtered data has been generated by :py:meth:`frequency_filter`
-        (stored in the attribute ``filtered_signal``), prior to calling this method,
-        this will be analysed. If no such data is found, but the original data
-        is a raw FID (i.e. ``self.get_dtype()`` is ``'fid'``), that will
-        analysed. If the original data is processed data (i.e.
-        ``self.get_dtype()`` is ``'pdata'``), and no signal has been generated
-        using :py:meth:`frequency_filter`, an error will be raised.
+        The data analysed will be the following:
 
-        The class attribute ``theta0`` will be updated upon successful running
-        of this method. If the  data is 1D, ``self.theta0.shape[1] = 4``,
-        whilst if the data is 2D, ``self.theta0.shape[1] = 6``. Elements along
-        axis 0 of ``theta0`` contain the parameters associated with each
-        individual oscillator, with parameters ordered as follows:
+        * If `self.filter_info` is equal to `None`, `self.data` will be
+          analysed
+        * If `self.filter_info` is an instance of
+          :py:class:`nmrespy.filter.FrequencyFilter`,
+          `self.filter_info.filtered_signal` will be analysed.
 
-        * :math:`[a_m, \phi_m, f_m, \eta_m]` (1D)
-        * :math:`[a_m, \phi_m, f_{1,m}, f_{2,m}, \eta_{1,m}, \eta_{2,m}]` (2D)
+        **For developers:** See :py:meth:`_get_data_sw_offset`
+
+        Upon successful completion is this method, `self.mpm_info` will
+        be updated with an instance of :py:class:`nmrespy.mpm.MatrixPencil`.
 
         References
         ----------
-        .. [1] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for
+        .. [#] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for
            estimating parameters of exponentially damped/undamped sinusoids
            in noise”. In: IEEE Trans. Acoust., Speech, Signal Process. 38.5
            (1990), pp. 814–824.
 
-        .. [2] Yung-Ya Lin et al. “A novel detection–estimation scheme for
+        .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for
            noisy NMR signals: applications to delayed acquisition data”.
            In: J. Magn. Reson. 128.1 (1997), pp. 30–41.
 
-        .. [3] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
+        .. [#] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
            enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
            International Conference on Acoustics, Speech, and Signal
            Processing. IEEE. 1991, pp. 3073–3076.
 
-        .. [4] Fang-Jiong Chen et al. “Estimation of two-dimensional
+        .. [#] Fang-Jiong Chen et al. “Estimation of two-dimensional
            frequencies using modified matrix pencil method”. In: IEEE Trans.
            Signal Process. 55.2 (2007), pp. 718–724.
+
+        .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
+           criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
+           33 (2) (1985) 387–392.
         """
 
-        data, sw, offset = self._check_data_sw_offset()
+        data, sw, offset = self._get_data_sw_offset()
 
-        # slice data if user provided a tuple
-        trim = self._check_trim(trim, data)
-        data = data[tuple([np.s_[0:int(t)] for t in trim])]
+        if trim == None:
+            trim = [np.s_[0:int(s)] for s in data.shape]
 
-        self.matrix_pencil_info = mpm.MatrixPencil(
+        ArgumentChecker([(trim, 'trim', 'int_list')], dim=self.dim)
+
+        # Slice data
+        data = data[tuple(trim)]
+
+        self.mpm_info = MatrixPencil(
             data, sw, offset, self.sfo, M, fprint
         )
 
-        self.theta0 = self.matrix_pencil_info.get_parameters()
+    def get_mpm_info(self, kill=True):
+        """Returns information relating to the Matrix Pencil Method.
 
+        Parameters
+        ----------
+        kill : bool, default: True
+            If `self.mpm_info` is `None`, and `kill` is `True`, an error will
+            be raised. If `kill` is False, `None` will be returned.
+
+        Returns
+        -------
+        mpm_info : nmrespy.filter.MatrixPencil
+
+        Notes
+        -----
+        See :py:class:`nmrespy.mpm.MatrixPencil` for details on the contents
+        of `mpm_info`.
+        """
+
+        return self._check_if_none(
+            'mpm_info', kill, method='matrix_pencil'
+        )
 
     @logger
-    def nonlinear_programming(
-        self, trim=None, method='trust_region', mode=None, bound=False,
-        phase_variance=False, maxit=None, amp_thold=None, freq_thold=None,
-        negative_amps='remove', fprint=True
-    ):
+    def nonlinear_programming(self, trim=None, **kwargs):
         """Estimation of signal parameters using nonlinear programming, given
         an inital guess.
 
         Parameters
         ----------
-        trim : None, (int,), or (int, int), default: None
-            If ``trim`` is a tuple, the analysed data will be sliced such that
-            its shape matches ``trim``, with the initial points in the signal
-            being retained. If ``trim`` is ``None``, the data will not be
+        trim : None, [int], or [int, int], default: None
+            If `trim` is a list, the analysed data will be sliced such that
+            its shape matches `trim`, with the initial points in the signal
+            being retained. If `trim` is `None`, the data will not be
             sliced. Consider using this in cases where the full signal is
             large, such that the method takes a very long time, or your PC
             has insufficient memory to process it.
 
-        method : 'trust_region' or 'lbfgs', default: 'trust_region'
-            The optimization method to be used. Both options use
-            the ``scipy.optimize.minimize`` function [5]_
+        **kwargs
+            Properties of :py:class:`nmrespy.nlp.nlp.NonlinearProgramming`.
 
-            * ``'trust_region'`` sets ``method='trust-constr'``
-            * ``'lbfgs'`` sets ``method='L-BFGS-B'``.
+            Valid arguments:
 
-            See the Notes below for advice on choosing ``method``.
-
-        mode : None or str, default: None
-            Specifies which parameters to optimize. If ``None``,
-            all parameters in the initial guess are subjected to the
-            optimization. If a string containing a combination of the letters
-            ``'a'``, ``'p'``, ``'f'``, and ``'d'`` is used, then only the
-            parameters specified will be considered. For example ``mode='af'``
-            would make the routine optimise amplitudes and frequencies,
-            while leaving phases and damping factors fixed.
-
-        bound : bool, default: False
-            Specifies whether or not to carry out an optimisation where
-            the parameters are bounded. If ``False``, the optimsation
-            will be unconstrained. If ``True``, the following bounds
-            are set on the parameters:
-
-            * amplitudes: :math:`0 < a_m < \infty`
-            * phases: :math:`- \pi < \phi_m \leq \pi`
-            * frequencies: :math:`f_{\\mathrm{off}} -
-              \\frac{f_{\\mathrm{sw}}}{2} \\leq f_m \\leq f_{\\mathrm{off}} +
-              \\frac{f_{\\mathrm{sw}}}{2}`
-            * damping: :math:`0 < \eta_m < \infty`
-
-        phase_variance : bool, default: False
-            Specifies whether or not to include the variance of phase in
-            the cost function under consideration.
-
-        maxit : int or None, default: None
-            The maximum number of iterations the routine will carry out
-            before being forced to terminate. If ``None``, the default number
-            of maximum iterations is set (``100`` if ``method='trust_region'``,
-            and ``500`` if ``method='lbfgs'``).
-
-        amp_thold : float or None, default: None
-            If ``None``, does nothing. If a float, oscillators with
-            amplitudes satisfying :math:`a_m < a_{\\mathrm{thold}}
-            \\lVert \\boldsymbol{a} \\rVert`` will be removed from the
-            parameter array, where :math:`\\lVert \\boldsymbol{a} \\rVert`
-            is the norm of the vector of all the oscillator amplitudes. It is
-            advised to set ``amp_thold`` at least a couple of orders of
-            magnitude below 1.
-
-        freq_thold : float or None, default: None
-            .. warning::
-
-               NOT IMPLEMENTED YET
-
-            If ``None``, does nothing. If a float, oscillator pairs with
-            frequencies satisfying
-            :math:`\\lvert f_m - f_p \\rvert < f_{\\mathrm{thold}}` will be
-            removed from the parameter array. A new oscillator will be included
-            in the array, with parameters:
-
-            * amplitude: :math:`a = a_m + a_p`
-            * phase: :math:`\phi = \\frac{\phi_m + \phi_p}{2}`
-            * frequency: :math:`f = \\frac{f_m + f_p}{2}`
-            * damping: :math:`\eta = \\frac{\eta_m + \eta_p}{2}`
-
-        negative_amps : 'remove' or 'flip_phase', default: 'remove'
-            Indicates how to treat oscillators which have gained negative
-            amplitudes during the optimisation. ``'remove'`` will result
-            in such oscillators being purged from the parameter estimate.
-            The optimisation routine will the be re-run recursively until
-            no oscillators have a negative amplitude. ``'flip_phase'`` will
-            retain oscillators with negative amplitudes, but the the amplitudes
-            will be turned positive, and a π radians phase shift will be
-            applied to the oscillator.
-
-        fprint : bool, default: True
-            If ``True``, the method provides information on progress to
-            the terminal as it runs. If ``False``, the method will run silently.
+            * `phase_variance`
+            * `method`
+            * `mode`
+            * `bound`
+            * `max_iterations`
+            * `amp_thold`
+            * `freq_thold`
+            * `negative_amps`
+            * `fprint`
 
         Raises
         ------
-        NoSuitableDataError
-            Raisd when this method is called on an class instance that does
-            not possess appropriate time-domain data for analysis (see Notes).
-
         PhaseVarianceAmbiguityError
             Raised when ``phase_variance`` is set to ``True``, but the user
             has specified that they do not wish to optimise phases using the
             ``mode`` argument.
 
-        NoParameterEstimateError
-            Raised when the attribute ``theta0`` is ``None``.
-
         Notes
         -----
-        The method requires appropriate time-domain
-        data to run. If frequency-filtered data has been
-        generated by :py:meth:`frequency_filter` (stored in the attribute
-        ``filtered_signal``) prior to calling this method, this will be analysed.
-        If no such data is found, but the original data is a raw
-        FID (i.e. :py:meth:`get_dtype` returns ``'fid'``), the original FID will
-        analysed. If the original data is processed data (i.e.
-        :py:meth:`get_dtype` returns ``'pdata'``), and no signal has been
-        generated using :py:meth:`frequency_filter`, an error will be raised.
+        The data analysed will be the following:
 
-        The method also requires an initial guess, stored in the attribute
-        ``theta0``. To generate this initial guess, you first need to apply
-        the :py:meth:`matrix_pencil` method.
+        * If `self.filter_info` is equal to `None`, `self.data` will be
+          analysed
+        * If `self.filter_info` is an instance of
+          :py:class:`nmrespy.filter.FrequencyFilter`,
+          `self.filter_info.filtered_signal` will be analysed.
 
-        The class attribute ``theta`` will be updated upon successful running
-        of this method. If the  data is 1D,
-        ``self.theta.shape[1] = 4``, whilst if the data is 2D,
-        ``self.theta.shape[1] = 6``. Elements along axis 0 of `theta`
-        contain the parameters associated with each individual oscillator,
-        with parameters ordered as follows:
+        **For developers:** See :py:meth:`_get_data_sw_offset`
 
-        * :math:`[a_m, \phi_m, f_m, \eta_m]` (1D)
-        * :math:`[a_m, \phi_m, f_{1,m}, f_{2,m}, \eta_{1,m}, \eta_{2,m}]` (2D)
+        Upon successful completion is this method, `self.nlp_info` will
+        be updated with an instance of
+        :py:class:`nmrespy.nlp.nlp.NonlinearProgramming`.
 
-        The two optimisation algorithms primarily differ in how they treat
-        the calculation of the matrix of cost function second derivatives
-        (called the Hessian). ``'trust_region'`` will calculate the
-        Hessian explicitly at every iteration, whilst ``'lbfgs'`` uses an
-        update formula based on gradient information to estimate the Hessian.
-        The upshot of this is that the convergence rate (the number of
-        iterations needed to reach convergence) is typically better for
-        ``'trust_region'``, though each iteration typically takes longer to
-        generate. By default, it is advised to use ``'trust_region'``, however
-        if your guess has a large number of signals (as a rule of thumb,
-        ``theta0.shape[0] > 50``), you may find ``'lbfgs'`` performs more
-        effectively.
+        The two optimisation algorithms (specified by `method`) primarily
+        differ in how they treat the calculation of the matrix of cost
+        function second derivatives (called the Hessian). `'trust_region'`
+        will calculate the Hessian explicitly at every iteration, whilst
+        `'lbfgs'` uses an update formula based on gradient information to
+        estimate the Hessian. The upshot of this is that the convergence
+        rate (the number of iterations needed to reach convergence) is
+        typically better for `'trust_region'`, though each iteration
+        typically takes longer to generate. By default, it is advised to
+        use `'trust_region'`, however if your guess has a large number
+        of signals, you may find `'lbfgs'` performs more effectively.
 
-        References
-        ----------
-        .. [5] https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
+        See Also
+        --------
+        :py:class:`nmrespy.nlp.nlp.NonlinearProgramming`
         """
 
         # TODO: include freq threshold
 
-        # unpack parameters
-        dim = self.get_dim()
+        data, sw, offset = self._get_data_sw_offset()
+        kwargs['offset'] = offset
+        kwargs['sfo'] = self.get_sfo(kill=False)
 
-        # initial guess: should have come from self.matrix_pencil()
-        theta0 = self.get_theta0()
+        if trim == None:
+            trim = [np.s_[0:int(s)] for s in data.shape]
 
-        # get sweep width and offset
-        # which set is the correct set will depend on whether the user
-        # called self.frequency with cut=True or False
-        if self.filtered_sw is None:
-            sw = self.get_sw()
-            off = self.get_offset()
+        ArgumentChecker([(trim, 'trim', 'int_list')], dim=self.dim)
 
-        else:
-            sw = self.get_filtered_sw()
-            off = self.get_filtered_offset()
+        # Slice data
+        data = data[tuple(trim)]
 
-        # check inputs are valid
+        mpm_info = self.get_mpm_info()
+        x0 = mpm_info.result
 
-        # types of parameters to be optimised
-        # (amplitudes, phases, frequencies, damping factors)
-        mode = self._check_mode(mode, phase_variance)
-        # retrieve data to be analysed
-        data = self._check_data()
-        # trimmed data tuple
-        trim = self._check_trim(trim, data)
-        # trim data
-        data = data[tuple([np.s_[0:int(t)] for t in trim])]
-
-        # nonlinear programming method
-        if method not in ['trust_region', 'lbfgs']:
-            raise ValueError(f'\n{R}method should be \'trust_region\''
-                             f' or \'lbfgs\'.{END}')
-
-        # maximum iterations
-        if maxit is None:
-            if method == 'trust_region':
-                maxit = 100
-            else: # lbfgs: more iters as much faster but poorer convergence
-                maxit = 500
-        elif isinstance(maxit, int):
-            pass
-        else:
-            raise TypeError(f'\n{R}maxit should be an int or None.{END}')
-
-        # treatment of negative amplitudes
-        if negative_amps not in ['remove', 'flip_phase']:
-            raise ValueError(f'{R}negative_amps should be \'remove\' or'
-                             f' \'flip_phase\'{END}')
-
-
-        self.theta, self.errors = _nlp.nlp(
-            data, dim, theta0, sw, off, phase_variance, method, mode, bound,
-            maxit, amp_thold, freq_thold, negative_amps, fprint, True, None
-        )
+        self.nlp_info = NonlinearProgramming(data, x0, sw, kwargs)
 
 
     def pickle_save(

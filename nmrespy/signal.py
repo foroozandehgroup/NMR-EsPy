@@ -4,9 +4,18 @@
 
 """Constructing and processing NMR signals"""
 
+import copy
+
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 import numpy.random as nrandom
+
+import tkinter as tk
+
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
 
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
@@ -72,6 +81,21 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True):
 
     tp : [numpy.ndarray], [numpy.ndarray, numpy.ndarray]
         The time points the FID is sampled at in each dimension.
+
+    Notes
+    -----
+    The resulting `fid` is given by
+
+    .. math::
+
+       y[n_1, \\cdots, n_D] =
+       \\sum_{m=1}^{M} a_m \\exp\\left(\\mathrm{i} \\phi_m\\right)
+       \\prod_{d=1}^{D}
+       \\exp\\left[\\left(2 \\pi \\mathrm{i} f_m - \\eta_m\\right)
+       n_d \\Delta t_d\\right]
+
+    where :math:`d` is either 1 or 2, :math:`M` is the number of
+    oscillators, and :math:`\\Delta t_d = 1 / f_{\\mathrm{sw}, d}`.
     """
 
     # --- Check validity of inputs ---------------------------------------
@@ -257,7 +281,7 @@ def ift(spectrum):
     return fid
 
 
-def phase_spectrum(spectrum, p0, p1):
+def phase_spectrum(spectrum, p0, p1, pivot=None):
     """Applies a linear phase correction to `spectrum`.
 
     Parameters
@@ -271,6 +295,10 @@ def phase_spectrum(spectrum, p0, p1):
     p1 : [float] or [float, float]
         First-order phase correction in each dimension, in radians.
 
+    pivot : [int], [int, int] or None
+        Index of the pivot in each dimension. If None, the pivot will be `0`
+        in each dimension.
+
     Returns
     -------
     phased_spectrum : numpy.ndarray
@@ -281,10 +309,13 @@ def phase_spectrum(spectrum, p0, p1):
     except:
         raise TypeError(f'{cols.R}p0 should be iterable.{cols.END}')
 
+    if pivot == None:
+        pivot = [0.0] * dim
     components = [
         (spectrum, 'spectrum', 'ndarray'),
         (p0, 'p0', 'float_list'),
         (p1, 'p1', 'float_list'),
+        (pivot, 'pivot', 'int_list')
     ]
 
     ArgumentChecker(components, dim)
@@ -294,14 +325,202 @@ def phase_spectrum(spectrum, p0, p1):
     # For 2D: 'ij'
     idx = ''.join([chr(i + 105) for i in range(dim)])
 
-    for axis, (p0_, p1_) in enumerate(zip(p0, p1)):
+    for axis, (piv, p0_, p1_) in enumerate(zip(pivot, p0, p1)):
         n = spectrum.shape[axis]
         # Determine axis for einsum (i or j)
         axis = chr(axis + 105)
-        p = np.exp(1j * (p0_ + p1_ * np.arange(n) / n))
+        p = np.exp(1j * (p0_ + p1_ * np.arange(-piv, -piv+n) / n))
         phased_spectrum = np.einsum(f'{idx},{axis}->{idx}', spectrum, p)
 
     return phased_spectrum
+
+
+def manual_phase_spectrum(spectrum, max_p1=None):
+    """Generates a GUI, enabling manual phase correction, with the zero- and
+    first-order phases returned.
+
+    .. warning::
+       Only 1D spectral data is currently supported.
+
+    Parameters
+    ----------
+    spectrum : numpy.ndarray
+        Spectral data of interest.
+
+    max_p1 : [float], [float, float] or None, default: None
+        Specifies the range of first-order phases permitted. For each
+        dimension, the user will be allowed to choose a value of `p1`
+        within [`-max_p1`, `max_p1`]. By default, `max_p1` will be
+        ``dim * [10 * numpy.pi]``, where `dim` is the spectrum dimension.
+
+    Returns
+    -------
+    p0 : [float], [float, float] or None
+        Zero-order phase correction in each dimension, in radians. If the
+        user chooses to cancel rather than save, this is set to `None`.
+
+    p1 : [float], [float, float] or None
+        First-order phase correction in each dimension, in radians. If the
+        user chooses to cancel rather than save, this is set to `None`.
+    """
+    try:
+        dim = spectrum.ndim
+    except:
+        raise TypeError(f'{cols.R}soectrum should be a numpy array{cols.END}')
+
+    # Only valid for 1D so far
+    if dim != 1:
+        raise TwoDimUnsupportedError()
+
+    init_spectrum = copy.deepcopy(spectrum)
+
+    app = PhaseApp(init_spectrum, max_p1)
+    app.mainloop()
+
+    return app.p0, app.p1
+
+
+class PhaseApp(tk.Tk):
+    """Tkinter application for manual phase correction.
+
+    See Also
+    --------
+    :py:func:`manual_phase_spectrum`
+    """
+
+    def __init__(self, spectrum, max_p1):
+        super().__init__()
+        self.p0 = 0.0
+        self.p1 = 0.0
+        self.n = spectrum.size
+        self.pivot = int(self.n // 2)
+        self.init_spectrum = copy.deepcopy(spectrum)
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.fig = Figure(figsize=(6, 4), dpi=160)
+        # Set colour of figure frame
+        color = self.cget('bg')
+        self.fig.patch.set_facecolor(color)
+        self.ax = self.fig.add_axes([0.03, 0.1, 0.94, 0.87])
+        self.ax.set_yticks([])
+        self.specline = self.ax.plot(np.real(spectrum), color='k')[0]
+
+        ylim = self.ax.get_ylim()
+
+        mx = max(np.amax(np.real(spectrum)), np.abs(np.amin(np.real(spectrum))))
+        self.pivotline = self.ax.plot(
+            2 * [self.pivot], [-10*mx, 10*mx], color='r',
+        )[0]
+
+        self.ax.set_ylim(ylim)
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().grid(
+            row=0, column=0, padx=10, pady=10, sticky='nsew',
+        )
+
+        self.toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
+        self.toolbar.grid(row=1, column=0, pady=(0, 10), sticky='w')
+        self.scale_frame = tk.Frame(self)
+        self.scale_frame.grid(row=2, column=0, padx=10, pady=(0,10), sticky='nsew')
+        self.scale_frame.columnconfigure(1, weight=1)
+        self.scale_frame.rowconfigure(0, weight=1)
+
+        items = [
+            (self.pivot, self.p0, self.p1),
+            ('pivot', 'p0', 'p1'),
+            (0, -np.pi, -max_p1),
+            (self.n, np.pi, max_p1),
+        ]
+
+        for i, (init, name, mn, mx) in enumerate(zip(*items)):
+            lab = tk.Label(self.scale_frame, text=name)
+            pady = (0, 10) if i != 2 else 0
+            lab.grid(row=i, column=0, sticky='w', padx=(0, 5), pady=pady)
+
+            self.__dict__[f'{name}_scale'] = scale = tk.Scale(
+                self.scale_frame,
+                from_ = mn,
+                to = mx,
+                resolution = 0.001,
+                orient = tk.HORIZONTAL,
+                showvalue = 0,
+                sliderlength = 15,
+                bd = 0,
+                highlightthickness = 1,
+                highlightbackground = 'black',
+                relief = 'flat',
+                command=lambda value, name=name: self.update_phase(name),
+            )
+            scale.set(init)
+            scale.grid(row=i, column=1, sticky='ew', pady=pady)
+
+            self.__dict__[f'{name}_label'] = label = tk.Label(
+                self.scale_frame,
+                text = f"{self.__dict__[f'{name}']:.3f}" if i != 0 \
+                    else str(self.__dict__[f'{name}'])
+            )
+            label.grid(row=i, column=2, padx=5, pady=pady, sticky='w')
+
+        self.button_frame = tk.Frame(self)
+        self.button_frame.columnconfigure(0, weight=1)
+        self.button_frame.grid(row=3, column=0, padx=10, pady=10, sticky='ew')
+
+        self.save_button = tk.Button(
+            self.button_frame,
+            width = 8,
+            highlightbackground = 'black',
+            text = 'Save',
+            bg = '#77dd77',
+            command = self.save
+        )
+        self.save_button.grid(row=1, column=0, sticky='e')
+
+        self.cancel_button = tk.Button(
+            self.button_frame,
+            width = 8,
+            highlightbackground = 'black',
+            text = 'Cancel',
+            bg = '#ff5566',
+            command = self.cancel
+        )
+        self.cancel_button.grid(row=1, column=1, sticky='e', padx=(10,0))
+
+
+    def update_phase(self, name):
+        value = self.__dict__[f'{name}_scale'].get()
+
+        if name == 'pivot':
+            self.pivot = int(value)
+            self.pivot_label['text'] = str(self.pivot)
+            self.pivotline.set_xdata([self.pivot, self.pivot])
+
+        else:
+            self.__dict__[name] = float(value)
+            self.__dict__[f'{name}_label']['text'] = \
+                f"{self.__dict__[name]:.3f}"
+
+        spectrum = phase_spectrum(
+            self.init_spectrum, [self.p0], [self.p1], [self.pivot],
+        )
+        self.specline.set_ydata(spectrum)
+        self.canvas.draw_idle()
+
+    def save(self):
+        print(self.pivot / self.n)
+        print(self.p1)
+        self.p0 = self.p0 - self.p1 * (self.pivot / self.n)
+        self.destroy()
+
+    def cancel(self):
+        self.destroy()
+        self.p0 = None
+        self.p1 = None
+
+
+
 
 
 def make_noise(fid, snr, decibels=True):
@@ -363,7 +582,7 @@ def make_noise(fid, snr, decibels=True):
     return instances[first] + 1j * instances[second]
 
 
-def generate_random_signal(m, n, sw, snr=None):
+def generate_random_signal(m, n, sw, offset=None, snr=None):
     """A convienince function to generate a synthetic FID with random
     parameters for testing purposes.
 
@@ -378,6 +597,9 @@ def generate_random_signal(m, n, sw, snr=None):
     sw : [float] or [float, float]
         Sweep width in each dimension
 
+    offset : [float], [float, float] or None, deafult: None
+        Transmitter offset in each dimension
+
     snr : float or None, default: None
         Signal-to-noise ratio (dB)
     """
@@ -386,3 +608,33 @@ def generate_random_signal(m, n, sw, snr=None):
         dim = len(n)
     except:
         raise TypeError(f'{cols.R}n should be an iterable{cols.END}')
+
+    if offset == None:
+        offset = [0.0] * dim
+
+    components = [
+        (m, 'm', 'positive_int'),
+        (n, 'n', 'int_list'),
+        (sw, 'sw', 'float_list'),
+    ]
+
+    if snr != None:
+        components.append((snr, 'snr', 'positive_float'))
+
+    ArgumentChecker(components, dim)
+
+    # low: 0.0, high: 1.0
+    # amplitdues
+    para = nrandom.uniform(size=m)
+    # phases
+    para = np.hstack((para, nrandom.uniform(low=-np.pi, high=np.pi, size=m)))
+    # frequencies
+    f = [nrandom.uniform(low=-s/2+o, high=s/2+o, size=m) for s, o in zip(sw, offset)]
+    para = np.hstack((para, *f))
+    # damping
+    eta = [nrandom.uniform(low=0.1, high=0.3, size=m) for _ in range(dim)]
+    para = np.hstack((para, *eta))
+    para = para.reshape((m, 2*(dim+1)), order='F')
+    print(para)
+
+    return make_fid(para, n, sw, offset, snr)

@@ -388,7 +388,7 @@ def import_bruker(directory, ask_convdta=True):
             # 5 -> States-TPPI
             # Successive fids will be acquired incrementing the
             # time interval after every second fid and receiver
-            # phases 0,90,180 and 270 degrees.
+            # phases 0,90,180 and 270 degrees.cd
             #
             # 6 -> Echo-Antiecho
             # Special phase handling for gradient controlled
