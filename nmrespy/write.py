@@ -285,7 +285,7 @@ If used in any publications, please cite:
 <no papers yet...>
 For more information, visit the GitHub repo:
 """
-    msg += f'\n{GITHUBPATH}'
+    msg += f'{GITHUBPATH}'
     # Save message to textfile
     with open(path, 'w') as file:
         file.write(msg)
@@ -724,31 +724,7 @@ def _txt_tabular(columns, titles=None, separator=''):
 
     titles : None or list, default: None
         Titles for the table. If desired, `titles` should be of the same
-        length as all of the sublists in `columns`. Titles are separated
-        from other lines in the following way:
-
-        .. code::
-
-           >>> from nmrespy.write import _txt_tabular
-           >>> columns = [['A1', 'B1'], ['A2', 'B2'], ['A3', 'B3']]
-           >>> titles = ['title 1', 'title 2', 'title 3']
-           >>> print(_txt_tabular(columns, titles=titles))
-           title 1  title 2  title 3
-           ────────┼────────┼────────
-           A1       A2       A3
-           B1       B2       B3
-
-        You may want to set `separator` to something like ``'│'``
-        in order for a nicer layout in this case:
-
-        .. code:: python3
-
-           >>> # Same as before...
-           >>> print(_txt_tabular(columns, titles=titles, separator='│'))
-           title 1 │title 2 │title 3
-           ────────┼────────┼────────
-           A1      │A2      │A3
-           B1      │B2      │B3
+        length as all of the sublists in `columns`.
 
     separator : str, default: ''
         Column separator. By default, an empty string is used. (See first
@@ -759,6 +735,33 @@ def _txt_tabular(columns, titles=None, separator=''):
     table : str
         A string with the contents of `titles` (opt.) and `columns`
         tabularised.
+
+    Examples
+    --------
+    A simple example with `titles` specified and the default `separator`:
+
+    .. code:: python3
+
+       >>> from nmrespy.write import _txt_tabular
+       >>> columns = [['A1', 'B1'], ['A2', 'B2'], ['A3', 'B3']]
+       >>> titles = ['title 1', 'title 2', 'title 3']
+       >>> print(_txt_tabular(columns, titles=titles))
+       title 1  title 2  title 3
+       ────────┼────────┼────────
+       A1       A2       A3
+       B1       B2       B3
+
+    You may want to set `separator` to something like ``'│'``
+    in order for a nicer layout when you have titles:
+
+    .. code:: python3
+
+       >>> # Same as before...
+       >>> print(_txt_tabular(columns, titles=titles, separator='│'))
+       title 1 │title 2 │title 3
+       ────────┼────────┼────────
+       A1      │A2      │A3
+       B1      │B2      │B3
     """
     # If titles are given, append to the top of each column
     if titles:
@@ -794,7 +797,6 @@ def _txt_tabular(columns, titles=None, separator=''):
         # from the other contents
         if titles and i == 0:
             for k, pad in enumerate(pads):
-                # Create new line for title/content separator
                 p = pad + 1
                 # Add a bar that looks like this: '────────┼'
                 table += f"{p*'─'}┼"
@@ -805,7 +807,30 @@ def _txt_tabular(columns, titles=None, separator=''):
     return table
 
 def _latex_tabular(rows):
-    msg = ''
+    """Creates a string of text that denotes a tabular entity in LaTeX
+
+    Parameters
+    ----------
+    rows : list
+        Nested list, with each sublist containing elements of a single row
+        of the table.
+
+    Returns
+    -------
+    table : str
+        LaTeX-formated table
+
+    Example
+    -------
+    .. code:: python3
+
+       >>> from nmrespy.write import _latex_tabular
+       >>> rows = [['A1', 'A2', 'A3'], ['B1', 'B2', 'B3']]
+       >>> print(_latex_tabular(rows))
+       A1 & A2 & A3 \\\\
+       B1 & B2 & B3 \\\\
+    """
+    table = ''
     for row in rows:
-        msg += ' & '.join([e for e in row]) + ' \\\\\n'
-    return msg
+        table += ' & '.join([e for e in row]) + ' \\\\\n'
+    return table
