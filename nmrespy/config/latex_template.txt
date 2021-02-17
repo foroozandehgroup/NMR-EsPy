@@ -1,0 +1,81 @@
+\documentclass[8pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{cmbright}
+
+\usepackage{amsmath}
+\usepackage{nicefrac}
+\usepackage{siunitx}
+
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+
+\usepackage{xcolor}
+\definecolor{urlblue}{HTML}{0000ee}
+\usepackage{hyperref}
+\hypersetup{%
+colorlinks = true,%
+urlcolor   = urlblue,%
+}
+
+\usepackage{tcolorbox}
+
+\setlength\parindent{0pt}
+\renewcommand{\ss}{\textsuperscript}
+
+\pagenumbering{gobble}
+
+\begin{document}
+\begin{figure}[!ht]
+% MF group logo
+\begin{minipage}[b][2.5cm][c]{.72\textwidth}
+\href{http://foroozandeh.chem.ox.ac.uk/home}%
+{\includegraphics[scale=1.8]{<MFLOGOPATH>}}
+\end{minipage}
+% NMR-EsPy logo
+\begin{minipage}[b][2.5cm][c]{.27\textwidth}
+\href{https://github.com/foroozandehgroup/NMR-EsPy}%
+{\includegraphics[scale=0.1]{<NMRESPYLOGOPATH>}}
+\end{minipage}
+\end{figure}
+
+\texttt{<TIMESTAMP>}
+
+% user provided description
+\subsection*{Description}
+<DESCRIPTION>
+
+% experiment parameters
+\subsection*{Experiment Information}
+\hspace{-6pt}
+\begin{tabular}{ll}
+<INFOTABLE>
+\end{tabular}
+
+\subsection*{Result}
+\begin{longtable}[c]{<COLUMNS>}
+\toprule
+<PARAMTITLES>
+\midrule
+<PARAMTABLE>
+\bottomrule
+\end{longtable}
+
+% figure of result
+\begin{center}
+\includegraphics{<FIGURE_PATH>}
+\end{center}
+
+% blurb
+\small
+\begin{tcolorbox}
+Estimation performed using \textsc{NMR-EsPy}.\\
+Author: Simon Hulse\\
+For more information:\\
+{\raisebox{-2pt}{\includegraphics[scale=0.09]{<GITHUBLOGOPATH>}}}\hspace{1em}\href{<GITHUBPATH>}{\texttt{<GITHUBPATH>}}\\
+{\raisebox{-2pt}{\includegraphics[scale=0.012]{<EMAILICONPATH>}}}\hspace{1em}\href{<MAILTOPATH>}{\texttt{simon.hulse@chem.ox.ac.uk}}\\
+If used in a publication, please cite:\\
+\textit{No references yet...}
+\end{tcolorbox}
+
+\end{document}

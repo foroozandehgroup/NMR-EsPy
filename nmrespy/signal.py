@@ -9,6 +9,7 @@ import copy
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 import numpy.random as nrandom
+import scipy.integrate as integrate
 
 import tkinter as tk
 
@@ -347,19 +348,19 @@ def manual_phase_spectrum(spectrum, max_p1=None):
     spectrum : numpy.ndarray
         Spectral data of interest.
 
-    max_p1 : [float], [float, float] or None, default: None
+    max_p1 : float or None, default: None
         Specifies the range of first-order phases permitted. For each
         dimension, the user will be allowed to choose a value of `p1`
         within [`-max_p1`, `max_p1`]. By default, `max_p1` will be
-        ``dim * [10 * numpy.pi]``, where `dim` is the spectrum dimension.
+        ``10 * numpy.pi``.
 
     Returns
     -------
-    p0 : [float], [float, float] or None
+    p0 : [float] or None
         Zero-order phase correction in each dimension, in radians. If the
         user chooses to cancel rather than save, this is set to `None`.
 
-    p1 : [float], [float, float] or None
+    p1 : [float] or None
         First-order phase correction in each dimension, in radians. If the
         user chooses to cancel rather than save, this is set to `None`.
     """
@@ -374,6 +375,8 @@ def manual_phase_spectrum(spectrum, max_p1=None):
 
     init_spectrum = copy.deepcopy(spectrum)
 
+    if max_p1 is None:
+        max_p1 = 10 * np.pi
     app = PhaseApp(init_spectrum, max_p1)
     app.mainloop()
 
@@ -638,3 +641,58 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     print(para)
 
     return make_fid(para, n, sw, offset, snr)
+
+def oscillator_integral(parameters, n, sw, offset=None):
+    """Determines the (absolute) integral of the Fourier transform of
+    an oscillator.
+
+    Parameters
+    ----------
+    parameters : numpy.ndarray
+        Oscillator parameters of the following form:
+
+        * **1-dimensional data:**
+
+          .. code:: python
+
+             parameters = numpy.array([a, φ, f, η])
+
+        * **2-dimensional data:**
+
+          .. code:: python
+
+             parameters = numpy.array([a, φ, f1, f2, η1, η2])
+
+    n : [int], [int, int]
+        Number of points to construct signal from in each dimension.
+
+    sw : [float], [float, float]
+        Sweep width in each dimension, in Hz.
+
+    offset : [float], [float, float], or None, default: None
+        Transmitter offset frequency in each dimension, in Hz. If set to
+        `None`, the offset frequency will be set to 0Hz in each dimension.
+
+    Returns
+    -------
+    integral :
+
+    Notes
+    -----
+    The integration is performed using the composite Simpsons rule, provided
+    by `scipy.integrate.simpson <https://docs.scipy.org/doc/scipy/reference/\
+    generated/scipy.integrate.simpson.html#scipy.integrate.simpson>`_
+
+    Spacing of points along the frequency axes is set a `1` (i.e. `dx = 1`).
+    """
+
+    fid, _ = make_fid(np.expand_dims(parameters, axis=0), n, sw, offset)
+    spectrum = np.absolute(ft(fid))
+
+    for axis in range(spectrum.ndim):
+        try:
+            integral = integrate.simpson(integral, axis=axis)
+        except NameError:
+            integral = integrate.simpson(spectrum, axis=axis)
+
+    return integral

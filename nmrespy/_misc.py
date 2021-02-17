@@ -35,6 +35,7 @@ class ArgumentChecker:
               + `'bool'`
               + `'int'`
               + `'float'`
+              + `'str'`
               + `'positive_int'`
               + `'positive_int_or_zero'`
               + `'positive_float'`
@@ -73,6 +74,10 @@ class ArgumentChecker:
                 test = isinstance(obj, int)
             if typ == 'float':
                 test = isinstance(obj, float)
+            if typ == 'str':
+                test = isinstance(obj, str)
+            if typ == 'list':
+                test = isinstance(obj, list)
             if typ == 'positive_int':
                 test = isinstance(obj, int) and obj > 0
             if typ == 'positive_int_or_zero':
@@ -89,6 +94,10 @@ class ArgumentChecker:
                 test = isinstance(obj, float) and obj > 1.0
             if typ == 'negative_amplidue':
                 test = obj in ['remove', 'flip_phase']
+            if typ == 'file_fmt':
+                test = obj in ['txt', 'pdf', 'csv']
+            if typ == 'pos_neg_tuple':
+                test = self.check_pos_neg_tuple(obj)
 
             # Error message to be shown if invalid arguments are found
             if test is False:
@@ -195,6 +204,15 @@ class ArgumentChecker:
                 return False
 
         return True
+
+    @staticmethod
+    def check_pos_neg_tuple(obj):
+        """Check for object of the form ``(-x, y)`` where `x` and `y` are
+        positive ints.
+        """
+        return (isinstance(obj, tuple) and len(obj) == 2
+         and isinstance(obj[0], int) and obj[0] < 0
+         and isinstance(obj[1], int) and obj[1] > 1)
 
 
 
@@ -306,15 +324,12 @@ class FrequencyConverter:
 
     def _check_valid_conversion(self, conversion):
         """check that conversion is a valid value"""
-        valid = False
         units = ['idx', 'ppm', 'hz']
         for pair in itertools.permutations(units, r=2):
             pair = iter(pair)
             if f'{next(pair)}->{next(pair)}' == conversion:
-                valid = True
-                break
-
-        return valid
+                return True
+        return False
 
 
     def _convert_value(self, value, dim, conversion):
@@ -364,6 +379,8 @@ class PathManager:
         self.fname = Path(fname)
         self.dir = Path(dir)
         self.path = self.dir / self.fname
+        print(self.dir)
+        print(self.fname)
 
     def check_file(self, force_overwrite=False):
         """Performs checks on the path file dir/fname

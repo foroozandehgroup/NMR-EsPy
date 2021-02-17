@@ -151,7 +151,8 @@ class MatrixPencil(FrequencyConverter):
                 raise ValueError(
                     f'{cols.R}Insufficient information to determine'
                     f' frequencies in ppm. Did you perhaps forget to specify'
-                    f' sfo?{cols.END}')
+                    f' sfo?{cols.END}'
+                )
 
             result = copy.deepcopy(self.result)
 

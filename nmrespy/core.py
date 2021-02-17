@@ -29,7 +29,7 @@ from nmrespy.filter import FrequencyFilter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp.nlp import NonlinearProgramming
 import nmrespy.load as load
-from . import signal, _plot, _write
+from . import signal, _plot
 
 # Wrapper for logging method calls
 # A file is generated and placed in
@@ -319,7 +319,6 @@ class Estimator:
 
     def __str__(self):
         """A formatted list of class attributes"""
-        print(locals())
         mod = __class__.__module__
         qual = __class__.__qualname__
         msg = f"{cols.MA}<{mod}.{qual} at {hex(id(self))}>{cols.END}\n"
@@ -674,55 +673,55 @@ class Estimator:
 # JEOL files etc
 # =============================================================
 
-    def make_fid(self, result_name=None, oscillators=None, n=None):
+    def make_fid(self, n=None, oscillators=None):
         """Constructs a synthetic FID using a parameter estimate and
         experiment parameters.
 
         Parameters
         ----------
-        result_name : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If ``None``, the parameter estimate
-            to use will be determined in the following order of priority:
-
-            1. ``self.theta`` will be used if it is not ``None``.
-            2. ``self.theta0`` will be used if it is not ``None``.
-            3. Otherwise, an error will be raised.
+        n : [int], or [int, int], or None default: None
+            The number of points to construct the FID with in each dimesnion.
+            If `None`, :py:meth:`get_n` will be used, meaning the signal will
+            have the same number of points as the original data.
 
         oscillators : None or list, default: None
             Which oscillators to include in result. If ``None``, all
             oscillators will be included. If a list of ints, the subset of
-            oscillators corresponding to these indices will be used.
-
-        n : None, (int,), or (int, int) default: None
-            Determines the number of points to construct the FID with. If
-            ``None``, the value of :py:meth:`get_n` will be used.
+            oscillators corresponding to these indices will be used. Note
+            that the valid list elements are the ints from `0` to
+            ``self.nlp_info.result.shape[0] - 1`` (included).
 
         Returns
         -------
         fid : numpy.ndarray
             The generated FID.
+
+        tp : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
+            The time-points at which the signal is sampled, in each dimension.
+
+        See Also
+        --------
+        :py:func:`nmrespy.signal.make_fid`
         """
 
-        result, _ = self._check_result(result_name)
+        result = self.get_nlp_info(kill=False).get_result()
+        if result is None:
+            raise ValueError(
+                f'{cols.R}No parameter estimate found! Perhaps you need to'
+                f' run nonlinear_programming?{cols.END}'
+            )
 
         if oscillators:
             # slice desired oscillators
-            result = result[[oscillators],:]
+            result = result[[oscillators]]
 
-        dim = self.get_dim()
-        n = self._check_int_float(n)
-
-        if not n:
+        if n is None:
             n = self.get_n()
+        ArgumentChecker([(n, 'n', 'int_list')], dim=self.get_dim())
 
-        elif isinstance(n, tuple) and len(n) == dim:
-            pass
 
-        else:
-            raise TypeError(f'{R}n should be None or a tuple of ints{END}')
-
-        return _misc.mkfid(
-            result, n, self.get_sw(), self.get_offset(), dim
+        return signal.make_fid(
+            result, n, self.get_sw(), offset=self.get_offset(),
         )
 
 
@@ -947,7 +946,7 @@ class Estimator:
 
         Returns
         -------
-        mpm_info : nmrespy.filter.MatrixPencil
+        mpm_info : :py:class:`nmrespy.filter.MatrixPencil`
 
         Notes
         -----
@@ -1046,7 +1045,25 @@ class Estimator:
         mpm_info = self.get_mpm_info()
         x0 = mpm_info.result
 
-        self.nlp_info = NonlinearProgramming(data, x0, sw, kwargs)
+        self.nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
+
+    def get_nlp_info(self, kill=True):
+        """Returns information relating to nonlinear programming.
+
+        Parameters
+        ----------
+        kill : bool, default: True
+            If `self.nlp_info` is `None`, and `kill` is `True`, an error will
+            be raised. If `kill` is False, `None` will be returned.
+
+        Returns
+        -------
+        nlp_info : :py:class:`nmrespy.filter.NonlinearProgramming`
+        """
+
+        return self._check_if_none(
+            'nlp_info', kill, method='nonlinear_programming'
+        )
 
 
     def pickle_save(

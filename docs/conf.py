@@ -13,13 +13,15 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
+import nmrespy
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'NMR-EsPy'
-copyright = '2020, Simon Hulse'
+copyright = '2021, Simon Hulse'
 author = 'Simon Hulse'
+version = nmrespy.__version__
 
 
 # -- General configuration ---------------------------------------------------

@@ -11,6 +11,7 @@ Reference
    mpm
    nlp/index
    signal
+   write
 
 .. toctree::
    :maxdepth: 2

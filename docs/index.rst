@@ -12,7 +12,7 @@ Welcome to NMR-EsPy's documentation!
    :scale: 10 %
    :align: center
 
-:Release: |version|
+:Version: |version|
 :Date: |today|
 
 NMR-EsPy (**N**\ uclear **M**\ agnetic **R**\ esonance **Es**\ timation in
