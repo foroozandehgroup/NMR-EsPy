@@ -466,16 +466,20 @@ def _write_csv(
 
     with open(path, 'w') as fh:
         writer = csv.writer(fh)
+        # Timestamp
         writer.writerow([_timestamp().replace('\n', ' ')])
         writer.writerow([])
+        # Description
         if description is not None:
             writer.writerow(['Description:', description])
             writer.writerow([])
+        # Experiment info
         if info is not None:
             writer.writerow(['Experiment Info:'])
             for row in zip(info_headings, info):
                 writer.writerow(row)
             writer.writerow([])
+        # Parameter table
         writer.writerow(['Result:'])
         writer.writerow(param_titles)
         for row in param_table:
@@ -520,14 +524,17 @@ def _map_to_latex_titles(titles):
         elif title == 'Integ.':
             latex_titles.append('$\\int$')
         elif title == 'Norm. Integ.':
-            latex_titles.append('$\\nicefrac{\\int}{\\left\\lVert\\int\\right\\rVert}$')
+            latex_titles.append(
+                '$\\nicefrac{\\int}{\\left\\lVert\\int\\right\\rVert}$'
+            )
 
     return latex_titles
 
 
 def _construct_paramtable(parameters, integrals, sfo, sig_figs, sci_lims, fmt):
     """
-    Creates a nested list of values to input to results file table.
+    Creates a nested list of values to input to parameter table, with
+    desired formatting.
 
     Parameters
     -----------
@@ -544,12 +551,15 @@ def _construct_paramtable(parameters, integrals, sfo, sig_figs, sci_lims, fmt):
         Desired nuber of significant figures.
 
     sci_lims : (int, int) or None
-        Bounds defining threshold for using scientific notation.
+        Bounds defining thresholds for using scientific notation.
 
     Returns
     --------
+    titles : list
+        Titles of parameter table
+
     table : list
-        Values for result file table.
+        Values of parameter table.
     """
 
     M = parameters.shape[0]
@@ -615,12 +625,23 @@ def _construct_paramtable(parameters, integrals, sfo, sig_figs, sci_lims, fmt):
 
 
 def _timestamp():
-    """Constructs a string with time/date information."""
+    """Constructs a string with time/date information.
+
+    Returns
+    -------
+    timestamp : str
+        Of the form:
+
+        .. code::
+
+           hh:mm:ss
+           dd-mm-yy
+    """
     now = datetime.datetime.now()
-    d = now.strftime('%d') # day
-    m = now.strftime('%m') # month
-    y = now.strftime('%Y') # year
-    t = now.strftime('%X') # time (hh:mm:ss)
+    d = now.strftime('%d') # Day
+    m = now.strftime('%m') # Month
+    y = now.strftime('%Y') # Year
+    t = now.strftime('%X') # Time (hh:mm:ss)
     return f'{t}\n{d}-{m}-{y}'
 
 
@@ -636,8 +657,7 @@ def _strval(value, sig_figs, sci_lims, fmt):
         Number of significant figures.
 
     sci_lims - (int, int) or None
-        Specifies range of values to be formatted normmaly, and which
-        to be formatted using scientific notation.
+        Bounds defining thresholds for using scientific notation.
 
     Returns
     -------
@@ -655,7 +675,18 @@ def _strval(value, sig_figs, sci_lims, fmt):
     return _scientific_notation(value, sci_lims, fmt)
 
 def _scientific_notation(value, sci_lims, fmt):
-    """fmt should be 'txt' or 'pdf'
+    """Converts value to scientific notation
+
+    Parameters
+    ----------
+    value : float
+        Value to process
+
+    sci_lims : (int, int)
+        See description in :py:func:`write_result`
+
+    fmt : 'txt', 'pdf', or 'csv'
+        File format.
     """
     # If user speicifed to never user scientific notation, or the value
     # does not have a sufficiently high exponent, or the file type is a csv,
@@ -681,56 +712,97 @@ def _scientific_notation(value, sci_lims, fmt):
         return f'\\num{{{value}}}'
 
 
-def _txt_tabular(columns, titles=None, separator=' '):
+def _txt_tabular(columns, titles=None, separator=''):
     """Tabularises a list of lists, with the option of including titles.
+    Used in textfile outputs.
 
     Parameters
     ----------
     columns : list
-        A list of lists, representing the columns of the table. Each list
-        must be of the same length.
+        A list of lists, with each suiblist representing the columns of the
+        table. Each list must be of the same length.
 
     titles : None or list, default: None
-        Titles for the table. If desired, the ``titles`` should be of the same
-        length as all of the lists in ``columns``.
+        Titles for the table. If desired, `titles` should be of the same
+        length as all of the sublists in `columns`. Titles are separated
+        from other lines in the following way:
 
-    separator : str, default: ' '
-        Column separator
+        .. code::
+
+           >>> from nmrespy.write import _txt_tabular
+           >>> columns = [['A1', 'B1'], ['A2', 'B2'], ['A3', 'B3']]
+           >>> titles = ['title 1', 'title 2', 'title 3']
+           >>> print(_txt_tabular(columns, titles=titles))
+           title 1  title 2  title 3
+           ────────┼────────┼────────
+           A1       A2       A3
+           B1       B2       B3
+
+        You may want to set `separator` to something like ``'│'``
+        in order for a nicer layout in this case:
+
+        .. code:: python3
+
+           >>> # Same as before...
+           >>> print(_txt_tabular(columns, titles=titles, separator='│'))
+           title 1 │title 2 │title 3
+           ────────┼────────┼────────
+           A1      │A2      │A3
+           B1      │B2      │B3
+
+    separator : str, default: ''
+        Column separator. By default, an empty string is used. (See first
+        example above).
 
     Returns
     -------
-    msg : str
-        A string with the contents of ``columns`` tabularised.
+    table : str
+        A string with the contents of `titles` (opt.) and `columns`
+        tabularised.
     """
-
+    # If titles are given, append to the top of each column
     if titles:
         for i,(title, column) in enumerate(zip(titles, columns)):
             columns[i] = [title] + column
-
+    # --- Determine width of each column ---------------------------------
     pads = []
-    print(columns)
     for column in columns:
-        print(column)
+        # For each column find the longest string, and set its length
+        # as the width
         pads.append(max(len(str(element)) for element in column))
 
-    msg = ''
+    # --- Construct table ------------------------------------------------
+    table = ''
+    # Iterate of rows (transpose array)
     for i, row in enumerate(zip(*columns)):
+        # Iterate over each adjacent pair of elements in row
         for j, (pad, e1, e2) in enumerate(zip(pads, row, row[1:])):
-            p = pad - len(e1)
+            # Determine amount of padding between pair
+            p = pad - len(e1) + 1
+            # First element -> don't want any padding before it.
+            # All other elements are padded from the left.
             if j == 0:
-                msg += f"{e1}{p*' '}{separator}{e2}"
+                # Case for first pairing in row
+                table += f"{e1}{p*' '}{separator}{e2}"
             else:
-                msg += f"{p*' '}{separator}{e2}"
-        if titles and i == 0:
-            for i, pad in enumerate(pads):
-                if i == 0:
-                    msg += f"\n{(pad+1)*'─'}┼"
-                else:
-                    msg += f"{(pad+1)*'─'}┼"
-            msg = msg[:-1]
-        msg += '\n'
+                table += f"{p*' '}{separator}{e2}"
+        # Add newline character at end of row
+        table = f'{table}\n'
 
-    return msg
+        # At end of the first row, check if titles were given
+        # If so, add a horizontal line underneath to separate the titles
+        # from the other contents
+        if titles and i == 0:
+            for k, pad in enumerate(pads):
+                # Create new line for title/content separator
+                p = pad + 1
+                # Add a bar that looks like this: '────────┼'
+                table += f"{p*'─'}┼"
+            # Once the bar has been completed, remove the trailing '┼'
+            # and add a newline
+            table = f'{table[:-1]}\n'
+
+    return table
 
 def _latex_tabular(rows):
     msg = ''
