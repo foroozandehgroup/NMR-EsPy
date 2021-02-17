@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 from shutil import copyfile
 import subprocess
+import tempfile
 
 import numpy as np
 import scipy.linalg as slinalg
@@ -173,27 +174,30 @@ def write_result(
         components.append((integrals, 'integrals', 'list'))
 
     ArgumentChecker(components, dim)
-
+    # Should be same number of integrals as number of oscillators
     if isinstance(integrals, list) and len(integrals) != parameters.shape[0]:
         raise ValueError(
             f'{cols.R}integrals should have the same number of elements as'
             f' parameters.shape[0]{cols.END}'
         )
+    # info and info_headings should be the same length if lists
     if isinstance(info, list) and len(info) != len(info_headings):
         raise ValueError(
             f'{cols.R}info and info_headings should be the same'
             f' length{cols.END}'
         )
-
+    # Get full path
     path = Path(path).resolve()
-    path_result = PathManager(path.name, path.parent).check_file(force_overwrite)
+    # Check path is valid (check directory exists, ask user if they are happy
+    # overwriting if file already exists).
+    pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
     # Valid path, we are good to proceed
-    if path_result == 0:
+    if pathres == 0:
         pass
     # Overwrite denied by the user. Exit the program
-    elif path_result == 1:
+    elif pathres == 1:
         exit()
-    # path_result = 2: Directory specified doesn't exist
+    # pathres == 2: Directory specified doesn't exist
     else:
         raise ValueError(
             f'{cols.R}The directory implied by path does not exist{cols.END}'
@@ -219,7 +223,6 @@ def write_result(
         _write_pdf(
             path, description, info_headings, info, param_titles, param_table,
         )
-    # TODO
     elif fmt == 'csv':
         _write_csv(
             path, description, info_headings, info, param_titles, param_table,
@@ -240,8 +243,7 @@ def _write_txt(
         A descriptive statement.
 
     info_headings : list or None, default: None
-        Headings for experiment information. Could include items like
-        `'Sweep width (Hz)'`, `Transmitter offset (Hz)`, etc.
+        Headings for experiment information.
 
     info : list or None, default: None
         Information that corresponds to each heading in `info_headings`.
@@ -258,20 +260,24 @@ def _write_txt(
     msg = f'{_timestamp()}\n'
     # User-provided description
     if description is not None:
-        msg += f'\nDescription:\n{description}\n\nExperiment Information:\n'
-    else:
-        msg += '\nExperiment Information:\n'
+        msg += f'\nDescription:\n{description}\n'
 
     # Table of experiment information
     if info is not None:
+        msg += '\nExperiment Information:\n'
         msg += _txt_tabular([info_headings, info]) + '\n'
+
+    # --- Add parameter table --------------------------------------------
     # Table of oscillator parameters
+    # N.B. list(map(list, zip(*param_table))) effectively transposes the
+    # list, which is given row-by-row. _txt_tabular takes a nested list
+    # of columns as arguments.
     msg += _txt_tabular(
         list(map(list, zip(*param_table))), titles=param_titles,
         separator=' │',
     )
 
-    # Blurb at bottom of file
+    # --- Write footer ---------------------------------------------------
     msg += \
     """\nEstimation performed using NMR-EsPy
 Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk
@@ -280,7 +286,7 @@ If used in any publications, please cite:
 For more information, visit the GitHub repo:
 """
     msg += f'\n{GITHUBPATH}'
-    # save message to textfile
+    # Save message to textfile
     with open(path, 'w') as file:
         file.write(msg)
 
@@ -290,18 +296,40 @@ For more information, visit the GitHub repo:
 def _write_pdf(
     path, description, info_headings, info, param_titles, param_table,
 ):
-    """
-    Writes result of NMR-EsPy to a pdf.
-    """
+    """Writes parameter estimate to a PDF using ``pdflatex``.
 
+    Parameters
+    -----------
+    path : pathlib.Path
+        File path
+
+    description : str or None, default: None
+        A descriptive statement.
+
+    info_headings : list or None, default: None
+        Headings for experiment information.
+
+    info : list or None, default: None
+        Information that corresponds to each heading in `info_headings`.
+
+    param_titles : list
+        Titles for parameter array table.
+
+    param_table : list
+        Array of contents to append to the result table.
+    """
+    # Open text of template .tex file which will be amended
     with open(Path(NMRESPYPATH) / 'config/latex_template.txt', 'r') as fh:
         txt = fh.read()
-
+    # Add logos to header (MF Group and NMR-EsPy)
     txt = txt.replace('<MFLOGOPATH>', MFLOGOPATH)
     txt = txt.replace('<NMRESPYLOGOPATH>', NMRESPYLOGOPATH)
+    # Include a timestamp
     txt = txt.replace('<TIMESTAMP>', _timestamp().replace('\n', '\\\\'))
 
+    # --- Description ----------------------------------------------------
     if description is None:
+        # No description given, remove relavent section of .tex file
         txt = txt.replace(
             '% user provided description\n\\subsection*{Description}\n'
             '<DESCRIPTION>',
@@ -311,8 +339,9 @@ def _write_pdf(
     else:
         txt = txt.replace('<DESCRIPTION>', description.replace('_', '\\_'))
 
-    print(repr(txt))
+    # --- Experiment Info ------------------------------------------------
     if info is None:
+        # No info given, remove relavent section of .tex file
         txt = txt.replace(
             '\n% experiment parameters\n\\subsection*{Experiment Information}\n'
             '\\hspace{-6pt}\n\\begin{tabular}{ll}\n<INFOTABLE>\n'
@@ -321,11 +350,15 @@ def _write_pdf(
         )
 
     else:
+        # Construct 2-column tabular of experiment info headings and values
         rows = list(list(row) for row in zip(info_headings, info))
         info_table = _latex_tabular(rows)
         txt = txt.replace('<INFOTABLE>', info_table)
 
+    # --- Parameter Table ------------------------------------------------
+    # Determine number of columns required
     txt = txt.replace('<COLUMNS>', len(param_titles) * 'c')
+    # Construct parameter title and table body
     txt = txt.replace('<PARAMTITLES>', _latex_tabular([param_titles]))
     txt = txt.replace('<PARAMTABLE>', _latex_tabular(param_table))
 
@@ -336,42 +369,59 @@ def _write_pdf(
         '',
     )
 
+    # --- Footer textbox -------------------------------------------------
+    # Add links and paths to images
     txt = txt.replace('<GITHUBPATH>', GITHUBPATH)
     txt = txt.replace('<GITHUBLOGOPATH>', GITHUBLOGOPATH)
     txt = txt.replace('<MAILTOPATH>', MAILTOPATH)
     txt = txt.replace('<EMAILICONPATH>', EMAILICONPATH)
 
-    # Convert from name.pdf -> name.tex
-    tex_cwd_path = Path().cwd() / path.with_suffix('.tex').name
-    pdf_cwd_path = Path().cwd() / path.name
+    # --- Generate PDF using pdflatex ------------------------------------
+    # Create required file paths:
+    # .tex and .pdf paths with temporary directory (this is where the files
+    # will be initially created)
+    # .tex and .pdf files with desired directory (files will be moved from
+    # temporary directory to desired directory once pdflatex is run).
+    tex_tmp_path = Path(tempfile.gettempdir()) / path.with_suffix('.tex').name
+    pdf_tmp_path = Path(tempfile.gettempdir()) / path.name
     tex_final_path = path.with_suffix('.tex')
     pdf_final_path = path
 
-    with open(tex_cwd_path, 'w') as fh:
+    # Write contents to cwd tex file
+    with open(tex_tmp_path, 'w') as fh:
         fh.write(txt)
 
     try:
         # -halt-on-error flag is vital. If any error arises in running
         # pdflatex, the program would get stuck
         run_latex = subprocess.run(
-            ['pdflatex', '-halt-on-error', tex_cwd_path],
+            [
+                'pdflatex',
+                '-halt-on-error',
+                f'-output-directory={tex_tmp_path.parent}',
+                tex_tmp_path
+            ],
             stdout=subprocess.DEVNULL,
             check=True,
         )
 
-        # rename pdf and tex files
-        os.rename(tex_cwd_path, tex_final_path)
-        os.rename(pdf_cwd_path, pdf_final_path)
+        # Move pdf and tex files from temp directory to desired directory
+        os.rename(tex_tmp_path, tex_final_path)
+        os.rename(pdf_tmp_path, pdf_final_path)
 
     except subprocess.CalledProcessError:
-        # pdflatex came across an error (or pdflatex doesn't exist)
-        os.rename(tex_cwd_path, tex_final_path)
+        # pdflatex came across an error
+        os.rename(tex_tmp_path, tex_final_path)
+        raise LaTeXFailedError(tex_final_path)
+
+    except FileNotFoundError:
+        # Most probably, pdflatex does not exist
         raise LaTeXFailedError(tex_final_path)
 
     # Remove other LaTeX files
-    os.remove(tex_final_path.with_suffix('.out'))
-    os.remove(tex_final_path.with_suffix('.aux'))
-    os.remove(tex_final_path.with_suffix('.log'))
+    os.remove(tex_tmp_path.with_suffix('.out'))
+    os.remove(tex_tmp_path.with_suffix('.aux'))
+    os.remove(tex_tmp_path.with_suffix('.log'))
 
     # # TODO: remove figure file if it exists
     # try:
@@ -379,8 +429,8 @@ def _write_pdf(
     # except UnboundLocalError:
     #     pass
 
-    # print success message
-    msg = print(
+    # Print success message
+    print(
         f'{cols.G}Result successfuly output to:\n' \
         f'{pdf_final_path}\n'
         f'If you wish to customise the document, the TeX file can'
@@ -388,7 +438,31 @@ def _write_pdf(
         f'{tex_final_path}{cols.END}'
     )
 
-def _write_csv(path, description, info_headings, info, param_titles, param_table):
+def _write_csv(
+    path, description, info_headings, info, param_titles, param_table,
+):
+    """Writes parameter estimate to a CSV.
+
+    Parameters
+    -----------
+    path : pathlib.Path
+        File path
+
+    description : str or None, default: None
+        A descriptive statement.
+
+    info_headings : list or None, default: None
+        Headings for experiment information.
+
+    info : list or None, default: None
+        Information that corresponds to each heading in `info_headings`.
+
+    param_titles : list
+        Titles for parameter array table.
+
+    param_table : list
+        Array of contents to append to the result table.
+    """
 
     with open(path, 'w') as fh:
         writer = csv.writer(fh)
