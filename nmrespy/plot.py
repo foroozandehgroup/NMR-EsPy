@@ -1,9 +1,8 @@
-#!/usr/bin/python3
-# nlp.py
+# plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-# plotting result of estimation routine
+"""Support for plotting estimation results"""
 
 from itertools import cycle
 import os

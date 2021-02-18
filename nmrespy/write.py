@@ -17,7 +17,7 @@ import numpy as np
 import scipy.linalg as slinalg
 
 from nmrespy import *
-from nmrespy._misc import ArgumentChecker, PathManager
+from nmrespy._misc import ArgumentChecker, PathManager, significant_figures
 from ._errors import *
 
 
@@ -670,10 +670,7 @@ def _strval(value, sig_figs, sci_lims, fmt):
 
     # Set to correct number of significant figures
     if isinstance(sig_figs, int):
-        value = round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
-    # If value of form 123456.0, convert to 123456
-    if value.is_integer():
-        value = int(value)
+        value = significant_figures(value, sig_figs)
     # Determine whether to express the value in scientific notation or not
     return _scientific_notation(value, sci_lims, fmt)
 
@@ -835,5 +832,6 @@ def _latex_tabular(rows):
     """
     table = ''
     for row in rows:
+        print(row)
         table += ' & '.join([e for e in row]) + ' \\\\\n'
     return table

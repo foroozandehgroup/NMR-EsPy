@@ -6,6 +6,7 @@ import copy
 import functools
 import itertools
 from pathlib import Path
+import re
 
 import numpy as np
 
@@ -475,3 +476,24 @@ def start_end_wrapper(start_text, end_text):
         return inner
 
     return decorator
+
+
+def latex_nucleus(nucleus):
+    """Creates a isotope symbol string for processing by latex
+
+    Given a string `'<mass><sym>'`, where `'<mass>'` is the nuceleus'
+    mass number and `'<sym>'` is its chemical symbol, create the string
+    ``\textsuperscript{<mass>}<sym>``. For example, given `'207Pb'`, the
+    return value would be ``\textsuperscript{207}Pb``
+    """
+    comps = filter(None, re.split(r'(\d+)', nucleus))
+    return f'\\textsuperscript{{{next(comps)}}}{next(comps)}'
+
+
+def significant_figures(value, s):
+    """Rounds `value` to `s` significant figures."""
+    value = round(value, s - int(np.floor(np.log10(abs(value)))) - 1)
+    # If value of form 123456.0, convert to 123456
+    if float(value).is_integer():
+        value = int(value)
+    return value

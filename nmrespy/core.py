@@ -23,7 +23,8 @@ import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
 import nmrespy._errors as errors
-from nmrespy._misc import ArgumentChecker, FrequencyConverter
+from nmrespy._misc import ArgumentChecker, FrequencyConverter, latex_nucleus, \
+    significant_figures
 from nmrespy.filter import FrequencyFilter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp.nlp import NonlinearProgramming
@@ -1201,13 +1202,6 @@ class Estimator:
             for osc in result
         ]
 
-        # Significant figures
-        def sf(value, s):
-            value = round(value, s - int(np.floor(np.log10(abs(value)))) - 1)
-            if value.is_integer():
-                value = int(value)
-            return str(value)
-
         # --- Package experiment information ----------------------------
         info_headings = []
         info = []
@@ -1215,27 +1209,27 @@ class Estimator:
         if self.get_dim() == 1:
             # Sweep width
             info_headings.append('Sweep Width (Hz)')
-            info.append(sf(sw_h[0], sigfig))
+            info.append(str(significant_figures(sw_h[0], sigfig)))
             if sw_p is not None:
                 info_headings.append('Sweep Width (ppm)')
-                info.append(sf(sw_p[0], sigfig))
+                info.append(str(significant_figures(sw_p[0], sigfig)))
 
             # Offset
             info_headings.append('Transmitter Offset (Hz)')
-            info.append(sf(off_h[0], sigfig))
+            info.append(str(significant_figures(off_h[0], sigfig)))
             if off_p is not None:
                 info_headings.append('Transmitter Offset (ppm)')
-                info.append(sf(off_p[0], sigfig))
+                info.append(str(significant_figures(off_p[0], sigfig)))
 
             # Transmitter frequency
             if sfo is not None:
                 info_headings.append('Transmitter Frequency (MHz)')
-                info.append(sf(sfo[0], sigfig))
+                info.append(str(significant_figures(sfo[0], sigfig)))
 
             # Basic frequency
             if bf is not None:
                 info_headings.append('Basic Frequency (MHz)')
-                info.append(sf(bf[0], sigfig))
+                info.append(str(significant_figures(bf[0], sigfig)))
 
             # Nuclei
             if nuc is not None:
@@ -1243,19 +1237,20 @@ class Estimator:
                 # Extract the isotope number from the element symbol
                 # \d+ matches any number of consecutive numerical values,
                 # starting from the beginning of the string.
-                comps = filter(None, re.split(r'(\d+)', nuc[0]))
-                info.append(f'\\textsuperscript{{{next(comps)}}}{next(comps)}')
+                info.append(latex_nucleus(nuc[0]))
 
             # Region
             if region_h is not None:
                 info_headings.append('Filter region (Hz):')
                 info.append(
-                    f'{sf(region_h[0][0], sigfig)} - {sf(region_h[0][1], sigfig)}'
+                    f'{significant_figures(region_h[0][0], sigfig)} -'
+                    f' {significant_figures(region_h[0][1], sigfig)}'
                 )
             if region_p is not None:
                 info_headings.append('Filter region (ppm):')
                 info.append(
-                    f'{sf(region_p[0][0], sigfig)} - {sf(region_p[0][1], sigfig)}'
+                    f'{significant_figures(region_p[0][0], sigfig)} -'
+                    f' {significant_figures(region_p[0][1], sigfig)}'
                 )
 
         # TODO
