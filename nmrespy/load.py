@@ -138,8 +138,6 @@ def import_bruker(directory, ask_convdta=True):
           'nuclei': ['1H'],
           'binary_format': '<i4'}
 
-
-
     **For Development**
 
     .. todo::
@@ -295,8 +293,8 @@ def import_bruker(directory, ask_convdta=True):
         # Nucleus is indicated by <1H>, <13C>, etc.
         nuc.append(re.search('<(.+?)>', _get_param('NUC1', file)).group(1))
         sw.append(float(_get_param('SW_h', file)))
-        off.append(float(_get_param(f'O{i}', file)))
-        sfo.append(float(_get_param(f'SFO{i}', file)))
+        off.append(float(_get_param(f'O1', file)))
+        sfo.append(float(_get_param(f'SFO1', file)))
 
     # If data is 2D, need at least one of the dimension sizes in order
     # to reshape the data after loading from the binary file. Get

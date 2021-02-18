@@ -247,7 +247,7 @@ class FrequencyConverter:
             (offset, 'offset', 'float_list'),
         ]
 
-        if sfo != None:
+        if sfo is not None:
             components.append((sfo, 'sfo', 'float_list'))
 
         ArgumentChecker(components, dim)
@@ -336,7 +336,7 @@ class FrequencyConverter:
         n = self.n[dim]
         sw = self.sw[dim]
         off = self.offset[dim]
-        if self.sfo != None:
+        if self.sfo is not None:
             sfo = self.sfo[dim]
         else:
             if 'ppm' in conversion:
@@ -379,8 +379,6 @@ class PathManager:
         self.fname = Path(fname)
         self.dir = Path(dir)
         self.path = self.dir / self.fname
-        print(self.dir)
-        print(self.fname)
 
     def check_file(self, force_overwrite=False):
         """Performs checks on the path file dir/fname

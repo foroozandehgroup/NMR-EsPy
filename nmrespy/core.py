@@ -23,31 +23,13 @@ import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
 import nmrespy._errors as errors
-
 from nmrespy._misc import ArgumentChecker, FrequencyConverter
 from nmrespy.filter import FrequencyFilter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp.nlp import NonlinearProgramming
+from nmrespy.write import write_result
 import nmrespy.load as load
 from . import signal, _plot
-
-# Wrapper for logging method calls
-# A file is generated and placed in
-def logger(f):
-    """Decorator for logging :py:class:`Estimator` method calls"""
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        # The first arg is the class instance. Get the path to the logfile.
-        path = args[0]._logpath
-        with open(path, 'a') as fh:
-            # Append the method call to the log file in the following format:
-            # --> method_name (args) {kwargs}
-            fh.write(f'--> {f.__name__} {args[1:]} {kwargs}\n')
-
-        # Run the method...
-        return f(*args, **kwargs)
-
-    return wrapper
 
 
 class Estimator:
@@ -330,6 +312,22 @@ class Estimator:
 
         return msg
 
+    def logger(f):
+        """Decorator for logging :py:class:`Estimator` method calls"""
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            # The first arg is the class instance. Get the path to the logfile.
+            path = args[0]._logpath
+            with open(path, 'a') as fh:
+                # Append the method call to the log file in the following format:
+                # --> method_name (args) {kwargs}
+                fh.write(f'--> {f.__name__} {args[1:]} {kwargs}\n')
+
+            # Run the method...
+            return f(*args, **kwargs)
+
+        return wrapper
+
     def get_datapath(self, type_='Path', kill=True):
         """Return path of the data directory.
 
@@ -357,7 +355,7 @@ class Estimator:
         if type_ == 'Path':
             return path
         elif type_ == 'str':
-            return str(path) if path != None else None
+            return str(path) if path is not None else None
         else:
             raise ValueError(f'{R}type_ should be \'Path\' or \'str\'')
 
@@ -398,12 +396,21 @@ class Estimator:
         ------
         InvalidUnitError
             If `unit` is not `'hz'` or `'ppm'`
+
+        Notes
+        -----
+        If `unit` is set to `'ppm'` and `self.sfo` is not specified
+        (`None`), there is no way of retreiving the sweep width in ppm.
+        `None` will be returned.
         """
 
         if unit == 'hz':
             return self.sw
         elif unit == 'ppm':
-            return self._unit_convert(self.sw, convert='hz->ppm')
+            try:
+                return self._converter.convert(self.sw, 'hz->ppm')
+            except:
+                return None
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
@@ -422,12 +429,21 @@ class Estimator:
         ------
         InvalidUnitError
             If `unit` is not `'hz'` or `'ppm'`
+
+        Notes
+        -----
+        If `unit` is set to `'ppm'` and `self.sfo` is not specified
+        (`None`), there is no way of retreiving the offset in ppm.
+        `None` will be returned.
         """
 
         if unit == 'hz':
             return self.off
         elif unit == 'ppm':
-            return self._unit_convert(self.off, convert='hz->ppm')
+            try:
+                return self._converter.convert(self.off, 'hz->ppm')
+            except:
+                return None
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
@@ -1124,181 +1140,132 @@ class Estimator:
         print(f'{G}Saved instance of NMREsPyBruker to {path}{END}')
 
 
-    def write_result(
-        self, description=None, fname='NMREsPy_result', dir='.',
-        result_name=None, sf=5, sci_lims=(-2,3), fmt='txt',
-        inc_pdf_figure=False, figure_for_pdf=None, force_overwrite=False,
-        **kwargs
-    ):
+    def write_result(self, **kwargs):
         """Saves an estimation result to a file in a human-readable format
-        (either a textfile or a PDF).
+        (text, PDF, CSV).
 
         Parameters
         ----------
-        description : str or None, default: None
-            A description of the result, which is appended at the top of the
-            file. If `None`, no description is added.
+        kwargs : Properties of :py:func:`nmrespy.write.write_result`.
+        Valid arguments are:
 
-        fname : str, default: 'NMREsPy_result'
-            The name of the result file.
+        * `path`
+        * `description`
+        * `sig_figs`
+        * `sci_lims`
+        * `fmt`
+        * `force_overwrite`
 
-            * If ``fmt`` is ``'txt'``, either a name with no extension or
-              the extension '.txt' will be accepted.
-            * If `fmt` is 'pdf', either a name with no extension or the
-              extension '.pdf' will be accepted.
-
-        dir : str, default: '.'
-            Path to the desried directory to save the file to.
-
-        result_name : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If ``None``, the parameter estimate
-            to use will be determined in the following order of priority:
-
-            1. ``self.theta`` will be used if it is not ``None``.
-            2. ``self.theta0`` will be used if it is not ``None``.
-            3. Otherwise, an error will be raised.
-
-        sf : int, default: 5
-            The number of significant figures used.
-
-        sci_lims : (int, int), default: (-2, 3)
-            Specifies the smallest magnitdue negative and positive orders of
-            magnitude which values need to possess in order to be presented
-            using scientific notaiton. A certain value will be displayed
-            using scientific notation if if satisfies one of the following:
-
-            * ``abs(value) <= 10 ** sci_lims[0]``
-            * ``abs(value) >= 10 ** sci_lims[1]``
-
-        fmt : 'txt' or 'pdf', default: 'txt'
-            Specifies the format of the file. To produce a pdf, a LaTeX
-            installation is required. See the Notes below for details.
-
-        inc_pdf_figure : bool, default: False
-            If ``True``, :meth:`plot_result` will be use to create a figure
-            of the result, which will be appended to the file. This is
-            valid only when ``fmt`` is set to ``'pdf'``.
-
-        figure_for_pdf : matplotlib.figure.Figure or None, default: None
-            A figure object to add to a PDF result file. Make sure
-            ``include_pdf_figure`` is set to ``True``.
-
-        force_overwrite : bool, default: False
-            If ``False``, if a file with the desired path already
-            exists, the user will be prompted to confirm whether they wish
-            to overwrite the file. If ``True``, the file will be overwritten
-            without any prompt.
-
-        kwargs : :py:meth:`plot_result` properties
-            If ``include_pdf_figure`` is ``True`` and ``figure_for_pdf`` is
-            ``None``, the figure is generated by calling :py:meth:`plot_result`.
-            ``kwargs`` are used to specify the properties of the figure.
+        Other keyword arguments that are valid in
+        :py:func:`nmrespy.write.write_result` will be ignored (these are
+        generated internally by the class instance).
 
         Raises
         ------
-        LaTeXFailedError
-            With ``fmt`` set to ``'pdf'``, this will be raised if an error
-            was encountered in running ``pdflatex``.
+        AttributeIsNoneError
+            If no parameter estimate derived from nonlinear programming
+            is found (see :py:meth:`nonlinear_programming`).
 
-        Notes
-        -----
-        To generate pdf files of NMR-EsPy results, it is necessary to have a
-        LaTeX installation set up on your system.
-        For a simple to set up implementation that is supported on all
-        major operating systems, consider
-        `TexLive <https://www.tug.org/texlive/>`_. To ensure that
-        you have a functioning LaTeX installation, open a command
-        prompt/terminal and type ``pdflatex``.
-
-        The following is a full list of packages that your LaTeX installation
-        will need to successfully compile the .tex file generated by
-        :py:meth:`write_result`:
-
-        * `amsmath <https://ctan.org/pkg/amsmath?lang=en>`_
-        * `array <https://ctan.org/pkg/array?lang=en>`_
-        * `booktabs <https://ctan.org/pkg/booktabs?lang=en>`_
-        * `cmbright <https://ctan.org/pkg/cmbright>`_
-        * `geometry <https://ctan.org/pkg/geometry>`_
-        * `hyperref <https://ctan.org/pkg/hyperref?lang=en>`_
-        * `longtable <https://ctan.org/pkg/longtable>`_
-        * `siunitx <https://ctan.org/pkg/siunitx?lang=en>`_
-        * `tcolorbox <https://ctan.org/pkg/tcolorbox?lang=en>`_
-        * `xcolor <https://ctan.org/pkg/xcolor?lang=en>`_
-
-        Most of these are pretty ubiquitous and are likely to be installed
-        even with lightweight LaTeX installations. If you wish to check the
-        packages are available, run::
-            $ kpsewhich <package-name>.sty
-        If a pathname appears, the package is installed to that path.
+        See Also
+        --------
+        :py:func:`nmrespy.write.write_result`
         """
 
-        # retrieve result
-        result, _ = self._check_result(result_name)
+        # Remove any invalid arguments from kwargs (avoid repetition
+        # in call to nmrespy.write.write_result)
+        for key in ['sfo', 'integrals', 'info', 'info_headings']:
+            try:
+                kwargs.pop(key)
+            except KeyError:
+                pass
 
-        # check format is sensible
-        if fmt in ['txt', 'pdf']:
-            pass
-        else:
-            raise ValueError(f'{R}fmt should be \'txt\' or \'pdf\'{END}')
+        # Retrieve result
+        # If nonlinear_programming has not been run yet, this will be
+        # caught by get_nlp_info
+        result = self.get_nlp_info().get_result()
 
-        # basic info
+        # Information for experiment info
+        sw_h = self.get_sw()
+        sw_p = self.get_sw(unit='ppm')
+        off_h = self.get_offset()
+        off_p = self.get_offset(unit='ppm')
+        sfo = self.get_sfo(kill=False)
+        bf = self.get_bf(kill=False)
+        nuc = self.get_nucleus(kill=False)
+        region_h = self.get_filter_info(kill=False).get_region(unit='hz')
+        region_p = self.get_filter_info(kill=False).get_region(unit='ppm')
+
+        # Peak integrals
+        integrals = [
+            signal.oscillator_integral(osc, self.get_n(), sw_h, offset=off_h)
+            for osc in result
+        ]
+
+        # Significant figures
+        def sf(value, s):
+            value = round(value, s - int(np.floor(np.log10(abs(value)))) - 1)
+            if value.is_integer():
+                value = int(value)
+            return str(value)
+
+        # --- Package experiment information ----------------------------
+        info_headings = []
         info = []
-        info.append(result)
-        info.append(self.get_dim()) # signal dimension
-        info.append(self.get_datapath()) # data path
-        info.append(self.get_sw()) # sweep width (Hz)
-        info.append(self.get_sw(unit='ppm')) # sweep width (Hz)
-        info.append(self.get_offset()) # offset (Hz)
-        info.append(self.get_offset(unit='ppm')) # offset (Hz)
-        info.append(self.get_sfo()) # transmitter frequency
-        info.append(self.get_bf()) # basic frequency
-        info.append(self.get_nucleus()) # nuclei
+        sigfig = 6
+        if self.get_dim() == 1:
+            # Sweep width
+            info_headings.append('Sweep Width (Hz)')
+            info.append(sf(sw_h[0], sigfig))
+            if sw_p is not None:
+                info_headings.append('Sweep Width (ppm)')
+                info.append(sf(sw_p[0], sigfig))
 
-        # peak integrals
-        integrals = ()
-        # dx in each dimension (gap between successive points in Hz)
-        delta = [sw / n for sw, n in zip(self.get_sw(), self.get_n())]
+            # Offset
+            info_headings.append('Transmitter Offset (Hz)')
+            info.append(sf(off_h[0], sigfig))
+            if off_p is not None:
+                info_headings.append('Transmitter Offset (ppm)')
+                info.append(sf(off_p[0], sigfig))
 
-        # integrate each oscillator numerically
-        # constructs absolute real spectrum for each oscillator and
-        # uses Simpson's rule
-        # TODO: Perhaps this could be done analytically?
-        for m, osc in enumerate(result):
-            # make fid corresponding to each individual oscillator
-            f = self.make_fid(result_name, oscillators=[m])
+            # Transmitter frequency
+            if sfo is not None:
+                info_headings.append('Transmitter Frequency (MHz)')
+                info.append(sf(sfo[0], sigfig))
 
-            # absolute real spectrum
-            s = np.absolute(np.real(fftshift(fft(f))))
+            # Basic frequency
+            if bf is not None:
+                info_headings.append('Basic Frequency (MHz)')
+                info.append(sf(bf[0], sigfig))
 
-            # inegrate successively over each dimension
-            if self.get_dim() == 1:
-                integrals += simps(s, dx=delta[0]),
-            elif self.get_dim() == 2:
-                integrals += simps(simps(s, dx=delta[1]), dx=delta[0]),
+            # Nuclei
+            if nuc is not None:
+                info_headings.append('Nucleus')
+                # Extract the isotope number from the element symbol
+                # \d+ matches any number of consecutive numerical values,
+                # starting from the beginning of the string.
+                comps = filter(None, re.split(r'(\d+)', nuc[0]))
+                info.append(f'\\textsuperscript{{{next(comps)}}}{next(comps)}')
 
-        info.append(integrals)
+            # Region
+            if region_h is not None:
+                info_headings.append('Filter region (Hz):')
+                info.append(
+                    f'{sf(region_h[0][0], sigfig)} - {sf(region_h[0][1], sigfig)}'
+                )
+            if region_p is not None:
+                info_headings.append('Filter region (ppm):')
+                info.append(
+                    f'{sf(region_p[0][0], sigfig)} - {sf(region_p[0][1], sigfig)}'
+                )
 
-        # frequency filter region
-        info.append(self.get_region(unit='hz', kill=False))
-        info.append(self.get_region(unit='ppm', kill=False))
+        # TODO
+        elif self.get_dim() == 2:
+            raise TwoDimUnsupportedError()
 
-        if fmt == 'pdf':
-            if inc_pdf_figure:
-                if isinstance(figure_for_pdf, matplotlib.figure.Figure):
-                    info.append(figure_for_pdf)
-                elif figure_for_pdf is None:
-                    fig, *_ = self.plot_result(**kwargs)
-                    info.append(fig)
-                else:
-                    raise TypeError(
-                        f'{R}figure_for_pdf should be of type'
-                        f'matplotlib.figure.Figure or None.{END}'
-                    )
-
-        _write.write_file(info, description, fname, dir, sf, sci_lims, fmt,
-                          force_overwrite)
-
-
+        write_result(
+            result, integrals=integrals, info_headings=info_headings,
+            info=info, sfo=sfo, **kwargs,
+        )
 
     def plot_result(self, result_name=None, datacol=None, osccols=None,
                     labels=True, stylesheet=None):
@@ -1853,124 +1820,3 @@ class Estimator:
 
         else:
             return data.shape
-
-
-    def _unit_convert(self, lst, convert):
-        """Converts unit of a list of values
-        '|a|->|b|', where |a| and |b| are not the same, and in
-        ['idx', 'ppm', 'hz']"""
-
-        # flag to determine whether value of convert is valid
-        valid = False
-
-        # check that convert is a valid value
-        valid_units = ['idx', 'ppm', 'hz']
-        for pair in itertools.permutations(valid_units, r=2):
-            if f'{pair[0]}->{pair[1]}' == convert:
-                valid = True
-                break
-
-        if valid:
-            pass
-        else:
-            raise ValueError(f'{R}convert is not valid.')
-
-        # list for storing final converted contents (will be returned as tuple)
-        lst_conv = []
-        for dimension, element in enumerate(lst):
-
-            # try/except block enables code to work with both tuples and
-            # tuples of tuples
-            try:
-                # test whether element is an iterable (i.e. tuple)
-                iterable = iter(element)
-
-                # elem is a tuple...
-                sublst_conv = []
-                while True:
-                    try:
-                        sublst_conv.append(
-                            self._convert(next(iterable), convert, dimension)
-                        )
-                    except StopIteration:
-                        break
-
-                lst_conv.append(sublst_conv)
-
-            except TypeError:
-                # elem is a float/int...
-                lst_conv.append(self._convert(element, convert, dimension))
-
-        return lst_conv
-
-
-    def _convert(self, value, conv, dimension):
-
-        sw = self.get_sw()[dimension]
-        off = self.get_offset()[dimension]
-        n = self.get_n()[dimension]
-        sfo = self.get_sfo()[dimension]
-
-        if conv == 'idx->hz':
-            return float(off + (sw / 2) - ((value * sw) / n))
-
-        elif conv == 'idx->ppm':
-            return float((off + sw / 2 - value * sw / n) / sfo)
-
-        elif conv == 'ppm->idx':
-            return int(round((off + (sw / 2) - sfo * value) * (n / sw)))
-
-        elif conv == 'ppm->hz':
-            return value * sfo
-
-        elif conv == 'hz->idx':
-            return int((n / sw) * (off + (sw / 2) - value))
-
-        elif conv == 'hz->ppm':
-            return value / sfo
-
-
-
-# Some descriptions of attributes
-    # filtered_spectrum : numpy.ndarray or None, default: `None`
-    #     Spectral data which has been filtered using :py:meth:`frequency_filter`
-    #
-    # virtual_echo : numpy.ndarray or None, default: `None`
-    #     Time-domain virtual echo derived using :py:meth:`frequency_filter`
-    #
-    # filtered_signal : numpy.ndarray or None, default: `None`
-    #     First half of ``virtual_echo``, derived using :py:meth:`frequency_filter`
-    #
-    # filtered_n : [int] or [int, int] or None, default: `None`
-    #     The size of the virtual echo generated using :py:meth:`frequency_filter`
-    #     if ``cut=True``
-    #
-    # filtered_sw : [float] or [float, float] or None, default: `None`
-    #     The sweep width (Hz) of the virtual echo generated using
-    #     :py:meth:`frequency_filter` if ``cut=True``, in each dimension.
-    #
-    # filtered_offset : [float] or [float, float] or None, default: `None`
-    #     The transmitter offset (Hz) of the virtual echo generated using
-    #     :py:meth:`frequency_filter` if ``cut=True``, in each dimension.
-    #
-    # region : [float, float], [[float, float], [float, float]] or None, default: `None`
-    #     The region of interest specified with :py:meth:`frequency_filter`,
-    #     in units of array indices.
-    #
-    # noise_region : [float, float], [[float, float], [float, float]] or None, default: `None`
-    #     The noise region specified with :py:meth:`frequency_filter`, in units
-    #     of array indices.
-    #
-    # p0 : float or None, default: `None`
-    #     The zero order phase correction applied to the frequency domain data
-    #     during :py:meth:`frequency_filter`.
-    #
-    # p1 : float or None, default: `None`
-    #     The first order phase correction applied to the frequency domain data
-    #     during :py:meth:`frequency_filter`.
-    #
-    # theta0 : numpy.ndarray or None, default: `None`
-    #     The parameter estimate derived using :py:meth:`matrix_pencil`
-    #
-    # theta : numpy.ndarray or None, default: `None`
-    #     The parameter estimate derived using :py:meth:`nonlinear_programming`

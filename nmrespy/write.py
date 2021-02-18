@@ -20,6 +20,7 @@ from nmrespy import *
 from nmrespy._misc import ArgumentChecker, PathManager
 from ._errors import *
 
+
 def write_result(
     parameters, path='./nmrespy_result', sfo=None, integrals=None,
     description=None, info_headings=None, info=None, sig_figs=5,
@@ -274,7 +275,7 @@ def _write_txt(
     # of columns as arguments.
     msg += _txt_tabular(
         list(map(list, zip(*param_table))), titles=param_titles,
-        separator=' │',
+        separator='│',
     )
 
     # --- Write footer ---------------------------------------------------
@@ -285,7 +286,7 @@ If used in any publications, please cite:
 <no papers yet...>
 For more information, visit the GitHub repo:
 """
-    msg += f'{GITHUBPATH}'
+    msg += f'{GITHUBLINK}'
     # Save message to textfile
     with open(path, 'w') as file:
         file.write(msg)
@@ -319,11 +320,11 @@ def _write_pdf(
         Array of contents to append to the result table.
     """
     # Open text of template .tex file which will be amended
-    with open(Path(NMRESPYPATH) / 'config/latex_template.txt', 'r') as fh:
+    with open(NMRESPYPATH / 'config/latex_template.txt', 'r') as fh:
         txt = fh.read()
     # Add logos to header (MF Group and NMR-EsPy)
-    txt = txt.replace('<MFLOGOPATH>', MFLOGOPATH)
-    txt = txt.replace('<NMRESPYLOGOPATH>', NMRESPYLOGOPATH)
+    txt = txt.replace('<MFLOGOPATH>', str(MFLOGOPATH))
+    txt = txt.replace('<NMRESPYLOGOPATH>', str(NMRESPYLOGOPATH))
     # Include a timestamp
     txt = txt.replace('<TIMESTAMP>', _timestamp().replace('\n', '\\\\'))
 
@@ -371,10 +372,10 @@ def _write_pdf(
 
     # --- Footer textbox -------------------------------------------------
     # Add links and paths to images
-    txt = txt.replace('<GITHUBPATH>', GITHUBPATH)
-    txt = txt.replace('<GITHUBLOGOPATH>', GITHUBLOGOPATH)
-    txt = txt.replace('<MAILTOPATH>', MAILTOPATH)
-    txt = txt.replace('<EMAILICONPATH>', EMAILICONPATH)
+    txt = txt.replace('<GITHUBLINK>', GITHUBLINK)
+    txt = txt.replace('<GITHUBLOGOPATH>', str(GITHUBLOGOPATH))
+    txt = txt.replace('<MAILTOLINK>', MAILTOLINK)
+    txt = txt.replace('<EMAILICONPATH>', str(EMAILICONPATH))
 
     # --- Generate PDF using pdflatex ------------------------------------
     # Create required file paths:
@@ -434,7 +435,7 @@ def _write_pdf(
         f'{cols.G}Result successfuly output to:\n' \
         f'{pdf_final_path}\n'
         f'If you wish to customise the document, the TeX file can'
-        f'be found at:\n'
+        f' be found at:\n'
         f'{tex_final_path}{cols.END}'
     )
 
@@ -484,6 +485,8 @@ def _write_csv(
         writer.writerow(param_titles)
         for row in param_table:
             writer.writerow(row)
+
+    print(f'{cols.G}Saved result to {path}{cols.END}')
 
 
 

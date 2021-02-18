@@ -29,12 +29,12 @@ urlcolor   = urlblue,%
 \begin{figure}[!ht]
 % MF group logo
 \begin{minipage}[b][2.5cm][c]{.72\textwidth}
-\href{http://foroozandeh.chem.ox.ac.uk/home}%
+\href{<MFGROUPLINK>}%
 {\includegraphics[scale=1.8]{<MFLOGOPATH>}}
 \end{minipage}
 % NMR-EsPy logo
 \begin{minipage}[b][2.5cm][c]{.27\textwidth}
-\href{https://github.com/foroozandehgroup/NMR-EsPy}%
+\href{<GITHUBLINK>}%
 {\includegraphics[scale=0.1]{<NMRESPYLOGOPATH>}}
 \end{minipage}
 \end{figure}
@@ -72,8 +72,8 @@ urlcolor   = urlblue,%
 Estimation performed using \textsc{NMR-EsPy}.\\
 Author: Simon Hulse\\
 For more information:\\
-{\raisebox{-2pt}{\includegraphics[scale=0.09]{<GITHUBLOGOPATH>}}}\hspace{1em}\href{<GITHUBPATH>}{\texttt{<GITHUBPATH>}}\\
-{\raisebox{-2pt}{\includegraphics[scale=0.012]{<EMAILICONPATH>}}}\hspace{1em}\href{<MAILTOPATH>}{\texttt{simon.hulse@chem.ox.ac.uk}}\\
+{\raisebox{-2pt}{\includegraphics[scale=0.09]{<GITHUBLOGOPATH>}}}\hspace{1em}\href{<GITHUBLINK>}{\texttt{<GITHUBLINK>}}\\
+{\raisebox{-2pt}{\includegraphics[scale=0.012]{<EMAILICONPATH>}}}\hspace{1em}\href{<MAILTOLINK>}{\texttt{simon.hulse@chem.ox.ac.uk}}\\
 If used in a publication, please cite:\\
 \textit{No references yet...}
 \end{tcolorbox}
