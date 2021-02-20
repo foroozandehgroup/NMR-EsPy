@@ -350,10 +350,8 @@ class NonlinearProgramming(FrequencyConverter):
         # Reshape result array back to (M x 4) or (M x 6)
         self.result = np.reshape(self.result, (self.m, self.p), order='F')
         # Order oscillators by frequency
-        print(self.result)
         order = np.argsort(self.result[:, 2])
         self.result = self.result[order]
-        print(self.result)
         self.errors = self.errors[order]
 
     def _recursive_optimise(self):
@@ -760,9 +758,6 @@ class NonlinearProgramming(FrequencyConverter):
         """Determine the errors of the estimation result"""
         fidelity = self.funcs['fidelity'](self.active, *self.optimiser_args)
         hessian = self.funcs['hessian'](self.active, *self.optimiser_args)
-        import sys
-        np.set_printoptions(threshold=sys.maxsize)
-        print(hessian)
 
         # Prevent warning if invalid sqrt encountered
         # (will print custom warning if NaNs are found in result)

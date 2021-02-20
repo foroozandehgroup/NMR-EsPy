@@ -130,8 +130,7 @@ class FrequencyFilter:
 
     def __init__(
         self, data, region, noise_region, region_unit='idx', sw=None,
-        offset=None, sfo=None, p0=None, p1=None, cut=True,
-        cut_ratio=3.0,
+        offset=None, sfo=None, cut=True, cut_ratio=3.0,
     ):
 
         # --- Check validity of parameters -------------------------------
@@ -150,14 +149,8 @@ class FrequencyFilter:
         if self.dim >= 3:
             raise errors.MoreThanTwoDimError()
 
-        # If phase correction parameters are None, set to zero in each
-        # dimension
-        p0 = p0 if p0 != None else [0.0] * self.dim
-        p1 = p1 if p1 != None else [0.0] * self.dim
         # Components to give to ArgumentChecker
         components = [
-            (p0, 'p0', 'float_list'),
-            (p1, 'p1', 'float_list'),
             (cut, 'cut', 'bool'),
             (cut_ratio, 'cut_ratio', 'greater_than_one'),
         ]
@@ -187,8 +180,6 @@ class FrequencyFilter:
         # Check arguments are valid!
         ArgumentChecker(components, self.dim)
 
-        self.p0 = p0
-        self.p1 = p1
         self.cut = cut
         self.cut_ratio = cut_ratio
 
@@ -237,11 +228,7 @@ class FrequencyFilter:
                 dtype='complex'
             )
         # Fourier transform
-        self.init_spectrum = signal.ft(self.zf_data)
-        # Phase spectrum, and take the real part
-        self.init_spectrum = np.real(
-            signal.phase_spectrum(self.init_spectrum, self.p0, self.p1)
-        )
+        self.init_spectrum = np.real(signal.ft(self.zf_data))
 
         # --- Generate super-Gaussian filter and assocaited noise --------
         # Shape of full spectrum
@@ -300,8 +287,6 @@ class FrequencyFilter:
             # Get norms of cut and uncut signals
             uncut_norm = slinalg.norm(uncut_fid)
             cut_norm = slinalg.norm(cut_fid)
-            print(uncut_norm)
-            print(cut_norm)
             self.filtered_signal = cut_norm / uncut_norm * cut_fid
             self.virtual_echo = cut_norm / uncut_norm * cut_ve
 

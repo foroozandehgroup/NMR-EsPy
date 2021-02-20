@@ -189,6 +189,8 @@ def write_result(
         )
     # Get full path
     path = Path(path).resolve()
+    # Append extension to file path
+    path = path.parent / (path.name + f'.{fmt}')
     # Check path is valid (check directory exists, ask user if they are happy
     # overwriting if file already exists).
     pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
@@ -203,9 +205,6 @@ def write_result(
         raise ValueError(
             f'{cols.R}The directory implied by path does not exist{cols.END}'
         )
-
-    # Append extension to file path
-    path = path.parent / (path.name + f'.{fmt}')
 
     # Checking complete...
 
@@ -832,6 +831,5 @@ def _latex_tabular(rows):
     """
     table = ''
     for row in rows:
-        print(row)
         table += ' & '.join([e for e in row]) + ' \\\\\n'
     return table

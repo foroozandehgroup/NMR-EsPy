@@ -23,14 +23,13 @@ import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
 import nmrespy._errors as errors
-from nmrespy._misc import ArgumentChecker, FrequencyConverter, latex_nucleus, \
-    significant_figures
+from nmrespy._misc import *
+from nmrespy.load import load_bruker
 from nmrespy.filter import FrequencyFilter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp.nlp import NonlinearProgramming
 from nmrespy.write import write_result
-import nmrespy.load as load
-from . import signal, _plot
+from nmrespy import signal
 
 
 class Estimator:
@@ -39,8 +38,10 @@ class Estimator:
     .. note::
        The methods :py:meth:`new_bruker`, :py:meth:`new_synthetic_from_data`
        and :py:meth:`new_synthetic_from_parameters` generate instances
-       of the class. While you can manually input the listed parameters
-       as arguments to initialise the class. It is more straightforward
+       of the class. The method :py:meth:`from_pickle` loads an estimator
+       instance that was previously saved using :py:meth:`to_pickle`.
+       While you can manually input the listed parameters
+       as arguments to initialise the class, it is more straightforward
        to use one of these.
 
     Parameters
@@ -77,6 +78,12 @@ class Estimator:
         Of the form `'<endian><unitsize>'`, where `'<endian>'` is either
         `'<'` (little endian) or `'>'` (big endian), and `'<unitsize>'`
         is either `'i4'` (32-bit integer) or `'f8'` (64-bit float).
+
+    _origin : dict or None, default None
+        For internal use. Specifies how the instance was initalised. If `None`,
+        implies that the instance was initialised manually, rather than using
+        one of :py:meth:`new_bruker`, :py:meth:`new_synthetic_from_data`
+        and :py:meth:`new_synthetic_from_parameters`.
     """
 
     def new_bruker(dir, ask_convdta=True):
@@ -89,7 +96,7 @@ class Estimator:
             The path to the data containing the data of interest.
 
         ask_convdta : bool
-            See :py:meth:`nmrespy.load.import_bruker`
+            See :py:meth:`nmrespy.load_bruker`
 
         Returns
         -------
@@ -98,7 +105,7 @@ class Estimator:
         Notes
         -----
         For a more detailed specification of the directory requirements,
-        see :py:meth:`nmrespy.load.import_bruker`
+        see :py:meth:`nmrespy.load_bruker`
 
         Example
         -------
@@ -127,13 +134,13 @@ class Estimator:
            _converter : <nmrespy._misc.FrequencyConverter object at 0x7ff282250910>
            _logpath : /home/.../python3.8/site-packages/nmrespy/logs/210212183053.log
         """
-
-        info = load.import_bruker(dir, ask_convdta=ask_convdta)
+        origin={'method':'new_bruker', 'args':locals()}
+        info = load_bruker(dir, ask_convdta=ask_convdta)
 
         return Estimator(
             info['source'], info['data'], info['directory'],
             info['sweep_width'], info['offset'], info['transmitter_frequency'],
-            info['nuclei'], info['binary_format'],
+            info['nuclei'], info['binary_format'], _origin=origin
         )
 
     def new_synthetic_from_data(data, sw, offset=None, sfo=None):
@@ -240,7 +247,121 @@ class Estimator:
               f'implemented!{cols.END}')
 
 
-    def __init__(self, source, data, path, sw, off, sfo, nuc, fmt):
+    def from_pickle(path):
+        """Loads an intance of :py:class:`Estimator`, which was saved
+        previously using :py:meth:`to_pickle`.
+
+        Parameters
+        ----------
+        path : str
+            The path to the pickle file. DO NOT INCLUDE THE FILE
+            EXTENSION.
+
+        Returns
+        -------
+        estimator : :py:meth:`nmrespy.core.Estimator`
+
+        Notes
+        -----
+        .. warning::
+           `From the Python docs:`
+
+           *"The pickle module is not secure. Only unpickle data you trust.
+           It is possible to construct malicious pickle data which will
+           execute arbitrary code during unpickling. Never unpickle data
+           that could have come from an untrusted source, or that could have
+           been tampered with."*
+
+           You should only use :py:meth:`from_pickle` on files that
+           you are 100% certain were generated using
+           :py:meth:`to_pickle`. If you load pickled data from a .pkl file,
+           and the resulting output is not an instance of
+           :py:class:`Estimator`, an error will be raised.
+        """
+
+        path = Path(path).with_suffix('.pkl')
+        if path.is_file():
+            with open(path, 'rb') as fh:
+                obj = pickle.load(fh)
+            if isinstance(obj, __class__):
+                return obj
+            else:
+                raise TypeError(
+                    f'{cols.R}It is expected that the object opened by'
+                    ' from_pickle is an instance of'
+                    f' {__class__.__module__}.{__class__.__qualname__}.'
+                    f' What was loaded didn\'t satisfy this!{cols.END}'
+                )
+
+        else:
+            raise ValueError(
+                f'{cols.R}Invalid path specified.{cols.END}'
+            )
+
+
+    def to_pickle(
+        self, path='./nmrespy_instance', force_overwrite=False
+    ):
+        """Converts the class instance to a byte stream using Python's
+        "Pickling" protocol, and saves it to a .pkl file.
+
+        Parameters
+        ----------
+        path : str, default: './nmrespy_instance'
+            Path of file to save the byte stream to. DO NOT INCLUDE A
+            `'.pkl'` EXTENSION! `'.pkl'` is added to the end of the path
+            automatically.
+
+        force_overwrite : bool, default: False
+            Defines behaviour if ``f'{path}.pkl'`` already exists:
+
+            * If `force_overwrite` is set to `False`, the user will be prompted
+              if they are happy overwriting the current file.
+            * If `force_overwrite` is set to `True`, the current file will be
+              overwritten without prompt.
+
+        Notes
+        -----
+        This method complements :py:meth:`from_pickle`, in that
+        an instance saved using :py:meth:`to_pickle` can be recovered by
+        :py:func:`~nmrespy.load.pickle_load`.
+        """
+
+        ArgumentChecker(
+            [
+                (path, 'path', 'str'),
+                (force_overwrite, 'force_overwrite', 'bool'),
+            ]
+        )
+
+        # Get full path
+        path = Path(path).resolve()
+        # Append extension to file path
+        path = path.parent / (path.name + '.pkl')
+        # Check path is valid (check directory exists, ask user if they are happy
+        # overwriting if file already exists).
+        pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
+        # Valid path, we are good to proceed
+        if pathres == 0:
+            pass
+        # Overwrite denied by the user. Exit the program
+        elif pathres == 1:
+            exit()
+        # pathres == 2: Directory specified doesn't exist
+        else:
+            raise ValueError(
+                f'{cols.R}The directory implied by path does not exist{cols.END}'
+            )
+
+        with open(path, 'wb') as fh:
+            pickle.dump(self, fh, pickle.HIGHEST_PROTOCOL)
+
+        print(f'{cols.G}Saved instance of Estimator to {path}{cols.END}')
+
+
+    def __init__(
+        self, source, data, path, sw, off, sfo, nuc, fmt, _origin=None
+    ):
         self.source = source
         self.data = data
         self.dim = self.data.ndim
@@ -278,8 +399,14 @@ class Estimator:
             '==============================\n'
             'Logfile for Estimator instance\n'
             '==============================\n'
-           f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}\n"
+           f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}"
         )
+
+        if _origin is not None:
+            header += f" from {_origin['method']} with args {_origin['args']}"
+
+        header += '\n'
+
         with open(self._logpath, 'w') as fh:
             fh.write(header)
 
@@ -300,11 +427,14 @@ class Estimator:
 
         return msg
 
+
     def __str__(self):
         """A formatted list of class attributes"""
-        mod = __class__.__module__
-        qual = __class__.__qualname__
-        msg = f"{cols.MA}<{mod}.{qual} at {hex(id(self))}>{cols.END}\n"
+
+        msg = (
+            f"{cols.MA}<{__class__.__module__}.{__class__.__qualname__} at "
+            f"{hex(id(self))}>{cols.END}\n"
+        )
 
         dic = self.__dict__
         keys, vals = dic.keys(), dic.values()
@@ -312,6 +442,7 @@ class Estimator:
         msg += '\n'.join(items)
 
         return msg
+
 
     def logger(f):
         """Decorator for logging :py:class:`Estimator` method calls"""
@@ -328,6 +459,7 @@ class Estimator:
             return f(*args, **kwargs)
 
         return wrapper
+
 
     def get_datapath(self, type_='Path', kill=True):
         """Return path of the data directory.
@@ -360,6 +492,7 @@ class Estimator:
         else:
             raise ValueError(f'{R}type_ should be \'Path\' or \'str\'')
 
+
     def get_data(self):
         """Return the original data.
 
@@ -369,18 +502,26 @@ class Estimator:
         """
         return self.data
 
+
     def get_dim(self):
         """Return the data dimension.
 
         Returns
         -------
-        dim : 1, 2
+        dim : 1 or 2
         """
         return self.dim
 
+
     def get_n(self):
-        """Return the number of datapoints in each dimension"""
+        """Return the number of datapoints in each dimension
+
+        Returns
+        -------
+        n : [int] or [int, int]
+        """
         return self.n
+
 
     def get_sw(self, unit='hz'):
         """Return the experiment sweep width in each dimension.
@@ -414,6 +555,7 @@ class Estimator:
                 return None
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
+
 
     def get_offset(self, unit='hz'):
         """Return the transmitter's offset frequency in each dimesnion.
@@ -741,13 +883,58 @@ class Estimator:
             result, n, self.get_sw(), offset=self.get_offset(),
         )
 
+    @logger
+    def phase_data(self, p0=None, p1=None):
+        """Phase `self.data`
+
+        Parameters
+        ----------
+        p0 : [float], [float, float], or None default: None
+            Zero-order phase correction in each dimension in radians.
+            If `None`, the phase will be set to `0.0` in each dimension.
+
+        p1 : [float], [float, float], or None default: None
+            First-order phase correction in each dimension in radians.
+            If `None`, the phase will be set to `0.0` in each dimension.
+        """
+
+        self.p0 = p0
+        self.p1 = p1
+
+        if self.p0 is None:
+            self.p0 = self.get_dim() * [0.0]
+        if self.p1 is None:
+            self.p1 = self.get_dim() * [0.0]
+
+        self.data = signal.ift(
+            signal.phase_spectrum(
+                signal.ft(self.data), self.p0, self.p1,
+            )
+        )
+
+    def manual_phase_data(self, max_p1=None):
+        """Perform manual phase correction of `self.data`.
+
+        Zero- and first-order phase pharameters are determined via
+        interaction with a Tkinter- and matplotlib-based graphical user
+        interface.
+
+        Parameters
+        ----------
+        max_p1 : float or None, default: None
+            Specifies the range of first-order phases permitted. For each
+            dimension, the user will be allowed to choose a value of `p1`
+            within [`-max_p1`, `max_p1`]. By default, `max_p1` will be
+            ``10 * numpy.pi``.
+        """
+        p0, p1 = signal.manual_phase_spectrum(signal.ft(self.data), max_p1=None)
+        self.phase_data(p0=p0, p1=p1)
 
     @logger
     def frequency_filter(
-        self, region, noise_region, p0=None, p1=None, cut=True, cut_ratio=3.0,
-        region_unit='ppm', manual_phase=False, manual_phase_max_p1=None,
+        self, region, noise_region, cut=True, cut_ratio=3.0, region_unit='ppm',
     ):
-        """Generates phased, frequency-filtered data from the original data
+        """Generates frequency-filtered data from `self.data`
         supplied.
 
         Parameters
@@ -766,14 +953,6 @@ class Estimator:
             Cut-off points of the spectral region to extract the spectrum's
             noise variance. This should have the same structure as `region`.
 
-        p0 : [float], [float, float], or None, default: None
-            Zero order phase correction to apply to the data (radians).
-            If set to `None`, this will be set to zero in each dimension.
-
-        p1 : [float], [float, float], or None, default: None
-            First order phase correction to apply to the data (radians).
-            If set to `None`, this will be set to zero in each dimension.
-
         cut : bool, default: True
             If `False`, the filtered signal will comprise the same number of
             data points as the original data. If `True`, prior to inverse
@@ -790,13 +969,6 @@ class Estimator:
             The unit the elements of `region` and `noise_region` are
             expressed in.
 
-        manual_phase : bool, default: False
-            If set as `True`, the user will be able to set `p0` and `p1`
-            via use of a graphical user interface.
-
-        manual_phase_max_p1 : [float], [float, float] or None, default: None
-            See :py:func:`nmrespy.signal.manual_phase_spectrum`.
-
         Notes
         -----
         This method assigns the attribute `filter_info` to an instance of
@@ -807,7 +979,7 @@ class Estimator:
         self.filter_info = FrequencyFilter(
             self.get_data(), region, noise_region, region_unit=region_unit,
             sw=self.get_sw(), offset=self.get_offset(),
-            sfo=self.get_sfo(kill=False), p0=p0, p1=p1, cut=cut,
+            sfo=self.get_sfo(kill=False), cut=cut,
             cut_ratio=cut_ratio,
         )
 
@@ -885,7 +1057,7 @@ class Estimator:
             estimate. If `M` is set to `0`, the number of oscillators will be
             estimated using the MDL.
 
-        trim : None, [int], [int, int], or None, default: None
+        trim : [int], [int, int], or None, default: None
             If `trim` is a list, the analysed data will be sliced such that
             its shape matches `trim`, with the initial points in the signal
             being retained. If `trim` is `None`, the data will not be
@@ -940,13 +1112,14 @@ class Estimator:
 
         data, sw, offset = self._get_data_sw_offset()
 
-        if trim == None:
-            trim = [np.s_[0:int(s)] for s in data.shape]
+        if trim is None:
+            trim = [s for s in data.shape]
 
         ArgumentChecker([(trim, 'trim', 'int_list')], dim=self.dim)
 
+        trim = tuple(np.s_[0:t] for t in trim)
         # Slice data
-        data = data[tuple(trim)]
+        data = data[trim]
 
         self.mpm_info = MatrixPencil(
             data, sw, offset, self.sfo, M, fprint
@@ -1051,13 +1224,14 @@ class Estimator:
         kwargs['offset'] = offset
         kwargs['sfo'] = self.get_sfo(kill=False)
 
-        if trim == None:
-            trim = [np.s_[0:int(s)] for s in data.shape]
+        if trim is None:
+            trim = [s for s in data.shape]
 
         ArgumentChecker([(trim, 'trim', 'int_list')], dim=self.dim)
 
+        trim = tuple(np.s_[0:t] for t in trim)
         # Slice data
-        data = data[tuple(trim)]
+        data = data[trim]
 
         mpm_info = self.get_mpm_info()
         x0 = mpm_info.result
@@ -1082,65 +1256,7 @@ class Estimator:
             'nlp_info', kill, method='nonlinear_programming'
         )
 
-
-    def pickle_save(
-        self, fname='NMREsPy_result.pkl', dir='.', force_overwrite=False
-    ):
-        """Converts the class instance to a byte stream using Python's
-        "Pickling" protocol, and saves it to a .pkl file.
-
-        Parameters
-        ----------
-        fname : str, default: 'NMREsPy_result.pkl'
-            Name of file to save the byte stream to. Arguments without
-            an extension or with a '.pkl' extension are permitted.
-
-        dir : str, default: '.'
-            Path of the desried directory to save the file to. Default
-            is the current working directory.
-
-        force_overwrite : bool, default: False
-            If ``False``, if a file with the desired path already
-            exists, the user will be prompted to confirm whether they wish
-            to overwrite the file. If ``True``, the file will be overwritten
-            without prompt.
-
-        Notes
-        -----
-        This method complements :py:func:`~nmrespy.load.pickle_load`, in that
-        an instance saved using :py:func:`pickle_save` can be recovered by
-        :py:func:`~nmrespy.load.pickle_load`.
-        """
-
-        if os.path.isdir(dir):
-            pass
-        else:
-            raise IOError(f'{R}directory {dir} doesn\'t exist{END}')
-
-        if fname[-4:] == '.pkl':
-            pass
-        elif '.' in fname:
-            raise ValueError(f'{R}fname: {fname} - Unexpected file'
-                             f' extension.{END}')
-        else:
-            fname += '.pkl'
-
-        path = os.path.join(dir, fname)
-
-        if os.path.isfile(path):
-            if force_overwrite:
-                os.remove(path)
-            else:
-                prompt = f'{O}The file {path} already exists.' \
-                         + f' Overwrite? [y/n]:{END} '
-                _misc.get_yn(prompt)
-                os.remove(path)
-
-        with open(path, 'wb') as fh:
-            pickle.dump(self, fh, pickle.HIGHEST_PROTOCOL)
-        print(f'{G}Saved instance of NMREsPyBruker to {path}{END}')
-
-
+    @logger
     def write_result(self, **kwargs):
         """Saves an estimation result to a file in a human-readable format
         (text, PDF, CSV).
@@ -1673,46 +1789,54 @@ class Estimator:
         self.__dict__[result_name] = result[np.argsort(result[..., 2])]
 
 
-    def save_logfile(self, fname=None, dir='.', force_overwrite=False):
+    def save_logfile(self, path='./nmrespy_log', force_overwrite=False):
         """Saves log file of class instance usage to a specified path.
 
         Parameters
         ----------
-        fname : str or None, default: None
-            Name of log file. If `None`, the default filename, specified
-            by a timestamp, is used. This default filename is given by
-            ``str(self.logpath)``.
+        path : str, default: './nmrespy_log'
+            The path to save the file to. DO NOT INCLUDE A FILE EXTENSION.
+            `.log` will be added automatically.
 
-        dir : str, default: '.'
-            The path to the directory to save the file to. Deault if the
-            current working directory.
+        force_overwrite : bool. default: False
+            Defines behaviour if ``f'{path}.log'`` already exists:
+
+            * If `force_overwrite` is set to `False`, the user will be prompted
+              if they are happy overwriting the current file.
+            * If `force_overwrite` is set to `True`, the current file will be
+              overwritten without prompt.
         """
 
-        if fname is None:
-            fname = str(self.logpath.name)
-        elif not isinstance(fname, str):
-            raise TypeError(f'{R}fname should be a string or None{END}')
+        ArgumentChecker(
+            [
+                (path, 'path', 'str'),
+                (force_overwrite, 'force_overwrite', 'bool'),
+            ]
+        )
 
-        if not isinstance(dir, str):
-            raise TypeError(f'{R}dir should be a string or None{END}')
-
-        path_manager = PathManager(fname, dir)
-
-        result = path_manager.check_file(force_overwrite)
-
-        if result == 0:
+        # Get full path and extend .log extension
+        path = Path(path).resolve().with_suffix('.log')
+        # Check path is valid (check directory exists, ask user if they are happy
+        # overwriting if file already exists).
+        pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
+        # Valid path, we are good to proceed
+        if pathres == 0:
             pass
-        elif result == 1:
-            print(f'{O}Log file will not be saved to the specified path{END}')
-            return
-        elif result == 2:
-            raise ValueError(f'{R}dir ({dir}) does not exist{END}')
+        # Overwrite denied by the user. Exit the program
+        elif pathres == 1:
+            exit()
+        # pathres == 2: Directory specified doesn't exist
+        else:
+            raise ValueError(
+                f'{cols.R}The directory implied by path does not'
+                f' exist{cols.END}'
+            )
 
         try:
-            shutil.copyfile(self.logpath, path_manager.path)
+            shutil.copyfile(self._logpath, path)
             print(
-                f'{G}Log file succesfully saved to'
-                f' {str(path_manager.path)}{END}'
+                f'{cols.G}Log file succesfully saved to'
+                f' {str(path)}{cols.END}'
             )
 
         # trouble copying file...

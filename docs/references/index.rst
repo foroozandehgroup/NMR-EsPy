@@ -10,6 +10,7 @@ Reference
    filter
    mpm
    nlp/index
+   plot
    signal
    write
 

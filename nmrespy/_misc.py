@@ -8,6 +8,9 @@ import itertools
 from pathlib import Path
 import re
 
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+
 import numpy as np
 
 import nmrespy._cols as cols
@@ -31,6 +34,7 @@ class ArgumentChecker:
               + `'parameter'`
               + `'int_list'`
               + `'float_list'`
+              + `'str_list'`
               + `'region_int'`
               + `'region_float'`
               + `'bool'`
@@ -65,6 +69,8 @@ class ArgumentChecker:
                 test = self.check_list(obj, int)
             if typ == 'float_list':
                 test = self.check_list(obj, float)
+            if typ == 'str_list':
+                test = self.check_list(obj, str)
             if typ == 'region_int':
                 test = self.check_region(obj, int)
             if typ == 'region_float':
@@ -99,6 +105,10 @@ class ArgumentChecker:
                 test = obj in ['txt', 'pdf', 'csv']
             if typ == 'pos_neg_tuple':
                 test = self.check_pos_neg_tuple(obj)
+            if typ == 'mpl_color':
+                test = self.check_mpl_color(obj)
+            if typ == 'osc_cols':
+                test = self.check_oscillator_colors(obj)
 
             # Error message to be shown if invalid arguments are found
             if test is False:
@@ -126,14 +136,14 @@ class ArgumentChecker:
             # errmsg doesn't exist, implying no failed tests occurred.
             pass
 
-    def check_dim(func):
-        def inner(self, *args, **kwargs):
-            if self.dim == None:
+    def check_dim(f):
+        def wrapper(*args, **kwargs):
+            if args[0].dim == None:
                 raise ValueError(
                     f'{cols.R}---BUG--- dim needs to be specified{cols.END}'
                 )
-                print(f'{cols.G}All good{cols.END}')
-        return inner
+            return f(*args, **kwargs)
+        return wrapper
 
     @check_dim
     def check_parameter_array(self, obj):
@@ -152,8 +162,8 @@ class ArgumentChecker:
     @check_dim
     def check_list(self, obj, typ):
         """Checks for `[int]`, `[int, int]`, `[float]`, `[float, float]`"""
-        # Check for a ist of the correct shape
-        if not isinstance(obj, list) and len(obj) == self.dim:
+        # Check for a list of the correct shape
+        if not isinstance(obj, list) or len(obj) != self.dim:
             return False
         # Check that every element in the list is of the correct type
         for element in obj:
@@ -167,7 +177,7 @@ class ArgumentChecker:
         """Checks for `[[int, int]]`, `[[int, int], [int, int]]`,
         `[[float, float]]`, and `[[float, float], [float, float]]`"""
         # Check for a list of the correct shape
-        if not isinstance(obj, list) and len(obj) == self.dim:
+        if not isinstance(obj, list) or len(obj) != self.dim:
             return False
         # Check that every element in the list is a list of length 2
         for sublist in obj:
@@ -215,6 +225,36 @@ class ArgumentChecker:
          and isinstance(obj[0], int) and obj[0] < 0
          and isinstance(obj[1], int) and obj[1] > 1)
 
+    @staticmethod
+    def check_mpl_color(obj):
+        """Check for a valid matplotlib color."""
+        try:
+            color = mcolors.to_hex(obj)
+            return True
+        except ValueError:
+            return False
+
+    def check_oscillator_colors(self, obj):
+        """Check for valid oscillator colorcycle"""
+        # Check for single matplotlib color
+        if self.check_mpl_color(obj):
+            return True
+
+        # Check for matplotlib colormap
+        if obj in plt.colormaps():
+            return True
+
+        # Check if a list or numpy array with valid mpl colors
+        if isinstance(obj, (list, np.ndarray)):
+            for elem in obj:
+                if not self.check_mpl_color(elem):
+                    # At least one colour in the iterable is not valid.
+                    # All options are exhausted not, so return False
+                    return False
+            # If we get to here, all list elements were valid colours.
+            return True
+        # No hits from the above conditionals...
+        return False
 
 
 class FrequencyConverter:
@@ -479,7 +519,7 @@ def start_end_wrapper(start_text, end_text):
 
 
 def latex_nucleus(nucleus):
-    """Creates a isotope symbol string for processing by latex
+    """Creates a isotope symbol string for processing by LaTeX
 
     Given a string `'<mass><sym>'`, where `'<mass>'` is the nuceleus'
     mass number and `'<sym>'` is its chemical symbol, create the string

@@ -6,7 +6,7 @@
 
 Documentation here: https://nmr-espy.readthedocs.io/en/latest/
 
-I'm yet to chuck this on `PyPI <https://pypi.org/>`_, but if you want
+I'm yet to chuck this on `PyPI <https://pypi.org/>`_, so if you want
 to have a look at it you'll need to do the following:
 
 * clone this repo

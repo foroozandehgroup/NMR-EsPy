@@ -125,7 +125,7 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True):
     amp = parameters[:, 0]
     phase = parameters[:, 1]
     # Center frequencies at 0 based on offset
-    freq = [parameters[:, 2+i] + offset[i] for i in range(dim)]
+    freq = [parameters[:, 2+i] - offset[i] for i in range(dim)]
     damp = [parameters[:, dim+2+i] for i in range(dim)]
 
     # Time points in each dimension
@@ -225,14 +225,18 @@ def get_shifts(n, sw, offset):
 
     return shifts
 
-def ft(fid):
-    """Performs Fourier transformation and flips the resulting spectrum
-    to satisfy NMR convention.
+def ft(fid, flip=True):
+    """Performs Fourier transformation and (optionally) flips the resulting
+    spectrum to satisfy NMR convention.
 
     Parameters
     ----------
     fid : numpy.ndarray
         Time-domain data
+
+    flip : bool, default: True
+        Whether or not to flip the Fourier Trnasform of `fid` in each
+        dimension.
 
     Returns
     -------
@@ -240,22 +244,17 @@ def ft(fid):
         Fourier transform of the data, flipped in each dimension.
     """
 
-    try:
-        dim = fid.ndim
-    except:
-        raise TypeError(f'{cols.R}fid should be a numpy ndarray{cols.END}')
+    ArgumentChecker([(fid, 'fid', 'ndarray'), (flip, 'flip', 'bool')])
 
-    ArgumentChecker([(fid, 'fid', 'ndarray')])
-
-    for axis in range(dim):
+    for axis in range(fid.ndim):
         try:
             spectrum = fft(spectrum, axis=axis)
         except NameError:
             spectrum = fft(fid, axis=axis)
 
-    return np.flip(fftshift(spectrum))
+    return np.flip(fftshift(spectrum)) if flip else fftshift(spectrum)
 
-def ift(spectrum):
+def ift(spectrum, flip=True):
     """Flips spectral data in each dimension, and then inverse Fourier
     transforms.
 
@@ -264,15 +263,19 @@ def ift(spectrum):
     spectrum : numpy.ndarray
         Spectrum
 
+    flip : bool, default: True
+        Whether or not to flip `spectrum` in each dimension prior to Inverse
+        Fourier Transform.
+
     Returns
     -------
     fid : numpy.ndarray
         Inverse Fourier transform of the spectrum.
     """
 
-    ArgumentChecker([(spectrum, 'spectrum', 'ndarray')])
+    ArgumentChecker([(spectrum, 'spectrum', 'ndarray'), (flip, 'flip', 'bool')])
 
-    spectrum = ifftshift(np.flip(spectrum))
+    spectrum = ifftshift(np.flip(spectrum)) if flip else ifftshift(spectrum)
     for axis in range(spectrum.ndim):
         try:
             fid = ifft(fid, axis=axis)
@@ -310,8 +313,9 @@ def phase_spectrum(spectrum, p0, p1, pivot=None):
     except:
         raise TypeError(f'{cols.R}p0 should be iterable.{cols.END}')
 
-    if pivot == None:
-        pivot = [0.0] * dim
+    if pivot is None:
+        pivot = [0] * dim
+    print(pivot)
     components = [
         (spectrum, 'spectrum', 'ndarray'),
         (p0, 'p0', 'float_list'),
@@ -380,7 +384,7 @@ def manual_phase_spectrum(spectrum, max_p1=None):
     app = PhaseApp(init_spectrum, max_p1)
     app.mainloop()
 
-    return app.p0, app.p1
+    return [app.p0], [app.p1]
 
 
 class PhaseApp(tk.Tk):
@@ -512,8 +516,6 @@ class PhaseApp(tk.Tk):
         self.canvas.draw_idle()
 
     def save(self):
-        print(self.pivot / self.n)
-        print(self.p1)
         self.p0 = self.p0 - self.p1 * (self.pivot / self.n)
         self.destroy()
 

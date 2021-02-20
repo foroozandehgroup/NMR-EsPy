@@ -14,6 +14,7 @@ axes.spines.top:       False
 axes.xmargin:          .0
 axes.ymargin:          .03
 axes.formatter.limits: -99, 99
+axes.prop_cycle: cycler('color', ['1063e0', 'eb9310', '2bb539', 'd4200c'])
 
 # LINES
 lines.linewidth:       1.2

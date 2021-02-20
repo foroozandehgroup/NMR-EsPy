@@ -18,7 +18,7 @@ if cols.USE_COLORAMA:
 
 
 
-def import_bruker(directory, ask_convdta=True):
+def load_bruker(directory, ask_convdta=True):
     """Loads data and relevant parameters from Bruker format.
 
     Parameters
@@ -435,71 +435,6 @@ def import_bruker(directory, ask_convdta=True):
     }
 
     return result
-
-
-def pickle_load(fname, directory='.'):
-    """Deserialises and imports a byte stream contained in a specified file,
-    using Python's "Pickling" protocol.
-
-    Parameters
-    ----------
-    fname : str
-        Name of the file containing the serialised object. The extension
-        '.pkl' may be included or omitted.
-    directory : str, deafult: '.'
-        Name of the directory the file is contained in.
-
-    Returns
-    -------
-    :py:class:`nmrespy.core.NMREsPyBruker`
-
-    Notes
-    -----
-    .. warning::
-       `From the Python docs:`
-
-       "The pickle module is not secure. Only unpickle data you trust.
-       It is possible to construct malicious pickle data which will execute
-       arbitrary code during unpickling. Never unpickle data that could have
-       come from an untrusted source, or that could have been tampered with."
-
-       You should only use :py:func:`~nmrespy.load.pickle_load` on files that
-       you are 100% certain were generated using
-       :py:meth:`~nmrespy.core.NMREsPyBruker.pickle_save`. If you use
-       :py:func:`~nmrespy.load.pickle_load` on a .pkl file, and the resulting
-       output is not an instance of :py:class:`~nmrespy.core.NMREsPyBruker`,
-       you will be warned.
-    """
-
-    if str(fname)[-4:] == '.pkl':
-        pass
-    elif '.' in str(fname):
-        raise ValueError(f'{R}fname: {fname} - Unexpected file'
-                         f' extension.{END}')
-    else:
-        fname += '.pkl'
-
-    dir_ = Path(directory)
-
-    path = dir_ / fname
-
-    if path.is_file():
-        with open(path, 'rb') as fh:
-            obj = pickle.load(fh)
-
-        if isinstance(obj, NMREsPyBruker):
-            print(f'{cols.G}Loaded contents of {path}{cols.END}')
-            return obj
-        else:
-            print(f'{cols.O}The contents of {path} have been successfully'
-                  f' loaded, though the object returned is not an intance of'
-                  f' NMREsPyBruker. I cannot guarantee this will behave as'
-                  f' desired. You have been warned...{cols.END}')
-            return obj
-
-    else:
-        raise FileNotFoundError(f'{cols.R}Does not exist!{cols.END}')
-
 
 
 def _get_param(name, path):
