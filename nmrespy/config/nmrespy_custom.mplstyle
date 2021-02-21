@@ -7,13 +7,8 @@ savefig.transparent:   True
 savefig.bbox:          tight
 
 # AXES
-axes.linewidth:        1.2
-axes.spines.right:     False
-axes.spines.left:      False
-axes.spines.top:       False
-axes.xmargin:          .0
+axes.linewidth:        1.6
 axes.ymargin:          .03
-axes.formatter.limits: -99, 99
 axes.prop_cycle: cycler('color', ['1063e0', 'eb9310', '2bb539', 'd4200c'])
 
 # LINES

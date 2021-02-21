@@ -25,9 +25,10 @@ if cols.USE_COLORAMA:
 import nmrespy._errors as errors
 from nmrespy._misc import *
 from nmrespy.load import load_bruker
-from nmrespy.filter import FrequencyFilter
+from nmrespy.freqfilter import FrequencyFilter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp.nlp import NonlinearProgramming
+from nmrespy.plot import plot_result
 from nmrespy.write import write_result
 from nmrespy import signal
 
@@ -972,7 +973,7 @@ class Estimator:
         Notes
         -----
         This method assigns the attribute `filter_info` to an instance of
-        :py:class:`nmrespy.filter.FrequencyFilter`. To obtain information
+        :py:class:`nmrespy.freqfilter.FrequencyFilter`. To obtain information
         on the filtration, use :py:meth:`get_filter_info`.
         """
 
@@ -994,13 +995,13 @@ class Estimator:
 
         Returns
         -------
-        filter_info : nmrespy.filter.FrequencyFilter
+        filter_info : nmrespy.freqfilter.FrequencyFilter
 
         Notes
         -----
         There are numerous methods associated with `filter_info` for
         obtaining relavent infomation about the filtration. See
-        :py:class:`nmrespy.filter.FrequencyFilter` for details.
+        :py:class:`nmrespy.freqfilter.FrequencyFilter` for details.
         """
 
         return self._check_if_none(
@@ -1026,7 +1027,7 @@ class Estimator:
         * If `self.filter_info` is equal to `None`, `self.data` will be
           analysed
         * If `self.filter_info` is an instance of
-          :py:class:`nmrespy.filter.FrequencyFilter`,
+          :py:class:`nmrespy.freqfilter.FrequencyFilter`,
           `self.filter_info.filtered_signal` will be analysed.
         """
         filter_info = self.filter_info
@@ -1077,7 +1078,7 @@ class Estimator:
         * If `self.filter_info` is equal to `None`, `self.data` will be
           analysed
         * If `self.filter_info` is an instance of
-          :py:class:`nmrespy.filter.FrequencyFilter`,
+          :py:class:`nmrespy.freqfilter.FrequencyFilter`,
           `self.filter_info.filtered_signal` will be analysed.
 
         **For developers:** See :py:meth:`_get_data_sw_offset`
@@ -1136,7 +1137,7 @@ class Estimator:
 
         Returns
         -------
-        mpm_info : :py:class:`nmrespy.filter.MatrixPencil`
+        mpm_info : :py:class:`nmrespy.mpm.MatrixPencil`
 
         Notes
         -----
@@ -1192,7 +1193,7 @@ class Estimator:
         * If `self.filter_info` is equal to `None`, `self.data` will be
           analysed
         * If `self.filter_info` is an instance of
-          :py:class:`nmrespy.filter.FrequencyFilter`,
+          :py:class:`nmrespy.freqfilter.FrequencyFilter`,
           `self.filter_info.filtered_signal` will be analysed.
 
         **For developers:** See :py:meth:`_get_data_sw_offset`
@@ -1249,7 +1250,7 @@ class Estimator:
 
         Returns
         -------
-        nlp_info : :py:class:`nmrespy.filter.NonlinearProgramming`
+        nlp_info : :py:class:`nmrespy.nlp.nlp.NonlinearProgramming`
         """
 
         return self._check_if_none(
@@ -1378,169 +1379,31 @@ class Estimator:
             info=info, sfo=sfo, **kwargs,
         )
 
-    def plot_result(self, result_name=None, datacol=None, osccols=None,
-                    labels=True, stylesheet=None):
-        """Generates a figure with the result of an estimation routine.
-        A spectrum of the original data is plotted, along with the
-        Fourier transform of each individual oscillator that makes up the
-        estimation result.
-
-        .. note::
-            Currently, this method is only compatible with 1-dimesnional
-            data.
-
-        Parameters
-        ----------
-        result_name : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If ``None``, the parameter estimate
-            to use will be determined in the following order of priority:
-
-            1. ``self.theta`` will be used if it is not ``None``.
-            2. ``self.theta0`` will be used if it is not ``None``.
-            3. Otherwise, an error will be raised.
-
-        datacol : matplotlib color or None, default: None
-            The color used to plot the original data. Any value that is
-            recognised by matplotlib as a color is permitted. See:
-
-            https://matplotlib.org/3.1.0/tutorials/colors/colors.html
-
-            If ``None``, the default color :grey:`#808080` will be used.
-
-        osccols : matplotlib color, matplotlib colormap, list, or None,\
-        default: None
-            Describes how to color individual oscillators. The following
-            is a complete list of options:
-
-            * If the value denotes a matplotlib color, all oscillators will
-              be given this color.
-            * If a string corresponding to a matplotlib colormap is given,
-              the oscillators will be consecutively shaded by linear increments
-              of this colormap.
-              For all valid colormaps, see:
-
-              https://matplotlib.org/3.3.1/tutorials/colors/colormaps.html
-            * If a list or NumPy array containing valid matplotlib colors is
-              given, these colors will be cycled.
-              For example, if ``osccols=['r', 'g', 'b']``:
-
-              + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
-              + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
-              + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
-
-            * If ``None``, the default colouring method will be applied,
-              which involves cycling through the following colors:
-
-              + :oscblue:`#1063E0`
-              + :oscorange:`#EB9310`
-              + :oscgreen:`#2BB539`
-              + :oscred:`#D4200C`
-
-        labels : Bool, default: True
-            If ``True``, each oscillator will be given a numerical label
-            in the plot, if ``False``, no labels will be produced.
-
-        stylesheet : None or str, default: None
-            The name of/path to a matplotlib stylesheet for further
-            customisation of the plot. Note that all the features of the
-            stylesheet will be adhered to, except for the colors, which are
-            overwritten by whatever is specified by ``datacol`` and
-            ``osccols``. If ``None``, a custom stylesheet, found in the
-            follwing path is used:
-
-            ``/path/to/NMR-EsPy/nmrespy/config/nmrespy_custom.mplstyle``
-
-            To see built-in stylesheets that are available, enter
-            the following into a python interpreter: ::
-                >>> import matplotlib.pyplot as plt
-                >>> print(plt.style.available)
-            Alternatively, enter the full path to your own custom stylesheet.
-
-        Returns
-        -------
-        fig : `matplotlib.figure.Figure <https://matplotlib.org/3.3.1/\
-        api/_as_gen/matplotlib.figure.Figure.html>`_
-            The resulting figure.
-
-        ax : `matplotlib.axes._subplots.AxesSubplot <https://matplotlib.org/\
-        3.3.1/api/axes_api.html#the-axes-class>`_
-            The resulting set of axes.
-
-        lines : dict
-            A dictionary containing a series of
-            `matplotlib.lines.Line2D <https://matplotlib.org/3.3.1/\
-            api/_as_gen/matplotlib.lines.Line2D.html>`_
-            instances. The data plot is given the key ``'data'``, and the
-            individual oscillator plots are given the keys ``'osc1'``,
-            ``'osc2'``, ``'osc3'``, ..., ``'osc<M>'`` where ``<M>`` is the
-            number of oscillators in the parameter estimate.
-
-        labs : dict
-            If ``labels`` is True, this dictionary will contain a series
-            of `matplotlib.text.Text <https://matplotlib.org/3.1.1/\
-            api/text_api.html#matplotlib.text.Text>`_ instances, with the
-            keys ``'osc1'``, ``'osc2'``, etc. as is the case with the
-            ``lines`` dictionary. If ``labels`` is False, ``labs`` will be
-            and empty dictionary.
-
-        Raises
-        ------
-        TwoDimUnsupportedError
-            If ``self.dim`` is 2.
-
-        NoParameterEstimateError
-            If ``result_name`` is ``None``, and both ``self.theta0`` and
-            ``self.theta`` are ``None``.
-
-        Notes
-        -----
-        The ``fig``, ``ax``, ``lines`` and ``labels`` objects that are returned
-        provide the ability to customise virtually any feature of the plot. If
-        you wish to edit a particular line or label, simply use the following
-        syntax: ::
-            >>> fig, ax, lines, labs = example.plot_result()
-            >>> lines['osc7'].set_lw(1.6) # set oscillator 7's linewith to 2
-            >>> labs['osc2'].set_x(4) # move the x co-ordinate of oscillator 2's label to 4ppm
-
-        To save the figure, simply use `savefig: <https://matplotlib.org/\
-        3.1.1/api/_as_gen/matplotlib.pyplot.savefig.html>`_
-        ::
-            >>> fig.savefig('example_figure.pdf', format='pdf')
+    def plot_result(self, **kwargs):
+        """
         """
 
         dim = self.get_dim()
-        # check dim is valid (only 1D data supported so far)
+        # Check dim is valid (only 1D data supported so far)
         if dim == 2:
             raise TwoDimUnsupportedError()
 
-        result, result_name = self._check_result(result_name)
+        try:
+            unit = kwargs['shifts_unit']
+        except KeyError:
+            kwargs['shifts_unit'] = unit = 'ppm'
 
-        data = fftshift(fft(self.data))[::-1]
+        data = self.get_data()
+        result = self.nlp_info.get_result()
+        sw = self.get_sw()
+        offset = self.get_offset()
+        sfo = self.get_sfo(kill=False)
+        nucleus = self.get_nucleus(kill=False)
+        region = self.get_filter_info().get_region(unit=unit)
 
-        # phase data
-        p0 = self.get_p0(kill=False)
-        p1 = self.get_p1(kill=False)
-
-        if p0 is None:
-            pass
-        else:
-            data = _ve.phase(data, p0, p1)
-
-        # FTs of FIDs generated from individual oscillators in result array
-        peaks = []
-        for m, osc in enumerate(result):
-            f = self.make_fid(result_name, oscillators=[m])
-            peaks.append(np.real(fftshift(fft(f))))
-
-        # left and right boundaries of filter region
-        region = self.get_region(kill=False)
-
-        nuc = self.get_nucleus()
-        shifts = self.get_shifts(unit='ppm')
-
-        return _plot.plotres_1d(
-            data, peaks, shifts, region, nuc, datacol, osccols, labels,
-            stylesheet
+        return plot_result(
+            data, result, sw, offset, sfo=sfo, nucleus=nucleus, region=region,
+            **kwargs,
         )
 
 

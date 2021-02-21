@@ -4,7 +4,6 @@
 
 """Support for plotting estimation results"""
 
-from itertools import cycle
 import os
 import re
 import tempfile
@@ -12,7 +11,6 @@ import tempfile
 import matplotlib as mpl
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.fft import fft, fftshift
@@ -80,7 +78,7 @@ def plot_result(
     region : [[int, int]], [[float, float]], [[int, int], [int, int]] or \
     [[float, float], [float, float]]
         Boundaries specifying the region to show. See also
-        :py:class:`nmrespy.filter.FrequencyFilter`.
+        :py:class:`nmrespy.freqfilter.FrequencyFilter`.
 
     data_color : matplotlib color, default: '#808080'
         The color used to plot the original data. Any value that is
@@ -138,8 +136,8 @@ def plot_result(
         * fig : `matplotlib.figure.Figure <https://matplotlib.org/3.3.1/\
         api/_as_gen/matplotlib.figure.Figure.html>`_
             The resulting figure.
-        * ax : `matplotlib.axes._subplots.AxesSubplot <https://matplotlib.org/\
-        3.3.1/api/axes_api.html#the-axes-class>`_
+        * ax : `matplotlib.axes.Axes <https://matplotlib.org/3.3.1/api/\
+        axes_api.html#matplotlib.axes.Axes>`_
             The resulting set of axes.
         * lines : dict
             A dictionary containing a series of
@@ -278,7 +276,6 @@ def plot_result(
     spectrum = np.real(signal.ft(data, flip=False))
     peaks = []
     for osc in result:
-        print(np.expand_dims(osc, axis=0))
         peaks.append(
             np.real(
                 signal.ft(
@@ -321,7 +318,6 @@ def plot_result(
         converter = FrequencyConverter(n, sw, offset, sfo=sfo)
         region_idx = converter.convert(region, f'{shifts_unit}->idx')
         left, right = min(region_idx[0]), max(region_idx[0])
-        print(left, right)
         # Initialise maxi and mini to be values that are certain to be
         # overwritten
         maxi = -np.inf
@@ -337,14 +333,13 @@ def plot_result(
             # Check if plot's min value is smaller than current min
             mini = line_min if line_min < mini else maxi
         height = maxi - mini
-        bottom, top = maxi + 0.03 * height, mini - 0.03 * height
-        ax.set_ylim(mini, maxi)
+        bottom, top = mini - (0.03 * height), maxi + (0.05 * height),
+        ax.set_ylim(bottom, top)
 
     # x-axis label, of form ¹H or ¹³C etc.
     xlab = 'chemical shifts' if nucleus is None else latex_nucleus(nucleus[0])
     xlab += ' (Hz)' if shifts_unit == 'hz' else ' (ppm)'
     ax.set_xlabel(xlab)
-    plt.show()
 
     return NmrespyFigure(fig, ax, lines, labs)
 
@@ -439,32 +434,3 @@ class NmrespyFigure:
 
         width, height = right - left, top - bottom
         self.ax.set_position([left, bottom, width, height])
-
-
-def _get_ymaxmin(lines, left, right):
-    """
-    Out of original data plot, and oscillator plots, determine largest
-    and smallest values. Used for determine the y-axis limits
-
-    Parameters
-    ----------
-    lines : dict
-        Dictionary of plots.
-
-    left : int
-        Index of leftmost point in the region of interest.
-
-    right : int
-        Index of rightmost point in the region of interest.
-
-    Returns
-    -------
-    max : float
-        Higest value in the region of interest, amongst all plotlines.
-
-    min : float
-        Lowest value in the region of interest, amongst all plotlines.
-    """
-
-
-    return bottom, top
