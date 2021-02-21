@@ -132,29 +132,32 @@ def plot_result(
 
     Returns
     -------
-    fig : `matplotlib.figure.Figure <https://matplotlib.org/3.3.1/\
-    api/_as_gen/matplotlib.figure.Figure.html>`_
-        The resulting figure.
+    plot : :py:class:`NmrespyFigure`
+        A class instance with the following attributes:
 
-    ax : `matplotlib.axes._subplots.AxesSubplot <https://matplotlib.org/\
-    3.3.1/api/axes_api.html#the-axes-class>`_
-        The resulting set of axes.
+        * fig : `matplotlib.figure.Figure <https://matplotlib.org/3.3.1/\
+        api/_as_gen/matplotlib.figure.Figure.html>`_
+            The resulting figure.
+        * ax : `matplotlib.axes._subplots.AxesSubplot <https://matplotlib.org/\
+        3.3.1/api/axes_api.html#the-axes-class>`_
+            The resulting set of axes.
+        * lines : dict
+            A dictionary containing a series of
+            `matplotlib.lines.Line2D <https://matplotlib.org/3.3.1/\
+            api/_as_gen/matplotlib.lines.Line2D.html>`_
+            instances. The data plot is given the key `0`, and the
+            individual oscillator plots are given the keys `1`,
+            `2`, `3`, ..., `<M>` where `<M>` is the number of
+            oscillators in the parameter estimate.
+        * labels : dict
+            A dictionary containing a series of
+            of `matplotlib.text.Text <https://matplotlib.org/3.1.1/\
+            api/text_api.html#matplotlib.text.Text>`_ instances, with the
+            keys `1`, `2`, etc. The Boolean argument `labels` affects the
+            alpha transparency of the labels:
 
-    lines : dict
-        A dictionary containing a series of
-        `matplotlib.lines.Line2D <https://matplotlib.org/3.3.1/\
-        api/_as_gen/matplotlib.lines.Line2D.html>`_
-        instances. The data plot is given the key ``'data'``, and the
-        individual oscillator plots are given the keys ``'osc1'``,
-        ``'osc2'``, ``'osc3'``, ..., ``'osc<M>'`` where ``<M>`` is the number of
-        oscillators in the parameter estimate.
-
-    labs : dict
-        If ``labels`` is ``True``, this dictionary will contain a series
-        of `matplotlib.text.Text <https://matplotlib.org/3.1.1/\
-        api/text_api.html#matplotlib.text.Text>`_ instances, with the
-        keys ``'osc1'``, ``'osc2'``, etc. If ``labels`` is ``False``, the dict
-        will be empty.
+            + `True` sets alpha to 1 (making the labels visible)
+            + `False` sets alpha to 0 (making the labels invisible)
     """
 
 
@@ -195,24 +198,20 @@ def plot_result(
     # Number of oscillators
     m = result.shape[0]
 
-
-    def get_rc(stylesheet):
-        try:
-            return str(mpl.rc_params_from_file(
-                stylesheet, fail_on_error=True, use_default_template=False,
-            ))
-
-        except:
-            raise ValueError(
-                f'{cols.R}Error in loading the stylesheet. Check you gave'
-                ' a valid path, and that the stylesheet is formatted'
-                f' correctly{cols.END}'
-            )
-
     # Default style sheet if one isn't explicitly given
-    dft_stylesheet = NMRESPYPATH / 'config/nmrespy_custom.mplstyle'
+    if stylesheet is None:
+        stylesheet = NMRESPYPATH / 'config/nmrespy_custom.mplstyle'
     # Load text from style sheet
-    rc = get_rc(dft_stylesheet) if stylesheet is None else get_rc(stylesheet)
+    try:
+        rc = str(mpl.rc_params_from_file(
+            stylesheet, fail_on_error=True, use_default_template=False,
+        ))
+    except:
+        raise ValueError(
+            f'{cols.R}Error in loading the stylesheet. Check you gave'
+            ' a valid path, and that the stylesheet is formatted'
+            f' correctly{cols.END}'
+        )
 
     # Seem to be getting bugs when using stylesheet with any hex colours
     # that have a # in front. Remove these.
@@ -255,9 +254,8 @@ def plot_result(
     # Temporary path to save stylesheet to
     tmp_path = Path(tempfile.gettempdir()) / 'stylesheet.mplstyle'
     with open(tmp_path, 'w') as fh:
-        print(rc)
         fh.write(rc)
-    # Invoke the stylesheet!
+    # Invoke the stylesheet
     plt.style.use(tmp_path)
     # Delete the stylesheet
     os.remove(tmp_path)
@@ -320,28 +318,127 @@ def plot_result(
 
         # Determine highest/lowest values points in region,
         # and set ylims to accommodate these.
-        # TODO: Needs some rethinking...
         converter = FrequencyConverter(n, sw, offset, sfo=sfo)
         region_idx = converter.convert(region, f'{shifts_unit}->idx')
-
-        mx, mn = _get_ymaxmin(lines, min(region_idx[0]), max(region_idx[0]))
-        ax.set_ylim(mn, mx)
+        left, right = min(region_idx[0]), max(region_idx[0])
+        print(left, right)
+        # Initialise maxi and mini to be values that are certain to be
+        # overwritten
+        maxi = -np.inf
+        mini = np.inf
+        # For each plot, get max and min values
+        for line in list(lines.values()):
+            # Flip the data and extract right section
+            data = line.get_ydata()[::-1][left:right]
+            line_max = np.amax(data)
+            line_min = np.amin(data)
+            # Check if plot's max value is larger than current max
+            maxi = line_max if line_max > maxi else maxi
+            # Check if plot's min value is smaller than current min
+            mini = line_min if line_min < mini else maxi
+        height = maxi - mini
+        bottom, top = maxi + 0.03 * height, mini - 0.03 * height
+        ax.set_ylim(mini, maxi)
 
     # x-axis label, of form ¹H or ¹³C etc.
     xlab = 'chemical shifts' if nucleus is None else latex_nucleus(nucleus[0])
+    xlab += ' (Hz)' if shifts_unit == 'hz' else ' (ppm)'
     ax.set_xlabel(xlab)
     plt.show()
+
     return NmrespyFigure(fig, ax, lines, labs)
 
 # TODO: Grow this class: provide functionality for easy tweaking
 # of figure
 class NmrespyFigure:
+    """Plot result class
 
+    .. note::
+       The class is very minimal at the moment. I plan to expand its
+       functionality in later versions.
+
+    Parameters
+    ----------
+    fig : `matplotlib.figure.Figure <https://matplotlib.org/3.3.1/\
+    api/_as_gen/matplotlib.figure.Figure.html>`_
+        Figure.
+
+    ax : `matplotlib.axes._subplots.AxesSubplot <https://matplotlib.org/\
+    3.3.1/api/axes_api.html#the-axes-class>`_
+        Axes.
+
+    lines : dict
+        Lines dictionary.
+
+    labels : dict
+        Labels dictionary.
+
+
+    """
     def __init__(self, fig, ax, lines, labels):
         self.fig = fig
         self.ax = ax
         self.lines = lines
         self.labels = labels
+
+    def show_labels(self):
+        """Make the oscillator labels visible"""
+        for k in self.labels.keys():
+            self.labels[k].set_alpha(1)
+
+    def hide_labels(self):
+        """Make the oscillator labels visible"""
+        for k in self.labels.keys():
+            self.labels[k].set_alpha(0)
+
+    def adjust_axes_position(self, top=None, bottom=None, left=None, right=None):
+        """Adjust the position of the axes.
+
+        Parameters
+        ----------
+        All the parameters should be between `0` and `1`. `0` denotes
+        the left/bottom edge of the figure. `1` denotes the right/top
+        edge of the figure. If a parameter is set to `None`, no change
+        will occur to that position.
+
+        top : float or None, default: None
+            Must be be larger than `bottom`
+
+        bottom : float or None, default: None
+            Must be be smaller than `top`
+
+        left : float or None, default: None
+            Must be be smaller than `right`
+
+        right : float or None, default: None
+            Must be larger than `left`
+        """
+
+        curr_pos = self.ax.get_position()
+        if top is None:
+            top = curr_pos[2] + curr_pos[4] # bottom + height
+        if bottom is None:
+            bottom = curr_pos[2] # bottom
+        if left is None:
+            left = curr_pos[1] # left
+        if right is None:
+            right =curr_pos[1] + curr_pos[3] # left + width
+
+        for pos in [left, bottom, right, top]:
+            if not 0 <= pos <= 1:
+                raise ValueError(
+                    f'{cols.R}top, bottom, left and right should all be'
+                    f'between 0.0 and 1.0{cols.END}'
+                )
+
+        if left > right or bottom > top:
+            raise ValueError(
+                f'{cols.R}right should be larger than left, and top should'
+                f' be larger than bottom.{cols.END}'
+            )
+
+        width, height = right - left, top - bottom
+        self.ax.set_position([left, bottom, width, height])
 
 
 def _get_ymaxmin(lines, left, right):
@@ -368,93 +465,6 @@ def _get_ymaxmin(lines, left, right):
     min : float
         Lowest value in the region of interest, amongst all plotlines.
     """
-    # initialise max and min to be values that are certain to be
-    # overwritten (anything is bigger than -∞, everything is smaller
-    # than +∞)
-
-    max = -np.inf
-    min = np.inf
-
-    # for each plot, get max and min values
-    for line in list(lines.values()):
-        data = line.get_ydata()[left:right]
-        line_max = np.amax(data)
-        line_min = np.amin(data)
-        # check if plot's max value is larger than current max
-        if line_max > max:
-            max = line_max
-        # check if plot's min value is larger than current min
-        if line_min < min:
-            min = line_min
-    # if min is +ve, give it a small negative value so that 0 features
-    if min >= 0.0:
-        min = -0.01 * max
-    return max, min
 
 
-
-def _get_osc_cols(inp, M):
-    """
-    Constructs and iterator for coloring individual oscillator plots.
-
-    Parameters
-    ----------
-    inp : any type
-        An input which describes how to color the oscillators. See
-        :py:meth:`~nmrespy.core.NMREsPyBruker.plot_result` for details.
-
-    M : int
-        The number of oscillators.
-
-    Returns
-    -------
-    osc_cols : itertools.cycle
-        A cyclic iterator of color arguments.
-    """
-    if inp is None:
-        # default: cycle through blue, orange, green, red
-        return cycle(['#1063e0', '#eb9310', '#2bb539', '#d4200c'])
-
-    # check if inp can be interpreted as a valid individual colour
-    singlecol = _check_valid_mpl_color(inp, kill=False)
-    if singlecol:
-        return cycle([singlecol])
-
-    # check is inp refers to a mpl colormap
-    if isinstance(inp, str):
-        if inp in plt.colormaps():
-            # create colormap
-            return cycle(vars(cm)[inp](np.linspace(0, 1, M)))
-
-    # check if inp is a list/numpy array of valid mpl colours
-    if isinstance(inp, np.ndarray):
-        inp = inp.tolist()
-    if isinstance(inp, list):
-        for elem in inp:
-            c = _check_valid_mpl_color(elem, True)
-        return cycle(inp)
-
-    else:
-        raise TypeError(f'\n{R}osc_cols could not be understood.{END}')
-
-
-def _generate_xlabel(nuc):
-    """
-    Generates an xlabel for the plot, of the form: ``'$^{M}$E'`` (ppm), where M
-    is mass number of nucleus, and E is the element symbol.
-
-    Parameters
-    ----------
-    nuc : str
-        Identity of the nucleus, in the form ``'<M><E>'``, where ``<M>`` is the
-        mass number, and ``<E>`` is the element symbol.
-
-    Returns
-    -------
-    xlab : str
-        Formatted string for x-axis of figure.
-    """
-    # comps: [mass number, element symbol]
-    # seem to get empty string as first arg, so filter any NoneTypes
-    comps = filter(None, re.split(r'(\d+)', nuc))
-    return r'$^{' + next(comps) + r'}$' + next(comps) + r' (ppm)'
+    return bottom, top

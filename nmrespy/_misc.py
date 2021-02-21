@@ -524,10 +524,10 @@ def latex_nucleus(nucleus):
     Given a string `'<mass><sym>'`, where `'<mass>'` is the nuceleus'
     mass number and `'<sym>'` is its chemical symbol, create the string
     ``\textsuperscript{<mass>}<sym>``. For example, given `'207Pb'`, the
-    return value would be ``\textsuperscript{207}Pb``
+    return value would be ``$^{\text{207}}$Pb``
     """
     comps = filter(None, re.split(r'(\d+)', nucleus))
-    return f'\\textsuperscript{{{next(comps)}}}{next(comps)}'
+    return f'$^{{{next(comps)}}}${next(comps)}'
 
 
 def significant_figures(value, s):
