@@ -1,5 +1,3 @@
-.. _core:
-
 nmrespy.core
 ^^^^^^^^^^^^
 

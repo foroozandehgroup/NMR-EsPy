@@ -1,6 +1,9 @@
 Example Walkthrough
 ===================
 
+.. todo::
+   To be re-written to reflect recent changes
+
 As an illustration of the typical steps involved in using NMR-EsPy, we will
 consider an example dataset that ships with TopSpin 4. Assuming you installed
 TopSpin in the default path, this should be present in the path:

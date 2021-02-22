@@ -12,10 +12,10 @@ the presence of experimental noise. For the general case of a signal with
 point from the start of acquisition onwards to be:
 
 .. math::
-   y(t_1, \\dots, t_D) = \\sum_{m=1}^{M}
-   \\left\\lbrace a_m \\exp\\left(\\mathrm{i} \\phi_m\\right)
-   \\prod_{d=1}^{D} \\exp\\left[\\left(2 \\pi \\mathrm{i} f_{d,m} -
-   \\eta_{d,m}\\right)t_d\\right]\\right\\rbrace + w(t_1, \\dots, t_D),
+   y(t_1, \dots, t_D) = \sum_{m=1}^{M}
+   \left\lbrace a_m \exp\left(\mathrm{i} \phi_m\right)
+   \prod_{d=1}^{D} \exp\left[\left(2 \pi \mathrm{i} f_{d,m} -
+   \eta_{d,m}\right)t_d\right]\right\rbrace + w(t_1, \dots, t_D),
 
 where
 
@@ -45,7 +45,7 @@ the time at which any point is sampled is given by
 
 where :math:`\Delta t_d` is the sampling rate (the time between successive
 samples) in dimension :math:`d`. The discrete fid :math:`\boldsymbol{Y}`
-therefore has elements `Y\left[n_1, \dots, n_D\right]` of the form
+therefore has elements :math:`Y\left[n_1, \dots, n_D\right]` of the form
 
 .. math::
   Y\left[n_1, \dots, n_D\right] = \sum_{m=1}^{M} \left\lbrace a_m
@@ -73,7 +73,7 @@ as one doesn't even know how many oscilltors are contained within the signal in
 general (:math:`M`).
 
 To achieve this, we apply `Newton's Method` to determine the optimal set of
-parameters to describe the signal. Newton' Method is an iterative procedure,
+parameters to describe the signal. Newton's Method is an iterative procedure,
 which considers a particular function to be minimised. In the case of NMR-EsPy,
 the function is the following:
 
@@ -82,12 +82,15 @@ the function is the following:
    \boldsymbol{X}(\boldsymbol{\theta}) \rVert_2^2
 
 where :math:`\tilde{\boldsymbol{Y}} = \boldsymbol{Y} / \lVert \boldsymbol{Y}
-\rVert`. THere are numerous variants of Newton's method, but the general idea
+\rVert`. This is a very commonly encountered function in the context of
+optimisation, called the `residual sum of squares`. There are numerous
+variants of Newton's method, but the general idea
 is to approximate the neighbourhood about the current value of
-:math:`\boldsymbol{\theta}` to be quadratic, and to determine a step of a
+:math:`\boldsymbol{\theta}` as quadratic, and to determine a step with a
 certain direction and size such that the value of
 :math:`\mathcal{F}(\boldsymbol{\theta})` is reduced. This procedure is repeated
-multiple times until the routine converges at a minimum.
+multiple times until the routine (hopefully) converges to a minimum in the
+function.
 
 Depending on the circumstances, it is often worthwhile to minimise the variance
 of phases in the FID's estimate. NMR-EsPy also allows minimisation of the

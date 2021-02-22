@@ -1,6 +1,6 @@
-nmrespy.nlp._funcs
+nmrespy.freqfilter
 ^^^^^^^^^^^^^^^^^^
 
-.. automodule:: nmrespy.nlp._funcs
+.. automodule:: nmrespy.freqfilter
    :members:
    :private-members:

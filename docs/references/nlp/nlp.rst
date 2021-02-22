@@ -1,5 +1,3 @@
-.. _nlp:
-
 nmrespy.nlp.nlp
 ^^^^^^^^^^^^^^^
 

@@ -1,5 +1,3 @@
-.. _load:
-
 nmrespy.load
 ^^^^^^^^^^^^
 

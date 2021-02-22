@@ -560,8 +560,9 @@ def latex_nucleus(nucleus):
 
 def significant_figures(value, s):
     """Rounds `value` to `s` significant figures."""
-    value = round(value, s - int(np.floor(np.log10(abs(value)))) - 1)
-    # If value of form 123456.0, convert to 123456
-    if float(value).is_integer():
-        value = int(value)
+    if value != 0:
+        value = round(value, s - int(np.floor(np.log10(abs(value)))) - 1)
+        # If value of form 123456.0, convert to 123456
+        if float(value).is_integer():
+            value = int(value)
     return value

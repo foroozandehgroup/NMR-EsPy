@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from nmrespy import *
-import nmrspy._cols as cols
+import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
 import nmrespy._errors as errors
@@ -86,7 +86,7 @@ def plot_result(
     data_color : matplotlib color, default: '#808080'
         The color used to plot the original data. Any value that is
         recognised by matplotlib as a color is permitted. See
-        `this link <https://matplotlib.org/3.1.0/tutorials/colors/\
+        `<https://matplotlib.org/3.1.0/tutorials/colors/\
         colors.html>`_ for a full description of valid values.
 
     oscillator_colors : {matplotlib color, matplotlib colormap name, \
@@ -99,8 +99,8 @@ def plot_result(
         * If a string corresponding to a matplotlib colormap is given,
           the oscillators will be consecutively shaded by linear increments
           of this colormap. For all valid colormaps, see
-          `this link <https://matplotlib.org/3.3.1/tutorials/colors/\
-          colormaps.html>`_
+          `<https://matplotlib.org/3.3.1/tutorials/colors/\
+          colormaps.html>`__
         * If a list or NumPy array containing valid matplotlib colors is
           given, these colors will be cycled.
           For example, if ``oscillator_colors = ['r', 'g', 'b']``:
@@ -127,13 +127,13 @@ def plot_result(
 
     stylesheet : str or None, default: None
         The name of/path to a matplotlib stylesheet for further
-        customaisation of the plot. See `this link <https://matplotlib.org/\
+        customaisation of the plot. See `<https://matplotlib.org/\
         stable/tutorials/introductory/customizing.html>`_ for more
         information on stylesheets.
 
     Returns
     -------
-    plot : :py:class:`NmrespyFigure`
+    plot : :py:class:`NmrespyPlot`
         A class instance with the following attributes:
 
         * fig : `matplotlib.figure.Figure <https://matplotlib.org/3.3.1/\
@@ -334,9 +334,10 @@ def plot_result(
             # Check if plot's max value is larger than current max
             maxi = line_max if line_max > maxi else maxi
             # Check if plot's min value is smaller than current min
-            mini = line_min if line_min < mini else maxi
+            mini = line_min if line_min < mini else mini
         height = maxi - mini
-        bottom, top = mini - (0.03 * height), maxi + (0.05 * height),
+        bottom, top = mini - (0.03 * height), maxi + (0.05 * height)
+        print(bottom, top)
         ax.set_ylim(bottom, top)
 
     # x-axis label, of form ¹H or ¹³C etc.
@@ -344,11 +345,11 @@ def plot_result(
     xlab += ' (Hz)' if shifts_unit == 'hz' else ' (ppm)'
     ax.set_xlabel(xlab)
 
-    return NmrespyFigure(fig, ax, lines, labs)
+    return NmrespyPlot(fig, ax, lines, labs)
 
 # TODO: Grow this class: provide functionality for easy tweaking
 # of figure
-class NmrespyFigure:
+class NmrespyPlot:
     """Plot result class
 
     .. note::
@@ -371,7 +372,15 @@ class NmrespyFigure:
     labels : dict
         Labels dictionary.
 
+    Notes
+    -----
+    To save the figure, simply access the `fig` attribute and use the
+    `savefig <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot\
+    .savefig.html>`_ method:
 
+    .. code :: python3
+
+       >>> plot.fig.savefig(f'example.{ext}', ...)
     """
     def __init__(self, fig, ax, lines, labels):
         self.fig = fig

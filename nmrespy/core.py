@@ -371,6 +371,7 @@ class Estimator:
         self.filter_info = None
         self.mpm_info = None
         self.nlp_info = None
+        self._manual_edit = False
         # Create a converter object, enabling conversion idx, hz (and ppm,
         # if sfo is not None)
         self._converter = FrequencyConverter(
@@ -1155,7 +1156,6 @@ class Estimator:
 
         **kwargs
             Properties of :py:class:`nmrespy.nlp.nlp.NonlinearProgramming`.
-
             Valid arguments:
 
             * `phase_variance`
@@ -1167,6 +1167,10 @@ class Estimator:
             * `freq_thold`
             * `negative_amps`
             * `fprint`
+
+            Other keyword arguments that are valid in
+            :py:func:`nmrespy.nlp.nlp.NonlinearProgramming` will be ignored
+            (these are generated internally by the class instance).
 
         Raises
         ------
@@ -1227,6 +1231,7 @@ class Estimator:
         x0 = mpm_info.result
 
         self.nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
+        self._manual_edit = False
 
     def get_nlp_info(self, kill=True):
         """Returns information relating to nonlinear programming.
@@ -1254,18 +1259,18 @@ class Estimator:
         Parameters
         ----------
         kwargs : Properties of :py:func:`nmrespy.write.write_result`.
-        Valid arguments are:
+            Valid arguments are:
 
-        * `path`
-        * `description`
-        * `sig_figs`
-        * `sci_lims`
-        * `fmt`
-        * `force_overwrite`
+            * `path`
+            * `description`
+            * `sig_figs`
+            * `sci_lims`
+            * `fmt`
+            * `force_overwrite`
 
-        Other keyword arguments that are valid in
-        :py:func:`nmrespy.write.write_result` will be ignored (these are
-        generated internally by the class instance).
+            Other keyword arguments that are valid in
+            :py:func:`nmrespy.write.write_result` will be ignored (these are
+            generated internally by the class instance).
 
         Raises
         ------
@@ -1277,6 +1282,14 @@ class Estimator:
         --------
         :py:func:`nmrespy.write.write_result`
         """
+
+        if self._manual_edit:
+            get_yes_no(
+                f'{cols.O}The parameter estimate has been manually edited '
+                f'since the estimation has been carried out. It is '
+                f'advised that you re-run `nonlinear_programming` '
+                f'before saving. Continue? (y/n): {cols.END}'
+            )
 
         # Remove any invalid arguments from kwargs (avoid repetition
         # in call to nmrespy.write.write_result)
@@ -1369,7 +1382,35 @@ class Estimator:
         )
 
     def plot_result(self, **kwargs):
-        """
+        """Produces a figure of an estimation result.
+
+        The figure consists of the original data, in the Fourier domain,
+        along with each oscillator.
+
+        Parameters
+        ----------
+        kwargs : Properties of :py:func:`nmrespy.write.write_result`.
+            Valid arguments are:
+
+            * `shifts_unit`
+            * `data_color`
+            * `oscillator_colors`
+            * `labels`
+            * `stylesheet`
+
+            Other keyword arguments that are valid in
+            :py:func:`nmrespy.plot.plot_result` will be ignored (these are
+            generated internally by the class instance).
+
+        Raises
+        ------
+        AttributeIsNoneError
+            If no parameter estimate derived from nonlinear programming
+            is found (see :py:meth:`nonlinear_programming`).
+
+        See Also
+        --------
+        :py:func:`nmrespy.plot.plot_result`
         """
 
         dim = self.get_dim()
@@ -1398,108 +1439,92 @@ class Estimator:
 
     @logger
     def add_oscillators(self, oscillators):
-        """Adds new oscillators to a parameter array.
+        """Adds new oscillators an estimation result.
 
         Parameters
         ----------
         oscillators : numpy.ndarray
             An array of the new oscillator(s) to add to the array.
+            *NB* `oscillators` should always be a two-dimensional array,
+            even if only one oscillator is being added:
+
+            .. code:: python3
+
+               >>> oscillators = np.array([[a, φ, f, η]]) # 1D
+               >>> oscillators = np.array([[a, φ, f1, f2, η1, η2]]) # 2D
+               >>> # or, equivalently:
+               >>> oscillators = np.insert_axis(
+               ...      np.array([a, φ, f, η]), axis=1
+               ... ) # 1D
+               >>> oscillators = np.insert_axis(
+               ...      np.array([a, φ, f1, f2, η1, η2]), axis=1
+               ... ) # 2D
         """
 
+        ArgumentChecker(
+            [(oscillators, 'oscillators', 'parameter')], self.get_dim(),
+        )
 
-        if isinstance(oscillators, np.ndarray):
-            # if oscillators is 1D, convert to 2D array
-            if oscillators.ndim == 1:
-                oscillators = oscillators.reshape(-1, oscillators.shape[0])
-
-            # number of parameters per oscillator (should be 4 for 1D, 6 for 2D)
-            num = oscillators.shape[1]
-            # expected number of parameters per oscillator
-            exp = 2 * self.get_dim() + 2
-
-            if num == exp:
-                pass
-            else:
-                msg = f'\n{R}oscillators should have a size of {exp} along' \
-                      + f' axis-1{END}'
-                raise ValueError(msg)
-
-        else:
-            raise TypeError(f'\n{R}oscillators should be a numpy array{END}')
-
-        result, result_name = self._check_result(result_name)
-
-        result = np.append(result, oscillators, axis=0)
-        self.__dict__[result_name] = result[np.argsort(result[..., 2])]
+        result = self.get_nlp_info().get_result()
+        new_result = np.vstack((result, oscillators))
+        # Order according to frequency
+        new_result = new_result[np.argsort(new_result[:, 2])]
+        # Assign new result to nlp_info
+        self.nlp_info.result = new_result
+        # User has manually edited the result after estimation.
+        self._manual_edit = True
 
 
     @logger
-    def remove_oscillators(self, indices, result_name=None):
+    def remove_oscillators(self, indices):
         """Removes the oscillators corresponding to ``indices``.
 
         Parameters
         ----------
-        indices : list, tuple or numpy.ndarray
-            A list of indices corresponding to the oscillators to be removed.
-
-        result_name : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If ``None``, the parameter estimate
-            to use will be determined in the following order of priority:
-
-            1. ``self.theta`` will be used if it is not ``None``.
-            2. ``self.theta0`` will be used if it is not ``None``.
-            3. Otherwise, an error will be raised.
+        indices : list
+            A list of indices corresponding to the oscillators to be
+            removed. The elements of `indices` should be ints that
+            are in ``range(result.shape[0])``, where `result` is the
+            current estimation result.
         """
 
-        self._log_method()
+        ArgumentChecker([(indices, 'indices', 'list')])
 
-        if isinstance(indices, (tuple, list, np.ndarray)):
-            pass
-        else:
-            raise TypeError(f'\n{R}indices does not have a suitable type{END}')
+        result = self.get_nlp_info().get_result()
+        for i in indices:
+            if i not in list(range(result.shape[0])):
+                raise ValueError(
+                    f'{cols.R}Invalid index in `indices`{cols.END}'
+                )
 
-        result, result_name = self._check_result(result_name)
-
-        try:
-            result = np.delete(result, indices, axis=0)
-        except:
-            msg = f'{R}oscillator removal failed. Check the values in' \
-                  + f' indices are valid.{END}'
-            raise ValueError(msg)
-
-        self.__dict__[result_name] = result[np.argsort(result[..., 2])]
-        print(self.__dict__[result_name])
+        # Assign new result to nlp_info
+        self.nlp_info.result = np.delete(result, indices, axis=0)
+        # User has manually edited the result after estimation.
+        self._manual_edit = True
 
 
     @logger
-    def merge_oscillators(self, indices, result_name=None):
-        """Removes the oscillators corresponding to ``indices``, and
-        constructs a single new oscillator with a cumulative amplitude, and
-        averaged phase, frequency and damping factor.
+    def merge_oscillators(self, indices):
+        """Merges the oscillators corresponding to `indices`.
 
-        .. note::
-            Currently, this method is only compatible with 1-dimesnional
-            data.
+        Removes the osccilators specified, and constructs a single new
+        oscillator with a cumulative amplitude, and averaged phase,
+        frequency and damping.
 
         Parameters
         ----------
         indices : list, tuple or numpy.ndarray
-            A list of indices corresponding to the oscillators to be merged.
-
-        result_name : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If ``None``, the parameter estimate
-            to use will be determined in the following order of priority:
-
-            1. ``self.theta`` will be used if it is not ``None``.
-            2. ``self.theta0`` will be used if it is not ``None``.
-            3. Otherwise, an error will be raised.
+            A list of indices corresponding to the oscillators to be
+            merged. The elements of `indices` should be ints that
+            are in ``range(result.shape[0])``, where `result` is the
+            current estimation result.
 
         Notes
         -----
         Assuming that an estimation result contains a subset of oscillators
         denoted by indices :math:`\{m_1, m_2, \cdots, m_J\}`, where
         :math:`J \leq M`, the new oscillator formed by the merging of the
-        oscillator subset will possess the follwing parameters:
+        oscillator subset will possess the following parameters:
 
             * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`
             * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\phi_{m_i}`
@@ -1507,120 +1532,125 @@ class Estimator:
             * :math:`\\eta_{\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\eta_{m_i}`
         """
 
-        self._log_method()
+        ArgumentChecker([(indices, 'indices', 'list')])
 
-        # determine number of elements in indices
-        # if fewer than 2 elements, return without doing anything
-        if isinstance(indices, (tuple, list, np.ndarray)):
-            number = len(indices)
-            if number < 2:
-                msg = f'\n{O}indices should contain at least two elements.' \
-                      + f'No merging will happen.{END}'
-                return
-        else:
-            raise TypeError(f'\n{R}indices does not have a suitable type{END}')
+        result = self.get_nlp_info().get_result()
 
-        result, result_name = self._check_result(result_name)
+        if len(indices) < 2:
+            print(
+                f'\n{cols.O}`indices` should contain at least two elements.'
+                f'No merging will happen.{cols.END}'
+            )
+            return
+
+        for i in indices:
+            if i not in list(range(result.shape[0])):
+                raise ValueError(
+                    f'{cols.R}Invalid index in `indices`{cols.END}'
+                )
 
         to_merge = result[indices]
+        # Sum amps, phases, freqs and damping over the oscillators
+        # to be merged.
+        # keepdims ensures that the final array is [[a, φ, f, η]]
+        # rather than [a, φ, f, η]
         new_osc = np.sum(to_merge, axis=0, keepdims=True)
 
-        # get mean for phase, frequency and damping
-        new_osc[:, 1:] = new_osc[:, 1:] / number
+        # Get mean for phase, frequency and damping
+        new_osc[:, 1:] = new_osc[:, 1:] / len(indices)
 
         result = np.delete(result, indices, axis=0)
-        result = np.append(result, new_osc, axis=0)
-        self.__dict__[result_name] = result[np.argsort(result[..., 2])]
+        result = np.vstack((result, new_osc))
+        self.nlp_info.result = result[np.argsort(result[..., 2])]
 
 
     @logger
-    def split_oscillator(self, index, result_name=None, frequency_sep=2.,
-                         unit='hz', split_number=2, amp_ratio='same'):
-        """Removes the oscillator corresponding to ``index``. Incorporates two
-        or more oscillators whose cumulative amplitudes match that of the
-        removed oscillator.
+    def split_oscillator(
+        self, index, separation_frequency=None, unit='hz', split_number=2,
+        amp_ratio=None,
+    ):
+        """Splits the oscillator corresponding to `index`.
 
-        .. note::
-            Currently, this method is only compatible with 1-dimesnional
-            data.
+        Removes an oscillator, and incorporates two or more oscillators
+        whose cumulative amplitudes match that of the removed oscillator.
 
         Parameters
         ----------
         index : int
             Array index of the oscilator to be split.
 
-        result_name : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If ``None``, the parameter estimate
-            to use will be determined in the following order of priority:
-
-            1. ``self.theta`` will be used if it is not ``None``.
-            2. ``self.theta0`` will be used if it is not ``None``.
-            3. Otherwise, an error will be raised.
-
-        frequency_sep : float, default: 2.
-            The frequency separation given to adjacent oscillators formed from
-            splitting.
+        frequency_sep : float, or None default: None
+            The frequency separation given to adjacent oscillators formed
+            from the splitting. If `None`, the splitting will be set to
+            ``sw / n`` where `sw` is the sweep width and `n` is the number
+            of points in the data.
 
         unit : 'hz' or 'ppm', default: 'hz'
-            The unit of ``frequency_sep``.
+            The unit of `separation_frequency`.
 
         split_number: int, default: 2
             The number of peaks to split the oscillator into.
 
-        amp_ratio: list or 'same', default: 'same'
-            The ratio of amplitudes to be fulfilled by the newly formed peaks.
-            If a list, ``len(amp_ratio) == split_number`` must be
-            ``True``. The first element will relate to the highest frequency
-            oscillator constructed (furthest to the left in a conventional
-            spectrum), and the last element will relate to the lowest
-            frequency oscillator constructed. If ``'same'``, all oscillators
-            will be given equal amplitudes.
+        amp_ratio: list or None, default: None
+            The ratio of amplitudes to be fulfilled by the newly formed
+            peaks. If a list, ``len(amp_ratio) == split_number`` must be
+            satisfied. The first element will relate to the highest
+            frequency oscillator constructed, and the last element will
+            relate to the lowest frequency oscillator constructed. If `None`,
+            all oscillators will be given equal amplitudes.
         """
+        # TODO make 2D compatible
 
         # get frequency_Sep in correct units
-        if unit == 'hz':
-            pass
-        elif unit == 'ppm':
-            frequency_sep = frequency_sep * self.get_sfo()
-        else:
+        if unit not in ['hz', 'ppm']:
             raise errors.InvalidUnitError('hz', 'ppm')
 
-        result, result_name = self._check_result(result_name)
+        result = self.get_nlp_info().get_result(freq_unit=unit)
 
         try:
+            # Of form: [a, φ, f, η] (i.e. 1D array)
             osc = result[index]
         except:
-            raise ValueError(f'{R}index should be an int in'
-                             f' range({result.shape[0]}){END}')
+            raise ValueError(
+                f'{cols.R}index should be an int in range('
+                f'{result.shape[0]}){cols.END}'
+            )
 
-        # lowest frequency of all the new oscillators
-        max_freq = osc[2] + ((split_number - 1) * frequency_sep / 2)
-        # array of all frequencies (lowest to highest)
-        freqs = [max_freq - (i*frequency_sep) for i in range(split_number)]
+        # --- Determine frequencies --------------------------------------
+        if separation_frequency is None:
+            separation_frequency = self.get_sw()[0] / self.get_n()[0]
+            if unit == 'ppm':
+                separation_frequency = separation_frequency / self.get_sfo()[0]
 
-        # determine amplitudes of new oscillators
-        if amp_ratio == 'same':
-            amp_ratio = [1] * split_number
+        # Highest frequency of all the new oscillators
+        max_freq = osc[2] + ((split_number - 1) * separation_frequency / 2)
+        # Array of all frequencies (lowest to highest)
+        freqs = [max_freq - i*separation_frequency for i in range(split_number)]
 
-        if isinstance(amp_ratio, list):
-            pass
-        else:
-            raise TypeError(f'{R}amp_ratio should be \'same\' or a list{END}')
+        # --- Determine amplitudes ---------------------------------------
+        if amp_ratio is None:
+            amp_ratio = [1.] * split_number
 
-        if len(amp_ratio) == split_number:
-            pass
-        else:
-            raise ValueError(f'{R}len(amp_ratio) should equal'
-                             f' split_number{END}')
+        if not isinstance(amp_ratio, list):
+            raise TypeError(
+                f'{cols.R}`amp_ratio` should be None or a list{cols.END}'
+            )
 
-        # scale amplitude ratio values such that their sum is 1
+        if len(amp_ratio) != split_number:
+            raise ValueError(
+                f'{cols.R}The length of `amp_ratio` should equal'
+                f' `split_number`{cols.END}'
+            )
+
+        # Scale amplitude ratio values such that their sum is 1
         amp_ratio = np.array(amp_ratio)
         amp_ratio = amp_ratio / np.sum(amp_ratio)
 
-        # obtain amplitude values
+        # Obtain amplitude values
         amps = osc[0] * amp_ratio
 
-        new_oscs = np.zeros((split_number, 4))
+        # --- Generate array of new oscillators --------------------------
+        new_oscs = np.zeros((split_number, 2 * (self.get_dim() + 1)))
         new_oscs[:, 0] = amps
         new_oscs[:, 2] = freqs
         new_oscs[:, 1] = [osc[1]] * split_number
@@ -1628,7 +1658,11 @@ class Estimator:
 
         result = np.delete(result, index, axis=0)
         result = np.append(result, new_oscs, axis=0)
-        self.__dict__[result_name] = result[np.argsort(result[..., 2])]
+
+        if unit == 'ppm':
+            result[:, 2] = result[:, 2] * self.get_sfo()[0]
+
+        self.nlp_info.result = result[np.argsort(result[..., 2])]
 
 
     def save_logfile(self, path='./nmrespy_log', force_overwrite=False):
