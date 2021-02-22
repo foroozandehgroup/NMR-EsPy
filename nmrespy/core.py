@@ -1,22 +1,11 @@
-from copy import deepcopy
 import datetime
 import functools
-import inspect
-import itertools
-import json
-import os
 from pathlib import Path
 import pickle
-import re
 import shutil
-import sys
 
-import matplotlib
 import matplotlib.pyplot as plt
-
 import numpy as np
-
-from scipy.integrate import simps
 
 from nmrespy import *
 import nmrespy._cols as cols
@@ -1388,45 +1377,35 @@ class Estimator:
         if dim == 2:
             raise TwoDimUnsupportedError()
 
+        for key in ['sfo', 'nuceleus', 'region']:
+            try:
+                kwargs.pop(key)
+            except KeyError:
+                pass
+
         try:
             unit = kwargs['shifts_unit']
         except KeyError:
             kwargs['shifts_unit'] = unit = 'ppm'
 
-        data = self.get_data()
-        result = self.nlp_info.get_result()
-        sw = self.get_sw()
-        offset = self.get_offset()
-        sfo = self.get_sfo(kill=False)
-        nucleus = self.get_nucleus(kill=False)
-        region = self.get_filter_info().get_region(unit=unit)
-
         return plot_result(
-            data, result, sw, offset, sfo=sfo, nucleus=nucleus, region=region,
-            **kwargs,
+            self.get_data(), self.nlp_info.get_result(), self.get_sw(),
+            self.get_offset(), sfo=self.get_sfo(kill=False),
+            nucleus=self.get_nucleus(kill=False),
+            region=self.get_filter_info().get_region(unit=unit), **kwargs,
         )
 
 
     @logger
-    def add_oscillators(self, oscillators, result_name=None):
+    def add_oscillators(self, oscillators):
         """Adds new oscillators to a parameter array.
 
         Parameters
         ----------
         oscillators : numpy.ndarray
-            An array of the new oscillator(s) to add to the array. The array
-            should be of shape (I, 4) or (I, 6), where I is greater than 0.
-
-        result_name : None, 'theta', or 'theta0', default: None
-            The parameter array to use. If ``None``, the parameter estimate
-            to use will be determined in the following order of priority:
-
-            1. ``self.theta`` will be used if it is not ``None``.
-            2. ``self.theta0`` will be used if it is not ``None``.
-            3. Otherwise, an error will be raised.
+            An array of the new oscillator(s) to add to the array.
         """
 
-        self._log_method()
 
         if isinstance(oscillators, np.ndarray):
             # if oscillators is 1D, convert to 2D array

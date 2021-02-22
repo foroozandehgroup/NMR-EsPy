@@ -9,7 +9,6 @@ import datetime
 import os
 from pathlib import Path
 import re
-from shutil import copyfile
 import subprocess
 import tempfile
 
@@ -17,8 +16,9 @@ import numpy as np
 import scipy.linalg as slinalg
 
 from nmrespy import *
+from nmrespy._errors import *
 from nmrespy._misc import ArgumentChecker, PathManager, significant_figures
-from ._errors import *
+
 
 
 def write_result(

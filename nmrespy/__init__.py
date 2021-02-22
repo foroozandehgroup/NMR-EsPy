@@ -1,7 +1,6 @@
 from pathlib import Path
 from ._version import __version__
 
-
 NMRESPYPATH = Path(__file__).parent
 MFLOGOPATH = Path(NMRESPYPATH) / 'images/mf_logo.png'
 NMRESPYLOGOPATH = Path(NMRESPYPATH) / 'images/nmrespy_full.png'

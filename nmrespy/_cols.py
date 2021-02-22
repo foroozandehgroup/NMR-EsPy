@@ -1,7 +1,8 @@
 # _cols
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Coloured terminal output
+
+"""Coloured terminal output"""
 
 import platform
 
@@ -32,6 +33,3 @@ if platform.system() == 'Windows':
         B = ''
         MA = ''
         C = ''
-
-# “Don't be so humble - you are not that great.”
-# —————————————————————————————————Golda Meir———

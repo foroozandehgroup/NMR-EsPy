@@ -14,7 +14,7 @@ def timer(f):
         start = time.time()
         result = f(*args, **kwargs)
         run_time = convert(time.time() - start)
-        print(f'\tTime elapsed: {run_time}')
+        print(f'Time elapsed: {run_time}')
         return result
     return timed
 
@@ -27,10 +27,3 @@ def convert(secs):
     secs = int(secs)
 
     return f'{mins} mins, {secs} secs, {msecs} msecs'
-
-# ————————————————————————————————————————————————————————————————————
-# “The story so far:
-# In the beginning the Universe was created.
-# This has made a lot of people very angry and been widely regarded as
-# a bad move.”
-# —————————Douglas Adams, The Restaurant at the End of the Universe———

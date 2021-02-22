@@ -1,27 +1,21 @@
 # mpm.py
-# matrix pencil method for analysis of 1D and 2D time series
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-"""Module for computation of signal estimates using the Matrix Pencil Method."""
+"""Computation of signal estimates using the Matrix Pencil Method."""
 
 import copy
-import functools
 
 import numpy as np
 import numpy.linalg as nlinalg
 import scipy.linalg as slinalg
-from scipy import sparse
-import scipy.sparse.linalg as splinalg
 
-from nmrespy._misc import ArgumentChecker, FrequencyConverter
-import nmrespy._errors as errors
-from ._misc import start_end_wrapper
-from ._timing import timer
 import nmrespy._cols as cols
-
 if cols.USE_COLORAMA:
     import colorama
+import nmrespy._errors as errors
+from nmrespy._misc import ArgumentChecker, FrequencyConverter, start_end_wrapper
+from ._timing import timer
 
 
 class MatrixPencil(FrequencyConverter):
@@ -295,8 +289,3 @@ class MatrixPencil(FrequencyConverter):
         """
 
         pass
-
-
-# “Under capitalism, man exploits man.
-# Under communism, it's just the opposite.”
-# —————————————————John Kenneth Galbraith———

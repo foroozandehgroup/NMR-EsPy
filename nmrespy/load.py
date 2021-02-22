@@ -10,11 +10,13 @@ import re
 import numpy as np
 from numpy.fft import ifft, ifftshift
 
-from nmrespy._misc import get_yes_no
-import nmrespy._errors as errors
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+import nmrespy._errors as errors
+from nmrespy._misc import get_yes_no
+
+
 
 
 

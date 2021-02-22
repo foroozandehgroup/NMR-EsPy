@@ -5,15 +5,13 @@
 """Constructing and processing NMR signals"""
 
 import copy
+import tkinter as tk
 
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 import numpy.random as nrandom
 import scipy.integrate as integrate
 
-import tkinter as tk
-
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)

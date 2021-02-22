@@ -12,10 +12,13 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+
 import numpy as np
-from numpy.fft import fft, fftshift
 
 from nmrespy import *
+import nmrspy._cols as cols
+if cols.USE_COLORAMA:
+    import colorama
 import nmrespy._errors as errors
 from nmrespy._misc import *
 from nmrespy import signal

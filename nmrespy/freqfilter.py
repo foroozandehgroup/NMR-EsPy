@@ -4,11 +4,7 @@
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters"""
 
-import copy
-import itertools
-
 import numpy as np
-from numpy.fft import fft, fftshift, ifft, ifftshift
 import numpy.random as nrandom
 import scipy.linalg as slinalg
 

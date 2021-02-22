@@ -2,6 +2,8 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
+"""Various miscellaneous functions/classes for internal nmrespy use."""
+
 import copy
 import functools
 import itertools
@@ -31,6 +33,7 @@ class ArgumentChecker:
             * A string specifying whaty type the object should be. Valid
               options are:
 
+              + `'ndarray'`
               + `'parameter'`
               + `'int_list'`
               + `'float_list'`
@@ -41,6 +44,7 @@ class ArgumentChecker:
               + `'int'`
               + `'float'`
               + `'str'`
+              + `'list'`
               + `'positive_int'`
               + `'positive_int_or_zero'`
               + `'positive_float'`
@@ -49,6 +53,10 @@ class ArgumentChecker:
               + `'zero_to_one'`
               + `'greater_than_one'`
               + `'negative_amplidue'`
+              + `'file_fmt'`
+              + `'pos_neg_tuple'`
+              + `'mpl_color'`
+              + `'osc_cols'`
 
     dim : 1, 2 or None, default: None
         Dimension of the data. Only needs to be specified as `1` or `2`
@@ -63,51 +71,51 @@ class ArgumentChecker:
         for obj, name, typ in components:
             if typ == 'ndarray':
                 test = isinstance(obj, np.ndarray)
-            if typ == 'parameter':
+            elif typ == 'parameter':
                 test = self.check_parameter_array(obj)
-            if typ == 'int_list':
+            elif typ == 'int_list':
                 test = self.check_list(obj, int)
-            if typ == 'float_list':
+            elif typ == 'float_list':
                 test = self.check_list(obj, float)
-            if typ == 'str_list':
+            elif typ == 'str_list':
                 test = self.check_list(obj, str)
-            if typ == 'region_int':
+            elif typ == 'region_int':
                 test = self.check_region(obj, int)
-            if typ == 'region_float':
+            elif typ == 'region_float':
                 test = self.check_region(obj, float)
-            if typ == 'bool':
+            elif typ == 'bool':
                 test = isinstance(obj, bool)
-            if typ == 'int':
+            elif typ == 'int':
                 test = isinstance(obj, int)
-            if typ == 'float':
+            elif typ == 'float':
                 test = isinstance(obj, float)
-            if typ == 'str':
+            elif typ == 'str':
                 test = isinstance(obj, str)
-            if typ == 'list':
+            elif typ == 'list':
                 test = isinstance(obj, list)
-            if typ == 'positive_int':
+            elif typ == 'positive_int':
                 test = isinstance(obj, int) and obj > 0
-            if typ == 'positive_int_or_zero':
+            elif typ == 'positive_int_or_zero':
                 test = isinstance(obj, int) and obj >= 0
-            if typ == 'positive_float':
+            elif typ == 'positive_float':
                 test = isinstance(obj, float) and obj > 0
-            if typ == 'optimiser_mode':
+            elif typ == 'optimiser_mode':
                 test = self.check_optimiser_mode(obj)
-            if typ == 'optimiser_algorithm':
+            elif typ == 'optimiser_algorithm':
                 test = obj in ['trust_region', 'lbfgs']
-            if typ == 'zero_to_one':
+            elif typ == 'zero_to_one':
                 test = isinstance(obj, float) and 0. <= obj < 1.
-            if typ == 'greater_than_one':
+            elif typ == 'greater_than_one':
                 test = isinstance(obj, float) and obj > 1.0
-            if typ == 'negative_amplidue':
+            elif typ == 'negative_amplidue':
                 test = obj in ['remove', 'flip_phase']
-            if typ == 'file_fmt':
+            elif typ == 'file_fmt':
                 test = obj in ['txt', 'pdf', 'csv']
-            if typ == 'pos_neg_tuple':
+            elif typ == 'pos_neg_tuple':
                 test = self.check_pos_neg_tuple(obj)
-            if typ == 'mpl_color':
+            elif typ == 'mpl_color':
                 test = self.check_mpl_color(obj)
-            if typ == 'osc_cols':
+            elif typ == 'osc_cols':
                 test = self.check_oscillator_colors(obj)
 
             # Error message to be shown if invalid arguments are found
@@ -332,16 +340,15 @@ class FrequencyConverter:
                 f'{cols.R}lst should be of length {len(self)}.{cols.END}'
             )
 
-        # list for storing final converted contents (will be returned as tuple)
+        # List for storing final converted contents
         converted_lst = []
         for dim, elem in enumerate(lst):
-
             # try/except block enables code to work with both lists and
             # lists of lists
             try:
-                # test whether element is an iterable (i.e. tuple)
+                # Test whether element is an iterable
                 iterable = iter(elem)
-
+                # Create sublist
                 converted_sublst = []
 
                 while True:
@@ -519,15 +526,36 @@ def start_end_wrapper(start_text, end_text):
 
 
 def latex_nucleus(nucleus):
-    """Creates a isotope symbol string for processing by LaTeX
+    """Creates a isotope symbol string for processing by LaTeX.
 
-    Given a string `'<mass><sym>'`, where `'<mass>'` is the nuceleus'
-    mass number and `'<sym>'` is its chemical symbol, create the string
-    ``\textsuperscript{<mass>}<sym>``. For example, given `'207Pb'`, the
-    return value would be ``$^{\text{207}}$Pb``
+    Parameters
+    ----------
+    nucleus : str
+        Of the form `'<mass><sym>'`, where `'<mass>'` is the nuceleus'
+        mass number and `'<sym>'` is its chemical symbol. I.e. for
+        lead-207, `nucleus` would be `'207Pb'`.
+
+    Returns
+    -------
+    latex_nucleus : str
+        Of the form ``$^{<mass>}$<sym>`` i.e. given `'207Pb'`, the
+        return value would be ``$^{207}$Pb``
+
+    Raises
+    ------
+    ValueError
+        If `nucleus` does not match the regex ``\d+[a-zA-Z]+``
     """
-    comps = filter(None, re.split(r'(\d+)', nucleus))
-    return f'$^{{{next(comps)}}}${next(comps)}'
+    if re.match(r'\d+[a-zA-Z]+', nucleus):
+        mass = re.search(r'\d+', nucleus).group()
+        sym = re.search(r'[a-zA-Z]+', nucleus).group()
+        return f'$^{{{mass}}}${sym}'
+
+    else:
+        raise ValueError(
+            f'{cols.R}`nucleus` is invalid. Should match the regex'
+            f' \d+[a-zA-Z]+{cols.END}'
+        )
 
 
 def significant_figures(value, s):

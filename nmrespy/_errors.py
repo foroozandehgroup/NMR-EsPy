@@ -1,9 +1,9 @@
-#!/usr/bin/python3
-
-# nmrespy._errors
+# _errors
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-#
+
+"""nmrespy-specific errors"""
+
 
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:

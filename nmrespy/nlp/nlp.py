@@ -1,27 +1,25 @@
-# nlp.py
-# nonlinear programming for analysis of 1D and 2D time series
+# nlp.nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-"""User API for performing nonlinear programming"""
+"""Nonlinear programming for generating NMR parameter estiamtes"""
 
 import copy
 import functools
 import operator
 
 import numpy as np
-from numpy.fft import fft, fftshift
 import numpy.linalg as nlinalg
 import scipy.optimize as optimize
 
 from nmrespy import *
-from nmrespy.signal import get_timepoints
-from nmrespy.nlp import _funcs
-from nmrespy._misc import start_end_wrapper, ArgumentChecker, FrequencyConverter
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+from nmrespy._misc import start_end_wrapper, ArgumentChecker, FrequencyConverter
 from nmrespy._timing import timer
+import nmrespy.nlp._funcs as funcs
+from nmrespy.signal import get_timepoints
 
 
 class NonlinearProgramming(FrequencyConverter):
@@ -325,9 +323,9 @@ class NonlinearProgramming(FrequencyConverter):
         # Determine cost function, gradient, and hessian based on the data
         # dimension
         self.funcs = {
-            'fidelity' : _funcs.f_1d if self.dim == 1 else _funcs.f_2d,
-            'gradient' : _funcs.g_1d if self.dim == 1 else _funcs.g_2d,
-            'hessian' : _funcs.h_1d if self.dim == 1 else _funcs.h_2d,
+            'fidelity' : funcs.f_1d if self.dim == 1 else funcs.f_2d,
+            'gradient' : funcs.g_1d if self.dim == 1 else funcs.g_2d,
+            'hessian' : funcs.h_1d if self.dim == 1 else funcs.h_2d,
         }
 
         # This method is called recursively until no negative amplitudes
@@ -796,7 +794,3 @@ class NonlinearProgramming(FrequencyConverter):
                 f'{cols.O}Oscillations with negligible amplitude removed.'
                 f' \nUpdated number of oscillators: {self.m}{cols.END}'
             )
-
-# “Some men are born mediocre, some men achieve mediocrity,
-# and some men have mediocrity thrust upon them.”
-# ———————————————————————————————Joseph Heller, Catch-22———
