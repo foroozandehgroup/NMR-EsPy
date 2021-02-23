@@ -4,3 +4,5 @@ docs/Makefile
 nmrespy/logs/*
 tests
 venv
+build
+dist

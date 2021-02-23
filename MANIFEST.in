@@ -1,0 +1,3 @@
+graft nmrespy
+include LICENSE
+include README.rst
