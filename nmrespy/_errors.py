@@ -4,7 +4,7 @@
 
 """nmrespy-specific errors"""
 
-
+from nmrespy import *
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
@@ -26,7 +26,7 @@ class TwoDimUnsupportedError(Exception):
         self.msg = (f'{cols.R}Unfortunately 2D virtual echo creation isn\'t'
                      ' supported yet. Check if there are any more recent'
                      ' versions of nmrespy with this feature:\n'
-                    f'{cols.C}{GITHUBPATH}{cols.END}')
+                    f'{cols.C}{GITHUBLINK}{cols.END}')
         super().__init__(self.msg)
 
 
@@ -68,18 +68,6 @@ class NoParameterEstimateError(Exception):
         super().__init__(self.msg)
 
 
-class NoSuitableDataError(Exception):
-    """Raise when user tries to run mpm/nlp on a class that has imported
-    pdata, and not constructed a virtual echo from it"""
-
-    def __init__(self):
-        self.msg = (f'{cols.R}No appropriate data to analyse was found.'
-                    f' It is possible that this is because you have'
-                    f' imported processed data, and have not yet'
-                    f' generated a virtual echo from it.{cols.END}')
-        super().__init__(self.msg)
-
-
 class PhaseVarianceAmbiguityError(Exception):
     """Raise when phase_variance is True, but 'p' is not specified in mode"""
 
@@ -93,7 +81,7 @@ class PhaseVarianceAmbiguityError(Exception):
 
 
 class AttributeIsNoneError(Exception):
-    """Raise when the user calls a ``get_<attr>`` method, but the attribute
+    """Raise when the user calls a `get_<attr>` method, but the attribute
     is None"""
 
     def __init__(self, attribute, method):
