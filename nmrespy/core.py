@@ -52,7 +52,7 @@ class Estimator:
     sw : [float] or [float, float]
         The experiment sweep width in each dimension (Hz).
 
-    off : [float] or [float, float]
+    offset : [float] or [float, float]
         The transmitter's offset frequency in each dimension (Hz).
 
     sfo : [float] or [float, float] or None
@@ -358,7 +358,7 @@ class Estimator:
         self.n = [int(n) for n in self.data.shape]
         self.path = path
         self.sw = sw
-        self.off = off
+        self.offset = off
         self.sfo = sfo
         self.nuc = nuc
         self.fmt = fmt
@@ -375,7 +375,7 @@ class Estimator:
         # Create a converter object, enabling conversion idx, hz (and ppm,
         # if sfo is not None)
         self._converter = FrequencyConverter(
-            list(data.shape), self.sw, self.off, self.sfo
+            list(data.shape), self.sw, self.offset, self.sfo
         )
 
         # --- Create file for logging method calls -----------------------
@@ -409,7 +409,7 @@ class Estimator:
             f'{self.data}, '
             f'{self.path}, '
             f'{self.sw}, '
-            f'{self.off}, '
+            f'{self.offset}, '
             f'{self.n}, '
             f'{self.sfo}, '
             f'{self.nuc}, '
@@ -514,12 +514,19 @@ class Estimator:
         return self.n
 
 
-    def get_sw(self, unit='hz'):
+    def get_sw(self, unit='hz', kill=True):
         """Return the experiment sweep width in each dimension.
 
         Parameters
         ----------
         unit : 'hz' or 'ppm', default: 'hz'
+
+        kill : bool, default: True
+            If `unit` is `'ppm'`, but `self.sfo` is `None`, `kill` specifies
+            how the method will act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
 
         Returns
         -------
@@ -540,15 +547,15 @@ class Estimator:
         if unit == 'hz':
             return self.sw
         elif unit == 'ppm':
-            try:
-                return self._converter.convert(self.sw, 'hz->ppm')
-            except:
+            sfo = self._check_if_none('sfo', kill)
+            if sfo is None:
                 return None
+            return self._converter.convert(self.sw, 'hz->ppm')
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
 
-    def get_offset(self, unit='hz'):
+    def get_offset(self, unit='hz', kill=True):
         """Return the transmitter's offset frequency in each dimesnion.
 
         Parameters
@@ -558,6 +565,13 @@ class Estimator:
         Returns
         -------
         offset : [float] or [float, float]
+
+        kill : bool, default: True
+            If `unit` is `'ppm'`, but `self.sfo` is `None`, `kill` specifies
+            how the method will act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
 
         Raises
         ------
@@ -572,12 +586,12 @@ class Estimator:
         """
 
         if unit == 'hz':
-            return self.off
+            return self.offset
         elif unit == 'ppm':
-            try:
-                return self._converter.convert(self.off, 'hz->ppm')
-            except:
+            sfo = self._check_if_none('sfo', kill)
+            if sfo is None:
                 return None
+            return self._converter.convert(self.offset, 'hz->ppm')
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
@@ -918,7 +932,7 @@ class Estimator:
             within [`-max_p1`, `max_p1`]. By default, `max_p1` will be
             ``10 * numpy.pi``.
         """
-        p0, p1 = signal.manual_phase_spectrum(signal.ft(self.data), max_p1=None)
+        p0, p1 = signal.manual_phase_spectrum(signal.ft(self.data), max_p1)
         self.phase_data(p0=p0, p1=p1)
 
     @logger
@@ -1139,6 +1153,8 @@ class Estimator:
             'mpm_info', kill, method='matrix_pencil'
         )
 
+    # TODO: support for mode
+    # Also look at nlp.nlp.NonlinearProgramming
     @logger
     def nonlinear_programming(self, trim=None, **kwargs):
         """Estimation of signal parameters using nonlinear programming, given
@@ -1160,7 +1176,6 @@ class Estimator:
 
             * `phase_variance`
             * `method`
-            * `mode`
             * `bound`
             * `max_iterations`
             * `amp_thold`
@@ -1557,7 +1572,9 @@ class Estimator:
         new_osc = np.sum(to_merge, axis=0, keepdims=True)
 
         # Get mean for phase, frequency and damping
-        new_osc[:, 1:] = new_osc[:, 1:] / len(indices)
+        new_osc[:, 1:] = new_osc[:, 1:] / float(len(indices))
+        # wrap phase
+        new_osc[:, 1] = (new_osc[:, 1] + np.pi) % (2 * np.pi) - np.pi
 
         result = np.delete(result, indices, axis=0)
         result = np.vstack((result, new_osc))

@@ -256,7 +256,7 @@ class FrequencyFilter:
         # If cut is False, this will be the final signal.
         # If cut is True, the norm of this signal will be utilised to
         # correctly scale the final signal derived from a cut spectrum
-        uncut_ve = 2 * signal.ift(self.filtered_spectrum)
+        uncut_ve = signal.ift(self.filtered_spectrum)
         half_slice = tuple(np.s_[0:int(s // 2)] for s in uncut_ve.shape)
         uncut_fid = uncut_ve[half_slice]
 
@@ -283,8 +283,8 @@ class FrequencyFilter:
             # Get norms of cut and uncut signals
             uncut_norm = slinalg.norm(uncut_fid)
             cut_norm = slinalg.norm(cut_fid)
-            self.filtered_signal = cut_norm / uncut_norm * cut_fid
-            self.virtual_echo = cut_norm / uncut_norm * cut_ve
+            self.filtered_signal = cut_fid / cut_norm * uncut_norm / 2
+            self.virtual_echo = cut_ve / cut_norm * uncut_norm / 2
 
             # Determine sweep width and transmitter offset of cut signal
             # NB division by 2 is to correct for doubling the region bounds
@@ -297,8 +297,8 @@ class FrequencyFilter:
         else:
             self.sw = sw
             self.offset = offset
-            self.filtered_signal = uncut_fid
-            self.virtual_echo = uncut_ve
+            self.filtered_signal = 2 * uncut_fid
+            self.virtual_echo = 2 * uncut_ve
 
         # Need to halve region indices to correct for removal of half the
         # signal

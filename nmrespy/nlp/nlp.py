@@ -16,10 +16,31 @@ from nmrespy import *
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+from nmrespy._errors import *
 from nmrespy._misc import start_end_wrapper, ArgumentChecker, FrequencyConverter
 from nmrespy._timing import timer
 import nmrespy.nlp._funcs as funcs
 from nmrespy.signal import get_timepoints
+
+# ========================================================================
+# TODO in a later version
+# Add support for mode
+# Was getting indexing errors inside _check_negative_amps
+# when testing using a mode which is 'apfd'
+#
+# For docs:
+#
+# mode : str, default: 'apfd'
+#     String composed of any combination of characters `'a'`, `'p'`, `'f'`,
+#     `'d'`. Used to determine which parameter types to optimise, and which
+#     to remain fixed:
+#
+#     * `'a'`: Amplitudes are optimised
+#     * `'p'`: Phases are optimised
+#     * `'f'`: Frequencies are optimised
+#     * `'d'`: Damping factors are optimised
+# ==========================================================================
+
 
 
 class NonlinearProgramming(FrequencyConverter):
@@ -98,16 +119,6 @@ class NonlinearProgramming(FrequencyConverter):
         `L-BFGS-B <https://docs.scipy.org/doc/scipy/reference/\
         optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
-    mode : str, default: 'apfd'
-        String composed of any combination of characters `'a'`, `'p'`, `'f'`,
-        `'d'`. Used to determine which parameter types to optimise, and which
-        to remain fixed:
-
-        * `'a'`: Amplitudes are optimised
-        * `'p'`: Phases are optimised
-        * `'f'`: Frequencies are optimised
-        * `'d'`: Damping factors are optimised
-
     bound : bool, default: False
         Specifies whether or not to bound the parameters during optimisation.
         Bounds are given by:
@@ -173,7 +184,7 @@ class NonlinearProgramming(FrequencyConverter):
 
     def __init__(
         self, data, theta0, sw, sfo=None, offset=None, phase_variance=True,
-        method='trust_region', mode='apfd', bound=False, max_iterations=None,
+        method='trust_region', bound=False, max_iterations=None,
         amp_thold=None, freq_thold=None, negative_amps='remove', fprint=True
     ):
         """Initialise the class instance. Checks that all arguments are valid"""
@@ -192,12 +203,14 @@ class NonlinearProgramming(FrequencyConverter):
         # Determine data dimension. If greater than 2, return error.
         self.dim = self.data.ndim
         if self.dim >= 3:
-            raise errors.MoreThanTwoDimError()
+            raise MoreThanTwoDimError()
 
         # If offset is None, set it to zero in each dimension
         if offset is None:
             offset = [0.0] * self.dim
 
+        # TODO: allow customisation
+        mode = 'apfd'
         # Determine validity of other args using ArgumentChecker
         components = [
             (theta0, 'theta0', 'parameter'),
@@ -438,7 +451,7 @@ class NonlinearProgramming(FrequencyConverter):
             return result
 
         else:
-            raise errors.InvalidUnitError('hz', 'ppm')
+            raise InvalidUnitError('hz', 'ppm')
 
 
     def _shift_offset(self, params, direction):

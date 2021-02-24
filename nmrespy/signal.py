@@ -313,7 +313,7 @@ def phase_spectrum(spectrum, p0, p1, pivot=None):
 
     if pivot is None:
         pivot = [0] * dim
-    print(pivot)
+
     components = [
         (spectrum, 'spectrum', 'ndarray'),
         (p0, 'p0', 'float_list'),
@@ -510,15 +510,15 @@ class PhaseApp(tk.Tk):
         spectrum = phase_spectrum(
             self.init_spectrum, [self.p0], [self.p1], [self.pivot],
         )
-        self.specline.set_ydata(spectrum)
+        self.specline.set_ydata(np.real(spectrum))
         self.canvas.draw_idle()
 
     def save(self):
         self.p0 = self.p0 - self.p1 * (self.pivot / self.n)
-        self.destroy()
+        self.quit()
 
     def cancel(self):
-        self.destroy()
+        self.quit()
         self.p0 = None
         self.p1 = None
 
@@ -638,7 +638,6 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     eta = [nrandom.uniform(low=0.1, high=0.3, size=m) for _ in range(dim)]
     para = np.hstack((para, *eta))
     para = para.reshape((m, 2*(dim+1)), order='F')
-    print(para)
 
     return make_fid(para, n, sw, offset, snr)
 

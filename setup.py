@@ -6,7 +6,7 @@ with open('README.rst', 'r') as fh:
 exec(open('nmrespy/_version.py').read())
 
 setuptools.setup(
-    name='nmrespy_testing0',
+    name='nmrespy',
     version=__version__,
     description='NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python',
     author='Simon Hulse',

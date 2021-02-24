@@ -273,7 +273,7 @@ class MatrixPencil(FrequencyConverter):
         if self.M < m_init and self.fprint:
             print(f'\t{cols.O}WARNING: Oscillations with negative damping\n'
                   f'\tfactors detected. These have been deleted.\n'
-                  f'\tCorrected number of oscillations: {self.m}{cols.END}')
+                  f'\tCorrected number of oscillations: {self.M}{cols.END}')
 
 
         elif self.fprint:

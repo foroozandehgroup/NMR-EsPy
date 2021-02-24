@@ -337,7 +337,6 @@ def plot_result(
             mini = line_min if line_min < mini else mini
         height = maxi - mini
         bottom, top = mini - (0.03 * height), maxi + (0.05 * height)
-        print(bottom, top)
         ax.set_ylim(bottom, top)
 
     # x-axis label, of form ¹H or ¹³C etc.
