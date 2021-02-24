@@ -407,10 +407,21 @@ def load_bruker(directory, ask_convdta=True):
             # Does the following things:
             # 1. Flips the spectrum (order frequency bins from low to high
             # going left to right)
-            # 2. Performs inverse FOurier Transform
+            # 2. Performs inverse Fourier Transform
             # 3. Retrieves the first half of the signal, which is a conjugate
             # symmetric virtual echo
-            data = ifft(ifftshift(data[::-1]))[:int(data.size // 2)]
+            # 4. Doubles to reflect loss of imaginary data
+            # 5. Zero fills back to original signal size
+            # 6. Halves the first point to ensure no baseline shift takes
+            # place
+            data = 2 * np.hstack(
+                (
+                    ifft(ifftshift(data[::-1]))[:int(data.size // 2)],
+                    np.zeros(int(data.size // 2), dtype='complex'),
+                )
+            )
+            data[0] /= 2
+
 
 
         else:
@@ -422,7 +433,7 @@ def load_bruker(directory, ask_convdta=True):
             for axis in range(2):
                 data = ifft(ifftshift(data, axes=axis), axis=axis)
             # Slice signal in half in both dimensions
-            data = data[:int(data.shape[0] // 2), :int(data.shape[1] // 2)]
+            data = 4 * data[:int(data.shape[0] // 2), :int(data.shape[1] // 2)]
 
     # Compile a dictionary of parameters
     result = {
