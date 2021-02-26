@@ -6,6 +6,7 @@ import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.fft import fft, fftshift
 
 from nmrespy import *
 import nmrespy._cols as cols
@@ -76,6 +77,7 @@ class Estimator:
         and :py:meth:`new_synthetic_from_parameters`.
     """
 
+    @staticmethod
     def new_bruker(dir, ask_convdta=True):
         """Generate an instance of :py:class:`Estimator` from a
         Bruker-formatted data directory.
@@ -133,6 +135,7 @@ class Estimator:
             info['nuclei'], info['binary_format'], _origin=origin
         )
 
+    @staticmethod
     def new_synthetic_from_data(data, sw, offset=None, sfo=None):
         """Generate an instance of :py:class:`Estimator` given a NumPy
         array, and (at the bare minimum), the sweep width.
@@ -225,7 +228,7 @@ class Estimator:
             'synthetic', data, None, sw, offset, sfo, None, None,
         )
 
-
+    @staticmethod
     def new_synthetic_from_parameters(
         parameters, sw, points, snr=None, offset=None, sfo=None
     ):
@@ -236,7 +239,7 @@ class Estimator:
         print(f'{cols.O}new_synthetic_from_parameters is not yet'
               f'implemented!{cols.END}')
 
-
+    @staticmethod
     def from_pickle(path):
         """Loads an intance of :py:class:`Estimator`, which was saved
         previously using :py:meth:`to_pickle`.
@@ -793,7 +796,7 @@ class Estimator:
         elif domain == 'frequency':
             # frequency domain treatment
             if dim == 1:
-                ydata = fftshift(fft(self.get_data()))
+                ydata = signal.ft(self.get_data())
 
                 if freq_xunit == 'hz':
                     xlabel = '$\\omega\\ (Hz)$'
@@ -827,7 +830,7 @@ class Estimator:
             raise ValueError(msg)
 
         if domain == 'frequency':
-            plt.xlim(xdata[-1], xdata[0])
+            plt.xlim(xdata[0], xdata[-1])
         plt.xlabel(xlabel)
         plt.show()
 
@@ -1368,10 +1371,10 @@ class Estimator:
             # Nuclei
             if nuc is not None:
                 info_headings.append('Nucleus')
-                # Extract the isotope number from the element symbol
-                # \d+ matches any number of consecutive numerical values,
-                # starting from the beginning of the string.
-                info.append(latex_nucleus(nuc[0]))
+                if fmt == 'pdf':
+                    info.append(latex_nucleus(nuc[0]))
+                else:
+                    info.append(nuc[0])
 
             # Region
             if region_h is not None:

@@ -394,10 +394,10 @@ class FrequencyConverter:
                 )
 
         if conversion == 'idx->hz':
-            return float(off + sw * (0.5 - (value / (n - 1))))
+            return off + sw * (0.5 - (float(value) / (n - 1)))
 
         elif conversion == 'idx->ppm':
-            return float((off + sw * (0.5 - (value / (n - 1)))) / sfo)
+            return (off + sw * (0.5 - (float(value) / (n - 1)))) / sfo
 
         elif conversion == 'ppm->idx':
             return int(round(((n - 1)) / (2 * sw) * (sw + 2 * (off - (value * sfo)))))

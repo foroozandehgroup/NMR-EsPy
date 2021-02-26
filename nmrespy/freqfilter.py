@@ -90,11 +90,11 @@ class FrequencyFilter:
         given in.
 
     sw : [float], [float, float] or None, default: None
-        The sweep width of the signal in each dimension. Required as float list
-        if `region_unit` is `'ppm'` or `'hz'`.
+        The sweep width of the signal in each dimension. Required as float
+        list if `region_unit` is `'ppm'` or `'hz'`.
 
     offset : [float], [float, float] or None, default: None
-        The transmitter offset in each dimension (Hz). Required as float
+        The transmitter offset in each dimension. Required as float
         list if `region_unit` is `'ppm'` or `'hz'`.
 
     sfo : [float], [float, float] or None, default: None
@@ -181,7 +181,7 @@ class FrequencyFilter:
 
         # Generate FrequencyConverter instance, which will carry out
         # conversion of region bounds to unit of array indices.
-        if sw != None and offset != None and sfo != None:
+        if sw is not None and offset is not None and sfo is not None:
             self.converter = FrequencyConverter(self.n, sw, offset, sfo)
 
             if region_unit in ['ppm', 'hz']:
@@ -202,13 +202,13 @@ class FrequencyFilter:
         # and double values (to reflect zero-filling)
         for i, (bd, nbd) in enumerate(zip(self.region, self.noise_region)):
             if bd[0] < bd[1]:
-                self.region[i] = [2 * bd[0], 2 * bd[1]]
+                self.region[i] = [2 * bd[0], 2 * bd[1] + 1]
             else:
-                self.region[i] = [2 * bd[1], 2 * bd[0]]
+                self.region[i] = [2 * bd[1], 2 * bd[0] + 1]
             if nbd[0] < nbd[1]:
-                self.noise_region[i] = [2 * nbd[0], 2 * nbd[1]]
+                self.noise_region[i] = [2 * nbd[0], 2 * nbd[1] + 1]
             else:
-                self.noise_region[i] = [2 * nbd[1], 2 * nbd[0]]
+                self.noise_region[i] = [2 * nbd[1], 2 * nbd[0] + 1]
 
         # --- Generate frequency-domain data -----------------------------
         # Zero fill data to double its size in each dimension
@@ -244,9 +244,6 @@ class FrequencyFilter:
         # Scale noise elements according to corresponding value of the
         # super-Gaussian filter
         self.noise = self.noise * (1 - self.super_gaussian)
-        # Correct for veritcal baseline shift
-        # TODO consult Ali - should this be done?
-        # self.noise += mean * (1 - self.super_gaussian)
         # Filter the spectrum!
         self.filtered_spectrum = \
             self.init_spectrum * self.super_gaussian + self.noise
@@ -256,7 +253,7 @@ class FrequencyFilter:
         # If cut is False, this will be the final signal.
         # If cut is True, the norm of this signal will be utilised to
         # correctly scale the final signal derived from a cut spectrum
-        uncut_ve = signal.ift(self.filtered_spectrum)
+        uncut_ve = 2 * signal.ift(self.filtered_spectrum)
         half_slice = tuple(np.s_[0:int(s // 2)] for s in uncut_ve.shape)
         uncut_fid = uncut_ve[half_slice]
 
@@ -271,7 +268,7 @@ class FrequencyFilter:
                     _min = 0
                 if _max > n:
                     _max = n
-                cut_slice.append(np.s_[_min:_max])
+                cut_slice.append(np.s_[_min:_max+1])
 
             # Cut the filtered spectrum
             self.filtered_spectrum = self.filtered_spectrum[tuple(cut_slice)]
@@ -279,12 +276,9 @@ class FrequencyFilter:
             cut_ve = signal.ift(self.filtered_spectrum)
             half_slice = tuple(np.s_[0:int(s // 2)] for s in cut_ve.shape)
             cut_fid = cut_ve[half_slice]
-
-            # Get norms of cut and uncut signals
-            uncut_norm = slinalg.norm(uncut_fid)
-            cut_norm = slinalg.norm(cut_fid)
-            self.filtered_signal = cut_fid / cut_norm * uncut_norm / 2
-            self.virtual_echo = cut_ve / cut_norm * uncut_norm / 2
+            # Scale signals
+            self.filtered_signal = 2 * cut_fid * cut_fid.size / uncut_fid.size
+            self.virtual_echo = 2 * cut_ve * cut_fid.size / uncut_fid.size
 
             # Determine sweep width and transmitter offset of cut signal
             # NB division by 2 is to correct for doubling the region bounds
@@ -297,8 +291,8 @@ class FrequencyFilter:
         else:
             self.sw = sw
             self.offset = offset
-            self.filtered_signal = 2 * uncut_fid
-            self.virtual_echo = 2 * uncut_ve
+            self.filtered_signal = uncut_fid
+            self.virtual_echo = uncut_ve
 
         # Need to halve region indices to correct for removal of half the
         # signal

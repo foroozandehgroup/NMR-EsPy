@@ -24,9 +24,11 @@ from nmrespy._misc import *
 from nmrespy import signal
 
 def plot_result(
-    data, result, sw, offset, sfo=None, shifts_unit='ppm', nucleus=None,
-    region=None, data_color='#808080', oscillator_colors=None, labels=True,
-    stylesheet=None,
+    data, result, sw, offset, plot_residual=True, plot_model=False,
+    residual_shift=None, model_shift=None, sfo=None, shifts_unit='ppm',
+    nucleus=None, region=None, data_color='#000000', residual_color='#808080',
+    model_color='#808080', oscillator_colors=None,
+    labels=True, stylesheet=None,
 ):
     """
     Produces a figure of an estimation result.
@@ -83,11 +85,37 @@ def plot_result(
         Boundaries specifying the region to show. See also
         :py:class:`nmrespy.freqfilter.FrequencyFilter`.
 
-    data_color : matplotlib color, default: '#808080'
-        The color used to plot the original data. Any value that is
+    plot_residual : bool, default: True
+        If `True`, plot a difference between the FT of `data` and the FT of
+        the model generated using `result`. NB the residual is plotted
+        regardless of `plot_residual`. `plot_residual` specifies the alpha
+        transparency of the plot line (1 for `True`, 0 for `False`)
+
+    residual_shift : float or None, default: None
+        Specifies a translation of the residual plot along the y-axis. If
+        `None`, the default shift will be applied.
+
+    plot_model : bool, default: False
+        If `True`, plot the FT of the model generated using `result`.
+        NB the residual is plotted regardless of `plot_model`. `plot_model`
+        specifies the alpha transparency of the plot line (1 for `True`,
+        0 for `False`)
+
+    model_shift : float or None, default: None
+        Specifies a translation of the residual plot along the y-axis. If
+        `None`, the default shift will be applied.
+
+    data_color : matplotlib color, default: '#000000'
+        The colour used to plot the original data. Any value that is
         recognised by matplotlib as a color is permitted. See
         `<https://matplotlib.org/3.1.0/tutorials/colors/\
         colors.html>`_ for a full description of valid values.
+
+    residual_color : matplotlib color, default: '#808080'
+        The colour used to plot the residual.
+
+    model_color : matplotlib color, default: '#808080'
+        The colour used to plot the model.
 
     oscillator_colors : {matplotlib color, matplotlib colormap name, \
     list, numpy.ndarray, None}, default: None
@@ -180,7 +208,11 @@ def plot_result(
         (sw, 'sw', 'float_list'),
         (offset, 'offset', 'float_list'),
         (data_color, 'data_color', 'mpl_color'),
+        (residual_color, 'residual_color', 'mpl_color'),
+        (model_color, 'model_color', 'mpl_color'),
         (labels, 'labels', 'bool'),
+        (plot_residual, 'plot_residual', 'bool'),
+        (plot_model, 'plot_model', 'bool'),
     ]
 
     if sfo is not None:
@@ -189,6 +221,10 @@ def plot_result(
         components.append((nucleus, 'nucleus', 'str_list'))
     if region is not None:
         components.append((region, 'region', 'region_float'))
+    if residual_shift is not None:
+        components.append((residual_shift, 'residual_shift', 'float'))
+    if model_shift is not None:
+        components.append((model_shift, 'model_shift', 'float'))
     if oscillator_colors is not None:
         components.append((oscillator_colors, 'oscillator_colors', 'osc_cols'))
     if stylesheet is not None:
@@ -261,22 +297,34 @@ def plot_result(
     # Delete the stylesheet
     os.remove(tmp_path)
 
-    # Generate data: chemical shifts, data spectrum, oscillator spectra
-    n = list(data.shape)
-    shifts = signal.get_shifts(n, sw, offset)[0]
 
     if shifts_unit not in ['hz', 'ppm']:
         raise errors.InvalidUnitError('hz', 'ppm')
-    if shifts_unit == 'ppm':
-        try:
-            shifts /= sfo[0]
-        except:
-            raise TypeError(
-                f'{cols.R}You need to specify sfo if you want chemical'
-                f' shifts in ppm!{cols.END}'
-            )
+    if shifts_unit == 'ppm' and sfo is None:
+        shifts_unit = 'hz'
+        print(
+            f'{cols.O}You need to specify `sfo` if you want chemical'
+            f' shifts in ppm! Falling back to Hz...'
+        )
 
-    spectrum = np.real(signal.ft(data, flip=False))
+    # Change x-axis limits if a specific region was studied
+    n = list(data.shape)
+    if region is not None:
+        # Determine highest/lowest values points in region,
+        # and set ylims to accommodate these.
+        converter = FrequencyConverter(n, sw, offset, sfo=sfo)
+        region = converter.convert(region, f'{shifts_unit}->idx')
+        left, right = min(region[0]), max(region[0]) + 1
+
+    else:
+        left, right = 0, shifts.size
+
+    # Generate data: chemical shifts, data spectrum, oscillator spectra
+    shifts = signal.get_shifts(n, sw, offset)[0][left:right]
+    shifts = shifts / sfo[0] if shifts_unit == 'ppm' else shifts
+
+    spectrum = np.real(signal.ft(data))[left:right]
+
     peaks = []
     for osc in result:
         peaks.append(
@@ -285,9 +333,14 @@ def plot_result(
                     signal.make_fid(
                         np.expand_dims(osc, axis=0), n, sw, offset=offset,
                     )[0]
-                , flip=False)
-            )
+                )
+            )[left:right]
         )
+
+    model = np.zeros(spectrum.size)
+    for peak in peaks:
+        model += peak
+    residual = spectrum - model
 
     # Generate figure and axis
     fig = plt.figure()
@@ -299,7 +352,7 @@ def plot_result(
     labs = {}
 
     # Plot original data (Given the key 0)
-    lines[0] = ax.plot(shifts, spectrum, color=data_color)[0]
+    lines['data'] = ax.plot(shifts, spectrum, color=data_color)[0]
 
     # Plot oscillators and label
     for m, peak in enumerate(peaks, start=1):
@@ -312,15 +365,37 @@ def plot_result(
         alpha = 1 if labels else 0
         labs[m] = ax.text(x, y, str(m), fontsize=8, alpha=alpha)
 
-    # Change x-axis limits if a specific region was studied
-    if region is not None:
-        ax.set_xlim(max(region[0]), min(region[0]))
+    # Plot residual
+    if plot_residual:
+        if residual_shift is None:
+            # Calculate default residual shift
+            # Ensures the residual lies below the data amd model
+            #
+            # Determine highest positive residual value
+            maxi = np.max(residual)
+            # Set shift
+            residual_shift = - 1.5 * maxi
 
-        # Determine highest/lowest values points in region,
-        # and set ylims to accommodate these.
-        converter = FrequencyConverter(n, sw, offset, sfo=sfo)
-        region_idx = converter.convert(region, f'{shifts_unit}->idx')
-        left, right = min(region_idx[0]), max(region_idx[0])
+        lines['residual'] = ax.plot(
+            shifts, residual + residual_shift, color=residual_color,
+        )[0]
+
+    # Plot model
+    if plot_model:
+        if model_shift is None:
+            # Calculate default model shift
+            # Ensures the model lies above the data amd model
+            #
+            # Determine highest positive residual value
+            maxi = np.max(model)
+            # Set shift
+            model_shift = 0.2 * maxi
+
+        lines['model'] = ax.plot(
+            shifts, model + model_shift, color=model_color,
+        )[0]
+
+
         # Initialise maxi and mini to be values that are certain to be
         # overwritten
         maxi = -np.inf
@@ -328,7 +403,7 @@ def plot_result(
         # For each plot, get max and min values
         for line in list(lines.values()):
             # Flip the data and extract right section
-            data = line.get_ydata()[::-1][left:right]
+            data = line.get_ydata()
             line_max = np.amax(data)
             line_min = np.amin(data)
             # Check if plot's max value is larger than current max
@@ -339,6 +414,7 @@ def plot_result(
         bottom, top = mini - (0.03 * height), maxi + (0.05 * height)
         ax.set_ylim(bottom, top)
 
+    ax.set_xlim(ax.get_xlim()[1], ax.get_xlim()[0])
     # x-axis label, of form ¹H or ¹³C etc.
     xlab = 'chemical shifts' if nucleus is None else latex_nucleus(nucleus[0])
     xlab += ' (Hz)' if shifts_unit == 'hz' else ' (ppm)'

@@ -182,7 +182,7 @@ def get_timepoints(n, sw):
     return [np.linspace(0, float(n_) / sw_, n_) for n_, sw_ in zip(n, sw)]
 
 
-def get_shifts(n, sw, offset):
+def get_shifts(n, sw, offset, flip=True):
     """Generates the frequencies that the FT of the FID is sampled at, given
     its sweep-width, and the number of points.
 
@@ -196,6 +196,10 @@ def get_shifts(n, sw, offset):
 
     offset : [float] or [float, float]
         The transmitter offset in each dimension (Hz).
+
+    flip : bool, default: True
+        Whether or not to flip `spectrum` in each dimension prior to Inverse
+        Fourier Transform.
 
     Returns
     -------
@@ -221,7 +225,7 @@ def get_shifts(n, sw, offset):
             np.linspace((-sw_ / 2) + off, (sw_ / 2) + off, n_)
         )
 
-    return shifts
+    return np.flip(shifts) if flip else shifts
 
 def ft(fid, flip=True):
     """Performs Fourier transformation and (optionally) flips the resulting
