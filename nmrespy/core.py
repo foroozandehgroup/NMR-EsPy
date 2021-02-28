@@ -228,16 +228,6 @@ class Estimator:
             'synthetic', data, None, sw, offset, sfo, None, None,
         )
 
-    @staticmethod
-    def new_synthetic_from_parameters(
-        parameters, sw, points, snr=None, offset=None, sfo=None
-    ):
-        """
-        .. todo::
-           THis has not been written yet.
-        """
-        print(f'{cols.O}new_synthetic_from_parameters is not yet'
-              f'implemented!{cols.END}')
 
     @staticmethod
     def from_pickle(path):
@@ -368,12 +358,12 @@ class Estimator:
 
         # Attributes that will be assigned to after the user runs
         # the folowing methods:
-        # 1. frequency_filter (filter_info)
-        # 2. matrix_pencil (mpm_info)
-        # 3. nonlinear_programming (nlp_info)
+        # * frequency_filter (filter_info)
+        # * matrix_pencil or non_linear_programming (result)
+        # * nonlinear_programming (errors)
         self.filter_info = None
-        self.mpm_info = None
-        self.nlp_info = None
+        self.result = None
+        self.errors = None
         self._manual_edit = False
         # Create a converter object, enabling conversion idx, hz (and ppm,
         # if sfo is not None)
@@ -734,6 +724,50 @@ class Estimator:
             return list(np.meshgrid(tp[0], tp[1]))
         return tp
 
+    def get_result(self, kill=True, freq_unit='hz'):
+        """Returns the estimation result
+
+        Parameters
+        ----------
+        kill : bool, default: True
+            If `self.result` is `None`, `kill` specifies how the method will
+            act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
+
+        freq_unit : 'hz' or 'ppm', default: 'hz'
+        """
+        result = self._check_if_none(
+            'result', kill, 'matrix_pencil or nonlinear_programming'
+        )
+
+        if freq_unit == 'hz':
+            return result
+
+        elif freq_unit == 'ppm':
+            # Get frequencies in Hz, and format to enable input into
+            # the frequency converter.
+            # Then convert values to ppm and reconvert back to NumPy array
+            try:
+                ppm = np.array(
+                    self.converter.convert(
+                        [list(result[:, 2])], conversion='hz->ppm',
+                    )
+                )
+                result[:, 2] = ppm
+                return result
+
+            except:
+                raise TypeError(
+                    f'{cols.R}Error in trying to convert frequencies to '
+                    f'ppm. Perhaps you didn\'t specify sfo when you made '
+                    f'the Estimator instance?{cols.END}'
+                )
+
+        else:
+            raise InvalidUnitError('hz', 'ppm')
+
     def _check_if_none(self, name, kill, method=None):
         """Retrieve attributes that may be assigned the value `None`. Return
         None/raise error depending on the value of ``kill``
@@ -780,6 +814,10 @@ class Estimator:
         freq_xunit : 'ppm' or 'hz', default: 'ppm'
             The unit of the x-axis, if `domain` is set as `'frequency'`. If
             `domain` is set as `'time'`, the x-axis unit will the seconds.
+
+        component : 'real', 'imag' or 'both', default: 'real'
+            The component of the data to display. `'both'` displays both
+            the real and imaginary components
         """
         # TODO: 2D equivalent
         dim = self.get_dim()
@@ -822,8 +860,9 @@ class Estimator:
         elif component == 'imag':
             plt.plot(xdata, np.imag(ydata), color='k')
         elif component == 'both':
-            plt.plot(xdata, np.real(ydata), color='k')
-            plt.plot(xdata, np.imag(ydata), color='#808080')
+            plt.plot(xdata, np.real(ydata), color='k', label='Re')
+            plt.plot(xdata, np.imag(ydata), color='#808080', label='Im')
+            plt.legend()
         else:
             msg = f'{R}component was not given a valid value' \
                   + f' (should be \'real\', \'imag\' or \'both\').{END}'
@@ -840,7 +879,7 @@ class Estimator:
 # JEOL files etc
 # =============================================================
 
-    def make_fid(self, n=None, oscillators=None):
+    def make_fid(self, n=None, oscillators=None, kill=True):
         """Constructs a synthetic FID using a parameter estimate and
         experiment parameters.
 
@@ -852,11 +891,17 @@ class Estimator:
             have the same number of points as the original data.
 
         oscillators : None or list, default: None
-            Which oscillators to include in result. If ``None``, all
+            Which oscillators to include in result. If `None`, all
             oscillators will be included. If a list of ints, the subset of
             oscillators corresponding to these indices will be used. Note
-            that the valid list elements are the ints from `0` to
-            ``self.nlp_info.result.shape[0] - 1`` (included).
+            that all elements should be in ``range(self.result.shape[0])``.
+
+        kill : bool, default: True
+            If `self.result` is `None`, `kill` specifies how the method will
+            act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
 
         Returns
         -------
@@ -871,24 +916,25 @@ class Estimator:
         :py:func:`nmrespy.signal.make_fid`
         """
 
-        result = self.get_nlp_info(kill=False).get_result()
-        if result is None:
-            raise ValueError(
-                f'{cols.R}No parameter estimate found! Perhaps you need to'
-                f' run nonlinear_programming?{cols.END}'
-            )
+        result = self.get_result(kill=kill)
 
-        if oscillators:
-            # slice desired oscillators
-            result = result[[oscillators]]
+        if oscillators is None:
+            oscillators = list(range(result.shape[0]))
 
         if n is None:
             n = self.get_n()
-        ArgumentChecker([(n, 'n', 'int_list')], dim=self.get_dim())
+
+        ArgumentChecker(
+            [
+                (n, 'n', 'int_list'),
+                (oscillators, 'oscillators', 'int_list'),
+            ],
+            dim=self.get_dim(),
+        )
 
 
         return signal.make_fid(
-            result, n, self.get_sw(), offset=self.get_offset(),
+            result[[oscillators]], n, self.get_sw(), offset=self.get_offset(),
         )
 
     @logger
@@ -1129,32 +1175,12 @@ class Estimator:
         # Slice data
         data = data[trim]
 
-        self.mpm_info = MatrixPencil(
+        mpm_info = MatrixPencil(
             data, sw, offset, self.sfo, M, fprint
         )
 
-    def get_mpm_info(self, kill=True):
-        """Returns information relating to the Matrix Pencil Method.
+        self.result = mpm_info.get_result()
 
-        Parameters
-        ----------
-        kill : bool, default: True
-            If `self.mpm_info` is `None`, and `kill` is `True`, an error will
-            be raised. If `kill` is False, `None` will be returned.
-
-        Returns
-        -------
-        mpm_info : :py:class:`nmrespy.mpm.MatrixPencil`
-
-        Notes
-        -----
-        See :py:class:`nmrespy.mpm.MatrixPencil` for details on the contents
-        of `mpm_info`.
-        """
-
-        return self._check_if_none(
-            'mpm_info', kill, method='matrix_pencil'
-        )
 
     # TODO: support for mode
     # Also look at nlp.nlp.NonlinearProgramming
@@ -1207,23 +1233,8 @@ class Estimator:
           :py:class:`nmrespy.freqfilter.FrequencyFilter`,
           `self.filter_info.filtered_signal` will be analysed.
 
-        **For developers:** See :py:meth:`_get_data_sw_offset`
-
-        Upon successful completion is this method, `self.nlp_info` will
-        be updated with an instance of
-        :py:class:`nmrespy.nlp.nlp.NonlinearProgramming`.
-
-        The two optimisation algorithms (specified by `method`) primarily
-        differ in how they treat the calculation of the matrix of cost
-        function second derivatives (called the Hessian). `'trust_region'`
-        will calculate the Hessian explicitly at every iteration, whilst
-        `'lbfgs'` uses an update formula based on gradient information to
-        estimate the Hessian. The upshot of this is that the convergence
-        rate (the number of iterations needed to reach convergence) is
-        typically better for `'trust_region'`, though each iteration
-        typically takes longer to generate. By default, it is advised to
-        use `'trust_region'`, however if your guess has a large number
-        of signals, you may find `'lbfgs'` performs more effectively.
+        Upon successful completion is this method, `self.result` and
+        `self.errors` will be updated.
 
         See Also
         --------
@@ -1237,7 +1248,7 @@ class Estimator:
         kwargs['sfo'] = self.get_sfo(kill=False)
 
         if trim is None:
-            trim = [s for s in data.shape]
+            trim = list(data.shape)
 
         ArgumentChecker([(trim, 'trim', 'int_list')], dim=self.dim)
 
@@ -1245,29 +1256,13 @@ class Estimator:
         # Slice data
         data = data[trim]
 
-        mpm_info = self.get_mpm_info()
-        x0 = mpm_info.result
+        x0 = self.get_result()
 
-        self.nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
+        nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
+        self.result = nlp_info.get_result()
+        self.errors = nlp_info.get_errors()
         self._manual_edit = False
 
-    def get_nlp_info(self, kill=True):
-        """Returns information relating to nonlinear programming.
-
-        Parameters
-        ----------
-        kill : bool, default: True
-            If `self.nlp_info` is `None`, and `kill` is `True`, an error will
-            be raised. If `kill` is False, `None` will be returned.
-
-        Returns
-        -------
-        nlp_info : :py:class:`nmrespy.nlp.nlp.NonlinearProgramming`
-        """
-
-        return self._check_if_none(
-            'nlp_info', kill, method='nonlinear_programming'
-        )
 
     @logger
     def write_result(self, **kwargs):
@@ -1318,9 +1313,9 @@ class Estimator:
                 pass
 
         # Retrieve result
-        # If nonlinear_programming has not been run yet, this will be
-        # caught by get_nlp_info
-        result = self.get_nlp_info().get_result()
+        # If self.result is None, an error will be raised inside
+        # _check_if_none
+        result = self.get_result()
 
         # Information for experiment info
         sw_h = self.get_sw()
@@ -1371,7 +1366,7 @@ class Estimator:
             # Nuclei
             if nuc is not None:
                 info_headings.append('Nucleus')
-                if fmt == 'pdf':
+                if 'fmt' in kwargs.keys() and kwargs['fmt'] == 'pdf':
                     info.append(latex_nucleus(nuc[0]))
                 else:
                     info.append(nuc[0])
@@ -1448,7 +1443,7 @@ class Estimator:
             kwargs['shifts_unit'] = unit = 'ppm'
 
         return plot_result(
-            self.get_data(), self.nlp_info.get_result(), self.get_sw(),
+            self.get_data(), self.get_result(), self.get_sw(),
             self.get_offset(), sfo=self.get_sfo(kill=False),
             nucleus=self.get_nucleus(kill=False),
             region=self.get_filter_info().get_region(unit=unit), **kwargs,
@@ -1483,12 +1478,12 @@ class Estimator:
             [(oscillators, 'oscillators', 'parameter')], self.get_dim(),
         )
 
-        result = self.get_nlp_info().get_result()
+        result = self.get_result()
         new_result = np.vstack((result, oscillators))
         # Order according to frequency
         new_result = new_result[np.argsort(new_result[:, 2])]
         # Assign new result to nlp_info
-        self.nlp_info.result = new_result
+        self.result = new_result
         # User has manually edited the result after estimation.
         self._manual_edit = True
 
@@ -1508,15 +1503,14 @@ class Estimator:
 
         ArgumentChecker([(indices, 'indices', 'list')])
 
-        result = self.get_nlp_info().get_result()
+        result = self.get_result()
         for i in indices:
             if i not in list(range(result.shape[0])):
                 raise ValueError(
                     f'{cols.R}Invalid index in `indices`{cols.END}'
                 )
 
-        # Assign new result to nlp_info
-        self.nlp_info.result = np.delete(result, indices, axis=0)
+        self.result = np.delete(result, indices, axis=0)
         # User has manually edited the result after estimation.
         self._manual_edit = True
 
@@ -1552,7 +1546,7 @@ class Estimator:
 
         ArgumentChecker([(indices, 'indices', 'list')])
 
-        result = self.get_nlp_info().get_result()
+        result = self.get_result()
 
         if len(indices) < 2:
             print(
@@ -1581,9 +1575,9 @@ class Estimator:
 
         result = np.delete(result, indices, axis=0)
         result = np.vstack((result, new_osc))
-        self.nlp_info.result = result[np.argsort(result[..., 2])]
+        self.result = result[np.argsort(result[..., 2])]
 
-
+    # TODO make 2D compatible
     @logger
     def split_oscillator(
         self, index, separation_frequency=None, unit='hz', split_number=2,
@@ -1619,13 +1613,12 @@ class Estimator:
             relate to the lowest frequency oscillator constructed. If `None`,
             all oscillators will be given equal amplitudes.
         """
-        # TODO make 2D compatible
 
         # get frequency_Sep in correct units
         if unit not in ['hz', 'ppm']:
             raise errors.InvalidUnitError('hz', 'ppm')
 
-        result = self.get_nlp_info().get_result(freq_unit=unit)
+        result = self.get_result(freq_unit=unit)
 
         try:
             # Of form: [a, φ, f, η] (i.e. 1D array)
@@ -1682,7 +1675,7 @@ class Estimator:
         if unit == 'ppm':
             result[:, 2] = result[:, 2] * self.get_sfo()[0]
 
-        self.nlp_info.result = result[np.argsort(result[..., 2])]
+        self.result = result[np.argsort(result[..., 2])]
 
 
     def save_logfile(self, path='./nmrespy_log', force_overwrite=False):

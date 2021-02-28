@@ -519,10 +519,10 @@ class PhaseApp(tk.Tk):
 
     def save(self):
         self.p0 = self.p0 - self.p1 * (self.pivot / self.n)
-        self.quit()
+        self.destroy()
 
     def cancel(self):
-        self.quit()
+        self.destroy()
         self.p0 = None
         self.p1 = None
 

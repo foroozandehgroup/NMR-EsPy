@@ -177,6 +177,21 @@ class NonlinearProgramming(FrequencyConverter):
     fprint : bool, default: True
         If `True`, the method provides information on progress to
         the terminal as it runs. If `False`, the method will run silently.
+
+    Notes
+    -----
+
+    The two optimisation algorithms (specified by `method`) primarily
+    differ in how they treat the calculation of the matrix of cost
+    function second derivatives (called the Hessian). `'trust_region'`
+    will calculate the Hessian explicitly at every iteration, whilst
+    `'lbfgs'` uses an update formula based on gradient information to
+    estimate the Hessian. The upshot of this is that the convergence
+    rate (the number of iterations needed to reach convergence) is
+    typically better for `'trust_region'`, though each iteration
+    typically takes longer to generate. By default, it is advised to
+    use `'trust_region'`, however if your guess has a large number
+    of signals, you may find `'lbfgs'` performs more effectively.
     """
 
     start_txt = 'NONLINEAR PROGRAMMING STARTED'
@@ -793,7 +808,7 @@ class NonlinearProgramming(FrequencyConverter):
     def _negligible_amplitudes(self):
 
         # Threshold
-        thold = self.amp_thold * self.norm
+        thold = self.amp_thold * nlinalg.norm(self.result[:self.m])
         # Indices of negligible amplitude oscillators
         negligible_idx = list(np.nonzero(self.result[:self.m] < thold)[0])
         # Remove negligible oscillators

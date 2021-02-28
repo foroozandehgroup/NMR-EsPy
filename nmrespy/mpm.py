@@ -288,4 +288,4 @@ class MatrixPencil(FrequencyConverter):
            To be written
         """
 
-        pass
+        raise TwoDimUnsupportedError()

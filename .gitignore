@@ -3,6 +3,6 @@ docs/_build/
 docs/Makefile
 nmrespy/logs/*
 tests
-venv
+nmrespy-venv
 build
 dist
