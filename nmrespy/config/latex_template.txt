@@ -35,7 +35,7 @@ urlcolor   = urlblue,%
 % NMR-EsPy logo
 \begin{minipage}[b][2.5cm][c]{.27\textwidth}
 \href{<GITHUBLINK>}%
-{\includegraphics[scale=0.1]{<NMRESPYLOGOPATH>}}
+{\includegraphics[scale=0.5]{<NMRESPYLOGOPATH>}}
 \end{minipage}
 \end{figure}
 

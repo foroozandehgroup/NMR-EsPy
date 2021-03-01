@@ -77,6 +77,23 @@ class Estimator:
         and :py:meth:`new_synthetic_from_parameters`.
     """
 
+    def logger(f):
+        """Decorator for logging :py:class:`Estimator` method calls"""
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            # The first arg is the class instance. Get the path to the logfile.
+            path = args[0]._logpath
+            with open(path, 'a') as fh:
+                # Append the method call to the log file in the following format:
+                # --> method_name (args) {kwargs}
+                fh.write(f'--> {f.__name__} {args[1:]} {kwargs}\n')
+
+            # Run the method...
+            return f(*args, **kwargs)
+
+        return wrapper
+
+    
     @staticmethod
     def new_bruker(dir, ask_convdta=True):
         """Generate an instance of :py:class:`Estimator` from a
@@ -281,7 +298,7 @@ class Estimator:
                 f'{cols.R}Invalid path specified.{cols.END}'
             )
 
-
+    @logger
     def to_pickle(
         self, path='./nmrespy_instance', force_overwrite=False
     ):
@@ -359,7 +376,7 @@ class Estimator:
         # Attributes that will be assigned to after the user runs
         # the folowing methods:
         # * frequency_filter (filter_info)
-        # * matrix_pencil or non_linear_programming (result)
+        # * matrix_pencil or nonlinear_programming (result)
         # * nonlinear_programming (errors)
         self.filter_info = None
         self.result = None
@@ -426,23 +443,6 @@ class Estimator:
         msg += '\n'.join(items)
 
         return msg
-
-
-    def logger(f):
-        """Decorator for logging :py:class:`Estimator` method calls"""
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs):
-            # The first arg is the class instance. Get the path to the logfile.
-            path = args[0]._logpath
-            with open(path, 'a') as fh:
-                # Append the method call to the log file in the following format:
-                # --> method_name (args) {kwargs}
-                fh.write(f'--> {f.__name__} {args[1:]} {kwargs}\n')
-
-            # Run the method...
-            return f(*args, **kwargs)
-
-        return wrapper
 
 
     def get_datapath(self, type_='Path', kill=True):
@@ -952,19 +952,20 @@ class Estimator:
             If `None`, the phase will be set to `0.0` in each dimension.
         """
 
-        self.p0 = p0
-        self.p1 = p1
-
-        if self.p0 is None:
-            self.p0 = self.get_dim() * [0.0]
-        if self.p1 is None:
-            self.p1 = self.get_dim() * [0.0]
+        if p0 is None:
+            p0 = self.get_dim() * [0.0]
+        if p1 is None:
+            p1 = self.get_dim() * [0.0]
 
         self.data = signal.ift(
             signal.phase_spectrum(
                 signal.ft(self.data), self.p0, self.p1,
             )
         )
+
+        self.p0 = p0
+        self.p1 = p1
+
 
     def manual_phase_data(self, max_p1=None):
         """Perform manual phase correction of `self.data`.
@@ -983,6 +984,7 @@ class Estimator:
         """
         p0, p1 = signal.manual_phase_spectrum(signal.ft(self.data), max_p1)
         self.phase_data(p0=p0, p1=p1)
+
 
     @logger
     def frequency_filter(
@@ -1394,6 +1396,7 @@ class Estimator:
             info=info, sfo=sfo, **kwargs,
         )
 
+    @logger
     def plot_result(self, **kwargs):
         """Produces a figure of an estimation result.
 
