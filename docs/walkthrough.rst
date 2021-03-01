@@ -64,23 +64,29 @@ An interactive plot of the data, in the frequency domain, can be seen using the
 
    >>> estimator.view_data()
 
-.. image:: _static/walkthrough/figures/view_data.png
+.. image:: images_etc/walkthrough/figures/view_data.png
    :align: center
 
 
 Frequency Filtration
 ^^^^^^^^^^^^^^^^^^^^
 
+For complex NMR signals, it is typically necessary to consider a subset of
+the frequency space at any time, otherwise the computational burden would be
+too large. To overcome this, it is possible to derive a time-domain signal
+which has been generated via frequency-filtration.
+
 In this example, I am going to focus on the spectral region between
 5.54-5.42ppm. The region looks like this:
 
-.. image:: _static/walkthrough/figures/spectral_region.png
+.. image:: images_etc/walkthrough/figures/spectral_region.png
    :align: center
 
-To generate a frequency-filtered time-domian signal from the imported data, the
+To generate a frequency-filtered signal from the imported data, the
 :py:meth:`~nmrespy.core.Estimator.frequency_filter` method is used. It is
-also necessary to specify a region that appears to be just noise. In this
-example, I will set this region to be -0.15--0.3ppm.
+also necessary to specify a region that appears to contain no signals (this
+is used to gain an insight into the data's noise variance). In this
+example, I will set this region to be -0.15 to -0.3ppm.
 
 .. code:: python3
 
@@ -94,7 +100,7 @@ Matrix Pencil Method
 
 Now that a frequency filtered signal has been generated, we can begin the
 estimation routine. Before estimating the signal parameters using nonlinear
-programming (NLP), an initial guess of the parameters is required. We derive
+programming (NLP), an initial guess of the parameters is required. We can derive
 this guess using :py:meth:`~nmrespy.core.Estimator.matrix_pencil`:
 
 .. code:: python3
@@ -129,10 +135,11 @@ Nonlinear Programming
 The ``result`` attribute is next subjected to a NLP routine using the
 :py:meth:`~nmrespy.core.Estimator.nonlinear_programming` method. As the
 frequency-filtered data was derived from well-phased spectral
-data, the optional ``phase_variance`` argument to ``True``. The optimisation
-routine will then ensure that the estimate's oscillator phases are similar to
+data, the optional ``phase_variance`` argument is set to ``True``. The
+optimisation routine will then ensure that the estimate's phases are similar to
 each other (and hopefully very close to 0), and will often remove excessive
-oscillators from the Matrix Pencil result.
+oscillators from the Matrix Pencil result (note that our initial guess in
+this example contains 12 oscillators).
 
 .. code:: python3
 
@@ -150,22 +157,20 @@ oscillators from the Matrix Pencil result.
 
    |  100  |  100  |  939  | +6.2710e-04 | 8.61e-03 | 3.17e-04 | 0.00e+00 | 1.00e+00 |   4   |
 
-   The maximum number of function evaluations is exceeded.
-   Number of iterations: 100, function evaluations: 100, CG iterations: 939, optimality: 3.17e-04, constraint violation: 0.00e+00, execution time:  1.6 s.
+   --snip--
+
    Negative amplitudes detected. These oscillators will be removed
    Updated number of oscillators: 9
    | niter |f evals|CG iter|  obj func   |tr radius |   opt    |  c viol  | penalty  |CG stop|
    |-------|-------|-------|-------------|----------|----------|----------|----------|-------|
    |   1   |   1   |   0   | +1.5728e-03 | 1.00e+00 | 1.55e-01 | 0.00e+00 | 1.00e+00 |   0   |
-   |   2   |   2   |   2   | +9.8232e-04 | 1.00e+00 | 5.79e-03 | 0.00e+00 | 1.00e+00 |   4   |
-   |   3   |   3   |   8   | +9.3558e-04 | 1.00e+00 | 7.28e-04 | 0.00e+00 | 1.00e+00 |   4   |
 
    --snip--
 
    |  100  |  100  | 2170  | +8.6101e-04 | 5.38e+00 | 3.41e-06 | 0.00e+00 | 1.00e+00 |   4   |
 
-   The maximum number of function evaluations is exceeded.
-   Number of iterations: 100, function evaluations: 100, CG iterations: 2170, optimality: 3.41e-06, constraint violation: 0.00e+00, execution time:  2.0 s.
+   --snip--
+   
    ==============================
    NONLINEAR PROGRAMMING COMPLETE
    ==============================
@@ -198,10 +203,10 @@ formats, using the :py:meth:`~nmrespy.core.Estimator.write_result` method.
 
 The files generated are as follows:
 
-* :download:`example.txt <_static/walkthrough/example.txt>`
-* :download:`example.tex <_static/walkthrough/example.tex>`
-* :download:`example.pdf <_static/walkthrough/example.pdf>`
-* :download:`example.csv <_static/walkthrough/example.csv>`
+* :download:`example.txt <images_etc/walkthrough/example.txt>`
+* :download:`example.tex <images_etc/walkthrough/example.tex>`
+* :download:`example.pdf <images_etc/walkthrough/example.pdf>`
+* :download:`example.csv <images_etc/walkthrough/example.csv>`
 
 
 .. note::
@@ -217,14 +222,15 @@ To generate a figure of the result, you can use the
 :py:meth:`~nmrespy.core.Estimator.plot_result` method, which utilises
 `matplotlib <https://matplotlib.org/>`_. There is wide scope for customising
 the plot, which is described in detail in the documentation of
-:py:func:`nmrespy.plot.plot_result`.
+:py:func:`nmrespy.plot.plot_result`. See `Summary`_ for an example of some
+basic plot customisation.
 
 .. code:: python3
 
    >>> plot = info.plot_result()
-   >>> plot.fig.savefig("example_plot.png")
+   >>> plot.fig.savefig("plot_example.png")
 
-* :download:`example_plot.png <_static/walkthrough/figures/example_plot.png>`
+* :download:`example_plot.png <images_etc/walkthrough/figures/plot_example.png>`
 
 Pickling Estimator Instances
 ----------------------------
@@ -258,11 +264,65 @@ A summary of the methods applied to the estimator can be saved using the
    >>> estimator.save_logfile(path="logfile_example")
    Log file successfully saved to /home/path/to/.../logfile_example.log
 
-* :download:`logfile_example.log <_static/walkthrough/logfile_example.log>`
+* :download:`logfile_example.log <images_etc/walkthrough/logfile_example.log>`
 
 Summary
 ^^^^^^^
 
-.. todo::
-  
-   TODO
+A script which performs the entire procedure described above is as follows.
+Note that further customisation has been applied to the plot to give it an
+aesthetic upgrade.
+
+.. code:: python3
+
+   from nmrespy.core import Estimator
+
+   # Path to data. You'll need to change the 4.0.8 bit if you are using a
+   # different TopSpin version.
+
+   # --- Linux users ---
+   path = "/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1"
+
+   # --- Windows users ---
+   # path = "C:/Bruker/TopSpin4.0.8/examdata/exam1d_1H/1/pdata/1"
+
+   estimator = Estimator.new_bruker(path)
+   estimator.frequency_filter([[5.54, 5.42]], [[-0.15, -0.3]])
+   estimator.matrix_pencil()
+   estimator.nonlinear_programming(phase_variance=True)
+
+   msg = "Example estimation result for NMR-EsPy docs."
+   for fmt in ["txt", "pdf", "csv"]:
+       estimator.write_result(path="example", description=msg, fmt=fmt)
+
+   # Plot result. Set oscillator colours using the viridis colourmap
+   plot = estimator.plot_result(oscillator_colors='viridis')
+
+   # Shift oscillator labels
+   label_shifts = [
+       (-0.001, 2E5),
+       (0.0, 2E5),
+       (0.001, 2E5),
+       (0.001, 2E5),
+       (-0.0015, 2E5),
+       (-0.001, 2E5),
+       (0.0025, 2E5),
+       (0.0025, 2E5),
+       (-0.001, 2E5),
+   ]
+
+   for i, shifts in enumerate(label_shifts, start=1):
+        plot.labels[i].set_position(
+           tuple(p + s for p, s in zip(plot.labels[i].get_position(), shifts))
+        )
+
+   plot.fig.savefig("plot_example_edited.png")
+   estimator.to_pickle(path="pickle_example")
+   estimator.save_logfile(path="logfile_example")
+
+* :download:`nmrespy_example.py <images_etc/walkthrough/nmrespy_example.py>`
+* :download:`plot_example_edited.png <images_etc/walkthrough/figures/plot_example_edited.png>`
+
+More functionality is provided by the :py:class:`~nmrespy.core.Estimator`.
+Look at the docs for details., or email me (I don't usually bite):
+`simon.hulse@chem.ox.ac.uk <mailto:simon.hulse@chem.ox.ac.uk>`_
