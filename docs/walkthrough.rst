@@ -227,7 +227,7 @@ basic plot customisation.
 
 .. code:: python3
 
-   >>> plot = info.plot_result()
+   >>> plot = estimator.plot_result()
    >>> plot.fig.savefig("plot_example.png")
 
 * :download:`example_plot.png <images_etc/walkthrough/figures/plot_example.png>`

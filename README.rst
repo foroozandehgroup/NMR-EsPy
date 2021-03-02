@@ -9,7 +9,7 @@ NMR data.
 Getting started:
 
 * Installation: ``pip install nmrespy``
-* Documentation: https://nmr-espy.readthedocs.io/en/latest/index.html
+* Documentation: https://nmr-espy.readthedocs.io/en/latest/
 * Check out the `Example Walkthrough <https://nmr-espy.readthedocs.io/en/latest/walkthrough.html>`_
   page in the docs for a tutorial on NMR-EsPy's basic usage.
 
@@ -17,5 +17,5 @@ The following figure shows the final result generated in the example
 walkthrough in NMR-EsPy's docs:
 
 .. image:: docs/images_etc/walkthrough/figures/plot_example_edited.png
-   :scale: 50 %
+   :scale: 5 %
    :align: center
