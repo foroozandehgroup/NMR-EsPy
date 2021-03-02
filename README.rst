@@ -2,7 +2,7 @@
    :scale: 25 %
    :align: center
 
-NMR-EsPy: **N** uclear **M** agnetic **R** esonance **Es** timation in **Py** thon
+NMR-EsPy: **N**\uclear **M**\agnetic **R**\esonance **Es**\timation in **Py**\thon
 is a Python package developed for estimating the parameters that describe
 NMR data. To achieve this, it implements numerical optimisation procedures
 on time-domain data.
