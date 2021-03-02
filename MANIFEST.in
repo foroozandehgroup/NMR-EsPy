@@ -1,6 +1,4 @@
-recursive-include nmrespy/config *
-recursive-include nmrespy/images *
-recursive-include nmrespy/logs *
+graft nmrespy
 include MANIFEST.in
 include LICENSE
 include README.rst
