@@ -3,7 +3,6 @@ docs/_build/
 docs/_static/
 docs/_templates
 docs/Makefile
-nmrespy/logs/*
 tests
 nmrespy-venv
 build
