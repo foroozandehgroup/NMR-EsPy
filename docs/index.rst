@@ -33,15 +33,18 @@ obtained by using it:
 
 *No publications yet...*
 
-Any questions? Get in touch! `simon.hulse@chem.ox.ac.uk <mailto:simon.hulse@chem.ox.ac.uk>`_
+Any questions? Get in touch!
+`simon.hulse@chem.ox.ac.uk <mailto:simon.hulse@chem.ox.ac.uk>`_
 
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
 
+   install
    theory_overview
    walkthrough
    references/index
+   contributors
 
 
 Indices and tables

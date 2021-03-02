@@ -170,7 +170,7 @@ this example contains 12 oscillators).
    |  100  |  100  | 2170  | +8.6101e-04 | 5.38e+00 | 3.41e-06 | 0.00e+00 | 1.00e+00 |   4   |
 
    --snip--
-   
+
    ==============================
    NONLINEAR PROGRAMMING COMPLETE
    ==============================
@@ -324,5 +324,5 @@ aesthetic upgrade.
 * :download:`plot_example_edited.png <images_etc/walkthrough/figures/plot_example_edited.png>`
 
 More functionality is provided by the :py:class:`~nmrespy.core.Estimator`.
-Look at the docs for details., or email me (I don't usually bite):
+Look at the docs for details, or email me (I don't usually bite):
 `simon.hulse@chem.ox.ac.uk <mailto:simon.hulse@chem.ox.ac.uk>`_

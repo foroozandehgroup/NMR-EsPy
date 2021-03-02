@@ -1,6 +1,10 @@
 Theory Overview
 ===============
 
+.. note::
+
+   This page is work in progress
+
 On this page, I provide a brief overview of the goal of NMR-EsPy and how
 it attempts to achieve this. If you simply wish to use NMR-EsPy without
 worrying about the deatils of how it works, feel free to skip this.
