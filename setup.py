@@ -24,10 +24,10 @@ setup(
         'Topic :: Scientific/Engineering',
     ],
     install_requires=[
-        "numpy>=1.20"
-        "scipy>=1.6"
-        "matplotlib>=3.3"
-        "colorama==0.4; platform_system == 'Windows'"
+        "numpy>=1.20",
+        "scipy>=1.6",
+        "matplotlib>=3.3",
+        "colorama==0.4; platform_system == 'Windows'",
     ],
     python_requires='>=3.7',
     include_package_data=True,
