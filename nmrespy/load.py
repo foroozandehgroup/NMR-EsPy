@@ -17,9 +17,6 @@ import nmrespy._errors as errors
 from nmrespy._misc import get_yes_no
 
 
-
-
-
 def load_bruker(directory, ask_convdta=True):
     """Loads data and relevant parameters from Bruker format.
 
