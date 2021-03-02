@@ -1,4 +1,4 @@
-from setuptools import setup, Extension
+from setuptools import setup, find_packages
 
 with open('README.rst', 'r') as fh:
     long_description = fh.read()
@@ -6,7 +6,7 @@ with open('README.rst', 'r') as fh:
 exec(open('nmrespy/_version.py').read())
 
 setup(
-    name='nmrespy-abc',
+    name='nmrespy',
     version=__version__,
     description='NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python',
     author='Simon Hulse',
@@ -14,11 +14,6 @@ setup(
     url='https://github.com/foroozandehgroup/NMR-EsPy',
     long_description=long_description,
     long_description_content_type="text/x-rst",
-    packages=[
-        'nmrespy',
-        'nmrespy.nlp',
-        'nmrespy.images'
-    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         'Programming Language :: Python :: 3.7',
@@ -35,4 +30,6 @@ setup(
         "colorama==0.4; platform_system == 'Windows'"
     ],
     python_requires='>=3.7',
+    include_package_data=True,
+    packages=find_packages(),
 )
