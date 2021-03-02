@@ -93,7 +93,7 @@ class Estimator:
 
         return wrapper
 
-    
+
     @staticmethod
     def new_bruker(dir, ask_convdta=True):
         """Generate an instance of :py:class:`Estimator` from a
@@ -958,13 +958,8 @@ class Estimator:
             p1 = self.get_dim() * [0.0]
 
         self.data = signal.ift(
-            signal.phase_spectrum(
-                signal.ft(self.data), self.p0, self.p1,
-            )
+            signal.phase_spectrum(signal.ft(self.data), p0, p1)
         )
-
-        self.p0 = p0
-        self.p1 = p1
 
 
     def manual_phase_data(self, max_p1=None):
