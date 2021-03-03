@@ -782,15 +782,21 @@ class NonlinearProgramming(FrequencyConverter):
 
     def _get_errors(self):
         """Determine the errors of the estimation result"""
-        fidelity = self.funcs['fidelity'](self.active, *self.optimiser_args)
-        hessian = self.funcs['hessian'](self.active, *self.optimiser_args)
 
-        # Prevent warning if invalid sqrt encountered
-        # (will print custom warning if NaNs are found in result)
-        np.seterr(invalid='ignore')
-        self.errors = np.sqrt(fidelity) \
-             * np.sqrt(np.diag(nlinalg.inv(-hessian)) \
-             / functools.reduce(operator.mul, [n-1 for n in self.n]))
+        # Set phase_variance to False
+        args = list(copy.deepcopy(self.optimiser_args))
+        args[-1] = False
+        args = tuple(args)
+
+        # Compute fidelity and hessian for error
+        fidelity = self.funcs['fidelity'](self.active, *args)
+        hessian = self.funcs['hessian'](self.active, *args)
+
+        # See newton_meets_ockham, Eq. (22)
+        self.errors = np.sqrt(
+            fidelity * np.abs(np.diag(nlinalg.inv(hessian)))
+            / functools.reduce(operator.mul, [n-1 for n in self.n])
+        )
 
         if np.any(np.isnan(self.errors)):
             # If any NaNs exist, warn the user
