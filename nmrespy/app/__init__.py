@@ -42,10 +42,6 @@ from nmrespy.app.config import *
 from nmrespy.app.custom_widgets import *
 
 
-# flag for testing the result frame easily
-TEST_RESULT = False
-
-
 def get_PhotoImage(path, scale=1.0):
     """Generate a TKinter-compatible photo image, given a path, and a scaling
     factor.
@@ -176,28 +172,32 @@ class Restrictor():
 
 
 class NMREsPyApp(tk.Tk):
-    """App for using NMR-EsPy."""
+    """App for using NMR-EsPy.
+
+    path : str
+        Path to the specified directory.
+
+    topspin : bool
+        Indicates whether or not the app has been invoked via TopSpin
+        or not. If it has, the type of data (fid or pdata) the user wishes
+        to use will have to be ascertained, using the `DataType` window.
+    """
 
     # This is the controller
-    # when you see self.ctrl in other classes in this file, it refers
+    # When you see self.ctrl in other classes in this file, it refers
     # to this class
-    def __init__(self):
-        print('hello')
+    def __init__(self, path, topspin=False):
         super().__init__()
 
         # Hide the root app window. This is not going to be used. Everything
         # will be built onto Toplevels
         self.withdraw()
 
-        # TEST_RESULT is a way for me to bypass having to setup a caluculation
-        # manually, so that I can focus on the result part of the App.
-        if TEST_RESULT:
-            self.dtype = 'pdata'
-            self.path = '/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1'
-
+        if path is not None:
+            self.estimator = Estimator.from_bruker(path)
         else:
-            # open window to ask user for data type (fid or pdata)
-            # from this, self acquires the attirbutes dtype and path
+        # open window to ask user for data type (fid or pdata)
+        # from this, self acquires the attirbutes dtype and path
             DataType(self)
 
         # create the set of attributes for setup window
@@ -882,21 +882,29 @@ class DataType(MyToplevel):
     pdata"""
 
     def __init__(self, ctrl):
-
         super().__init__(ctrl)
-
         self.ctrl = ctrl
 
-        # open info file. Gives paths to fid file and pdata directory
-        with open(os.path.join(GUIDIR, 'tmp/info.txt'), 'r') as fh:
+        # Open info file. Gives paths to fid file and pdata directory
+        with open(TMPPATH / 'info.txt', 'r') as fh:
             self.fidpath, self.pdatapath = fh.read().split(' ')
 
-        # frame for the NMR-EsPy logo
+        # --- Configure frames -------------------------------------------
+        # Frame for the NMR-EsPy logo
         self.logo_frame = LogoFrame(self, logos='nmrespy', scale=0.07)
-
+        # Frame containing path labels and checkboxes
         self.main_frame = MyFrame(self)
+        # Frame containing confirm/cancel buttons
+        self.button_frame = MyFrame(self)
+        # Arrange frames
+        self.logo_frame.grid(row=0, column=0, rowspan=2, padx=10, pady=10)
+        self.main_frame.grid(row=0, column=1, padx=(0, 10), pady=(10, 0))
+        self.button_frame.grid(
+            row=1, column=1, padx=(0, 10), pady=(0, 10), sticky='e',
+        )
 
-        message = MyLabel(
+        # --- Frame heading ----------------------------------------------
+        msg = MyLabel(
             self.main_frame, text='Which data would you like to analyse?',
             font=(MAINFONT, '12', 'bold'),
         )
@@ -904,6 +912,7 @@ class DataType(MyToplevel):
             column=0, row=0, columnspan=2, padx=10, pady=(10,0)
         )
 
+        # --- Processd data checkbutton and labels -----------------------
         pdata_label = MyLabel(
             self.main_frame, text='Processed Data'
         )
@@ -916,6 +925,9 @@ class DataType(MyToplevel):
         )
         pdatapath.grid(column=0, row=2, padx=(10, 0), sticky='w')
 
+        # `self.pdata` can be 0 and 1. Specifies whether to use pdata or not
+        # This is directly dependent on `self.fid`. When one is `1`, the
+        # other is `0`.
         self.pdata = tk.IntVar()
         self.pdata.set(1)
         self.pdata_box = MyCheckbutton(
@@ -925,6 +937,7 @@ class DataType(MyToplevel):
             column=1, row=1, rowspan=2, padx=10, sticky='nsw'
         )
 
+        # --- FID checkbutton and labels ---------------------------------
         fid_label = MyLabel(self.main_frame, text='Raw FID')
         fid_label.grid(
             column=0, row=3, padx=(10, 0), pady=(10, 0), sticky='w',
@@ -935,6 +948,7 @@ class DataType(MyToplevel):
         )
         fidpath.grid(column=0, row=4, padx=(10, 0), sticky='w')
 
+        # Initially have set to `0`, i.e. pdata is set to the default.
         self.fid = tk.IntVar()
         self.fid.set(0)
         self.fid_box = MyCheckbutton(
@@ -944,8 +958,7 @@ class DataType(MyToplevel):
             column=1, row=3, rowspan=2, padx=10, sticky='nsw'
         )
 
-        self.button_frame = MyFrame(self)
-
+        # --- Confirm and Cancel buttons ---------------------------------
         self.confirmbutton = MyButton(
             self.button_frame, text='Confirm', command=self.confirm,
             bg=BUTTONGREEN,
@@ -960,9 +973,7 @@ class DataType(MyToplevel):
         )
         self.cancelbutton.grid(column=0, row=0, pady=10, sticky='e')
 
-        self.logo_frame.grid(row=0, column=0, rowspan=2, padx=10, pady=10)
-        self.main_frame.grid(row=0, column=1)
-        self.button_frame.grid(row=1, column=1, sticky='e')
+
 
         self.ctrl.wait_window(self)
 
