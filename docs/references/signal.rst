@@ -1,6 +1,6 @@
-nmrespy.signal
-^^^^^^^^^^^^^^
+nmrespy.sig
+^^^^^^^^^^^
 
-.. automodule:: nmrespy.signal
+.. automodule:: nmrespy.sig
    :members:
    :private-members:

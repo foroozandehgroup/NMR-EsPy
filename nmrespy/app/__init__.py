@@ -5,8 +5,10 @@
 # simon.hulse@chem.ox.ac.uk
 
 # This is currently only applicable to 1D NMR data.
-# Much of Thomas Moss's project (Part II) will be based around making a
-# complementary 2D App
+
+# Look for:
+# YOU ARE HERE
+# This denotes where I am up to in tweaking things
 
 import ast
 from itertools import cycle
@@ -39,6 +41,8 @@ from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from nmrespy import *
+from nmrespy._errors import *
+from nmrespy._misc import latex_nucleus
 from nmrespy.core import Estimator
 from nmrespy.app.config import *
 from nmrespy.app.custom_widgets import *
@@ -185,9 +189,10 @@ class NMREsPyApp(tk.Tk):
         to use will have to be ascertained, using the `DataType` window.
     """
 
-    # This is the controller
-    # When you see self.ctrl in other classes in this file, it refers
+    # This is the "controller"
+    # When you see `self.ctrl` in other classes in this file, it refers
     # to this class
+
     def __init__(self, path, topspin=False):
         super().__init__()
 
@@ -201,74 +206,268 @@ class NMREsPyApp(tk.Tk):
             # from this, self acquires the attirbutes dtype and path
             paths = {'pdata': path, 'fid': path.parent.parent}
             data_type_window = DataType(self, paths)
+            path = data_type_window.path
 
+        # Create Estimator instance from the provided path
+        self.estimator = Estimator.new_bruker(path)
+
+        # App is only applicable to 1D data currently
+        if self.estimator.get_dim() > 1:
+            raise TwoDimUnsupportedError()
+
+        # Shorthand for unit conversion
+        self.conv = lambda value, conversion: \
+            self.estimator._converter.convert(value, conversion)
+
+        # --- SETUP WINDOW -----------------------------------------------
+        # Spectral data
+        self.spec = sig.ft(self.estimator.get_data())
+        # Number of spectrum points
+        self.n = self.spec.size
+        # Transmitter frequency
+        self.sfo = self.estimator.get_sfo()[0]
+        # Nucleus identity
+        self.nuc = self.estimator.get_nucleus()[0]
+
+        # Sweep width, offset, and chemical shifts, in both ppm and Hz
+        self.sw, self.off, self.shifts = {}, {}, {}
+        for unit in ['hz', 'ppm']:
+            self.sw[unit] = self.estimator.get_sw(unit=unit)[0]
+            self.off[unit] = self.estimator.get_offset(unit=unit)[0]
+            self.shifts[unit] = self.estimator.get_shifts(unit=unit)[0]
+
+        # Units that are active in the app.
+        # For frequencies, default is ppm (Hz also possible)
+        # For degrees, default is radians (degrees also possible)
+        self.active_units = {'freq': 'ppm', 'angle': 'rad'}
+
+        # --- Region selection parameters --------------------------------
+        # Bounds for filtration and noise regions
+        self.bounds = AutoVivification()
+        # Initial values for region of interest and noise region
+        init_bounds = [int(np.floor(x * self.n / 16)) for x in (7, 9, 1, 2)]
+
+        for name, init in zip(['lb', 'rb', 'lnb', 'rnb'], init_bounds):
+            # Save bounds to array index, ppm and hz units
+            for unit in ['idx', 'hz', 'ppm']:
+                if unit == 'idx':
+                    value, var_str = init, str(init)
+                else:
+                    # The converter needs an iterable to work.
+                    # Therefore, put value into a list, and then unpack
+                    # afterwards.
+                    value = self.conv([init], f'idx->{unit}')[0]
+                    var_str = f"{value:.4f}"
+
+                self.bounds[name][unit] = value_var_dict(value, var_str)
+
+        # Number of points the selected region is composed of
+        self.region_size = self.bounds['rb']['idx']['value'] - \
+                           self.bounds['lb']['idx']['value']
+
+        # --- Phase correction parameters --------------------------------
+        self.pivot = {}
+
+        # Initialise pivot at center of spectrum
+        pivot = int(self.n // 2)
+        for unit in ['idx', 'hz', 'ppm']:
+            # Set pivot in units of array index, Hz, and ppm
+            if unit == 'idx':
+                value, var_str = pivot, str(pivot)
+            else:
+                value = self.conv([pivot], f'idx->{unit}')[0]
+                var_str = f"{value:.4f}"
+
+            self.pivot[unit] = value_var_dict(value, var_str)
+
+        # Zero- and first-order correction parameters
+        self.phases = AutoVivification()
+
+        # Initialise correction parameters as zero in both radians and
+        # degrees.
+        for name in ['p0', 'p1']:
+            for unit in ['rad', 'deg']:
+                self.phases[name][unit] = value_var_dict(0., f"{0.:.4f}")
+
+        # --- Various advanced settings ----------------------------------
+        # Specifies whether or not to cut the filtered spectral data
+        self.cut = value_var_dict(True, 1)
+        # Specifies the the ratio between cut signal size and filter
+        # bandwidth
+        self.cut_ratio = value_var_dict(3, '3')
+
+        # Largest number of points permitted
+        max_points = self.cut_size()
+        self.max_points = value_var_dict(max_points, str(max_points))
+
+        # Number of points to be used for MPM and NLP.
+        # By default, number of points will not exceed:
+        # 4096 (MPM)
+        # 8192 (NLP)
+        self.trim = {}
+        if max_points <= 4096:
+            for name in ['mpm', 'nlp']:
+                self.trim[name] = value_var_dict(max_points, str(max_points))
+        elif max_points <= 8192:
+            self.trim['mpm'] = value_var_dict(4096, '4096')
+            self.trim['nlp'] = value_var_dict(max_points, str(max_points))
         else:
-            self.estimator = Estimator.from_bruker(path)
+            self.trim['mpm'] = value_var_dict(4096, '4096')
+            self.trim['nlp'] = value_var_dict(8192, '8192')
 
-        # create the set of attributes for setup window
-        self.generate_initial_variables()
+        # Number of oscillators
+        # Initialise as 0 (use MDL)
+        self.m = value_var_dict(0, '')
+        # Specifies whether or not to use the MDL to estimate M
+        self.mdl = value_var_dict(True, 1)
+        # Idenitity of the NLP algorithm to use
+        self.method = value_var_dict('trust_region', 'Trust Region')
+        # Maximum iterations of NLP algorithm
+        self.maxit = value_var_dict(200, '200')
+        # Whether or not to include phase variance in NLP cost func
+        self.phase_variance = value_var_dict(True, 1)
+        # Whether or not to purge negligible oscillators
+        self.use_amp_thold = value_var_dict(False, 0)
+        # Amplitude threshold for purging negligible oscillators
+        self.amp_thold = value_var_dict(0.001, '0.001')
 
-        if TEST_RESULT:
-            self.run()
+        # --- Figure for setting up estimation ---------------------------
+        self.setupfig = {}
+        # Figure
+        self.setupfig['fig'] = Figure(figsize=(6,3.5), dpi=170)
+        # Axis
+        self.setupfig['ax'] = self.setupfig['fig'].add_subplot(111)
+        # Plot spectrum
+        # Generates a matplotlib.Line.Line2D object
+        self.setupfig['line'] = self.setupfig['ax'].plot(
+            self.shifts['ppm'], np.real(self.spec), color='k', lw=0.6,
+        )[0] # <- unpack from list
 
-        else:
-            # self.setup is a toplevel for setting up the calculation
-            self.setup = MyToplevel(self)
-            # window can be rescaled
-            self.setup.resizable(True, True)
-            # first column is adjusted up changed of window size
-            # (plot_frame, toolbar_frame, tab_frame, logo_frame)
-            self.setup.columnconfigure(0, weight=1)
-            # first row is adjusted upon change of window size
-            # (plot_frame)
-            self.setup.rowconfigure(0, weight=1)
+        # Set x-limits as edges of spectral window
+        xlim = (self.shifts['ppm'][0], self.shifts['ppm'][-1])
+        self.setupfig['ax'].set_xlim(xlim)
 
-            # frames contained within the setup Toplevel
-            self.setup_frames = {}
-            # frame containing the plot
-            self.setup_frames['plot_frame'] = PlotFrame(
-                parent=self.setup, figure=self.setupfig['fig'],
-            )
-            # frame containing the navigation toolbar and advanced settings
-            # button
-            self.setup_frames['toolbar_frame'] = SetupToolbarFrame(
-                parent=self.setup, canvas=self.setup_frames['plot_frame'].canvas,
-                ctrl=self,
-            )
-            # frame containing notebook widget: for region selection and
-            # phase correction
-            self.setup_frames['tab_frame'] = TabFrame(
-                parent=self.setup, ctrl=self,
-            )
-            # frame with NMR-EsPy an MF group logos
-            self.setup_frames['logo_frame'] = LogoFrame(
-                parent=self.setup, scale=0.06,
-            )
-            # frame with cancel/help/run buttons
-            self.setup_frames['button_frame'] = SetupButtonFrame(
-                parent=self.setup, ctrl=self,
-            )
+        # Prevent user panning/zooming beyond spectral window
+        # See Restrictor class for more info ↑
+        Restrictor(self.setupfig['ax'], x=lambda x: x <= xlim[0])
+        Restrictor(self.setupfig['ax'], x=lambda x: x >= xlim[1])
 
-            # configure frame placements
-            self.setup_frames['plot_frame'].grid(
-                row=0, column=0, columnspan=2, sticky='nsew',
-            )
-            self.setup_frames['toolbar_frame'].grid(
-                row=1, column=0, columnspan=2, sticky='ew',
-            )
-            self.setup_frames['tab_frame'].grid(
-                row=2, column=0, columnspan=2, sticky='ew',
-            )
-            self.setup_frames['logo_frame'].grid(
-                row=3, column=0, padx=10, pady=10, sticky='w',
-            )
-            self.setup_frames['button_frame'].grid(
-                row=3, column=1, sticky='s',
-            )
-            # hold at this point
-            # relieved once setup is destroyed
-            # see self.run()
-            self.wait_window(self.setup)
+        # Get current y-limit. Will reset y-limits to this value after the
+        # very tall `noise_region` and `filter_region` rectangles have been
+        # added to the plot
+        ylim = self.setupfig['ax'].get_ylim()
+
+        # Highlight the spectral region of intererst
+        # matplotlib.patches.Rectangle's first 3 args:
+        # (left, bottom), width, height
+        bottom_left = (self.bounds['lb']['ppm']['value'], -20 * ylim[1])
+        width = self.bounds['rb']['ppm']['value'] - \
+                self.bounds['lb']['ppm']['value']
+        height = 40 * ylim[1]
+
+        self.setupfig['region'] = Rectangle(
+            bottom_left, width, height, facecolor=REGIONCOLOR,
+        )
+        self.setupfig['ax'].add_patch(self.setupfig['region'])
+
+        # Highlight the noise region (height same as before)
+        bottom_left = (self.bounds['lnb']['ppm']['value'], -20 * ylim[1])
+        width = self.bounds['rnb']['ppm']['value'] - \
+                self.bounds['lnb']['ppm']['value']
+
+        self.setupfig['noise_region'] = Rectangle(
+            bottom_left, width, height, facecolor=NOISEREGIONCOLOR
+        )
+        self.setupfig['ax'].add_patch(self.setupfig['noise_region'])
+
+        # Plot pivot line
+        x = 2 * [self.pivot['ppm']['value']]
+        y = [-20 * ylim[1], 20 * ylim[1]]
+
+        # `alpha` is set to 0 to make the pivot invisible initially
+        self.setupfig['pivot_line'] = self.setupfig['ax'].plot(
+            x, y, color=PIVOTCOLOR, alpha=0, lw=0.8,
+        )[0]
+
+        # Reset y limit
+        self.setupfig['ax'].set_ylim(ylim)
+
+        # Aesthetic tweaks to the plot
+        self.setupfig['fig'].patch.set_facecolor(BGCOLOR)
+        self.setupfig['ax'].set_facecolor(PLOTCOLOR)
+        self.setupfig['ax'].tick_params(axis='x', which='major', labelsize=6)
+        self.setupfig['ax'].locator_params(axis='x', nbins=10)
+        self.setupfig['ax'].set_yticks([])
+
+        for direction in ('top', 'bottom', 'left', 'right'):
+            self.setupfig['ax'].spines[direction].set_color('k')
+
+        # xlabel of the form $^{<mass>}$<elem> (ppm)
+        self.setupfig['ax'].set_xlabel(
+            f"{latex_nucleus(self.nuc)} (ppm)", fontsize=8,
+        )
+
+        # ============
+        # YOU ARE HERE
+        # ============
+
+        # self.setup is a toplevel for setting up the calculation
+        self.setup = MyToplevel(self)
+        # window can be rescaled
+        self.setup.resizable(True, True)
+        # first column is adjusted up changed of window size
+        # (plot_frame, toolbar_frame, tab_frame, logo_frame)
+        self.setup.columnconfigure(0, weight=1)
+        # first row is adjusted upon change of window size
+        # (plot_frame)
+        self.setup.rowconfigure(0, weight=1)
+
+        # frames contained within the setup Toplevel
+        self.setup_frames = {}
+        # frame containing the plot
+        self.setup_frames['plot_frame'] = PlotFrame(
+            parent=self.setup, figure=self.setupfig['fig'],
+        )
+        # frame containing the navigation toolbar and advanced settings
+        # button
+        self.setup_frames['toolbar_frame'] = SetupToolbarFrame(
+            parent=self.setup, canvas=self.setup_frames['plot_frame'].canvas,
+            ctrl=self,
+        )
+        # frame containing notebook widget: for region selection and
+        # phase correction
+        self.setup_frames['tab_frame'] = TabFrame(
+            parent=self.setup, ctrl=self,
+        )
+        # frame with NMR-EsPy an MF group logos
+        self.setup_frames['logo_frame'] = LogoFrame(
+            parent=self.setup, scale=0.06,
+        )
+        # frame with cancel/help/run buttons
+        self.setup_frames['button_frame'] = SetupButtonFrame(
+            parent=self.setup, ctrl=self,
+        )
+
+        # configure frame placements
+        self.setup_frames['plot_frame'].grid(
+            row=0, column=0, columnspan=2, sticky='nsew',
+        )
+        self.setup_frames['toolbar_frame'].grid(
+            row=1, column=0, columnspan=2, sticky='ew',
+        )
+        self.setup_frames['tab_frame'].grid(
+            row=2, column=0, columnspan=2, sticky='ew',
+        )
+        self.setup_frames['logo_frame'].grid(
+            row=3, column=0, padx=10, pady=10, sticky='w',
+        )
+        self.setup_frames['button_frame'].grid(
+            row=3, column=1, sticky='s',
+        )
+        # hold at this point
+        # relieved once setup is destroyed
+        # see self.run()
+        self.wait_window(self.setup)
 
         # create attributres relating to the result Toplevel
         self.generate_result_variables()
@@ -314,225 +513,7 @@ class NMREsPyApp(tk.Tk):
         )
 
 
-    def generate_initial_variables(self):
 
-        # generate self.info: NMREsPyBruker class instance
-        if self.dtype == 'fid':
-            # fid data - transform to frequency domain
-            self.info = load.import_bruker_fid(self.path, ask_convdta=False)
-            self.spectrum = np.flip(fftshift(fft(self.info.get_data())))
-
-        else:
-            # pdata - combine real and imaginary components
-            self.info = load.import_bruker_pdata(self.path)
-            self.spectrum = self.info.get_data(pdata_key='1r') \
-                            + 1j * self.info.get_data(pdata_key='1i')
-
-        # --- CONSTANTS ---
-        self.n = self.spectrum.shape[0] # number of points
-        self.sfo = self.info.get_sfo()[0] # transmitter frequency
-        self.nucleus = self.info.get_nucleus()[0] # nuclues identity
-
-        # sweep width, offset, shifts in both ppm and Hz
-        self.sw, self.off, self.shifts = {}, {}, {}
-        for unit in ['hz', 'ppm']:
-            self.sw[unit] = self.info.get_sw(unit=unit)[0]
-            self.off[unit] = self.info.get_offset(unit=unit)[0]
-            self.shifts[unit] = self.info.get_shifts(unit=unit)[0]
-
-        # units that are active in the window
-        # for frequencies, default is ppm (Hz also possible)
-        # for degrees, default is radians (degrees also possible)
-        self.active_units = {'freq': 'ppm', 'angle': 'rad'}
-
-        # --- REGION SELECTION PARAMETERS ---
-        self.bounds = AutoVivification()
-
-        if TEST_RESULT:
-            init_bounds = [
-                11843, # left bound
-                12142, # right bound
-                1762, # left noise bound
-                2210, # right noise bound
-            ]
-
-        else:
-            # bounds for filtration and noise regions
-            init_bounds = [
-                int(np.floor(7 * self.n / 16)), # left bound
-                int(np.floor(9 * self.n / 16)), # right bound
-                int(np.floor(1 * self.n / 16)), # left noise bound
-                int(np.floor(2 * self.n / 16)), # right noise bound
-            ]
-
-        for name, init in zip(['lb', 'rb', 'lnb', 'rnb'], init_bounds):
-            # save bounds to array index, ppm and hz units
-            for unit in ['idx', 'hz', 'ppm']:
-                if unit == 'idx':
-                    value, var_str = init, str(init)
-                else:
-                    value = self.convert(init, f'idx->{unit}')
-                    var_str = f"{value:.4f}"
-
-                self.bounds[name][unit] = value_var_dict(value, var_str)
-
-        # number of points the selected region is composed of
-        self.region_size = self.bounds['rb']['idx']['value'] - \
-                           self.bounds['lb']['idx']['value']
-
-        # --- PHASE CORRECTION PARAMETERS ---
-        self.pivot = {}
-
-        # initialise pivot at center of spectrum
-        pivot = int(self.n // 2)
-        for unit in ['idx', 'hz', 'ppm']:
-            # set pivot in units of array index, Hz, and ppm
-            if unit == 'idx':
-                value, value_str = pivot, str(pivot)
-            else:
-                value = self.convert(pivot, f'idx->{unit}')
-                value_str = f"{value:.4f}"
-
-            self.pivot[unit] = value_var_dict(value, var_str)
-
-        # zero- and first-order correction parameters
-        self.phases = AutoVivification()
-
-        # initialise correction parameters in radians and degrees
-        for name in ['p0', 'p1']:
-            for unit in ['rad', 'deg']:
-                self.phases[name][unit] = value_var_dict(0., f"{0.:.4f}")
-
-        # info on cutting the filtered spectrum
-        self.cut = value_var_dict(True, 1)
-        self.cut_ratio = value_var_dict(2.5, '2.5')
-
-        # larget number of points permitted
-        max_points = self.cut_size()
-        self.max_points = value_var_dict(max_points, str(max_points))
-
-        # number of points to be used for MPM and NLP
-        # by default, number of points will not exceed:
-        # 4096 (MPM)
-        # 8192 (NLP)
-        self.trim = {}
-
-        if max_points <= 4096:
-            for name in ['mpm', 'nlp']:
-                self.trim[name] = value_var_dict(max_points, str(max_points))
-        elif max_points <= 8192:
-            self.trim['mpm'] = value_var_dict(4096, '4096')
-            self.trim['nlp'] = value_var_dict(max_points, str(max_points))
-        else:
-            self.trim['mpm'] = value_var_dict(4096, '4096')
-            self.trim['nlp'] = value_var_dict(8192, '8192')
-
-        # number of oscillators
-        # initialise as 0 (use MDL)
-        self.M_in = value_var_dict(0, '')
-
-        # specifies whether or not to use the MDL to estimate M
-        self.mdl = value_var_dict(True, 1)
-
-        # idenitity of the NLP algorithm to use
-        self.method = value_var_dict('trust_region', 'Trust Region')
-
-        # maximum iterations of NLP algorithm
-        self.maxit = value_var_dict(100, '100')
-
-        # whether or not to include phase variance in NLP cost func
-        self.phase_variance = value_var_dict(True, 1)
-
-        # whether or not to purge negligible oscillators
-        self.use_amp_thold = value_var_dict(False, 0)
-
-        # amplitude threshold for purging negligible oscillators
-        self.amp_thold = value_var_dict(0.001, '0.001')
-
-        # figure for setting up estimation
-        self.setupfig = {}
-        self.setupfig['fig'] = Figure(figsize=(6,3.5), dpi=170)
-        self.setupfig['ax'] = self.setupfig['fig'].add_subplot(111)
-
-        # plot spectrum
-        self.setupfig['plot_line'] = self.setupfig['ax'].plot(
-            self.shifts['ppm'], np.real(self.spectrum), color='k', lw=0.6,
-        )[0] # matplotlib.Line.Line2D object
-
-        # set x-limits as edges of spectral window
-        self.setupfig['xlim'] = (self.shifts['ppm'][0], self.shifts['ppm'][-1])
-        # obtain x-limits
-        self.setupfig['ax'].set_xlim(self.setupfig['xlim'])
-
-        # prevent user panning/zooming beyond spectral window
-        # see Restrictor class
-        Restrictor(self.setupfig['ax'], x=lambda x: x<= self.setupfig['xlim'][0])
-        Restrictor(self.setupfig['ax'], x=lambda x: x>= self.setupfig['xlim'][1])
-
-        # Get current y-limit. Will reset y-limits to this value after the
-        # very tall noise_region and filter_region rectangles have been added
-        # to the plot
-        self.setupfig['init_ylim'] = self.setupfig['ax'].get_ylim()
-
-        # highlight the spectral region to be filtered (green)
-        # matplotlib.patches.Rectangle's first 3 args:
-        # (left, bottom), width, height
-        bottom_left = (
-            self.bounds['lb']['ppm']['value'],
-            -20 * self.setupfig['init_ylim'][1],
-        )
-        width = self.bounds['rb']['ppm']['value'] - \
-                self.bounds['lb']['ppm']['value']
-        height = 40 * self.setupfig['init_ylim'][1]
-
-        self.setupfig['region'] = Rectangle(
-            bottom_left, width, height, facecolor=REGIONCOLOR,
-        )
-        self.setupfig['ax'].add_patch(self.setupfig['region'])
-
-        # highlight the noise region
-        bottom_left = (
-            self.bounds['lnb']['ppm']['value'],
-            -20 * self.setupfig['init_ylim'][1],
-        )
-        width = self.bounds['rnb']['ppm']['value'] - \
-                self.bounds['lnb']['ppm']['value']
-
-        self.setupfig['noise_region'] = Rectangle(
-            bottom_left, width, height, facecolor=NOISEREGIONCOLOR
-        )
-        self.setupfig['ax'].add_patch(self.setupfig['noise_region'])
-
-        # plot pivot line
-        x = 2 * [self.pivot['ppm']['value']]
-        y = 2 * [20 * self.setupfig['init_ylim'][1]]
-        y[0] = -y[0]
-        # alpha set to 0 to make invisible initially
-        self.setupfig['pivot_line'] = self.setupfig['ax'].plot(
-            x, y, color=PIVOTCOLOR, alpha=0, lw=1,
-        )[0]
-
-        # reset y limit
-        self.setupfig['ax'].set_ylim(self.setupfig['init_ylim'])
-
-        # aesthetic tweaks to plot
-        self.setupfig['fig'].patch.set_facecolor(BGCOLOR)
-        self.setupfig['ax'].set_facecolor(PLOTCOLOR)
-        self.setupfig['ax'].tick_params(axis='x', which='major', labelsize=6)
-        self.setupfig['ax'].locator_params(axis='x', nbins=10)
-        self.setupfig['ax'].set_yticks([])
-
-        # colour spines black
-        for direction in ('top', 'bottom', 'left', 'right'):
-            self.setupfig['ax'].spines[direction].set_color('k')
-
-        # label plot x-axis with nucleus identity
-        comps = filter(None, re.split(r'(\d+)', self.nucleus))
-
-        # xlabel of the form $^{1}$H (ppm)
-        self.setupfig['ax'].set_xlabel(
-            f'$^{{{next(comps)}}}${next(comps)} (ppm)', fontsize=8
-        )
 
 
     def generate_result_variables(self):
@@ -987,11 +968,7 @@ class DataType(MyToplevel):
             bg=BUTTONRED,
         )
         self.cancelbutton.grid(column=0, row=0, pady=(10, 0), sticky='e')
-
-
-
         self.ctrl.wait_window(self)
-
 
     def click_fid(self):
         fidval = self.fid.get()

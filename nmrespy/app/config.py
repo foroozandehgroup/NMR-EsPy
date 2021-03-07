@@ -1,4 +1,3 @@
-from pathlib import Path
 from nmrespy import *
 
 # useful paths

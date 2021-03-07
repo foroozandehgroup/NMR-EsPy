@@ -7,14 +7,14 @@ from tkinter import ttk
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from .config import BGCOLOR, MAINFONT, READONLYENTRYCOLOR, BUTTONDEFAULT
 
-def generate(cls, keys, values, kwargs):
-
+def generate(cls_, keys, values, kwargs):
+    """Configure class attributes. Enables flexibility to change default
+    behaviour by including kwargs"""
     for key, value in zip(keys, values):
-        cls[key] = value
-
-    # overwrite default properties with any provided kwargs
+        cls_[key] = value
+    # Overwrite default properties with any provided kwargs
     for kwkey, kwvalue in zip(kwargs.keys(), kwargs.values()):
-        cls[kwkey] = kwvalue
+        cls_[kwkey] = kwvalue
 
 
 class MyFrame(tk.Frame):

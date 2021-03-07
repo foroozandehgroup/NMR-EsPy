@@ -20,7 +20,7 @@ from nmrespy._errors import *
 from nmrespy._misc import start_end_wrapper, ArgumentChecker, FrequencyConverter
 from nmrespy._timing import timer
 import nmrespy.nlp._funcs as funcs
-from nmrespy.signal import get_timepoints
+from nmrespy.sig import get_timepoints
 
 # ========================================================================
 # TODO in a later version
