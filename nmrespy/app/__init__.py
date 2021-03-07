@@ -11,6 +11,7 @@
 import ast
 from itertools import cycle
 import os
+import pathlib
 import random
 import re
 import subprocess
@@ -38,6 +39,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from nmrespy import *
+from nmrespy.core import Estimator
 from nmrespy.app.config import *
 from nmrespy.app.custom_widgets import *
 
@@ -114,7 +116,7 @@ class WarnFrame(MyToplevel):
         self.title('NMR-EsPy - Error')
 
         # warning image
-        self.img = get_PhotoImage(os.path.join(IMAGESDIR, 'warning.png'), 0.08)
+        self.img = get_PhotoImage(os.path.join(IMAGESPATH, 'warning.png'), 0.08)
         self.warn_sign = MyLabel(self, image=self.img)
         self.warn_sign.grid(row=0, column=0, padx=(10,0), pady=10)
 
@@ -193,12 +195,15 @@ class NMREsPyApp(tk.Tk):
         # will be built onto Toplevels
         self.withdraw()
 
-        if path is not None:
-            self.estimator = Estimator.from_bruker(path)
+        path = pathlib.Path(path)
+        if topspin:
+            # Open window to ask user for data type (fid or pdata)
+            # from this, self acquires the attirbutes dtype and path
+            paths = {'pdata': path, 'fid': path.parent.parent}
+            data_type_window = DataType(self, paths)
+
         else:
-        # open window to ask user for data type (fid or pdata)
-        # from this, self acquires the attirbutes dtype and path
-            DataType(self)
+            self.estimator = Estimator.from_bruker(path)
 
         # create the set of attributes for setup window
         self.generate_initial_variables()
@@ -848,7 +853,7 @@ class LogoFrame(MyFrame):
         if logos in ['both', 'nmrespy']:
             # add NMR-EsPy logo
             self.nmrespy_img = get_PhotoImage(
-                os.path.join(IMAGESDIR, 'nmrespy_full.png'), scale
+                os.path.join(IMAGESPATH, 'nmrespy_full.png'), scale
             )
             self.nmrespy_logo = MyLabel(
                 self, image=self.nmrespy_img, cursor='hand1'
@@ -865,7 +870,7 @@ class LogoFrame(MyFrame):
         if logos in ['both', 'mfgroup']:
             # add MF group logo
             self.mfgroup_img = get_PhotoImage(
-                os.path.join(IMAGESDIR, 'mf_logo.png'), scale*10
+                os.path.join(IMAGESPATH, 'mf_logo.png'), scale*10
             )
             self.mfgroup_logo = MyLabel(
                 self, image=self.mfgroup_img, cursor='hand1'
@@ -879,19 +884,27 @@ class LogoFrame(MyFrame):
 
 class DataType(MyToplevel):
     """GUI for asking user whether they want to analyse the raw FID or
-    pdata"""
+    pdata
 
-    def __init__(self, ctrl):
-        super().__init__(ctrl)
+    Parameters
+    ----------
+    parent : tk.Tk
+
+    paths : dict
+        Dictionary with two entries:
+
+        * `'pdata'` - Path to processed data
+        * `'fid'`` - Path to raw FID file
+    """
+
+    def __init__(self, ctrl, paths):
         self.ctrl = ctrl
-
-        # Open info file. Gives paths to fid file and pdata directory
-        with open(TMPPATH / 'info.txt', 'r') as fh:
-            self.fidpath, self.pdatapath = fh.read().split(' ')
+        self.paths = paths
+        super().__init__(self.ctrl)
 
         # --- Configure frames -------------------------------------------
         # Frame for the NMR-EsPy logo
-        self.logo_frame = LogoFrame(self, logos='nmrespy', scale=0.07)
+        self.logo_frame = LogoFrame(self, logos='nmrespy', scale=0.4)
         # Frame containing path labels and checkboxes
         self.main_frame = MyFrame(self)
         # Frame containing confirm/cancel buttons
@@ -908,7 +921,7 @@ class DataType(MyToplevel):
             self.main_frame, text='Which data would you like to analyse?',
             font=(MAINFONT, '12', 'bold'),
         )
-        message.grid(
+        msg.grid(
             column=0, row=0, columnspan=2, padx=10, pady=(10,0)
         )
 
@@ -921,7 +934,8 @@ class DataType(MyToplevel):
         )
 
         pdatapath = MyLabel(
-            self.main_frame, text=f'{self.pdatapath}/1r', font=('Courier', 11),
+            self.main_frame, text=f"{str(self.paths['pdata'])}/1r",
+            font=('Courier', 11),
         )
         pdatapath.grid(column=0, row=2, padx=(10, 0), sticky='w')
 
@@ -934,7 +948,7 @@ class DataType(MyToplevel):
             self.main_frame, variable=self.pdata, command=self.click_pdata,
         )
         self.pdata_box.grid(
-            column=1, row=1, rowspan=2, padx=10, sticky='nsw'
+            column=1, row=1, rowspan=2, padx=(10, 0), sticky='nsw'
         )
 
         # --- FID checkbutton and labels ---------------------------------
@@ -944,7 +958,8 @@ class DataType(MyToplevel):
         )
 
         fidpath = MyLabel(
-            self.main_frame, text=f'{self.fidpath}/fid', font=('Courier', 11),
+            self.main_frame, text=f"{str(self.paths['fid'])}/fid",
+            font=('Courier', 11),
         )
         fidpath.grid(column=0, row=4, padx=(10, 0), sticky='w')
 
@@ -955,7 +970,7 @@ class DataType(MyToplevel):
             self.main_frame, variable=self.fid, command=self.click_fid,
         )
         self.fid_box.grid(
-            column=1, row=3, rowspan=2, padx=10, sticky='nsw'
+            column=1, row=3, rowspan=2, padx=(10,0), sticky='nsw'
         )
 
         # --- Confirm and Cancel buttons ---------------------------------
@@ -964,14 +979,14 @@ class DataType(MyToplevel):
             bg=BUTTONGREEN,
         )
         self.confirmbutton.grid(
-            column=1, row=0, padx=(5, 10), pady=10, sticky='e',
+            column=1, row=0, padx=(5, 0), pady=(10, 0), sticky='e',
         )
 
         self.cancelbutton = MyButton(
             self.button_frame, text='Cancel', command=self.ctrl.destroy,
             bg=BUTTONRED,
         )
-        self.cancelbutton.grid(column=0, row=0, pady=10, sticky='e')
+        self.cancelbutton.grid(column=0, row=0, pady=(10, 0), sticky='e')
 
 
 
@@ -994,12 +1009,9 @@ class DataType(MyToplevel):
 
     def confirm(self):
         if self.fid.get() == 1:
-            self.ctrl.dtype = 'fid'
-            self.ctrl.path = self.fidpath
+            self.path = self.paths['fid']
         else:
-            self.ctrl.dtype = 'pdata'
-            self.ctrl.path = self.pdatapath
-
+            self.path = self.paths['pdata']
         self.destroy()
 
 
@@ -2832,7 +2844,7 @@ class SaveFrame(MyToplevel):
         )
 
         self.img = get_PhotoImage(
-            os.path.join(IMAGESDIR, 'folder_icon.png'), scale=0.02
+            os.path.join(IMAGESPATH, 'folder_icon.png'), scale=0.02
         )
 
         self.dir_button = MyButton(

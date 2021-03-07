@@ -38,14 +38,15 @@ if int(checknmrespy):
 	EXIT()
 
 # get path
-info = CURDATA()
+curdata = CURDATA()
 
 # info will be None if no active data exists. Inform user if this is the case
-if info == None:
+if curdata == None:
 	ERRMSG("Please select a data set to run nmrespy!", modal=1)
 	EXIT()
 
-path = os.path.join(info[3], info[0])
+# Full path to the pdata directory
+path = os.path.join(curdata[3], curdata[0], curdata[1], 'pdata', curdata[2])
 
 Popen(
 	["%s -m nmrespy --path %s --topspin" %(exe, path)],

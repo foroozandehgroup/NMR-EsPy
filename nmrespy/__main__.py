@@ -11,7 +11,7 @@ from .app import NMREsPyApp
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--path', action='store', required=False)
+    parser.add_argument('-p', '--path', required=False)
     parser.add_argument('-t', '--topspin', action='store_true')
     args = parser.parse_args()
 
