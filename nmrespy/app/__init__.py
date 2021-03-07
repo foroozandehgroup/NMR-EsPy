@@ -37,8 +37,10 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+from nmrespy import *
 from nmrespy.app.config import *
 from nmrespy.app.custom_widgets import *
+
 
 # flag for testing the result frame easily
 TEST_RESULT = False

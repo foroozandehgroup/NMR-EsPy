@@ -21,7 +21,7 @@ if cols.USE_COLORAMA:
     import colorama
 import nmrespy._errors as errors
 from nmrespy._misc import *
-from nmrespy import signal
+from nmrespy import sig
 
 def plot_result(
     data, result, sw, offset, plot_residual=True, plot_model=False,
@@ -320,17 +320,17 @@ def plot_result(
         left, right = 0, shifts.size
 
     # Generate data: chemical shifts, data spectrum, oscillator spectra
-    shifts = signal.get_shifts(n, sw, offset)[0][left:right]
+    shifts = sig.get_shifts(n, sw, offset)[0][left:right]
     shifts = shifts / sfo[0] if shifts_unit == 'ppm' else shifts
 
-    spectrum = np.real(signal.ft(data))[left:right]
+    spectrum = np.real(sig.ft(data))[left:right]
 
     peaks = []
     for osc in result:
         peaks.append(
             np.real(
-                signal.ft(
-                    signal.make_fid(
+                sig.ft(
+                    sig.make_fid(
                         np.expand_dims(osc, axis=0), n, sw, offset=offset,
                     )[0]
                 )

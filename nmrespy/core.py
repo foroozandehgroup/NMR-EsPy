@@ -20,7 +20,7 @@ from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp.nlp import NonlinearProgramming
 from nmrespy.plot import plot_result
 from nmrespy.write import write_result
-from nmrespy import signal
+from nmrespy import sig
 
 
 class Estimator:
@@ -160,7 +160,7 @@ class Estimator:
         Parameters
         ----------
         data : numpy.ndarray
-            Time-domain signal.
+            Time-domain sig.
 
         sw : [float] or [float, float]
             Sweep width in each dimension (Hz).
@@ -686,7 +686,7 @@ class Estimator:
         if unit not in ['ppm', 'hz']:
             raise errors.InvalidUnitError('ppm', 'hz')
 
-        shifts = signal.get_shifts(
+        shifts = sig.get_shifts(
             self.get_n(), self.get_sw(), self.get_offset()
         )
 
@@ -719,7 +719,7 @@ class Estimator:
             The times sampled along each dimension (seconds).
         """
 
-        tp = signal.get_timepoints(self.get_n(), self.get_sw())
+        tp = sig.get_timepoints(self.get_n(), self.get_sw())
         if meshgrid and self.get_dim() == 2:
             return list(np.meshgrid(tp[0], tp[1]))
         return tp
@@ -839,7 +839,7 @@ class Estimator:
         Parameters
         ----------
         domain : 'frequency' or 'time', default: 'frequency'
-            The domain of the signal.
+            The domain of the sig.
 
         freq_xunit : 'ppm' or 'hz', default: 'ppm'
             The unit of the x-axis, if `domain` is set as `'frequency'`. If
@@ -864,7 +864,7 @@ class Estimator:
         elif domain == 'frequency':
             # frequency domain treatment
             if dim == 1:
-                ydata = signal.ft(self.get_data())
+                ydata = sig.ft(self.get_data())
 
                 if freq_xunit == 'hz':
                     xlabel = '$\\omega\\ (Hz)$'
@@ -943,7 +943,7 @@ class Estimator:
 
         See Also
         --------
-        :py:func:`nmrespy.signal.make_fid`
+        :py:func:`nmrespy.sig.make_fid`
         """
 
         result = self.get_result(kill=kill)
@@ -963,7 +963,7 @@ class Estimator:
         )
 
 
-        return signal.make_fid(
+        return sig.make_fid(
             result[[oscillators]], n, self.get_sw(), offset=self.get_offset(),
         )
 
@@ -987,8 +987,8 @@ class Estimator:
         if p1 is None:
             p1 = self.get_dim() * [0.0]
 
-        self.data = signal.ift(
-            signal.phase_spectrum(signal.ft(self.data), p0, p1)
+        self.data = sig.ift(
+            sig.phase_spectrum(sig.ft(self.data), p0, p1)
         )
 
 
@@ -1007,7 +1007,7 @@ class Estimator:
             within [`-max_p1`, `max_p1`]. By default, `max_p1` will be
             ``10 * numpy.pi``.
         """
-        p0, p1 = signal.manual_phase_spectrum(signal.ft(self.data), max_p1)
+        p0, p1 = sig.manual_phase_spectrum(sig.ft(self.data), max_p1)
         self.phase_data(p0=p0, p1=p1)
 
 
@@ -1357,7 +1357,7 @@ class Estimator:
 
         # Peak integrals
         integrals = [
-            signal.oscillator_integral(osc, self.get_n(), sw_h, offset=off_h)
+            sig.oscillator_integral(osc, self.get_n(), sw_h, offset=off_h)
             for osc in result
         ]
 

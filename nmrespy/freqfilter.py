@@ -9,7 +9,7 @@ import numpy.random as nrandom
 import scipy.linalg as slinalg
 
 from nmrespy._misc import ArgumentChecker, FrequencyConverter
-import nmrespy.signal as signal
+from nmrespy import sig
 
 
 def super_gaussian(region, shape, p=40.0):
@@ -226,7 +226,7 @@ class FrequencyFilter:
                 dtype='complex'
             )
         # Fourier transform
-        self.init_spectrum = np.real(signal.ft(self.zf_data))
+        self.init_spectrum = np.real(sig.ft(self.zf_data))
 
         # --- Generate super-Gaussian filter and assocaited noise --------
         # Shape of full spectrum
@@ -255,7 +255,7 @@ class FrequencyFilter:
         # If cut is False, this will be the final signal.
         # If cut is True, the norm of this signal will be utilised to
         # correctly scale the final signal derived from a cut spectrum
-        uncut_ve = 2 * signal.ift(self.filtered_spectrum)
+        uncut_ve = 2 * sig.ift(self.filtered_spectrum)
         half_slice = tuple(np.s_[0:int(s // 2)] for s in uncut_ve.shape)
         uncut_fid = uncut_ve[half_slice]
 
@@ -275,7 +275,7 @@ class FrequencyFilter:
             # Cut the filtered spectrum
             self.filtered_spectrum = self.filtered_spectrum[tuple(cut_slice)]
             # Generate time-domain signal from spectrum
-            cut_ve = signal.ift(self.filtered_spectrum)
+            cut_ve = sig.ift(self.filtered_spectrum)
             half_slice = tuple(np.s_[0:int(s // 2)] for s in cut_ve.shape)
             cut_fid = cut_ve[half_slice]
             # Scale signals
