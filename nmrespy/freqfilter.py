@@ -179,6 +179,8 @@ class FrequencyFilter:
         self.cut = cut
         self.cut_ratio = cut_ratio
 
+        self.region = region
+        self.noise_region = noise_region
         # Generate FrequencyConverter instance, which will carry out
         # conversion of region bounds to unit of array indices.
         if sw is not None and offset is not None and sfo is not None:
@@ -187,10 +189,10 @@ class FrequencyFilter:
             if region_unit in ['ppm', 'hz']:
                 # Convert region and noise_region to array indices
                 self.region = self.converter.convert(
-                    region, f'{region_unit}->idx',
+                    self.region, f'{region_unit}->idx',
                 )
                 self.noise_region = self.converter.convert(
-                    noise_region, f'{region_unit}->idx',
+                    self.noise_region, f'{region_unit}->idx',
                 )
 
             else:

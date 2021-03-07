@@ -9,4 +9,5 @@ EMAILICONPATH = Path(NMRESPYPATH) / 'images/email_icon.png'
 
 GITHUBLINK = 'https://github.com/foroozandehgroup/NMR-EsPy'
 MFGROUPLINK = 'http://foroozandeh.chem.ox.ac.uk/home'
+DOCSLINK = 'https://nmr-espy.readthedocs.io/en/latest/'
 MAILTOLINK = 'mailto:simon.hulse@chem.ox.ac.uk'

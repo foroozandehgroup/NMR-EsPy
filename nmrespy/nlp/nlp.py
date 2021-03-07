@@ -798,14 +798,7 @@ class NonlinearProgramming(FrequencyConverter):
             / functools.reduce(operator.mul, [n-1 for n in self.n])
         )
 
-        if np.any(np.isnan(self.errors)):
-            # If any NaNs exist, warn the user
-            # TODO: figure out why this sometimes occurs!
-            print(
-                f'{cols.O}WARNING: Some estimate errors could not be'
-                f' computed (error in square root){cols.END}'
-            )
-
+        # Re-scale amplitude errors
         self.errors[:self.m] = self.errors[:self.m] * self.norm
         self.errors = np.reshape(
             self.errors, (int(self.errors.size/4), 4), order='F',

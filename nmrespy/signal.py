@@ -609,6 +609,15 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
 
     snr : float or None, default: None
         Signal-to-noise ratio (dB)
+
+    fid : numpy.ndarray
+        The synthetic FID.
+
+    tp : [numpy.ndarray], [numpy.ndarray, numpy.ndarray]
+        The time points the FID is sampled at in each dimension.
+
+    parameters : numpy.ndarray
+        Parameters used to construct the signal
     """
 
     try:
@@ -643,7 +652,7 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     para = np.hstack((para, *eta))
     para = para.reshape((m, 2*(dim+1)), order='F')
 
-    return make_fid(para, n, sw, offset, snr)
+    return *make_fid(para, n, sw, offset, snr), para
 
 def oscillator_integral(parameters, n, sw, offset=None):
     """Determines the (absolute) integral of the Fourier transform of

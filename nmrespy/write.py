@@ -324,6 +324,8 @@ def _write_pdf(
     # Add logos to header (MF Group and NMR-EsPy)
     txt = txt.replace('<MFLOGOPATH>', str(MFLOGOPATH))
     txt = txt.replace('<NMRESPYLOGOPATH>', str(NMRESPYLOGOPATH))
+    txt = txt.replace('<DOCSLINK>', str(DOCSLINK))
+    txt = txt.replace('<MFGROUPLINK>', str(MFGROUPLINK))
     # Include a timestamp
     txt = txt.replace('<TIMESTAMP>', _timestamp().replace('\n', '\\\\'))
 

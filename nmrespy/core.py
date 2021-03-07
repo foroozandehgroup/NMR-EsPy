@@ -724,6 +724,7 @@ class Estimator:
             return list(np.meshgrid(tp[0], tp[1]))
         return tp
 
+
     def get_result(self, kill=True, freq_unit='hz'):
         """Returns the estimation result
 
@@ -738,12 +739,40 @@ class Estimator:
 
         freq_unit : 'hz' or 'ppm', default: 'hz'
         """
-        result = self._check_if_none(
-            'result', kill, 'matrix_pencil or nonlinear_programming'
-        )
+        return self._get_array('result', kill, freq_unit)
+
+
+    def get_errors(self, kill=True, freq_unit='hz'):
+        """Returns the errors of the estimation result derived from
+        :py:meth:`nonlinear_programming`
+
+        Parameters
+        ----------
+        kill : bool, default: True
+            If `self.errors` is `None`, `kill` specifies how the method will
+            act:
+
+            * If `True`, an AttributeIsNoneError is raised.
+            * If `False`, `None` is returned.
+
+        freq_unit : 'hz' or 'ppm', default: 'hz'
+        """
+        return self._get_array('errors', kill, freq_unit)
+
+
+    def _get_array(self, name, kill, freq_unit):
+        """Returns an array (result or errors), wioth frequencies in either
+        Hz or ppm"""
+
+        if name == "result":
+            errmsg = "matrix_pencil and/or nonlinear_programming"
+        else:
+            errmsg = "nonlinear_programming"
+
+        array = self._check_if_none(name, kill, errmsg)
 
         if freq_unit == 'hz':
-            return result
+            return array
 
         elif freq_unit == 'ppm':
             # Get frequencies in Hz, and format to enable input into
@@ -751,12 +780,12 @@ class Estimator:
             # Then convert values to ppm and reconvert back to NumPy array
             try:
                 ppm = np.array(
-                    self.converter.convert(
-                        [list(result[:, 2])], conversion='hz->ppm',
+                    self._converter.convert(
+                        [list(array[:, 2])], conversion='hz->ppm',
                     )
                 )
-                result[:, 2] = ppm
-                return result
+                array[:, 2] = ppm
+                return array
 
             except:
                 raise TypeError(
@@ -767,6 +796,7 @@ class Estimator:
 
         else:
             raise InvalidUnitError('hz', 'ppm')
+
 
     def _check_if_none(self, name, kill, method=None):
         """Retrieve attributes that may be assigned the value `None`. Return
