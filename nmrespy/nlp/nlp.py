@@ -323,7 +323,7 @@ class NonlinearProgramming(FrequencyConverter):
         x0 = self._shift_offset(x0, 'center')
 
         # Time points in each dimension
-        self.tp = signal.get_timepoints(self.n, self.sw)
+        self.tp = get_timepoints(self.n, self.sw)
 
         # Determine 'active' and 'passive' parameters based on self.mode
         # generates self.active_idx and self.passive_idx

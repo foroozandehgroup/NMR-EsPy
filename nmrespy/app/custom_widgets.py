@@ -5,7 +5,7 @@ Customised widgets for NMR-EsPy GUI.
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
-from .config import BGCOLOR, MAINFONT, READONLYENTRYCOLOR, BUTTONDEFAULT
+from .config import *
 
 def generate(cls_, keys, values, kwargs):
     """Configure class attributes. Enables flexibility to change default
@@ -178,6 +178,36 @@ class MyText(tk.Text):
         generate(self, keys, values, kwargs)
 
 
+class MyNotebook(ttk.Notebook):
+
+    def __init__(self, parent):
+        style = ttk.Style()
+        style.theme_create('notebook', parent='alt',
+            settings={
+                'TNotebook': {
+                    'configure': {
+                        'tabmargins': [2, 0, 5, 0],
+                        'background': BGCOLOR,
+                        'bordercolor': 'black'}
+                    },
+                'TNotebook.Tab': {
+                    'configure': {
+                        'padding': [10, 3],
+                        'background': NOTEBOOKCOLOR,
+                        'font': (MAINFONT, 11)
+                    },
+                    'map': {
+                        'background': [('selected', ACTIVETABCOLOR)],
+                        'expand': [("selected", [1, 1, 1, 0])],
+                        'font': [('selected', (MAINFONT, 11, 'bold'))],
+                        'foreground': [('selected', 'white')],
+                    }
+                }
+            }
+        )
+        style.theme_use("notebook")
+
+        super().__init__(parent)
 
 class MyNavigationToolbar(NavigationToolbar2Tk):
     """Tweak default matplotlib navigation bar to exclude subplot-config
