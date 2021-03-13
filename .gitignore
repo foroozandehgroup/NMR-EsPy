@@ -4,6 +4,7 @@ docs/_static/
 docs/_templates
 docs/Makefile
 tests
+nmrespy/app/to_add.py
 nmrespy-venv
 build
 dist

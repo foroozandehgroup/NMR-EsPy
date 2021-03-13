@@ -10,7 +10,7 @@ Reference
    mpm
    nlp/index
    plot
-   signal
+   sig
    write
    cols
    errors
