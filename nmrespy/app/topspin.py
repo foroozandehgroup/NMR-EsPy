@@ -49,6 +49,6 @@ if curdata == None:
 path = os.path.join(curdata[3], curdata[0], curdata[1], 'pdata', curdata[2])
 
 Popen(
-	["%s -m nmrespy --path %s --topspin" %(exe, path)],
+	["%s -m nmrespy --estimate %s --topspin" %(exe, path)],
 	shell=True,
 )

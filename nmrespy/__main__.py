@@ -11,22 +11,30 @@ from .app import NMREsPyApp
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--path', required=False)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-e', '--estimate')
+    group.add_argument('-r', '--result')
     parser.add_argument('-t', '--topspin', action='store_true')
+
     args = parser.parse_args()
 
-    if args.path is None:
-        path = inupt("Please specify a path to Bruker data: ")
+    if args.estimate is not None:
+        path = pathlib.Path(args.estimate).resolve()
+        if not path.is_dir():
+            raise ValueError(
+                f"{cols.R}\nThe path you have specified doesn't exist:\n{path}"
+                f"{cols.END}"
+            )
+        res = False
+
     else:
-        path = args.path
+        path = pathlib.Path(args.result).resolve()
+        if not path.is_file():
+            raise ValueError(
+                f"{cols.R}\nThe path you have specified doesn't exist:\n{path}"
+                f"{cols.END}"
+            )
+        res = True
 
-    path = pathlib.Path(path).resolve()
-
-    if not path.is_dir():
-        raise ValueError(
-            f"{cols.R}\nThe path you have specified doesn't exist:\n{path}"
-            f"{cols.END}"
-        )
-
-    app = NMREsPyApp(path=path, topspin=args.topspin)
+    app = NMREsPyApp(path=path, topspin=args.topspin, res=res)
     app.mainloop()

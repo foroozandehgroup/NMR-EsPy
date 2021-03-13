@@ -31,14 +31,14 @@ class NMREsPyApp(tk.Tk):
     # When you see `self.ctrl` in other classes in this file, it refers
     # to this class
 
-    def __init__(self, path, topspin=False):
+    def __init__(self, path, res, topspin=False):
         super().__init__()
 
         # Hide the root app window. This is not going to be used. Everything
         # will be built onto Toplevels
         self.withdraw()
-
         path = pathlib.Path(path)
+
         if topspin:
             # Open window to ask user for data type (fid or pdata)
             # from this, self acquires the attirbutes dtype and path
@@ -46,18 +46,24 @@ class NMREsPyApp(tk.Tk):
             data_type_window = DataType(self, paths)
             path = data_type_window.path
 
-        # Create Estimator instance from the provided path
-        self.estimator = Estimator.new_bruker(path)
+        if res:
+            # Wish to view result from a previously-generated result.
+            # Jump straight to the result window.
+            self.estimator = Estimator.from_pickle(path)
 
-        # App is only applicable to 1D data currently
-        if self.estimator.get_dim() > 1:
-            raise TwoDimUnsupportedError()
+        else:
+            # Create Estimator instance from the provided path
+            self.estimator = Estimator.new_bruker(path)
 
-        self.setup_window = setup.SetUp(self, self.estimator)
-        # hold at this point
-        # relieved once setup is destroyed
-        # see SetUp.run()
-        self.wait_window(self.setup_window)
+            # App is only applicable to 1D data currently
+            if self.estimator.get_dim() > 1:
+                raise TwoDimUnsupportedError()
+
+            self.setup_window = setup.SetUp(self, self.estimator)
+            # hold at this point
+            # relieved once setup is destroyed
+            # see SetUp.run()
+            self.wait_window(self.setup_window)
 
         self.result_window = result.Result(self, self.estimator)
         # # create attributres relating to the result Toplevel

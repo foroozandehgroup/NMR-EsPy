@@ -1,3 +1,5 @@
+from matplotlib.backends import backend_tkagg
+
 from .config import *
 from .custom_widgets import *
 from .frames import *
@@ -19,26 +21,24 @@ class Result(MyToplevel):
         # --- Construction of the result GUI ------------------------------
         self.ctrl = parent
         super().__init__(self.ctrl)
-        
+
         self.resizable(True, True)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        # Frame containing the plot
-        self.plot_frame = MyFrame(self)
-        # Make `plot_frame` resizable
-        self.plot_frame.columnconfigure(0, weight=1)
-        self.plot_frame.rowconfigure(0, weight=1)
         # Canvas for figure
         self.canvas = backend_tkagg.FigureCanvasTkAgg(
-            self.result_plot.fig, master=self.plot_frame,
+            self.result_plot.fig, master=self,
         )
         self.canvas.draw()
-        self.canvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
+        self.canvas.get_tk_widget().grid(
+            column=0, row=0, columnspan=2, padx=10, pady=10, sticky='nsew',
+        )
 
         # Frame containing the navigation toolbar and advanced settings
         # button
         self.toolbar_frame = MyFrame(self)
+        self.toolbar_frame.grid(row=1, column=0, sticky='ew')
         self.toolbar = MyNavigationToolbar(
             self.canvas, parent=self.toolbar_frame,
         )
@@ -46,13 +46,13 @@ class Result(MyToplevel):
 
         # Frame with NMR-EsPy an MF group logos
         self.logo_frame = LogoFrame(parent=self, scale=0.72)
+        self.logo_frame.grid(row=2, column=0, sticky='w', padx=10, pady=10)
 
         # Frame with cancel/help/run/advanced settings buttons
         self.button_frame = ResultButtonFrame(parent=self, ctrl=self)
-
-        self.plot_frame.grid(row=0, column=0, columnspan=2)
-        self.toolbar_frame.grid(row=1, column=0)
-        self.logo_frame.grid(row=2, column=0)
+        self.button_frame.grid(
+            row=1, column=1, rowspan=2, sticky='se', padx=10, pady=10,
+        )
 
 
 
