@@ -59,55 +59,27 @@ class NMREsPyApp(tk.Tk):
             if self.estimator.get_dim() > 1:
                 raise TwoDimUnsupportedError()
 
-            self.setup_window = setup.SetUp(self, self.estimator)
+            setup_window = setup.SetUp(self)
             # hold at this point
             # relieved once setup is destroyed
             # see SetUp.run()
-            self.wait_window(self.setup_window)
+            self.wait_window(setup_window)
 
-        self.result_window = result.Result(self, self.estimator)
-        # # create attributres relating to the result Toplevel
-        # self.generate_result_variables()
+        result_window = result.Result(self)
+        self.wait_window(result_window)
+        self.destroy()
+
+        # TODO
+        # For some reason, the program hangs after destroy call
+        # ie still in mainloop, even though I have apparently destroyed
+        # the application.
+        # This should be looked into, it shouldn't be behaving like this.
+        # Perhaps there is something still active that means the mainloop
+        # isn't ending?
         #
-        # # result Toplevel is for inspecting and saving the estimation result
-        # self.result = MyToplevel(self)
-        # # same basic configuration as setup
-        # self.result.resizable(True, True)
-        # self.result.columnconfigure(0, weight=1)
-        # self.result.rowconfigure(0, weight=1)
-        # # frames contained within the result Toplevel
-        # self.result_frames = {}
-        # # frame containing the plot
-        # self.result_frames['plot_frame'] = PlotFrame(
-        #     parent=self.result, figure=self.resultfig['fig'],
-        # )
-        # # frame containing the navigation toolbar
-        # self.result_frames['toolbar_frame'] = RootToolbarFrame(
-        #     parent=self.result, canvas=self.result_frames['plot_frame'].canvas,
-        #     ctrl=self,
-        # )
-        # # frame with NMR-EsPy and MF group logos
-        # self.result_frames['logo_frame'] = LogoFrame(
-        #     parent=self.result, scale=0.06,
-        # )
-        # # frame with cancel/help/run/edit parameters buttons
-        # self.result_frames['button_frame'] = ResultButtonFrame(
-        #     parent=self.result, ctrl=self,
-        # )
-        #
-        # # configure frame placements
-        # self.result_frames['plot_frame'].grid(
-        #     row=0, column=0, columnspan=2, sticky='nsew',
-        # )
-        # self.result_frames['toolbar_frame'].grid(
-        #     row=1, column=0, columnspan=2, sticky='ew',
-        # )
-        # self.result_frames['logo_frame'].grid(
-        #     row=3, column=0, padx=10, pady=10, sticky='w',
-        # )
-        # self.result_frames['button_frame'].grid(
-        #     row=3, column=1, sticky='s',
-        # )
+        # For now, I'll just use this force-exit of the program, though it's
+        # probably not ideal:
+        exit()
 
 if __name__ == '__main__':
 

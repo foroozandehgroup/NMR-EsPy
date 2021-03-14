@@ -8,9 +8,9 @@ from .custom_widgets import *
 class LogoFrame(MyFrame):
     """Contains the NMR-EsPy and MF groups logos"""
 
-    def __init__(self, parent, logos='both', scale=0.6):
+    def __init__(self, master, logos='both', scale=0.6):
 
-        super().__init__(parent)
+        super().__init__(master)
 
         column = 0
         padx = 0
@@ -199,13 +199,11 @@ class DataType(MyToplevel):
 
 class RootButtonFrame(MyFrame):
 
-    def __init__(self, parent, ctrl):
-        super().__init__(parent)
-        self.parent = parent
-        self.ctrl = ctrl
+    def __init__(self, master):
+        super().__init__(master)
 
         self.cancel_button = MyButton(
-            self, text='Cancel', bg=BUTTONRED, command=self.ctrl.destroy
+            self, text='Cancel', bg=BUTTONRED, command=self.master.destroy
         )
         self.cancel_button.grid(
             row=1, column=0, padx=(10,0), pady=(10,0), sticky='e',
@@ -222,8 +220,8 @@ class RootButtonFrame(MyFrame):
         # Command varies - will need to be defined from the class that
         # inherits from this
         # For example, see SetupButtonFrame
-        self.save_button = MyButton(self, text='Run', bg=BUTTONGREEN)
-        self.save_button.grid(
+        self.green_button = MyButton(self, bg=BUTTONGREEN)
+        self.green_button.grid(
             row=1, column=2, padx=10, pady=(10,0), sticky='e',
         )
 
@@ -251,9 +249,8 @@ class AdvancedSettings(MyToplevel):
     """Frame inside SetupApp notebook - for customising details about the
     optimisation routine"""
 
-    def __init__(self, parent, ctrl):
-        super().__init__(parent)
-        self.ctrl = ctrl
+    def __init__(self, master):
+        super().__init__(master)
 
         self.main_frame = MyFrame(self)
         self.main_frame.grid(row=1, column=0)
@@ -277,7 +274,7 @@ class AdvancedSettings(MyToplevel):
         cut_label.grid(row=2, column=0, padx=(10,0), pady=(10,0), sticky='w')
 
         self.cut_checkbutton = MyCheckbutton(
-            self.main_frame, variable=self.ctrl.cut['var'],
+            self.main_frame, variable=self.master.cut['var'],
             command=self.ud_cut,
         )
         self.cut_checkbutton.grid(
@@ -293,7 +290,7 @@ class AdvancedSettings(MyToplevel):
             self.main_frame,
             return_command=self.ud_cut_ratio,
             return_args=(),
-            textvariable=self.ctrl.cut_ratio['var'],
+            textvariable=self.master.cut_ratio['var'],
         )
         self.ratio_entry.grid(row=3, column=1, padx=10, pady=(10,0), sticky='w')
 
@@ -311,7 +308,7 @@ class AdvancedSettings(MyToplevel):
             self.main_frame,
             return_command=self.ud_points,
             return_args=('mpm',),
-            textvariable=self.ctrl.trim['mpm']['var'],
+            textvariable=self.master.trim['mpm']['var'],
         )
         self.mpm_points_entry.grid(
             row=5, column=1, padx=10, pady=(10,0), sticky='w',
@@ -328,7 +325,7 @@ class AdvancedSettings(MyToplevel):
             self.main_frame,
             return_command=self.ud_oscillators, return_args=(),
             state='disabled',
-            textvariable=self.ctrl.m['var'],
+            textvariable=self.master.m['var'],
         )
         self.oscillator_entry.grid(
             row=6, column=1, padx=10, pady=(10,0), sticky='w',
@@ -340,7 +337,7 @@ class AdvancedSettings(MyToplevel):
         )
 
         self.mdl_checkbutton = MyCheckbutton(
-            self.main_frame, variable=self.ctrl.mdl['var'],
+            self.main_frame, variable=self.master.mdl['var'],
             command=self.ud_mdl_button,
         )
         self.mdl_checkbutton.grid(
@@ -365,7 +362,7 @@ class AdvancedSettings(MyToplevel):
             self.main_frame,
             return_command=self.ud_points,
             return_args=('nlp',),
-            textvariable=self.ctrl.trim['nlp']['var'],
+            textvariable=self.master.trim['nlp']['var'],
         )
         self.nlp_points_entry.grid(
             row=9, column=1, padx=10, pady=(10,0), sticky='w',
@@ -382,7 +379,7 @@ class AdvancedSettings(MyToplevel):
         # that inherited from tk.OptionMenu
         # had to customise manually after generating an instance
         self.algorithm_menu = tk.OptionMenu(
-            self.main_frame, self.ctrl.method['var'], *options
+            self.main_frame, self.master.method['var'], *options
         )
 
         self.algorithm_menu['bg'] = 'white'
@@ -395,7 +392,7 @@ class AdvancedSettings(MyToplevel):
 
         # change the max. number of iterations after changing NLP
         # algorithm
-        self.ctrl.method['var'].trace('w', self.ud_nlp_algorithm)
+        self.master.method['var'].trace('w', self.ud_nlp_algorithm)
         self.algorithm_menu.grid(
             row=10, column=1, padx=10, pady=(10,0), sticky='w',
         )
@@ -411,7 +408,7 @@ class AdvancedSettings(MyToplevel):
             self.main_frame,
             return_command=self.ud_max_iterations,
             return_args=(),
-            textvariable=self.ctrl.maxit['var'],
+            textvariable=self.master.maxit['var'],
         )
         self.max_iterations_entry.grid(
             row=11, column=1, padx=10, pady=(10,0), sticky='w',
@@ -425,7 +422,7 @@ class AdvancedSettings(MyToplevel):
         )
 
         self.phase_var_checkbutton = MyCheckbutton(
-            self.main_frame, variable=self.ctrl.phase_variance['var'],
+            self.main_frame, variable=self.master.phase_variance['var'],
             command=self.ud_phase_variance,
         )
         self.phase_var_checkbutton.grid(
@@ -445,14 +442,14 @@ class AdvancedSettings(MyToplevel):
         self.amp_thold_entry = MyEntry(
             self.amp_thold_frame, state='disabled',
             return_command=self.ud_amp_thold, return_args=(),
-            textvariable=self.ctrl.amp_thold['var'],
+            textvariable=self.master.amp_thold['var'],
         )
         self.amp_thold_entry.grid(
             row=0, column=0, padx=(10,0), pady=(10,0), sticky='w',
         )
 
         self.amp_thold_checkbutton = MyCheckbutton(
-            self.amp_thold_frame, variable=self.ctrl.use_amp_thold['var'],
+            self.amp_thold_frame, variable=self.master.use_amp_thold['var'],
             command=self.ud_amp_thold_button,
         )
         self.amp_thold_checkbutton.grid(
@@ -471,7 +468,7 @@ class AdvancedSettings(MyToplevel):
         #
         # self.freq_thold_entry = MyEntry(
         #     self.freq_thold_frame,
-        #     textvariable=self.ctrl.adsettings['freq_thold']['var']['ppm'],
+        #     textvariable=self.master.adsettings['freq_thold']['var']['ppm'],
         # )
         # self.freq_thold_entry.grid(
         #     row=0, column=0, padx=(10,0), pady=(10,0), sticky='w',
@@ -479,7 +476,7 @@ class AdvancedSettings(MyToplevel):
         #
         # self.freq_thold_checkbutton = MyCheckbutton(
         #     self.freq_thold_frame,
-        #     variable=self.ctrl.adsettings['use_freq_thold']['var'],
+        #     variable=self.master.adsettings['use_freq_thold']['var'],
         #     command=lambda name='freq': self.ud_thold_button(name),
         # )
         # self.freq_thold_checkbutton.grid(
@@ -501,7 +498,7 @@ class AdvancedSettings(MyToplevel):
 
         self.max_points_label_mpm = MyLabel(
             self.button_frame, bold=True, font=(MAINFONT, 9, 'bold'),
-            textvariable=self.ctrl.max_points['var'],
+            textvariable=self.master.max_points['var'],
         )
         self.max_points_label_mpm.grid(
             row=0, column=1, padx=(3,0), pady=(20,10), sticky='w',
@@ -543,41 +540,41 @@ class AdvancedSettings(MyToplevel):
 
     def ud_cut(self):
 
-        if int(self.ctrl.cut['var'].get()):
-            self.ctrl.cut['value'] = True
+        if int(self.master.cut['var'].get()):
+            self.master.cut['value'] = True
             self.ratio_entry['state'] = 'normal'
         else:
-            self.ctrl.cut['value'] = False
+            self.master.cut['value'] = False
             self.ratio_entry['state'] = 'disabled'
 
-        self.ctrl.ud_max_points()
+        self.master.ud_max_points()
 
 
     def ud_cut_ratio(self):
 
         # check the value can be interpreted as a float
-        str_value = self.ctrl.cut_ratio['var'].get()
+        str_value = self.master.cut_ratio['var'].get()
         if self._check_float(str_value) and float(str_value) >= 1.0:
             float_value = float(str_value)
-            self.ctrl.cut_ratio['value'] = float_value
-            self.ctrl.ud_max_points()
+            self.master.cut_ratio['value'] = float_value
+            self.master.ud_max_points()
 
         else:
-            self.ctrl.cut_ratio['var'].set(str(self.ctrl.cut_ratio['value']))
+            self.master.cut_ratio['var'].set(str(self.master.cut_ratio['value']))
 
 
     def ud_points(self, name):
 
-        str_value = self.ctrl.trim[name]['var'].get()
+        str_value = self.master.trim[name]['var'].get()
         if self._check_int(str_value) and \
-        0 < int(str_value) <= self.ctrl.max_points['value']:
+        0 < int(str_value) <= self.master.max_points['value']:
             int_value = int(str_value)
-            self.ctrl.trim[name]['value'] = int_value
-            self.ctrl.trim[name]['var'].set(str(int_value))
+            self.master.trim[name]['value'] = int_value
+            self.master.trim[name]['var'].set(str(int_value))
 
         else:
-            self.ctrl.trim[name]['var'].set(
-                str(self.ctrl.trim[name]['value'])
+            self.master.trim[name]['var'].set(
+                str(self.master.trim[name]['value'])
             )
 
 
@@ -585,95 +582,95 @@ class AdvancedSettings(MyToplevel):
         """For when the user clicks on the checkbutton relating to use the
         MDL"""
 
-        if int(self.ctrl.mdl['var'].get()):
-            self.ctrl.mdl['value'] = True
+        if int(self.master.mdl['var'].get()):
+            self.master.mdl['value'] = True
             self.oscillator_entry['state'] = 'disabled'
-            self.ctrl.m['value'] = 0
-            self.ctrl.m['var'].set('')
+            self.master.m['value'] = 0
+            self.master.m['var'].set('')
         else:
-            self.ctrl.mdl['value'] = False
+            self.master.mdl['value'] = False
             self.oscillator_entry['state'] = 'normal'
 
 
     def ud_oscillators(self):
 
-        str_value = self.ctrl.m['var'].get()
+        str_value = self.master.m['var'].get()
         if self._check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
-            self.ctrl.m['value'] = int_value
-            self.ctrl.m['var'].set(str(int_value))
+            self.master.m['value'] = int_value
+            self.master.m['var'].set(str(int_value))
 
         else:
-            if self.ctrl.m['value'] == 0:
-                self.ctrl.m['var'].set('')
+            if self.master.m['value'] == 0:
+                self.master.m['var'].set('')
             else:
-                self.ctrl.m['var'].set(str(self.ctrl.m['value']))
+                self.master.m['var'].set(str(self.master.m['value']))
 
 
     def ud_max_iterations(self):
 
-        str_value = self.ctrl.maxit['var'].get()
+        str_value = self.master.maxit['var'].get()
         if self._check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
-            self.ctrl.maxit['value'] = int_value
-            self.ctrl.maxit['var'].set(str(int_value))
+            self.master.maxit['value'] = int_value
+            self.master.maxit['var'].set(str(int_value))
 
         else:
-            self.ctrl.maxit['var'].set(str(self.ctrl.maxit['value']))
+            self.master.maxit['var'].set(str(self.master.maxit['value']))
 
 
     def ud_nlp_algorithm(self, *args):
         """Called when user changes the NLP algorithm. Sets the default
         number of maximum iterations for the given method"""
 
-        method = self.ctrl.method['var'].get()
+        method = self.master.method['var'].get()
         if method == 'Trust Region':
-            self.ctrl.method['value'] = 'trust_region'
-            self.ctrl.maxit['value'] = 100
-            self.ctrl.maxit['var'].set('100')
+            self.master.method['value'] = 'trust_region'
+            self.master.maxit['value'] = 100
+            self.master.maxit['var'].set('100')
 
         elif method == 'L-BFGS':
-            self.ctrl.method['value'] = 'lbfgs'
-            self.ctrl.maxit['value'] = 500
-            self.ctrl.maxit['var'].set('500')
+            self.master.method['value'] = 'lbfgs'
+            self.master.maxit['value'] = 500
+            self.master.maxit['var'].set('500')
 
 
     def ud_phase_variance(self):
 
-        if int(self.ctrl.phase_variance['var'].get()):
-            self.ctrl.phase_variance['value'] = True
+        if int(self.master.phase_variance['var'].get()):
+            self.master.phase_variance['value'] = True
         else:
-            self.ctrl.phase_variance['value'] = False
+            self.master.phase_variance['value'] = False
 
 
     def ud_amp_thold_button(self):
         """For when the user clicks on the checkbutton relating to whether
         or not to impose an amplitude threshold"""
 
-        if int(self.ctrl.use_amp_thold['var'].get()):
-            self.ctrl.use_amp_thold['value'] = True
+        if int(self.master.use_amp_thold['var'].get()):
+            self.master.use_amp_thold['value'] = True
             self.amp_thold_entry['state'] = 'normal'
         else:
-            self.ctrl.use_amp_thold['value'] = False
+            self.master.use_amp_thold['value'] = False
             self.amp_thold_entry['state'] = 'disabled'
 
 
     def ud_amp_thold(self):
 
-        str_value = self.ctrl.amp_thold['var'].get()
+        str_value = self.master.amp_thold['var'].get()
 
         if self._check_float(str_value):
             float_value = float(str_value)
 
             if 0.0 <= float_value < 1.0:
-                self.ctrl.amp_thold['value'] = float_value
-                self.ctrl.ud_max_points()
+                self.master.amp_thold['value'] = float_value
+                self.master.ud_max_points()
                 return
 
-        self._reset(self.ctrl.amp_thold)
+        self._reset(self.master.amp_thold)
 
 
     def close(self):
-        valid = self.ctrl.check_invalid_entries(self.main_frame)
+        valid = self.master.check_invalid_entries(self.main_frame)
         if valid:
             self.destroy()

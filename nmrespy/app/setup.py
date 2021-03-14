@@ -8,10 +8,9 @@ from .frames import *
 
 
 class SetUp(MyToplevel):
-    def __init__(self, parent, estimator):
+    def __init__(self, parent):
 
-        self.ctrl = parent
-        self.estimator = estimator
+        self.estimator = parent.estimator
         # Shorthand for unit conversion
         self.conv = lambda value, conversion: \
             self.estimator._converter.convert([value], conversion)[0]
@@ -203,7 +202,7 @@ class SetUp(MyToplevel):
         )
 
         # --- Construction of the setup GUI ------------------------------
-        super().__init__(self.ctrl)
+        super().__init__(parent)
         self.resizable(True, True)
         # First column is adjusted upon change of window size
         # (plot_frame, toolbar_frame, tab_frame, logo_frame)
@@ -376,10 +375,10 @@ class SetUp(MyToplevel):
             entry.grid(row=row, column=2, padx=10, pady=pady, sticky='w')
 
         # Frame with NMR-EsPy an MF group logos
-        self.logo_frame = LogoFrame(parent=self, scale=0.72)
+        self.logo_frame = LogoFrame(master=self, scale=0.72)
 
         # Frame with cancel/help/run/advanced settings buttons
-        self.button_frame = SetupButtonFrame(parent=self, ctrl=self)
+        self.button_frame = SetupButtonFrame(master=self)
 
         # --- Configure frame placements ---------------------------------
         self.plot_frame.grid(row=0, column=0, columnspan=2, sticky='nsew')
@@ -794,10 +793,10 @@ class SetupButtonFrame(RootButtonFrame):
     """Button frame for SetupApp. Buttons for quitting, loading help,
     and running NMR-EsPy"""
 
-    def __init__(self, parent, ctrl):
-        self.ctrl = ctrl
-        super().__init__(parent, self.ctrl)
-        self.save_button['command'] = self.ctrl.run
+    def __init__(self, master):
+        super().__init__(master)
+        self.green_button['text'] = 'Run'
+        self.green_button['command'] = self.master.run
 
         self.adsettings_button = MyButton(
             parent=self, text='Advanced Settings', width=16,
@@ -808,4 +807,4 @@ class SetupButtonFrame(RootButtonFrame):
         )
 
     def advanced_settings(self):
-        AdvancedSettings(parent=self.parent, ctrl=self.ctrl)
+        AdvancedSettings(master=self.master)
