@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import ImageTk, Image
 import numpy as np
+
 from .. import *
 
 # useful paths
@@ -153,3 +154,26 @@ def check_int(value):
 
     except:
         return False
+
+
+def check_invalid_entries(master):
+    """Check whether any entry widgets in a certain frame have been
+    assigned a red colour. The implication of this is that certain
+    entries have not been verified by the user pressing <Return>"""
+
+    def get_widgets(master):
+        """Recursively gets all widgets associated with master"""
+        widgets = master.winfo_children()
+        for widget in widgets:
+            if widget.winfo_children():
+                # Ensure entry widgets are not counted multiple times
+                new_widgets = list(set(get_widgets(widget)) | set(widgets))
+                widgets = widgets + new_widgets
+
+        return widgets
+
+    for widget in list(get_widgets(master)):
+        if widget.winfo_class() == 'Entry' and widget['fg'] == 'red':
+            return False
+
+    return True

@@ -1,4 +1,5 @@
 import pathlib
+import subprocess
 from tkinter import filedialog
 
 from matplotlib.backends import backend_tkagg
@@ -88,45 +89,39 @@ class SaveFrame(MyToplevel):
     def __init__(self, master):
         super().__init__(master)
 
-        # self.grab_set()
+        self.grab_set()
 
-        self.figure_frame = MyFrame(self)
-        self.figure_frame.grid(row=0, column=0, padx=10, pady=(10,0), sticky='ew')
 
-        self.file_frame = MyFrame(self)
-        self.file_frame.grid(row=1, column=0, padx=10)
-        # buttons at the bottom of the frame
-        self.button_frame = MyFrame(self)
-        self.button_frame.grid(
-            row=2, column=0, sticky='e', padx=10, pady=(0,10),
-        )
+        # --- Result figure ----------------------------------------------
+        self.fig_frame = MyFrame(self)
+        self.fig_frame.grid(row=0, column=0, pady=(10,0), padx=10, sticky='w')
 
-        # --- RESULT FIGURE ---
         MyLabel(
-            self.figure_frame, text='Result Figure',
-            font=('Helvetica', 12, 'bold')
-        ).grid(row=0, column=0, sticky='w')
-
-        MyLabel(self.figure_frame, text='Save Figure:').grid(
+            self.fig_frame, text='Result Figure',
+            font=('Helvetica', 12, 'bold'),
+        ).grid(row=0, column=0, columnspan=2, sticky='w')
+        MyLabel(
+            self.fig_frame, text='Save Figure:',
+        ).grid(
             row=1, column=0, sticky='w', pady=(10,0),
         )
-        MyLabel(self.figure_frame, text='Format:').grid(
+        MyLabel(self.fig_frame, text='Format:').grid(
             row=2, column=0, sticky='w', pady=(10,0),
         )
-        MyLabel(self.figure_frame, text='Filename:').grid(
+        MyLabel(self.fig_frame, text='Filename:').grid(
             row=3, column=0, sticky='w', pady=(10,0),
         )
-        MyLabel(self.figure_frame, text='dpi:').grid(
+        MyLabel(self.fig_frame, text='dpi:').grid(
             row=4, column=0, sticky='w', pady=(10,0),
         )
-        MyLabel(self.figure_frame, text='Size (cm):').grid(
+        MyLabel(self.fig_frame, text='Size (cm):').grid(
             row=5, column=0, sticky='w', pady=(10,0),
         )
 
         self.save_fig = tk.IntVar()
         self.save_fig.set(1)
         self.save_fig_checkbutton = MyCheckbutton(
-            self.figure_frame, variable=self.save_fig,
+            self.fig_frame, variable=self.save_fig, command=self.ud_save_fig,
         )
         self.save_fig_checkbutton.grid(row=1, column=1, sticky='w', pady=(10,0))
 
@@ -136,7 +131,7 @@ class SaveFrame(MyToplevel):
 
         options = ('eps', 'jpg', 'pdf', 'png', 'ps', 'svg')
         self.fig_fmt_optionmenu = tk.OptionMenu(
-            self.figure_frame, self.fig_fmt, *options
+            self.fig_frame, self.fig_fmt, *options
         )
         self.fig_fmt_optionmenu['bg'] = BGCOLOR
         self.fig_fmt_optionmenu['width'] = 5
@@ -145,24 +140,27 @@ class SaveFrame(MyToplevel):
         self.fig_fmt_optionmenu['menu']['bg'] = BGCOLOR
         self.fig_fmt_optionmenu['menu']['activebackground'] = ACTIVETABCOLOR
         self.fig_fmt_optionmenu['menu']['activeforeground'] = 'white'
-        self.fig_fmt_optionmenu.grid(row=2, column=1, sticky='w', pady=(10,0))
+        self.fig_fmt_optionmenu.grid(
+            row=2, column=1, sticky='w', pady=(10,0),
+        )
 
-        self.fig_name_frame = MyFrame(self.figure_frame)
+        self.fig_name_frame = MyFrame(self.fig_frame)
         self.fig_name_frame.grid(row=3, column=1, sticky='w', pady=(10,0))
         self.fig_name = tk.StringVar()
         self.fig_name.set('nmrespy_figure')
         self.fig_name_entry = MyEntry(
-            self.fig_name_frame, textvariable=self.fig_name, width=14
+            self.fig_name_frame, textvariable=self.fig_name, width=18,
+            return_command=self.ud_file_name, return_args=(self.fig_name,),
         )
         self.fig_name_entry.grid(column=0, row=0)
 
         self.fig_fmt_label = MyLabel(self.fig_name_frame)
         self.ud_fig_fmt()
-        self.fig_fmt_label.grid(column=1, row=0, padx=(2,0), pady=(7,0))
+        self.fig_fmt_label.grid(column=1, row=0, padx=(2,0), pady=(5,0))
 
         self.fig_dpi = value_var_dict(300, '300')
         self.fig_dpi_entry = MyEntry(
-            self.figure_frame, textvariable=self.fig_dpi['var'], width=6,
+            self.fig_frame, textvariable=self.fig_dpi['var'], width=6,
             return_command=self.ud_fig_dpi, return_args=(),
         )
         self.fig_dpi_entry.grid(row=4, column=1, sticky='w', pady=(10,0))
@@ -170,7 +168,7 @@ class SaveFrame(MyToplevel):
         self.fig_width = value_var_dict(15, '15')
         self.fig_height = value_var_dict(10, '10')
 
-        self.fig_size_frame = MyFrame(self.figure_frame)
+        self.fig_size_frame = MyFrame(self.fig_frame)
         self.fig_size_frame.grid(row=5, column=1, sticky='w', pady=(10,0))
 
         MyLabel(self.fig_size_frame, text='w:').grid(column=0, row=0)
@@ -191,120 +189,197 @@ class SaveFrame(MyToplevel):
                 column=column, row=0, padx=padx,
             )
 
+        # --- Other result files -----------------------------------------
+        self.file_frame = MyFrame(self)
+        self.file_frame.grid(row=1, column=0, padx=10, sticky='w')
+
+        MyLabel(
+            self.file_frame, text='Result Files',
+            font=('Helvetica', 12, 'bold')
+        ).grid(row=0, column=0, pady=(20,0), columnspan=4, sticky='w')
+
+        MyLabel(
+            self.file_frame, text='Format:'
+        ).grid(row=1, column=0, pady=(10,0), columnspan=2, sticky='w')
+        MyLabel(
+            self.file_frame, text='Filename:'
+        ).grid(
+            row=1, column=2, columnspan=2, padx=(20,0), pady=(10,0), sticky='w',
+        )
+
+        titles = ('Text:', 'PDF:', 'CSV:')
+        self.fmts = ('txt', 'pdf', 'csv')
+        for i, (title, tag) in enumerate(zip(titles, self.fmts)):
 
 
+            MyLabel(self.file_frame, text=title).grid(
+                row=i+2, column=0, pady=(10,0), sticky='w',
+            )
 
+            # Dictates whether to save the file format
+            self.__dict__[f'save_{tag}'] = save_var = tk.IntVar()
+            save_var.set(1)
 
+            self.__dict__[f'{tag}_check'] = check = \
+            MyCheckbutton(
+                self.file_frame, variable=save_var,
+                command=lambda tag=tag: self.ud_save_file(tag)
+            )
+            check.grid(row=i+2, column=1, padx=(2,0), pady=(10,0), sticky='w')
 
+            self.__dict__[f'name_{tag}'] = fname_var = tk.StringVar()
+            fname_var.set('nmrespy_result')
 
+            self.__dict__[f'{tag}_entry'] = entry = \
+            MyEntry(
+                self.file_frame, textvariable=fname_var, width=18,
+                return_command=self.ud_file_name, return_args=(fname_var,),
+            )
+            entry.grid(row=i+2, column=2, padx=(20,0), pady=(10,0), sticky='w')
 
+            self.__dict__[f'{tag}_ext'] = ext = MyLabel(
+                self.file_frame, text=f".{tag}",
+            )
+            ext.grid(row=i+2, column=3, pady=(15,0), sticky='w')
 
+        # Check if `pdflatex` exists.
+        # If not, disable PDF option.
+        check_latex = subprocess.run(
+            ['pdflatex -v'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            shell=True,
+        )
 
+        if check_latex.returncode != 0:
+            self.save_pdf.set(0)
+            self.pdf_check['state'] = 'disabled'
+            self.pdf_entry['state'] = 'disabled'
+            self.name_pdf.set('')
+            self.pdf_ext['fg'] = '#808080'
 
-        # # specifier for whether or not to save a figure
-        # self.figure_var = tk.IntVar()
-        # self.figure_var.set(1)
-        # # checkbutton to choose whether to save a figure
-        # self.figure_check = MyCheckbutton(
-        #     self.file_frame, variable=self.figure_var,
-        #     command=(lambda: self.check('figure')),
-        # )
-        # self.figure_check.grid(row=0, column=1, padx=(2,0), pady=(10,0))
-        # # open the figure customiser
-        # self.figure_button = MyButton(
-        #     self.file_frame, text='Customise Figure',
-        #     command=self.customise_figure,
-        # )
-        # self.figure_button.grid(
-        #     row=0, column=2, columnspan=3, padx=10, pady=(10,0), sticky='ew',
-        # )
-        #
-        # # --- OTHER FILES: PDF, TEXT, PICKLE ---
-        # titles = ('Save textfile:', 'Save PDF:', 'Save CSV:', 'Pickle result:')
-        # self.fmts = ('txt', 'pdf', 'csv')
-        # for i, (title, tag) in enumerate(zip(titles, self.fmts+('pkl',))):
-        #
-        #     MyLabel(self.file_frame, text=title).grid(
-        #         row=i+1, column=0, padx=(10,0), pady=(10,0), sticky='w',
-        #     )
-        #
-        #     # variable which dictates whether to save the filetype
-        #     self.__dict__[f'{tag}_var'] = save_var = tk.IntVar()
-        #     save_var.set(1)
-        #
-        #     self.__dict__[f'{tag}_check'] = check = \
-        #     MyCheckbutton(
-        #         self.file_frame, variable=save_var,
-        #         command=(lambda tag=tag: self.check(tag))
-        #     )
-        #     check.grid(row=i+1, column=1, padx=(2,0), pady=(10,0))
-        #
-        #     MyLabel(self.file_frame, text='Filename:').grid(
-        #         row=i+1, column=2, padx=(15,0), pady=(10,0), sticky='w'
-        #     )
-        #
-        #     self.__dict__[f'{tag}_name'] = fname_var = tk.StringVar()
-        #     fname_var.set('nmrespy_result')
-        #
-        #     self.__dict__[f'{tag}_entry'] = entry = \
-        #     MyEntry(
-        #         self.file_frame, textvariable=fname_var, width=20,
-        #     )
-        #     entry.grid(row=i+1, column=3, padx=(5,0), pady=(10,0))
-        #
-        #     MyLabel(self.file_frame, text=f".{tag}").grid(
-        #         row=i+1, column=4, padx=(0,10), pady=(10,0), sticky='w',
-        #     )
-        #
-        # # --- DESCRIPTION FOR TEXTFILE AND PDF ---
-        # MyLabel(self.file_frame, text='Description:').grid(
-        #     row=5, column=0, padx=(10,0), pady=(10,0), sticky='nw',
-        # )
-        #
-        # self.descr_box = tk.Text(self.file_frame, width=40, height=3)
-        # self.descr_box.grid(
-        #     row=5, column=1, columnspan=4, padx=10, pady=(10,0), sticky='ew',
-        # )
-        #
-        # # --- DIRECTORY TO SAVE FILES TO ---
-        # MyLabel(self.file_frame, text='Directory:').grid(
-        #     row=6, column=0, padx=(10,0), pady=(10,0), sticky='w',
-        # )
-        #
-        # self.dir_var = tk.StringVar()
-        # self.dir_var.set(str(pathlib.Path.home()))
-        #
-        # self.dir_entry = tk.Entry(
-        #     self.file_frame, textvariable=self.dir_var, width=25,
-        #     highlightthickness=0
-        # )
-        # self.dir_entry.grid(
-        #     row=6, column=1, columnspan=3, padx=(10,0), pady=(10,0), sticky='ew'
-        # )
-        #
-        # self.img = get_PhotoImage(IMAGESPATH / 'folder_icon.png', scale=0.02)
-        #
-        # self.dir_button = MyButton(
-        #     self.file_frame, command=self.browse, image=self.img, width=40
-        # )
-        # self.dir_button.grid(row=6, column=4, padx=(5,5), pady=(10,0))
+        MyLabel(self.file_frame, text='Description:').grid(
+            row=5, column=0, columnspan=4, pady=(10,0), sticky='w',
+        )
 
+        self.descr_box = MyText(self.file_frame, width=30, height=3)
+        self.descr_box.grid(
+            row=6, column=0, columnspan=4, pady=(10,0), sticky='ew',
+        )
+
+        # --- Pickle Estimator -------------------------------------------
+        self.pickle_frame = MyFrame(self)
+        self.pickle_frame.grid(row=2, column=0, padx=10, sticky='w')
+
+        MyLabel(
+            self.pickle_frame, text='Estimator',
+            font=('Helvetica', 12, 'bold')
+        ).grid(row=0, column=0, pady=(20,0), columnspan=4, sticky='w')
+
+        MyLabel(
+            self.pickle_frame, text='Save Estimator:',
+        ).grid(
+            row=1, column=0, sticky='w', pady=(10,0),
+        )
+        MyLabel(
+            self.pickle_frame, text='Filename:',
+        ).grid(
+            row=2, column=0, sticky='w', pady=(10,0),
+        )
+
+        self.pickle_estimator = tk.IntVar()
+        self.pickle_estimator.set(1)
+        self.pickle_estimator_checkbutton = MyCheckbutton(
+            self.pickle_frame, variable=self.pickle_estimator,
+            command=self.ud_pickle_estimator,
+        )
+        self.pickle_estimator_checkbutton.grid(
+            row=1, column=1, sticky='w', pady=(10,0),
+        )
+
+        self.pickle_name_frame = MyFrame(self.pickle_frame)
+        self.pickle_name_frame.grid(row=2, column=1, sticky='w', pady=(10,0))
+        self.pickle_name = tk.StringVar()
+        self.pickle_name.set('estimator')
+        self.pickle_name_entry = MyEntry(
+            self.pickle_name_frame, textvariable=self.pickle_name, width=18,
+            return_command=self.ud_file_name, return_args=(self.pickle_name,),
+        )
+        self.pickle_name_entry.grid(column=0, row=0)
+
+        self.pickle_ext_label = MyLabel(
+            self.pickle_name_frame, text='.pkl'
+        )
+        self.pickle_ext_label.grid(column=1, row=0, padx=(2,0), pady=(5,0))
+
+        # --- Directory selection ----------------------------------------
+        self.dir_frame = MyFrame(self)
+        self.dir_frame.grid(row=3, column=0, padx=10, sticky='w')
+
+        MyLabel(
+            self.dir_frame, text='Directory',
+            font=('Helvetica', 12, 'bold')
+        ).grid(row=0, column=0, pady=(20,0), columnspan=2, sticky='w')
+
+        self.dir_name = tk.StringVar()
+        path = pathlib.Path.home()
+        self.dir_name = value_var_dict(path, str(path))
+
+        self.dir_entry = MyEntry(
+            self.dir_frame, textvariable=self.dir_name['var'], width=30,
+            return_command=self.ud_dir, return_args=(),
+        )
+        self.dir_entry.grid(
+            row=1, column=0, pady=(10,0), sticky='w'
+        )
+
+        self.img = get_PhotoImage(IMAGESPATH / 'folder_icon.png', scale=0.02)
+
+        self.dir_button = MyButton(
+            self.dir_frame, command=self.browse, image=self.img, width=32,
+            bg=BGCOLOR,
+        )
+        self.dir_button.grid(row=1, column=1, padx=(5,0), pady=(10,0))
+
+        # --- Save/cancel buttons ----------------------------------------
+        # buttons at the bottom of the frame
+        self.button_frame = MyFrame(self)
+        self.button_frame.grid(
+            row=4, column=0, padx=10, pady=(0,10), sticky='e'
+        )
         # cancel button - returns usere to result toplevel
         self.cancel_button = MyButton(
             self.button_frame, text='Cancel', bg=BUTTONRED,
             command=self.destroy,
         )
-        self.cancel_button.grid(row=0, column=0)
+        self.cancel_button.grid(row=0, column=0, pady=(10,0))
 
         # save button - determines what file types to save and generates them
         self.save_button = MyButton(
             self.button_frame, text='Save', width=8, bg=BUTTONGREEN,
             command=self.save
         )
-        self.save_button.grid(row=0, column=1, padx=(10,0))
+        self.save_button.grid(
+            row=0, column=1, padx=(10,0), pady=(10,0),
+        )
 
     # --- Save window methods --------------------------------------------
     # Figure settings
+    def ud_save_fig(self):
+        state = 'normal' if self.save_fig.get() else 'disabled'
+        widgets = [
+            self.fig_fmt_optionmenu,
+            self.fig_name_entry,
+            self.fig_dpi_entry,
+            self.fig_width_entry,
+            self.fig_height_entry,
+        ]
+
+        for widget in widgets:
+            widget['state'] = state
+
+        self.fig_fmt_label['fg'] = '#000000' if state == 'normal' else '#808080'
+
     def ud_fig_fmt(self, *args):
         self.fig_fmt_label['text'] = f".{self.fig_fmt.get()}"
 
@@ -318,7 +393,7 @@ class SaveFrame(MyToplevel):
             if not dpi > 0:
                 raise
             self.fig_dpi['var'].set(str(dpi))
-            self.fig_dpi['value'] = int(self.fig_dpi['var'].get())
+            self.fig_dpi['value'] = dpi
 
         except:
             # Failed to convert to int, reset to previous value
@@ -345,49 +420,88 @@ class SaveFrame(MyToplevel):
             str(self.__dict__[f"fig_{dim}"]["value"])
         )
 
+    # Result file settings
+    def ud_save_file(self, tag):
+        state = 'normal' if self.__dict__[f'save_{tag}'].get() else 'disabled'
+        self.__dict__[f'{tag}_entry']['state'] = state
+        self.__dict__[f'{tag}_ext']['fg'] = \
+            '#000000' if state == 'normal' else '#808080'
 
+    def ud_file_name(self, var):
+        name = var.get()
+        var.set("".join(x for x in name if x.isalnum() or x in " _-"))
 
+    # Pickle estimator
+    def ud_pickle_estimator(self):
+        state = 'normal' if self.pickle_estimator.get() else 'disabled'
+        self.pickle_name_entry['state'] = state
+        self.pickle_ext_label['fg'] = \
+            '#000000' if state == 'normal' else '#808080'
 
-
-
-
-
-
-
-
-    def check(self, tag):
-        """Deals with when user clicks a checkbutton"""
-        var = self.__dict__[f'{tag}_var'].get()
-        state = 'normal' if var else 'disabled'
-
-        if tag == 'figure':
-            self.figure_button['state'] = state
-        else:
-            self.__dict__[f'{tag}_entry']['state'] = state
-
+    # Save directory
     def browse(self):
         """Directory selection using tkinter's filedialog"""
-        self.dir_var.set(filedialog.askdirectory(initialdir=self.dir_var.get()))
+        name = filedialog.askdirectory(initialdir=self.dir_name['value'])
+        # If user clicks close cross, an empty tuple is returned
+        if name:
+            self.dir_name['value'] = pathlib.Path(name).resolve()
+            self.dir_name['var'].set(str(self.dir_name['value']))
+
+    def ud_dir(self):
+        path = pathlib.Path(self.dir_name['var'].get()).resolve()
+        if path.is_dir():
+            self.dir_name['value'] = path
+            self.dir_name['var'].set(path)
+        else:
+            self.dir_name['var'].set(str(self.dir_name['value']))
+
 
     def save(self):
-        # Check directory is valid
-        dir = self.dir_var.get()
-        descr = self.descr_box.get('1.0', 'end-1c')
+        if not check_invalid_entries(self):
+            msg = "Some parameters have not been validated."
+            WarnFrame(self, msg=msg)
+            return
 
-        for fmt in self.fmts:
-            # Check text, PDF and CSV files
-            if self.__dict__[f'{fmt}_var'].get():
+        # Directory
+        dir = self.dir_name['value']
+
+        # Figure
+        if self.save_fig.get():
+            # Generate figure path
+            fig_fmt = self.fig_fmt.get()
+            dpi = self.fig_dpi['value']
+            fig_name = self.fig_name.get()
+            fig_path = dir / f"{fig_name}.{fig_fmt}"
+
+            # Convert size from cm -> inches
+            fig_size = (
+                self.fig_width['value'] / 2.54,
+                self.fig_height['value'] / 2.54,
+            )
+            fig = self.master.result_plot.fig
+            fig.set_size_inches(*fig_size)
+            fig.savefig(fig_path, dpi=dpi)
+
+        # Result files
+        for fmt in ('txt', 'pdf', 'csv'):
+            if self.__dict__[f'save_{fmt}'].get():
+                name = self.__dict__[f'name_{fmt}'].get()
+                path = str(dir / name)
+                description = self.descr_box.get('1.0', 'end-1c')
+                if description == '':
+                    description = None
+
                 self.master.estimator.write_result(
-                    path=f"{dir}/{self.__dict__[f'{fmt}_name'].get()}",
-                    description=descr, fmt=fmt, force_overwrite=True,
+                    path=path, description=description, fmt=fmt,
+                    force_overwrite=True,
                 )
 
-        # Check pickle
-        if self.pkl_var.get():
+        if self.pickle_estimator.get():
+            name = self.pickle_name.get()
+            path = str(dir / name)
             self.master.estimator.to_pickle(
-                path=f"{dir}/{self.pkl_name.get()}", force_overwrite=True
+                path=path, force_overwrite=True
             )
-
 
         self.master.destroy()
 

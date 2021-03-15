@@ -168,12 +168,12 @@ class MyOptionMenu(tk.OptionMenu):
 
 class MyText(tk.Text):
 
-    def __init__(self, parent):
+    def __init__(self, parent, **kwargs):
 
         super().__init__(parent)
 
         keys = ('bg', 'highlightcolor', 'highlightbackground')
-        values = (BGCOLOR, 'black', 'black')
+        values = ('white', 'black', 'black')
 
         generate(self, keys, values, kwargs)
 

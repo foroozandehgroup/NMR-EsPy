@@ -695,29 +695,14 @@ class SetUp(MyToplevel):
         return int((self.cut_ratio['value'] * self.region_size) // 2)
 
 
-    def check_invalid_entries(self, frame):
-        """Check whether any entry widgets in a certain frame have been
-        assigned a red colour. The implication of this is that certain
-        entries have not been verified by the user pressing <Return>"""
-
-        for widget in frame.winfo_children():
-            if widget.winfo_class() == 'Entry':
-                if widget['fg'] == 'red':
-                    msg = "Some parameters have not been validated."
-                    WarnFrame(frame, msg=msg)
-                    return False
-        return True
-
-
     def run(self):
         """Set up the estimation routine"""
 
         # Check whether any entry widgets have not been verified
-        for frame in [self.region_frame, self.phase_frame]:
-            if self.check_invalid_entries(frame):
-                pass
-            else:
-                return
+        if not check_invalid_entries(self):
+            msg = "Some parameters have not been validated."
+            WarnFrame(self, msg=msg)
+            return
 
         # Phase correction variables
         pivot = self.pivot['idx']['value']

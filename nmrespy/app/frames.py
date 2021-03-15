@@ -510,22 +510,6 @@ class AdvancedSettings(MyToplevel):
         self.close_button.grid(row=0, column=2, padx=10, pady=(20,10), sticky='e')
 
 
-
-    def _check_int(self, value):
-
-        try:
-            int_value = int(value)
-            float_value = float(value)
-
-            if int_value == float_value:
-                return True
-            else:
-                return False
-
-        except:
-            return False
-
-
     def _check_float(self, value):
 
         try:
@@ -566,7 +550,7 @@ class AdvancedSettings(MyToplevel):
     def ud_points(self, name):
 
         str_value = self.master.trim[name]['var'].get()
-        if self._check_int(str_value) and \
+        if self.check_int(str_value) and \
         0 < int(str_value) <= self.master.max_points['value']:
             int_value = int(str_value)
             self.master.trim[name]['value'] = int_value
@@ -595,7 +579,7 @@ class AdvancedSettings(MyToplevel):
     def ud_oscillators(self):
 
         str_value = self.master.m['var'].get()
-        if self._check_int(str_value) and int(str_value) > 0:
+        if self.check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
             self.master.m['value'] = int_value
             self.master.m['var'].set(str(int_value))
@@ -610,7 +594,7 @@ class AdvancedSettings(MyToplevel):
     def ud_max_iterations(self):
 
         str_value = self.master.maxit['var'].get()
-        if self._check_int(str_value) and int(str_value) > 0:
+        if self.check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
             self.master.maxit['value'] = int_value
             self.master.maxit['var'].set(str(int_value))

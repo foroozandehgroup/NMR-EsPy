@@ -754,16 +754,16 @@ class NonlinearProgramming(FrequencyConverter):
                 # Returning False means the optimisiser will be re-run
                 return False
 
-            elif self.negative_amps == 'flip':
+            elif self.negative_amps == 'flip_phase':
                 # Make negative amplitude oscillators positive and flip
                 # phase by 180°
 
                 # Amplitudes
                 amp_slice = self._get_slice([0], osc_idx=negative_idx)
-                self.active[amp_slice] = - self.active[amp_slice]
+                self.active[amp_slice] *= -1
 
                 # Phase flip
-                if 1 in self.active_idx:
+                if 1 in self.active:
                     phase_slice = self._get_slice([1], osc_idx=negative_idx)
                     self.active[phase_slice] = \
                         self._pi_flip(self.active[phase_slice])
