@@ -138,3 +138,18 @@ class Restrictor():
             else:
                 # if limits are valid, update previous stored limits
                 self.limits[axis] = self.get_lim()[axis]
+
+
+def check_int(value):
+
+    try:
+        int_value = int(value)
+        float_value = float(value)
+
+        if int_value == float_value:
+            return True
+        else:
+            return False
+
+    except:
+        return False
