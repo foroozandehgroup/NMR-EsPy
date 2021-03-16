@@ -23,9 +23,10 @@ if __name__ == '__main__':
         help="Loads the nmrespy GUI to set up an estimation. Argument should "
              "be a path to a Bruker data directory.",
     )
-    group.add_argument('-r', '--result',
+    group.add_argument(
+        '-r', '--result',
         help="Loads the nmrespy GUI to view an estimation result. Argument "
-             "should be a path to pickled estimator instance.",
+             "should be a path to a pickled estimator instance.",
     )
     group.add_argument(
         '-i', '--install-to-topspin', dest='install_to_topspin',

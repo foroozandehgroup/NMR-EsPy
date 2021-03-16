@@ -43,6 +43,7 @@ Any questions? Get in touch!
    install
    theory_overview
    walkthrough
+   gui/index
    references/index
    contributors
 

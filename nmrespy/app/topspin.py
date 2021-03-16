@@ -13,16 +13,8 @@ from subprocess import *
 # If you would like to use the default python 3 path (python3 on Linux/py -3
 # on Windows), leave this as None.
 # Otherwise, set this as the full path to the desired executable binary.
-# exe = None
-exe = "/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/nmrespy-venv/bin/python3.9"
+exe = <EXECUTABLE>
 # ------------------------------------------------------------------------
-
-# If `exe` is `None` specify the default python3 command for the OS
-if exe is None:
-	if platform.system() == 'Windows':
-		exe = 'py -3'
-	else:
-		exe = 'python3'
 
 # Check whether nmrespy exists by importing
 # If it exists, $? = 0
