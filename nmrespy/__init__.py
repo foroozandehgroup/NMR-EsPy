@@ -9,7 +9,7 @@ GITHUBLOGOPATH = IMAGESPATH / 'github.png'
 EMAILICONPATH = IMAGESPATH / 'email_icon.png'
 
 # To assist users with manual install of TopSpin GUI loader
-TOPSPINPATH = NMRESPYPATH / 'app/topspin.py'
+TOPSPINPATH = NMRESPYPATH / 'app/_topspin.py'
 
 GITHUBLINK = 'https://github.com/foroozandehgroup/NMR-EsPy'
 MFGROUPLINK = 'http://foroozandeh.chem.ox.ac.uk/home'

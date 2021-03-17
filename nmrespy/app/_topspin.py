@@ -16,9 +16,8 @@ from subprocess import *
 # the following:
 # 	>>> import sys
 #   >>> exe = sys.executable.replace('\\', '\\\\')
-#   >>> print(f"\"{exe}\")
+#   >>> print(f"\"{exe}\"")
 # Set exe as exactly what the output of this is
-# NB it should be a string.
 exe = None
 # ------------------------------------------------------------------------
 
