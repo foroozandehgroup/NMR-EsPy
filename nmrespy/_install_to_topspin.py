@@ -29,33 +29,6 @@ def main():
             f"for guidance on manual installation.{cols.END}"
         )
 
-    # --- Get user to specify the Python 3 executable --------------------
-    msg = (
-        f"{cols.O}I need to know the Python3 executable that you would "
-         "like to use when running nmrespy. By default, I will assume this "
-        f"is:\n\t{exe}\nIf this is fine, simply press <Return>. If you are "
-         "using a non-default Python executable, please state the full path "
-        f"to it here: {cols.END}"
-    )
-
-    exe_input = input(msg)
-
-    while True:
-        if exe_input == "":
-            break
-        elif pathlib.Path(exe_input).is_file():
-            exe = exe_input
-            break
-        else:
-            exe_input = input(
-                f"{cols.R}Invalid path specified. Please try again: {cols.END}"
-            )
-
-    # --- Write executable to app.topspin --------------------------------
-    with open(NMRESPYPATH / "app/topspin.py", "r") as fh:
-        txt = fh.read()
-        txt = txt.replace("<EXECUTABLE>", f"\"{exe}\"")
-
     # --- Determine whether there are any TopSpin paths ------------------
     topspin_paths = glob.glob(pattern)
 
@@ -94,6 +67,33 @@ def main():
             user_input = input(
                 f"{cols.R}Invalid input. Please try again: {cols.END}"
             )
+
+    # --- Get user to specify the Python 3 executable --------------------
+    msg = (
+        f"{cols.O}I need to know the Python3 executable that you would "
+         "like to use when running nmrespy. By default, I will assume this "
+        f"is:\n\t{exe}\nIf this is fine, simply press <Return>. If you are "
+         "using a non-default Python executable, please state the full path "
+        f"to it here: {cols.END}"
+    )
+
+    exe_input = input(msg)
+
+    while True:
+        if exe_input == "":
+            break
+        elif pathlib.Path(exe_input).is_file():
+            exe = exe_input
+            break
+        else:
+            exe_input = input(
+                f"{cols.R}Invalid path specified. Please try again: {cols.END}"
+            )
+
+    # --- Write executable to app.topspin --------------------------------
+    with open(NMRESPYPATH / "app/topspin.py", "r") as fh:
+        txt = fh.read()
+        txt = txt.replace("exe = None", f"exe = \"{exe}\"")
 
     # -- Try to write to each file path ----------------------------------
     for path in install_paths:

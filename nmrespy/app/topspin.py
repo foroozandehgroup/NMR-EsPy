@@ -1,32 +1,48 @@
-# topspin.py
-# (renamed to .../topspinx.y.z/exp/stan/nmr/py/user/nmrespy.py when installed)
-# simon.hulse@chem.ox.ac.uk
 # Jython script for accessing the NMR-EsPy GUI from inside TopSpin
-# Calls nmrespy.app.__main__.py
+# Should be set to the path topspinx.y.z/exp/stan/nmr/py/user/nmrespy.py
+# Runs nmrespy.app.__main__
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
 
 import os
 import platform
 from subprocess import *
 
 # ------------------------------------------------------------------------
-# PATH TO EXECUTABLE
-# If you would like to use the default python 3 path (python3 on Linux/py -3
-# on Windows), leave this as None.
-# Otherwise, set this as the full path to the desired executable binary.
-exe = <EXECUTABLE>
+# exe should be set as the path to the Python binary that you use for
+# nmrespy.
+#
+# If you want to use the default Python 3 executable:
+# --> On UNIX, it is likely you should set:
+# 	  exe = "python3"
+# --> On Windows, it is likely you should set:
+#     exe = "py -3"
+#
+# If you want to use a non-default Python3 binary, set the full path to
+# the binary.
+exe = None
 # ------------------------------------------------------------------------
+
+if exe is None:
+	ERRMSG(
+		'The Python 3 binary has not been specified. See the NMR-EsPy GUI '
+		'documentation for help.',
+		modal=1,
+	)
+	EXIT()
 
 # Check whether nmrespy exists by importing
 # If it exists, $? = 0
 # If it does not exist, $? = int > 0
 checknmrespy = Popen(
-	["%s -c 'import nmrespy' ; echo $?" %exe],
+	exe.split() + ["-c", "import nmrespy"],
 	shell=True,
 	stdout=PIPE,
-).communicate()[0]
+)
+checknmrespy.communicate()[0]
 
-if int(checknmrespy):
-	ERRMSG('Could not find nmrespy in your Python 3 PATH!', modal=1)
+if checknmrespy.returncode != 0:
+	ERRMSG('Could not find NMR-EsPy in your Python 3 path!', modal=1)
 	EXIT()
 
 # get path
@@ -41,6 +57,6 @@ if curdata == None:
 path = os.path.join(curdata[3], curdata[0], curdata[1], 'pdata', curdata[2])
 
 Popen(
-	["%s -m nmrespy --estimate %s --topspin" %(exe, path)],
+	exe.split() + ["-m", "nmrespy", "--estimate", path, "--topspin"],
 	shell=True,
 )
