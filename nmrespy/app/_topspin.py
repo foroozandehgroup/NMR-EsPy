@@ -9,17 +9,16 @@ import platform
 from subprocess import *
 
 # ------------------------------------------------------------------------
-# exe should be set as the path to the Python binary that you use for
+# exe should be set as the path to the Python executable that you use for
 # nmrespy.
-#
-# If you want to use the default Python 3 executable:
-# --> On UNIX, it is likely you should set:
-# 	  exe = "python3"
-# --> On Windows, it is likely you should set:
-#     exe = "py -3"
-#
-# If you want to use a non-default Python3 binary, set the full path to
-# the binary.
+# One way to determine this that is general for all OSes is to start an
+# interactive Python session from a terminal/command prompt and then enter
+# the following:
+# 	>>> import sys
+#   >>> exe = sys.executable.replace('\\', '\\\\')
+#   >>> print(f"\"{exe}\")
+# Set exe as exactly what the output of this is
+# NB it should be a string.
 exe = None
 # ------------------------------------------------------------------------
 
@@ -34,13 +33,8 @@ if exe is None:
 # Check whether nmrespy exists by importing
 # If it exists, $? = 0
 # If it does not exist, $? = int > 0
-checknmrespy = Popen(
-	exe.split() + ["-c", "import nmrespy"],
-	shell=True,
-	stdout=PIPE,
-)
+checknmrespy = Popen([exe, "-c", "\"import nmrespy\""], stdout=PIPE)
 checknmrespy.communicate()[0]
-
 if checknmrespy.returncode != 0:
 	ERRMSG('Could not find NMR-EsPy in your Python 3 path!', modal=1)
 	EXIT()
@@ -48,7 +42,8 @@ if checknmrespy.returncode != 0:
 # get path
 curdata = CURDATA()
 
-# info will be None if no active data exists. Inform user if this is the case
+# curdata will be None if no active data exists.
+# Inform user if this is the case.
 if curdata == None:
 	ERRMSG("Please select a data set to run nmrespy!", modal=1)
 	EXIT()
@@ -56,7 +51,4 @@ if curdata == None:
 # Full path to the pdata directory
 path = os.path.join(curdata[3], curdata[0], curdata[1], 'pdata', curdata[2])
 
-Popen(
-	exe.split() + ["-m", "nmrespy", "--estimate", path, "--topspin"],
-	shell=True,
-)
+Popen([exe, "-m", "nmrespy", "--estimate", path, "--topspin"])

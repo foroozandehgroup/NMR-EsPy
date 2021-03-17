@@ -8,6 +8,7 @@ from nmrespy import NMRESPYPATH
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 
 def main():
     # --- Determine OS ---------------------------------------------------
@@ -16,11 +17,9 @@ def main():
     system = platform.system()
     if system in ["Linux", "Darwin"]:
         pattern = "/opt/topspin*"
-        exe = "python3"
 
     elif system == "Windows":
         pattern = "C:/Bruker/TopSpin*"
-        exe = "py -3"
 
     else:
         raise OSError(
@@ -45,17 +44,17 @@ def main():
     path_list = '\n\t'.join(
         [f"{[i]} {path}" for i, path in enumerate(topspin_paths, start=1)]
     )
-    msg = (
+    print(
         f"{cols.O}\nThe following TopSpin path(s) were found on your system:"
         f"\n\t{path_list}\n"
          "For each installation that you would like to install the nmrespy "
          "app to, provide the corresponding numbers, separated by "
          "whitespaces. If you want to cancel the install to TopSpin, enter "
          "0. If you want to install to all the listed TopSpin installations, "
-        f"press <Return>: {cols.END}"
+        f"press <Return>:{cols.END}"
     )
 
-    user_input = input(msg)
+    user_input = input()
 
 
     while True:
@@ -64,34 +63,12 @@ def main():
             install_paths = [topspin_paths[idx] for idx in indices]
             break
         else:
-            user_input = input(
-                f"{cols.R}Invalid input. Please try again: {cols.END}"
-            )
-
-    # --- Get user to specify the Python 3 executable --------------------
-    msg = (
-        f"{cols.O}I need to know the Python3 executable that you would "
-         "like to use when running nmrespy. By default, I will assume this "
-        f"is:\n\t{exe}\nIf this is fine, simply press <Return>. If you are "
-         "using a non-default Python executable, please state the full path "
-        f"to it here: {cols.END}"
-    )
-
-    exe_input = input(msg)
-
-    while True:
-        if exe_input == "":
-            break
-        elif pathlib.Path(exe_input).is_file():
-            exe = exe_input
-            break
-        else:
-            exe_input = input(
-                f"{cols.R}Invalid path specified. Please try again: {cols.END}"
-            )
+            print(f"{cols.R}Invalid input. Please try again:{cols.END}")
+            user_input = input()
 
     # --- Write executable to app.topspin --------------------------------
-    with open(NMRESPYPATH / "app/topspin.py", "r") as fh:
+    exe = sys.executable.replace('\\', '\\\\')
+    with open(NMRESPYPATH / "app/_topspin.py", "r") as fh:
         txt = fh.read()
         txt = txt.replace("exe = None", f"exe = \"{exe}\"")
 
