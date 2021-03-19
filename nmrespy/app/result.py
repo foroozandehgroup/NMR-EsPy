@@ -242,15 +242,18 @@ class SaveFrame(MyToplevel):
             )
             ext.grid(row=i+2, column=3, pady=(15,0), sticky='w')
 
-        # Check if `pdflatex` exists.
-        # If not, disable PDF option.
+        self.pdflatex = self.master.master.pdflatex
+        if self.pdflatex is None:
+            self.pdflatex = "pdflatex"
+
         check_latex = subprocess.call(
-            ["pdflatex", "-v"],
+            f"{self.pdflatex} -v",
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            shell=True
+            shell=True,
         )
 
+        # pdflatex could not be found. Deny selecting PDF option
         if check_latex != 0:
             self.save_pdf.set(0)
             self.pdf_check['state'] = 'disabled'
@@ -493,7 +496,7 @@ class SaveFrame(MyToplevel):
 
                 self.master.estimator.write_result(
                     path=path, description=description, fmt=fmt,
-                    force_overwrite=True,
+                    force_overwrite=True, pdflatex_exe=self.pdflatex,
                 )
 
         if self.pickle_estimator.get():

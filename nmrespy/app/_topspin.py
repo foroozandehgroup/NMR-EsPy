@@ -8,7 +8,7 @@ import os
 import platform
 from subprocess import *
 
-# ------------------------------------------------------------------------
+# ---PYTHON EXECUTABLE----------------------------------------------------
 # exe should be set as the path to the Python executable that you use for
 # nmrespy.
 # One way to determine this that is general for all OSes is to start an
@@ -19,6 +19,24 @@ from subprocess import *
 #   >>> print(f"\"{exe}\"")
 # Set exe as exactly what the output of this is
 exe = None
+# ------------------------------------------------------------------------
+
+# ----PDFLATEX EXECUTABLE - WINDOWS USERS ONLY----------------------------
+# UNIX users: you can leave this as None
+#
+# If you have LaTeX installed and would like to produce PDFs of results,
+# the variable `pdflatex` should be set as the full path the pdflatex
+# executable.
+#
+# Find this by entering `where pdflatex` into a command prompt.
+#
+# Example:
+# 	C:\Users\simon>where pdflatex
+# 	C:\texlive\2020\bin\win32\pdflatex.exe
+# In this example, you should set:
+# pdflatex = "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
+# (Ensure the path is a string and ensure each backslash is escaped)
+pdflatex = None
 # ------------------------------------------------------------------------
 
 if exe is None:
@@ -50,4 +68,4 @@ if curdata == None:
 # Full path to the pdata directory
 path = os.path.join(curdata[3], curdata[0], curdata[1], 'pdata', curdata[2])
 
-Popen([exe, "-m", "nmrespy", "--estimate", path, "--topspin"])
+Popen([exe, "-m", "nmrespy", "--estimate", path, "--topspin", "--pdflatex", pdflatex])

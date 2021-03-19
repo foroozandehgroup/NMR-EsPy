@@ -24,7 +24,7 @@ from nmrespy._misc import ArgumentChecker, PathManager, significant_figures
 def write_result(
     parameters, path='./nmrespy_result', sfo=None, integrals=None,
     description=None, info_headings=None, info=None, sig_figs=5,
-    sci_lims=(-2,3), fmt='txt', force_overwrite=False,
+    sci_lims=(-2,3), fmt='txt', force_overwrite=False, pdflatex_exe=None,
 ):
     """Writes an estimation result to a .txt, .pdf or .csv file.
 
@@ -81,6 +81,15 @@ def write_result(
         value which satisfies ``p < 10 ** -x`` or ``p >= 10 ** y`` will be
         expressed in scientific notation, rather than explicit notation.
         If `None`, all values will be expressed explicitely.
+
+    pdflatex_exe : str or None, default: None
+        The path to the system's ``pdflatex`` executable.
+
+        .. note::
+
+           You are unlikely to need to set this manually. It is primarily
+           present to specify the path to ``pdflatex.exe`` on Windows when
+           the NMR-EsPy GUI has been loaded from TopSpin.
 
     Raises
     ------
@@ -222,6 +231,7 @@ def write_result(
     elif fmt == 'pdf':
         _write_pdf(
             path, description, info_headings, info, param_titles, param_table,
+            pdflatex_exe,
         )
     elif fmt == 'csv':
         _write_csv(
@@ -295,6 +305,7 @@ For more information, visit the GitHub repo:
 
 def _write_pdf(
     path, description, info_headings, info, param_titles, param_table,
+    pdflatex_exe,
 ):
     """Writes parameter estimate to a PDF using ``pdflatex``.
 
@@ -416,10 +427,12 @@ def _write_pdf(
         fh.write(txt)
 
     try:
+        if pdflatex_exe is None:
+            pdflatex_exe = "pdflatex"
         # -halt-on-error flag is vital. If any error arises in running
         # pdflatex, the program would get stuck
         run_latex = subprocess.run(
-            ['pdflatex',
+            [pdflatex_exe,
              '-halt-on-error',
              f'-output-directory={tex_tmp_path.parent}',
              tex_tmp_path],

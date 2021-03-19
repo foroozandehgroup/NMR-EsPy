@@ -32,8 +32,20 @@ if __name__ == '__main__':
         '-i', '--install-to-topspin', dest='install_to_topspin',
         action='store_true', help="Install the nmrespy GUI to TopSpin"
     )
+    # Internal flag used to indicate that the app was loaded from inside
+    # TopSpin. When this occurs, it is necessary to ascertain whether the
+    # user would like to analyse data from the fid file or pdata file.
     parser.add_argument(
         '-t', '--topspin', action='store_true', help=argparse.SUPPRESS,
+    )
+    # Internal flag used to specify the path to the pdflatex executable.
+    # This is necessary for Windows users that would like to generate
+    # PDF result figures when loading the app inside TopSpin:
+    # When calling commands using subprocess.Popen() inside TopSpin, the
+    # PATH does not match the "usual" PATH, and `pdflatex` is not
+    # recgonised.
+    parser.add_argument(
+        '-p', '--pdflatex', help=argparse.SUPPRESS,
     )
 
     args = parser.parse_args()
@@ -60,5 +72,7 @@ if __name__ == '__main__':
             )
         res = True
 
-    app = NMREsPyApp(path=path, topspin=args.topspin, res=res)
+    app = NMREsPyApp(
+        path=path, res=res, topspin=args.topspin, pdflatex=args.pdflatex,
+    )
     app.mainloop()

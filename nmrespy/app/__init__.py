@@ -31,7 +31,7 @@ class NMREsPyApp(tk.Tk):
     # When you see `self.ctrl` in other classes in this file, it refers
     # to this class
 
-    def __init__(self, path, res, topspin=False):
+    def __init__(self, path, res, topspin=False, pdflatex=None):
         super().__init__()
 
         # Hide the root app window. This is not going to be used. Everything
@@ -65,6 +65,7 @@ class NMREsPyApp(tk.Tk):
             # see SetUp.run()
             self.wait_window(setup_window)
 
+        self.pdflatex = pdflatex
         result_window = result.Result(self)
         self.wait_window(result_window)
         self.destroy()
