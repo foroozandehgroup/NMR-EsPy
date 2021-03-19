@@ -30,6 +30,17 @@ class. A new instance of this class is initialised using the static
    >>> type(estimator)
    <class 'nmrespy.core.Estimator'>
 
+.. note::
+
+   If you are using Windows, you should also import and initialise ``colorama``
+   to ensure that coloured output is possible. If you do not, you may see a
+   fair amount of gobbledygook:
+
+   .. code:: python3
+
+      >>> import colorama
+      >>> colorama.init()
+
 Information about the estimator can be seen by printing it:
 
 .. code:: python3
