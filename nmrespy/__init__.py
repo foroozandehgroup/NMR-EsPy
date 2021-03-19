@@ -5,6 +5,7 @@ NMRESPYPATH = Path(__file__).parent
 IMAGESPATH = NMRESPYPATH / 'images'
 MFLOGOPATH = IMAGESPATH / 'mf_logo.png'
 NMRESPYLOGOPATH = IMAGESPATH / 'nmrespy_full.png'
+BOOKICONPATH = IMAGESPATH / 'book_icon.png'
 GITHUBLOGOPATH = IMAGESPATH / 'github.png'
 EMAILICONPATH = IMAGESPATH / 'email_icon.png'
 
