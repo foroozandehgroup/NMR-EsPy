@@ -9,6 +9,7 @@ import datetime
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 
@@ -286,7 +287,7 @@ For more information, visit the GitHub repo:
 """
     msg += f'{GITHUBLINK}'
     # Save message to textfile
-    with open(path, 'w') as file:
+    with open(path, 'w', encoding='utf-8') as file:
         file.write(msg)
 
     print(f'{cols.G}Saved result to {path}{cols.END}')
@@ -320,13 +321,42 @@ def _write_pdf(
     # Open text of template .tex file which will be amended
     with open(NMRESPYPATH / 'config/latex_template.txt', 'r') as fh:
         txt = fh.read()
-    # Add logos to header (MF Group and NMR-EsPy)
-    txt = txt.replace('<MFLOGOPATH>', str(MFLOGOPATH))
-    txt = txt.replace('<NMRESPYLOGOPATH>', str(NMRESPYLOGOPATH))
-    txt = txt.replace('<DOCSLINK>', str(DOCSLINK))
-    txt = txt.replace('<MFGROUPLINK>', str(MFGROUPLINK))
+
+    # Add image paths and weblinks to TeX document
+    # If on Windows, have to replace paths of the form:
+    # C:\a\b\c
+    # to:
+    # C:/a/b/c
+    patterns = (
+        '<MFLOGOPATH>',
+        '<NMRESPYLOGOPATH>',
+        '<DOCSLINK>',
+        '<MFGROUPLINK>',
+        '<BOOKICONPATH>',
+        '<GITHUBLINK>',
+        '<GITHUBLOGOPATH>',
+        '<MAILTOLINK>',
+        '<EMAILICONPATH>',
+    )
+
+    paths = (
+        MFLOGOPATH,
+        NMRESPYLOGOPATH,
+        DOCSLINK,
+        MFGROUPLINK,
+        BOOKICONPATH,
+        GITHUBLINK,
+        GITHUBLOGOPATH,
+        MAILTOLINK,
+        EMAILICONPATH,
+    )
+
+    for pattern, path_ in zip(patterns, paths):
+        txt = txt.replace(pattern, str(path_).replace('\\', '/'))
+
     # Include a timestamp
     txt = txt.replace('<TIMESTAMP>', _timestamp().replace('\n', '\\\\'))
+
 
     # --- Description ----------------------------------------------------
     if description is None:
@@ -338,7 +368,7 @@ def _write_pdf(
         )
 
     else:
-        txt = txt.replace('<DESCRIPTION>', description.replace('_', '\\_'))
+        txt = txt.replace('<DESCRIPTION>', description)
 
     # --- Experiment Info ------------------------------------------------
     if info is None:
@@ -370,13 +400,6 @@ def _write_pdf(
         '',
     )
 
-    # --- Footer textbox -------------------------------------------------
-    # Add links and paths to images
-    txt = txt.replace('<GITHUBLINK>', GITHUBLINK)
-    txt = txt.replace('<GITHUBLOGOPATH>', str(GITHUBLOGOPATH))
-    txt = txt.replace('<MAILTOLINK>', MAILTOLINK)
-    txt = txt.replace('<EMAILICONPATH>', str(EMAILICONPATH))
-
     # --- Generate PDF using pdflatex ------------------------------------
     # Create required file paths:
     # .tex and .pdf paths with temporary directory (this is where the files
@@ -389,30 +412,28 @@ def _write_pdf(
     pdf_final_path = path
 
     # Write contents to cwd tex file
-    with open(tex_tmp_path, 'w') as fh:
+    with open(tex_tmp_path, 'w', encoding='utf-8') as fh:
         fh.write(txt)
 
     try:
         # -halt-on-error flag is vital. If any error arises in running
         # pdflatex, the program would get stuck
         run_latex = subprocess.run(
-            [
-                'pdflatex',
-                '-halt-on-error',
-                f'-output-directory={tex_tmp_path.parent}',
-                tex_tmp_path
-            ],
+            ['pdflatex',
+             '-halt-on-error',
+             f'-output-directory={tex_tmp_path.parent}',
+             tex_tmp_path],
             stdout=subprocess.DEVNULL,
             check=True,
         )
 
         # Move pdf and tex files from temp directory to desired directory
-        os.rename(tex_tmp_path, tex_final_path)
-        os.rename(pdf_tmp_path, pdf_final_path)
+        shutil.move(tex_tmp_path, tex_final_path)
+        shutil.move(pdf_tmp_path, pdf_final_path)
 
     except subprocess.CalledProcessError:
         # pdflatex came across an error
-        os.rename(tex_tmp_path, tex_final_path)
+        shutil.move(tex_tmp_path, tex_final_path)
         raise LaTeXFailedError(tex_final_path)
 
     except FileNotFoundError:
@@ -465,7 +486,7 @@ def _write_csv(
         Array of contents to append to the result table.
     """
 
-    with open(path, 'w') as fh:
+    with open(path, 'w', encoding='utf-8') as fh:
         writer = csv.writer(fh)
         # Timestamp
         writer.writerow([_timestamp().replace('\n', ' ')])

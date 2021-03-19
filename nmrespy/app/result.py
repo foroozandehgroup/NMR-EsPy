@@ -244,14 +244,14 @@ class SaveFrame(MyToplevel):
 
         # Check if `pdflatex` exists.
         # If not, disable PDF option.
-        check_latex = subprocess.run(
-            ['pdflatex -v'],
+        check_latex = subprocess.call(
+            ["pdflatex", "-v"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            shell=True,
+            shell=True
         )
 
-        if check_latex.returncode != 0:
+        if check_latex != 0:
             self.save_pdf.set(0)
             self.pdf_check['state'] = 'disabled'
             self.pdf_entry['state'] = 'disabled'

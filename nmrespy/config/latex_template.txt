@@ -71,9 +71,10 @@ urlcolor   = urlblue,%
 \begin{tcolorbox}
 Estimation performed using \textsc{NMR-EsPy}.\\
 Author: Simon Hulse\\
-For more information:\\
-{\raisebox{-2pt}{\includegraphics[scale=0.09]{<GITHUBLOGOPATH>}}}\hspace{1em}\href{<GITHUBLINK>}{\texttt{<GITHUBLINK>}}\\
-{\raisebox{-2pt}{\includegraphics[scale=0.012]{<EMAILICONPATH>}}}\hspace{1em}\href{<MAILTOLINK>}{\texttt{simon.hulse@chem.ox.ac.uk}}\\
+For more information:\\[5pt]
+{\raisebox{-4pt}{\includegraphics[scale=0.029]{<BOOKICONPATH>}}}\hspace{1em}\href{<DOCSLINK>}{\texttt{<DOCSLINK>}}\\[5pt]
+{\raisebox{-4pt}{\includegraphics[scale=0.12]{<GITHUBLOGOPATH>}}}\hspace{1em}\href{<GITHUBLINK>}{\texttt{<GITHUBLINK>}}\\[5pt]
+{\raisebox{-3pt}{\includegraphics[scale=0.015]{<EMAILICONPATH>}}}\hspace{1em}\href{<MAILTOLINK>}{\texttt{simon.hulse@chem.ox.ac.uk}}\\[5pt]
 If used in a publication, please cite:\\
 \textit{No references yet...}
 \end{tcolorbox}

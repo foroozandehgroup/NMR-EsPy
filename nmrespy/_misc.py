@@ -18,6 +18,7 @@ import numpy as np
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 
 
 class ArgumentChecker:
@@ -473,7 +474,7 @@ class PathManager:
 
         prompt = (
             f'{cols.O}The file {str(self.path)} already exists. Overwrite?\n'
-            f'Enter [y] or [n]:{cols.END} '
+            f'Enter [y] or [n]:{cols.END}'
         )
 
         return get_yes_no(prompt)
@@ -483,15 +484,16 @@ def get_yes_no(prompt):
     """Ask user to input 'yes' or 'no' (Y/y or N/n). Repeatedly does this
     until a valid response is recieved"""
 
-    response = input(prompt).lower()
-    if response == 'y':
-        return True
-    elif response == 'n':
-        return False
-    else:
-        get_yes_no(
-            f'{cols.R}Invalid input. Please enter [y] or [n]:{cols.END} '
-        )
+    print(prompt)
+    response = input().lower()
+    while True:
+        if response == 'y':
+            return True
+        elif response == 'n':
+            return False
+        else:
+            print(f'{cols.R}Invalid input. Please enter [y] or [n]:{cols.END}')
+            response = input().lower()
 
 
 def start_end_wrapper(start_text, end_text):
