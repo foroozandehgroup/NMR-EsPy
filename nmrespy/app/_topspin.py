@@ -1,11 +1,11 @@
 # Jython script for accessing the NMR-EsPy GUI from inside TopSpin
 # Should be set to the path topspinx.y.z/exp/stan/nmr/py/user/nmrespy.py
-# Runs nmrespy.app.__main__
+# Runs nmrespy.__main__
+#
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
 import os
-import platform
 from subprocess import *
 
 # ---PYTHON EXECUTABLE----------------------------------------------------
@@ -18,7 +18,7 @@ from subprocess import *
 #   >>> exe = sys.executable.replace('\\', '\\\\')
 #   >>> print(f"\"{exe}\"")
 # Set exe as exactly what the output of this is
-exe = None
+py_exe = None
 # ------------------------------------------------------------------------
 
 # ----PDFLATEX EXECUTABLE - WINDOWS USERS ONLY----------------------------
@@ -36,10 +36,10 @@ exe = None
 # In this example, you should set:
 # pdflatex = "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
 # (Ensure the path is a string and ensure each backslash is escaped)
-pdflatex = None
+pdflatex_exe = None
 # ------------------------------------------------------------------------
 
-if exe is None:
+if py_exe is None:
 	ERRMSG(
 		'The Python 3 binary has not been specified. See the NMR-EsPy GUI '
 		'documentation for help.',
@@ -50,7 +50,7 @@ if exe is None:
 # Check whether nmrespy exists by importing
 # If it exists, $? = 0
 # If it does not exist, $? = int > 0
-checknmrespy = Popen([exe, "-c", "\"import nmrespy\""], stdout=PIPE)
+checknmrespy = Popen([py_exe, "-c", "\"import nmrespy\""], stdout=PIPE)
 checknmrespy.communicate()[0]
 if checknmrespy.returncode != 0:
 	ERRMSG('Could not find NMR-EsPy in your Python 3 path!', modal=1)
@@ -68,4 +68,5 @@ if curdata == None:
 # Full path to the pdata directory
 path = os.path.join(curdata[3], curdata[0], curdata[1], 'pdata', curdata[2])
 
-Popen([exe, "-m", "nmrespy", "--estimate", path, "--topspin", "--pdflatex", pdflatex])
+Popen([py_exe, "-m", "nmrespy", "--estimate", path, "--topspin", "--pdflatex",
+	   pdflatex_exe])

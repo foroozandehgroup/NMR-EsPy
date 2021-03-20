@@ -2,110 +2,177 @@ import glob
 import pathlib
 import platform
 import shutil
+import subprocess
 import sys
 
-from nmrespy import NMRESPYPATH
+from nmrespy import TOPSPINPATH
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
     colorama.init()
 
-def main():
-    # --- Determine OS ---------------------------------------------------
-    # From OS info, determine the required directory pattern to match
-    # and the name of the default Python 3 executable command.
+
+def get_opsys():
+    """Determine the operating system. This will determine the directory
+    pattern that will be used to determine whether any TopSpin directories
+    exist"""
+
     system = platform.system()
     if system in ["Linux", "Darwin"]:
-        pattern = "/opt/topspin*"
-
+        return "unix"
     elif system == "Windows":
+        return "windows"
+    else:
+        print(f"{cols.R}Your operating system is not supported for automatic "
+               "installation of nmrespy into TopSpin. See the documentation "
+              f"for guidance on manual installation.{cols.END}")
+        return None
+
+def get_topspin_paths(opsys):
+    """Determine whether any TopSpin installations exist in the default
+    path"""
+    if opsys == "unix":
+        pattern = "/opt/topspin*"
+    elif opsys == "windows":
         pattern = "C:/Bruker/TopSpin*"
 
-    else:
-        raise OSError(
-            f"{cols.R}Your operating system is not supported for automatic "
-             "installation of nmrespy into TopSpin. See the documentation "
-            f"for guidance on manual installation.{cols.END}"
-        )
-
-    # --- Determine whether there are any TopSpin paths ------------------
     topspin_paths = glob.glob(pattern)
 
     if not topspin_paths:
-        raise RuntimeError(
-            f"{cols.R}\nNo TopSpin installations were found on your system! "
-             "If you don't have TopSpin, I guess that makes sense. If you "
-             "do have TopSpin, perhaps it is installed in a non-default "
-             "location? You'll have to perform a manual installation in this "
-            f"case. See the documentation for details.{cols.END}"
-        )
+        print(f"{cols.R}\nNo TopSpin installations were found on your system! "
+               "If you don't have TopSpin, I guess that makes sense. If you "
+               "do have TopSpin, perhaps it is installed in a non-default "
+               "location? You'll have to perform a manual installation in "
+              f"this case. See the documentation for details.{cols.END}")
 
-    # --- Get user to specify desired install paths ----------------------
+        topspin_paths = None
+
+    return topspin_paths
+
+
+def get_install_paths(topspin_paths):
+    """List the TopSpin paths available, and get the user to specify which
+    paths they would like to install the GUI loader to. Return the specified
+    paths"""
+
     path_list = '\n\t'.join(
         [f"{[i]} {path}" for i, path in enumerate(topspin_paths, start=1)]
     )
-    print(
-        f"{cols.O}\nThe following TopSpin path(s) were found on your system:"
-        f"\n\t{path_list}\n"
-         "For each installation that you would like to install the nmrespy "
-         "app to, provide the corresponding numbers, separated by "
-         "whitespaces. If you want to cancel the install to TopSpin, enter "
-         "0. If you want to install to all the listed TopSpin installations, "
-        f"press <Return>:{cols.END}"
-    )
+
+    print(f"{cols.O}\nThe following TopSpin path(s) were found on your system:"
+          f"\n\t{path_list}\n"
+           "For each installation that you would like to install the nmrespy "
+           "app to, provide the corresponding numbers, separated by "
+           "whitespaces.\nIf you want to cancel the install to TopSpin, enter "
+           "0.\nIf you want to install to all the listed TopSpin "
+          f"installations, press <Return>:{cols.END}")
 
     user_input = input()
 
-
+    # Get user input
+    # If valid, deal accoridngly.
+    # If invalid, re-ask the user for input.
     while True:
         indices = parse_user_input(user_input, len(topspin_paths))
-        if indices:
-            install_paths = [topspin_paths[idx] for idx in indices]
-            break
-        else:
+        if indices is False:
             print(f"{cols.R}Invalid input. Please try again:{cols.END}")
             user_input = input()
+        else:
+            return [topspin_paths[idx] for idx in indices]
 
-    # --- Write executable to app.topspin --------------------------------
-    exe = sys.executable.replace('\\', '\\\\')
-    with open(NMRESPYPATH / "app/_topspin.py", "r") as fh:
-        txt = fh.read()
-        txt = txt.replace("exe = None", f"exe = \"{exe}\"")
 
-    # -- Try to write to each file path ----------------------------------
+def parse_user_input(user_input, number):
+    """Takes user input related to desired TopSpin directories to install
+    to and parse the input."""
+    if user_input == "":
+        # User pressed <Return>. Return list of all valid indices.
+        return(list(range(number)))
+
+    if user_input == '0':
+        # User pressed 0. Return empty list (no installation will take place)
+        print(f"{cols.R}No installation of the nmrespy app will "
+              f"occur...{cols.END}")
+        return []
+
+    # Split input at whitespace (filter out any empty elements)
+    values = list(filter(lambda x: x != "", user_input.split(" ")))
+
+    for value in values:
+        # Check each element is numeric and of valid value
+        if not (value.isnumeric() and int(value) <= number):
+            return False
+
+    # Return indices coresponding to TopSPin paths of interest
+    return [int(value)-1 for value in values]
+
+
+def get_pdflatex_executable(opsys):
+    """Determine whether a pdflatex executable is on the system, and
+    return the path if it exists"""
+    # Check pdflatex exists (return code will be 0 if it does).
+    if subprocess.run("pdflatex -v", shell=True, stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE).returncode == 0:
+        if opsys == "unix":
+            command = "which"
+        elif opsys == "windows":
+            command = "where"
+
+        pdflatex_exe = subprocess.run(
+            f"{command} pdflatex",
+            shell=True,
+            stdout=subprocess.PIPE,
+        ).stdout.decode("utf-8").rstrip("\n\r").replace("\\", "\\\\")
+
+        return pdflatex_exe
+
+    else:
+        print(f"{cols.O}I was unable to find a pdflatex executable on your"
+               "system. YOu will not be able to generate PDF\'s of your "
+              f"results{cols.END}")
+        return None
+
+def install(install_paths, txt):
+    """Try to write ``txt`` to each file path"""
     for path in install_paths:
         try:
             dst = pathlib.Path(path) / "exp/stan/nmr/py/user/nmrespy.py"
             with open(dst, "w") as fh:
                 fh.write(txt)
-            print(f"\nInstalled:\n\t{cols.G}{str(dst)}{cols.END}")
+            print(f"\n{cols.G}SUCCESS:\n\t{str(dst)}{cols.END}")
 
         except Exception as e:
-            print(
-                f"{cols.R}\nFailed to install to:\n\t{str(dst)}\n"
-                f"with error message:\n\t{e}{cols.END}"
-            )
+            print(f"{cols.R}\nFAIL:\n\t{str(dst)}\n"
+                  f"ERROR MESSAGE:\n\t{e}{cols.END}")
 
 
-def parse_user_input(user_input, number):
-    if user_input == "":
-        return(list(range(number)))
+def main():
+    opsys = get_opsys()
+    if opsys is None:
+        return
 
-    if user_input == '0':
-        print(
-            f"{cols.R}Cancelling installation of the nmrespy app to "
-            f"TopSpin...{cols.END}"
-        )
-        exit()
+    topspin_paths = get_topspin_paths(opsys)
+    if topspin_paths is None:
+        return
 
-    values = list(filter(lambda x: x != '', user_input.split(' ')))
+    install_paths = get_install_paths(topspin_paths)
+    if not install_paths:
+        return
 
-    for value in values:
-        if not (value.isnumeric() and int(value) <= number):
-            return False
+    # Python executable
+    py_exe = sys.executable.replace("\\", "\\\\")
+    # pdflatex executable (if present)
+    pdflatex_exe = get_pdflatex_executable(opsys)
 
-    return [int(value)-1 for value in values]
+    # --- Write executables to app.topspin -------------------------------
+    with open(TOPSPINPATH, "r") as fh:
+        txt = fh.read()
 
+    txt = txt.replace("py_exe = None", f"py_exe = \"{py_exe}\"")
+    if pdflatex_exe is not None:
+        txt = txt.replace("pdflatex_exe = None",
+                         f"pdflatex_exe = \"{pdflatex_exe}\"")
+
+    install(install_paths, txt)
 
 if __name__ == "__main__":
     main()
