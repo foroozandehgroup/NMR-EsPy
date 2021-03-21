@@ -130,7 +130,8 @@ class MyEntry(tk.Entry):
             'bg', 'readonlybackground'
         )
         values = (
-            7, 1, 'black', 'white', READONLYENTRYCOLOR)
+            7, 1, 'black', 'white', READONLYENTRYCOLOR
+        )
 
         generate(self, keys, values, kwargs)
 

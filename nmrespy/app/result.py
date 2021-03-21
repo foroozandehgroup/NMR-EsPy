@@ -1,3 +1,4 @@
+import copy
 import pathlib
 import subprocess
 from tkinter import filedialog
@@ -64,6 +65,7 @@ class ResultButtonFrame(RootButtonFrame):
     and running NMR-EsPy"""
 
     def __init__(self, master):
+
         super().__init__(master)
         self.green_button['command'] = self.save_options
         self.green_button['text'] = 'Save'
@@ -76,11 +78,166 @@ class ResultButtonFrame(RootButtonFrame):
         )
 
     def edit_parameters(self):
-        print('TODO')
-        # EditParams(parent=self, ctrl=self.master)
+        EditParametersFrame(self.master)
 
     def save_options(self):
         SaveFrame(self.master)
+
+
+class EditParametersFrame(MyToplevel):
+    """TopLevel for editing an estimation result, and re-running the
+    optimiser"""
+
+    def __init__(self, master):
+
+        super().__init__(master)
+        # Prevent access to other windows
+        self.grab_set()
+        
+        # Store initial parameter array incase the user want to restore
+        self.previous = {
+            'result' : copy.deepcopy(master.estimator.get_result()),
+            'errors' : copy.deepcopy(master.estimator.get_errors()),
+        }
+
+        # --- Parameter table --------------------------------------------
+        self.table_frame = MyFrame(self)
+        self.table_frame.grid(column=0, row=0, padx=10, pady=(10,0))
+
+        # Generate table
+        self.construct_table(reconstruct=False)
+
+
+    def construct_table(self, reconstruct):
+        """Generate a table of the parameters. If `reconstruct` is true,
+        destroy all the previous widgets in `self.table_frame` and create
+        a new table to reflect the change in parameters"""
+
+        if reconstruct:
+            for widget in self.table_frame.winfo_children():
+                widget.destroy()
+
+        # Column titles
+        titles = ('#', 'Amplitude', 'Phase (rad)', 'Frequency (ppm)', 'Damping (s⁻¹)')
+        for column, title in enumerate(titles):
+            padx = 0 if column == 0 else (5, 0)
+            pady = (10, 0)
+
+            MyLabel(self.table_frame, text=title).grid(
+                row=0, column=column, padx=padx, pady=pady, sticky='w',
+            )
+
+        # Store oscillator labels, entry widgets, and string variables
+        self.table = {}
+        self.table['labs'] = []
+        self.table['ents'] = []
+        self.table['vars'] = []
+
+        for i, osc in enumerate(self.master.estimator.get_result(freq_unit='ppm')):
+            # --- Oscillator labels --------------------------------------
+            # These act as a oscillator selection widgets
+            lab = MyLabel(self.table_frame, text=str(i+1))
+            # Bind to left mouse click: select oscillator
+            lab.bind("<Button-1>", lambda ev, i=i: self.left_click(i))
+            # Bind to left mouse click + shift: select oscillator, keep
+            # other already selected oscillators still selected.
+            lab.bind('<Shift-Button-1>', lambda ev, i=i: self.shift_left_click(i))
+            lab.grid(row=i+1, column=0, ipadx=10, ipady=2, pady=(5,0))
+            self.table['labs'].append(lab)
+
+            ent_row = []
+            var_row = []
+
+            for j, param in enumerate(osc):
+                var = tk.StringVar()
+                var.set(f"{param:.5f}")
+                var_row.append(var)
+
+                ent = MyEntry(
+                    self.table_frame, return_command=self.check_param,
+                    return_args=(i, j), textvariable=var, state='disabled',
+                    width=14,
+                )
+
+                padx = (5, 0) if j == 3 else (5, 10)
+                pady = (5, 0)
+
+                ent.grid(row=i+1, column=j+1, padx=padx, pady=pady)
+                ent_row.append(ent)
+
+            self.table['ents'].append(ent_row)
+            self.table['vars'].append(var_row)
+
+
+
+    def left_click(self, idx):
+        """Deals with a <Button-1> event on a label.
+
+        Parameters
+        ----------
+        idx : int
+            Equivalent to oscillator label value - 1.
+
+        Notes
+        -----
+        This will set the background of the selected label to blue, and
+        foreground to white. Entry widgets in the corresponding row are set to
+        read-only mode. All other oscillator labels widgets are set to "disabled"
+        mode."""
+
+        # Disable all rows that do not match the index
+        for i, label in enumerate(self.table['labs']):
+            if i != idx and label['bg'] == '#0000ff':
+
+                label['bg'] = BGCOLOR
+                label['fg'] = '#000000'
+                for entry in self.table['ents'][i]:
+                    entry['state'] = 'disabled'
+
+
+        # Proceed to highlight the selected row
+        self.shift_left_click(idx)
+
+
+    def shift_left_click(self, idx):
+        """Deals with a <Shift-Button-1> event on a label.
+
+        Parameters
+        ----------
+        index : int
+            Equivalent to oscillator label value - 1.
+
+        Notes
+        -----
+        This will set the background of the selected label to blue, and
+        foreground to white.  Entry widgets in the corresponding row are set
+        to read-only mode. Other rows are unaffected.
+        """
+        if self.table['labs'][idx]['fg'] == '#000000':
+            fg, bg, state = '#ffffff', '#0000ff', 'readonly'
+        else:
+            fg, bg, state  = '#000000', BGCOLOR, 'disabled'
+
+
+        self.table['labs'][idx]['fg'] = fg
+        self.table['labs'][idx]['bg'] = bg
+
+        for entry in self.table['ents'][idx]:
+            entry['state'] = state
+
+        # TODO
+        # based on the number of rows selected, activate/deactivate
+        # buttons accordingly
+        # self.activate_buttons()
+
+    # TODO
+    def activate_buttons(self):
+        pass
+
+    # TODO
+    def check_param(self):
+        pass
+
 
 
 class SaveFrame(MyToplevel):
