@@ -79,6 +79,8 @@ rst_prolog = """
       .oscorange {color:#eb9310}
       .oscgreen {color:#2bb539}
       .oscred {color:#d4200c}
+      .regiongreen {color: #7fd47f}
+      .regionblue {color: #66b3ff}
    </style>
 
 .. role:: grey
@@ -89,6 +91,8 @@ rst_prolog = """
 .. role:: oscorange
 .. role:: oscgreen
 .. role:: oscred
+.. role:: regiongreen
+.. role:: regionblue
 """
 
 # Add any paths that contain custom static files (such as style sheets) here,

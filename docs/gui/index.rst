@@ -6,7 +6,8 @@ the requirement of writing Python scripts. Find out more through the following
 links:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Contents:
 
    topspin_install
+   gui_usage
