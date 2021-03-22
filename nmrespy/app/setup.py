@@ -1,5 +1,6 @@
 from matplotlib import figure, patches
 from matplotlib.backends import backend_tkagg
+import re
 
 from .._misc import latex_nucleus
 from .config import *
@@ -9,7 +10,6 @@ from .frames import *
 
 class SetUp(MyToplevel):
     def __init__(self, parent):
-
         self.estimator = parent.estimator
         # Shorthand for unit conversion
         self.conv = lambda value, conversion: \
@@ -318,10 +318,11 @@ class SetUp(MyToplevel):
         self.phase_scales = {}
         self.phase_entries = {}
 
-        for row, name in enumerate(('pivot', 'p0', 'p1')):
+        for row, (name, title) in enumerate(zip(('pivot', 'p0', 'p1'), ('pivot', 'φ₀', 'φ₁'))):
             # Scale titles
+
             self.phase_titles[name] = title = MyLabel(
-                self.phase_frame, text=name, bg=NOTEBOOKCOLOR
+                self.phase_frame, text=title, bg=NOTEBOOKCOLOR
             )
 
             # Pivot scale
@@ -334,14 +335,14 @@ class SetUp(MyToplevel):
             # p0 and p1 scales
             else:
                 troughcolor = 'white'
-                from_ = -np.pi
-                to = np.pi
+                # TODO
+                # PHASE SCALE WIDGET ISSUE
+                # Would like this to be π or 10π, however tkinter seems to
+                # convert the scale range to an int, and adjusts `to` to
+                # accommodate this.
+                from_ = -3.5 if name == 'p0' else -35.
+                to = 3.5 if name == 'p0' else 35.
                 resolution = 0.001
-
-                # p1: set between -10π and 10π rad
-                if name == 'p1':
-                    from_ *= 10
-                    to *= 10
 
             self.phase_scales[name] = scale = MyScale(
                     self.phase_frame,
@@ -353,6 +354,7 @@ class SetUp(MyToplevel):
                     command=(lambda value, name=name:
                         self.update_phase_scale(value, name)),
             )
+
 
             if name == 'pivot':
                 scale.set(self.pivot['idx']['value'])
@@ -552,13 +554,13 @@ class SetUp(MyToplevel):
             value = self.phases[name][unit]['var'].get()
 
             try:
-                # Regex that match numericl values
+                # Regex that matches numerical values
                 regex = r"^[+-]?(\d+(\.\d*)?|\.\d+)$"
-                if re.match(regex, value):
-                    x = float(value)
+                if re.fullmatch(regex, value):
+                    x = float(value)#
                 # Check if numerical value with pi appended
                 # i.e. 1pi, 0.25pi, .25pi, 1.pi etc.
-                elif re.match(regex.replace(r'$', r'pi$'), value):
+                elif re.fullmatch(regex.replace(r'$', r'pi$'), value):
                     x = float(value[:-2]) * np.pi
                 else:
                     raise
@@ -570,10 +572,12 @@ class SetUp(MyToplevel):
                     x = float(value) * 180 / np.pi
 
                 # Check that zero-order correction if between -π and π
-                if -np.pi <= x <= np.pi and name == 'p0':
+                # Actually between -3.5 and 3.5
+                # TODO: see PHASE SCALE WIDGET ISSUE
+                if -3.5 <= x <= 3.5 and name == 'p0':
                     self.phase_scales['p0'].set(x)
                 # Check that first-order correction if between -10π and 10π
-                elif -10 * np.pi <= x <= 10 * np.pi and name == 'p1':
+                elif -35 <= x <= 35 and name == 'p1':
                     self.phase_scales['p1'].set(x)
                 else:
                     raise
