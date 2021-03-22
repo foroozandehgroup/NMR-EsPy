@@ -1,0 +1,45 @@
+# lato.mplstyle
+
+# Requirements:
+# -------------
+# You'll need:
+# a functioning XeLaTeX installation
+# Lato installed
+
+# SAVING FIGURES
+savefig.dpi: 600
+savefig.transparent: True
+
+# FIGURE
+figure.figsize: 3.5, 3
+figure.dpi: 600
+
+# AXES
+axes.linewidth: 1.2
+axes.xmargin: .03
+axes.ymargin: .03
+
+# LINES
+lines.linewidth:  1.0
+lines.markersize: 4
+
+# FONT (XeLaTeX) - Garamond and Garamond math
+text.usetex: True
+pgf.rcfonts: False
+pgf.preamble: \usepackage{fontspec} \setmainfont{Lato}
+pgf.texsystem: xelatex
+
+# COLOR
+axes.prop_cycle: cycler('color', ['E42A00', '0051FE', 'E6AC00', 'A01FDF', '28A428',  'FF7B00'])
+
+# TICKS
+xtick.labelsize: small
+ytick.labelsize: small
+
+# LEGEND
+legend.edgecolor: k
+legend.framealpha: 1.
+legend.facecolor: e3e3e3
+
+# PATCHES
+patch.linewidth: 1.2 # mainly to increase legend linewidth

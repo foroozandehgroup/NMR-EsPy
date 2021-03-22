@@ -56,7 +56,7 @@ Key features of the window are annotated:
    :align: center
    :scale: 60%
 
-Plot navigation
+Plot Navigation
 ---------------
 
 The Plot navigation toolbar is an edited version of Matplotlib's default
@@ -147,3 +147,85 @@ the `Region Selection` tab.
 
 Advanced Estimation Settings
 ----------------------------
+
+Clicking the `Advanced Settings` button will load a window enabling various
+aspects of the estimation routine to be tweaked:
+
+.. image:: ../images_etc/gui/advanced_settings_window.png
+   :align: center
+
+Below is a summary of the meaning of all of these parameters.
+
+.. note::
+
+   For the majority of cases, you should find that the default parameters
+   provided will be suitable.
+
+* **Signal Filter Options**
+
+  The basic idea behind frequency-filtering the data is to apply a band-pass
+  filter to the spectral data, and then to convert spectrum back to the
+  time domain. By applying this filter, a substantial amount of the spectrum
+  become redundant, and so it can be appropriate the "cut" off regions that are
+  not of interest. The basic idea is illustrated in this figure:
+
+  .. image:: ../images_etc/gui/filter_cut/filter_cut.png
+     :align: center
+     :scale: 25%
+
+  + `Cut signal` - Specifies whether or not to perform cutting of the spectrum.
+    By default, this is selected.
+  + `Cut width/filter width ratio` - Specifies how many points the cut signal
+    will be composed of relative to the number of points the filter spans. This
+    is set to 3 by default.
+
+* **Matrix Pencil**
+
+  The Matrix Pencil Method is a singular-value decomposition-based approach
+  for estimating signal parameters. It is used in NMR-EsPy to generate an
+  initial guess for numerical optimisation. It is possible to either manually
+  choose how many oscillators to generate using the Matrix Pencil, or to
+  estimate the number of oscillators using the Minimum Description Length.
+
+  + `Datapoints to consider` - Specifies how many points in the filtered
+    signal to consider. The fewer datapoints, the faster the Matrix Pencil
+    will be. However, if too few datapoints are used, the result may be
+    unreliable. If the signal contains fewer the 4096 (2¹²) points, the
+    full signal will be considered by default. Otherwise, the first 4096 points
+    will be considered.
+  + `Use MDL` - Whether or not to you the Minimum Description Length or not.
+    By default, the MDL will be used.
+  + `Number of Oscillators` - The number of oscillators used in the Matrix
+    Pencil Method. This can only be specified if `Use MDL` is unticked.
+
+* **Nonlinear Programming**
+
+  The result of the Matrix Pencil Method is fed into a nonlinear Programming
+  (NLP) routine to determine the final signal parameter estimate.
+
+  + `Datapoints to consider` - Analogous to the parameter with the same name
+    under **Matrix Pencil**. The cost of running NLP is less susceptible to
+    increases in the number of datapoints, so the full signal will be analysed
+    by default if it comprises 8192 (2¹³) points or fewer. Otherwise, the
+    signal's first 8192 points will be considered by default.
+  + `NLP algorithm` - The optimisation routine. This can be either
+    `Trust Region` or `L-BFGS`. By default, Trust-Region is used. The primary
+    difference between these methods is that for Trust-Region, the
+    `Hessian matrix` (a matrix of second order derivatives) is computed
+    explicitly. In L-BFGS, the Hessian is approximated. The upshot of this
+    is that the Trust-Region routine tends to lead to convergence in fewer
+    iterations, however each iteration takes longer to compute.
+  + `Maximum iterations` - The largest number of iterations to perform before
+    terminating an returning the result. The default value is dependent on
+    the NLP algorithm used (200 if Trust-Region selected), (500 if L-BFGS
+    selected).
+  + `Optimise phase variance` - Specifies whether to consider the variance of
+    oscillator phases during the estimation routine. If your data is derived
+    from a well-phased spectrum, it is advised you have this selected.
+  + `Amplitude threshold` - Sets a threshold, such that any oscillator in the
+    final result with an amplitude below the threshold will be removed. The
+    threshold is defined as
+    :math:`a_{\mathrm{thold}} \lVert\boldsymbol{a}\rVert_2` where
+    :math:`\lVert\boldsymbol{a}\rVert_2` is the Euclidian (L2) norm of the
+    oscillator amplitudes, and :math:`a_{\mathrm{thold}}` is the specified
+    threshold. By default, no such threshold will be applied to the data.
