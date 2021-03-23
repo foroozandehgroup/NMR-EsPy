@@ -510,18 +510,6 @@ class AdvancedSettings(MyToplevel):
         self.close_button.grid(row=0, column=2, padx=10, pady=(20,10), sticky='e')
 
 
-    def _check_float(self, value):
-
-        try:
-            float_value = float(value)
-            return True
-        except:
-            return False
-
-    def _reset(self, obj):
-        obj['var'].set(set(obj['value']))
-
-
     def ud_cut(self):
 
         if int(self.master.cut['var'].get()):
@@ -538,7 +526,7 @@ class AdvancedSettings(MyToplevel):
 
         # check the value can be interpreted as a float
         str_value = self.master.cut_ratio['var'].get()
-        if self._check_float(str_value) and float(str_value) >= 1.0:
+        if check_float(str_value) and float(str_value) >= 1.0:
             float_value = float(str_value)
             self.master.cut_ratio['value'] = float_value
             self.master.ud_max_points()
@@ -550,7 +538,7 @@ class AdvancedSettings(MyToplevel):
     def ud_points(self, name):
 
         str_value = self.master.trim[name]['var'].get()
-        if self.check_int(str_value) and \
+        if check_int(str_value) and \
         0 < int(str_value) <= self.master.max_points['value']:
             int_value = int(str_value)
             self.master.trim[name]['value'] = int_value
@@ -569,17 +557,19 @@ class AdvancedSettings(MyToplevel):
         if int(self.master.mdl['var'].get()):
             self.master.mdl['value'] = True
             self.oscillator_entry['state'] = 'disabled'
+            self.oscillator_entry.black_highlight()
             self.master.m['value'] = 0
             self.master.m['var'].set('')
         else:
             self.master.mdl['value'] = False
             self.oscillator_entry['state'] = 'normal'
+            self.oscillator_entry.key_press()
 
 
     def ud_oscillators(self):
 
         str_value = self.master.m['var'].get()
-        if self.check_int(str_value) and int(str_value) > 0:
+        if check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
             self.master.m['value'] = int_value
             self.master.m['var'].set(str(int_value))
@@ -587,6 +577,7 @@ class AdvancedSettings(MyToplevel):
         else:
             if self.master.m['value'] == 0:
                 self.master.m['var'].set('')
+                self.oscillator_entry.key_press()
             else:
                 self.master.m['var'].set(str(self.master.m['value']))
 
@@ -594,7 +585,7 @@ class AdvancedSettings(MyToplevel):
     def ud_max_iterations(self):
 
         str_value = self.master.maxit['var'].get()
-        if self.check_int(str_value) and int(str_value) > 0:
+        if check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
             self.master.maxit['value'] = int_value
             self.master.maxit['var'].set(str(int_value))
@@ -610,8 +601,8 @@ class AdvancedSettings(MyToplevel):
         method = self.master.method['var'].get()
         if method == 'Trust Region':
             self.master.method['value'] = 'trust_region'
-            self.master.maxit['value'] = 100
-            self.master.maxit['var'].set('100')
+            self.master.maxit['value'] = 200
+            self.master.maxit['var'].set('200')
 
         elif method == 'L-BFGS':
             self.master.method['value'] = 'lbfgs'
@@ -640,21 +631,21 @@ class AdvancedSettings(MyToplevel):
 
 
     def ud_amp_thold(self):
-
+        # check the value can be interpreted as a float
         str_value = self.master.amp_thold['var'].get()
-
-        if self._check_float(str_value):
+        if check_float(str_value) and 0.0 <= float(str_value) < 1.0:
             float_value = float(str_value)
+            self.master.amp_thold['value'] = float_value
 
-            if 0.0 <= float_value < 1.0:
-                self.master.amp_thold['value'] = float_value
-                self.master.ud_max_points()
-                return
-
-        self._reset(self.master.amp_thold)
+        else:
+            self.master.amp_thold['var'].set(str(self.master.amp_thold['value']))
 
 
     def close(self):
-        valid = self.master.check_invalid_entries(self.main_frame)
+        valid = check_invalid_entries(self.main_frame)
         if valid:
             self.destroy()
+        else:
+            msg = "Some parameters have not been validated."
+            WarnFrame(self, msg=msg)
+            return

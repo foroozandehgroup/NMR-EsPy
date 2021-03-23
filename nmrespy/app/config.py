@@ -156,6 +156,17 @@ def check_int(value):
         return False
 
 
+def check_float(value):
+
+    try:
+        float_value = float(value)
+        return True
+
+    except:
+        return False
+
+
+
 def check_invalid_entries(master):
     """Check whether any entry widgets in a certain frame have been
     assigned a red colour. The implication of this is that certain
@@ -166,9 +177,9 @@ def check_invalid_entries(master):
         widgets = master.winfo_children()
         for widget in widgets:
             if widget.winfo_children():
-                # Ensure entry widgets are not counted multiple times
-                new_widgets = list(set(get_widgets(widget)) | set(widgets))
-                widgets = widgets + new_widgets
+                # Get intersection of current widgets and children of
+                # currently considered widget
+                widgets = list(set(get_widgets(widget)) | set(widgets))
 
         return widgets
 

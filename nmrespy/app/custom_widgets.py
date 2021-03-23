@@ -115,7 +115,7 @@ class MyEntry(tk.Entry):
     these should be provided as a tuple into ``return_args``.
     The upshot of these commands is the text becomes red once the user
     changes the input, and goes back to black once <Return> has been
-    pressed. The idea is to warn the user that they haven't saved their
+    pressed. The idea is to warn the user that they haven't validated their
     changes since altering the entry widget.
     """
 
@@ -144,10 +144,13 @@ class MyEntry(tk.Entry):
         self['highlightcolor'] = 'red'
         self['highlightbackground'] = 'red'
 
-    def return_press(self):
+    def black_highlight(self):
         self['fg'] = 'black'
         self['highlightcolor'] = 'black'
         self['highlightbackground'] = 'black'
+
+    def return_press(self):
+        self.black_highlight()
         self.return_command(*self.return_args)
 
 class MyOptionMenu(tk.OptionMenu):
