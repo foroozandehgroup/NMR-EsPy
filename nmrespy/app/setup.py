@@ -1,3 +1,4 @@
+from datetime import datetime
 from matplotlib import figure, patches
 from matplotlib.backends import backend_tkagg
 import re
@@ -770,10 +771,12 @@ class SetUp(MyToplevel):
             trim=trim_nlp, max_iterations=maxit, method=method,
             phase_variance=phase_variance, amp_thold=amp_thold,
         )
-        # Pickle result class
-        self.estimator.to_pickle(
-            path=str(TMPPATH / 'tmp'), force_overwrite=True
-        )
+
+        # Pickle result class to the temporary directory
+        dt = datetime.now()
+        timestamp = f"{dt.year}{dt.month}{dt.day}{dt.hour}{dt.minute}{dt.second}"
+        tmppath = str(TMPPATH / timestamp)
+        self.estimator.to_pickle(path=tmppath, force_overwrite=True)
 
         self.destroy()
 
