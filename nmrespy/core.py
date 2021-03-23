@@ -94,8 +94,8 @@ class Estimator:
         return wrapper
 
 
-    @staticmethod
-    def new_bruker(dir, ask_convdta=True):
+    @classmethod
+    def new_bruker(cls, dir, ask_convdta=True):
         """Generate an instance of :py:class:`Estimator` from a
         Bruker-formatted data directory.
 
@@ -146,14 +146,14 @@ class Estimator:
         origin={'method':'new_bruker', 'args':locals()}
         info = load_bruker(dir, ask_convdta=ask_convdta)
 
-        return Estimator(
+        return cls(
             info['source'], info['data'], info['directory'],
             info['sweep_width'], info['offset'], info['transmitter_frequency'],
             info['nuclei'], info['binary_format'], _origin=origin
         )
 
-    @staticmethod
-    def new_synthetic_from_data(data, sw, offset=None, sfo=None):
+    @classmethod
+    def new_synthetic_from_data(cls, data, sw, offset=None, sfo=None):
         """Generate an instance of :py:class:`Estimator` given a NumPy
         array, and (at the bare minimum), the sweep width.
 
@@ -241,13 +241,13 @@ class Estimator:
 
         ArgumentChecker(components, dim)
 
-        return Estimator(
+        return cls(
             'synthetic', data, None, sw, offset, sfo, None, None,
         )
 
 
-    @staticmethod
-    def from_pickle(path):
+    @classmethod
+    def from_pickle(cls, path):
         """Loads an intance of :py:class:`Estimator`, which was saved
         previously using :py:meth:`to_pickle`.
 
