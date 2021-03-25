@@ -164,18 +164,42 @@ class EditParametersFrame(MyToplevel):
         self.add_button.grid(row=0, column=0, sticky='ew')
 
         # Remove oscillator(s)
-        self.remove_button = MyButton(self.row1, text='Remove', command=self.remove)
+        self.remove_button = MyButton(self.row1, text='Remove',
+                                      state='disabled', command=self.remove)
         self.remove_button.grid(row=0, column=1, sticky='ew', padx=(10,0))
 
         # Merge oscillators
-        self.merge_button = MyButton(self.row1, text='Merge', command=self.merge)
+        self.merge_button = MyButton(self.row1, text='Merge',
+                                     state='disabled', command=self.merge)
         self.merge_button.grid(row=0, column=2, sticky='ew', padx=(10,0))
 
+        # Split oscillator
+        self.split_button = MyButton(self.row1, text='Split',
+                                     state='disabled', command=self.split)
+        self.split_button.grid(row=0, column=3, sticky='ew', padx=(10,0))
 
-        # TODO
-        # based on the number of rows selected, activate/deactivate
-        # buttons accordingly
-        # self.activate_buttons()
+        self.table.active_labels.trace('w', self.configure_button_states)
+
+
+    def configure_button_states(self, *args):
+        # Number of curently selected oscillators
+        number = self.table.active_labels.get()
+
+        if number == 0:
+            self.remove_button['state'] = 'disabled'
+            self.merge_button['state'] = 'disabled'
+            self.split_button['state'] = 'disabled'
+
+        elif number == 1:
+            self.remove_button['state'] = 'normal'
+            self.merge_button['state'] = 'disabled'
+            self.split_button['state'] = 'normal'
+
+        else:
+            self.remove_button['state'] = 'normal'
+            self.merge_button['state'] = 'normal'
+            self.split_button['state'] = 'disabled'
+
 
     # TODO
     def activate_buttons(self):
@@ -199,6 +223,10 @@ class EditParametersFrame(MyToplevel):
         merge_indices = self.table.get_selected_rows()
         self.ctrl.estimator.merge_oscillators(merge_indices)
         self.changed_result()
+
+
+    def split(self):
+        print('TODO')
 
 
     def changed_result(self):
@@ -259,10 +287,9 @@ class AddFrame(MyToplevel):
 
 
     def add_row(self):
-        # Add empty row to table
-        self.table.value_vars.append(4 * [value_var_dict('', '')])
-        # Regenerate table
-        self.table.reconstruct()
+        contents = self.table.get_values()
+        contents.append(4 * [''])
+        self.table.reconstruct(contents)
         # Set all entry widgets that are empty to red:
         # Loop over each table row
         for entries in self.table.entries:
@@ -282,8 +309,8 @@ class AddFrame(MyToplevel):
         new_oscillators = np.array(self.table.get_values())
         # Convert from ppm to hz
         new_oscillators[:, 2] = self.ctrl.estimator._converter.convert(
-            new_oscillators[:, 2], 'ppm->hz',
-        )
+            [new_oscillators[:, 2]], 'ppm->hz',
+        )[0]
         # Add new oscillators to result
         result = np.vstack((self.ctrl.estimator.get_result(), new_oscillators))
         # Order by frequency

@@ -67,16 +67,9 @@ class MyButton(tk.Button):
             'width', 'highlightbackground', 'bg',
             'disabledforeground',
         )
-        values = (8, 'black', BUTTONDEFAULT, '#a0a0a0')
+        values = (8, 'black', BUTTONDEFAULT, BUTTONDEFAULT)
 
         generate(self, keys, values, kwargs)
-
-        # there isnt a disabledbackground variable for tk.Button
-        # for some reason
-        # have to manually change color upon change of state
-        if self['state'] == 'disabled':
-            self['bg'] = '#e0e0e0'
-
 
 
 class MyCheckbutton(tk.Checkbutton):
@@ -247,6 +240,8 @@ class MyTable(MyFrame):
         self.titles = titles
         self.region = region[0]
         self.entry_state = entry_state
+        self.active_labels = tk.IntVar()
+        self.active_labels.set(0)
 
         self.create_value_vars(contents)
         self.construct()
@@ -320,8 +315,12 @@ class MyTable(MyFrame):
             self.entries.append(ent_row)
 
 
+
+
     def reconstruct(self, contents):
         """Regenerate table, given a new contents array"""
+        self.active_labels.set(0)
+
         for widget in self.winfo_children():
             widget.destroy()
 
@@ -384,8 +383,12 @@ class MyTable(MyFrame):
         for entry in self.entries[idx]:
             entry['state'] = state
 
+        self.active_labels.set(len(self.get_selected_rows()))
+
+
     def get_selected_rows(self):
         return [idx for idx, lab in enumerate(self.labels) if lab['fg'] == TABLESELECTFGCOLOR]
+
 
     def check_param(self, value_var, type_, entry):
         """Given a StringVar, ensure the value corresponds to a valid
@@ -437,6 +440,7 @@ class MyTable(MyFrame):
 
         return values
 
+
     def check_red_entry(self):
         """Determines whether any of the entry widgets are red, indicated
         they contain unvalidated contents"""
@@ -445,6 +449,7 @@ class MyTable(MyFrame):
                 if entry['fg'] == 'red':
                     return True
         return False
+
 
     @staticmethod
     def _strip_zeros(number):
