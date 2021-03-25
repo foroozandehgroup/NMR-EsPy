@@ -258,7 +258,7 @@ class MyTable(MyFrame):
             value_var_row = []
             for param in osc:
                 if isinstance(param, (int, float)):
-                    value_var = value_var_dict(param, f"{param:.5f}")
+                    value_var = value_var_dict(param, self._strip_zeros(f"{param:.5f}"))
                 else:
                     value_var = value_var_dict(param, param)
                 value_var_row.append(value_var)
@@ -384,6 +384,8 @@ class MyTable(MyFrame):
         for entry in self.entries[idx]:
             entry['state'] = state
 
+    def get_selected_rows(self):
+        return [idx for idx, lab in enumerate(self.labels) if lab['fg'] == TABLESELECTFGCOLOR]
 
     def check_param(self, value_var, type_, entry):
         """Given a StringVar, ensure the value corresponds to a valid
@@ -411,7 +413,39 @@ class MyTable(MyFrame):
             pass
 
         if isinstance(value_var['value'], (int, float)):
-            value_var['var'].set(f"{value_var['value']:.5f}")
+            value_var['var'].set(self._strip_zeros(f"{value_var['value']:.5f}"))
         else:
+            # The only time the result shouldn't be a numerical value
+            # if when it is an empty string (this crops up in result.AddFrame)
+            # In this case, want to re-colour red as the entry widget should not
+            # be empty
             value_var['var'].set(value_var['value'])
             entry.key_press()
+
+
+    def get_values(self):
+        """Takes a nested list of value_var dicts and returns a list of the
+        same size, just containing the values"""
+        value_vars = self.value_vars
+        values = []
+
+        for row in value_vars:
+            value_row = []
+            for element in row:
+                value_row.append(element['value'])
+            values.append(value_row)
+
+        return values
+
+    def check_red_entry(self):
+        """Determines whether any of the entry widgets are red, indicated
+        they contain unvalidated contents"""
+        for row in self.entries:
+            for entry in row:
+                if entry['fg'] == 'red':
+                    return True
+        return False
+
+    @staticmethod
+    def _strip_zeros(number):
+        return number.rstrip('0').rstrip('.')

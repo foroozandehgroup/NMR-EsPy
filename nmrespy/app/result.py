@@ -161,7 +161,16 @@ class EditParametersFrame(MyToplevel):
 
         # Add oscillator(s)
         self.add_button = MyButton(self.row1, text='Add', command=self.add)
-        self.add_button.grid(row=0, column=0, sticky='ew', padx=(0,10))
+        self.add_button.grid(row=0, column=0, sticky='ew')
+
+        # Remove oscillator(s)
+        self.remove_button = MyButton(self.row1, text='Remove', command=self.remove)
+        self.remove_button.grid(row=0, column=1, sticky='ew', padx=(10,0))
+
+        # Merge oscillators
+        self.merge_button = MyButton(self.row1, text='Merge', command=self.merge)
+        self.merge_button.grid(row=0, column=2, sticky='ew', padx=(10,0))
+
 
         # TODO
         # based on the number of rows selected, activate/deactivate
@@ -172,11 +181,33 @@ class EditParametersFrame(MyToplevel):
     def activate_buttons(self):
         pass
 
+
     def add(self):
         """Loads a window for adding new oscillators"""
         add_frame = AddFrame(self)
-        add_frame.wait_window()
-        print(self.ctrl.estimator.get_result())
+
+
+    def remove(self):
+        """Removes selected oscillators from the result"""
+        rm_indices = self.table.get_selected_rows()
+        self.ctrl.estimator.remove_oscillators(rm_indices)
+        self.changed_result()
+
+
+    def merge(self):
+        """Removes selected oscillators from the result"""
+        merge_indices = self.table.get_selected_rows()
+        self.ctrl.estimator.merge_oscillators(merge_indices)
+        self.changed_result()
+
+
+    def changed_result(self):
+        """Regenerate parameter table and plot to reflect change in
+        estimator.result"""
+        self.table.reconstruct(
+            contents=self.ctrl.estimator.get_result(freq_unit='ppm')
+        )
+        self.master.update_plot()
 
 
 class AddFrame(MyToplevel):
@@ -231,8 +262,8 @@ class AddFrame(MyToplevel):
         # Add empty row to table
         self.table.value_vars.append(4 * [value_var_dict('', '')])
         # Regenerate table
-        self.table.construct(reconstruct=True)
-        # Set all entry widgets that are empty to red
+        self.table.reconstruct()
+        # Set all entry widgets that are empty to red:
         # Loop over each table row
         for entries in self.table.entries:
             # Loop over each entry in a row
@@ -242,28 +273,24 @@ class AddFrame(MyToplevel):
 
 
     def confirm(self):
-        contents = self.table.value_vars
-        new_oscillators = np.zeros((len(contents), 4))
-        for i, osc in enumerate(contents):
-            for j, param in enumerate(osc):
-                new_oscillators[i, j] = param['value']
+        if self.table.check_red_entry():
+            msg = "Some parameters have not been validated."
+            WarnFrame(self, msg=msg)
+            return
 
-        # convert from ppm to hz
+        # Extract parameters from table
+        new_oscillators = np.array(self.table.get_values())
+        # Convert from ppm to hz
         new_oscillators[:, 2] = self.ctrl.estimator._converter.convert(
             new_oscillators[:, 2], 'ppm->hz',
         )
+        # Add new oscillators to result
+        result = np.vstack((self.ctrl.estimator.get_result(), new_oscillators))
+        # Order by frequency
+        self.ctrl.estimator.result = result[np.argsort(result[:, 2])]
 
-        self.ctrl.estimator.result = np.vstack(
-            (self.ctrl.estimator.get_result(), new_oscillators)
-        )
-        self.ctrl.estimator.result = \
-            self.ctrl.estimator.result[np.argsort(self.ctrl.estimator.result[:, 2])]
-
-        self.master.table.reconstruct(contents=self.ctrl.estimator.get_result(freq_unit='ppm'))
-
-        self.master.master.update_plot()
+        self.master.changed_result()
         self.destroy()
-
 
 
 
@@ -274,7 +301,6 @@ class SaveFrame(MyToplevel):
         super().__init__(master)
 
         self.grab_set()
-
 
         # --- Result figure ----------------------------------------------
         self.fig_frame = MyFrame(self)
