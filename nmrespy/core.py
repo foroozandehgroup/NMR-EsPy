@@ -543,7 +543,7 @@ class Estimator:
             sfo = self._check_if_none('sfo', kill)
             if sfo is None:
                 return None
-            return self._converter.convert(self.sw, 'hz->ppm')
+            return self._converter.convert(copy.deepcopy(self.sw), 'hz->ppm')
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
@@ -584,7 +584,7 @@ class Estimator:
             sfo = self._check_if_none('sfo', kill)
             if sfo is None:
                 return None
-            return self._converter.convert(self.offset, 'hz->ppm')
+            return self._converter.convert(copy.deepcopy(self.offset), 'hz->ppm')
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
@@ -769,7 +769,7 @@ class Estimator:
         else:
             errmsg = "nonlinear_programming"
 
-        array = self._check_if_none(name, kill, errmsg)
+        array = copy.deepcopy(self._check_if_none(name, kill, errmsg))
 
         if freq_unit == 'hz':
             return array
