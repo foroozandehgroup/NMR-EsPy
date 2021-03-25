@@ -13,23 +13,13 @@ from .frames import *
 class Result(MyToplevel):
     def __init__(self, master):
 
-        self.estimator = master.estimator
-        # Generate figure of result
-        self.result_plot = self.estimator.plot_result()
-        self.result_plot.fig.set_size_inches(6, 3.5)
-        self.result_plot.fig.set_dpi(170)
-
-        # Prevent panning outside the selected region
-        xlim = self.result_plot.ax.get_xlim()
-        Restrictor(self.result_plot.ax, x=lambda x: x<= xlim[0])
-        Restrictor(self.result_plot.ax, x=lambda x: x>= xlim[1])
-
-        # --- Construction of the result GUI ------------------------------
         super().__init__(master)
 
         self.resizable(True, True)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
+
+        self.create_plot()
 
         # Canvas for figure
         self.canvas = backend_tkagg.FigureCanvasTkAgg(
@@ -58,6 +48,43 @@ class Result(MyToplevel):
         self.button_frame.grid(
             row=1, column=1, rowspan=2, sticky='se', padx=10, pady=10,
         )
+
+
+    def create_plot(self):
+        # Generate figure of result
+        self.result_plot = self.master.estimator.plot_result()
+        self.result_plot.fig.set_size_inches(6, 3.5)
+        self.result_plot.fig.set_dpi(170)
+
+        # Prevent panning outside the selected region
+        xlim = self.result_plot.ax.get_xlim()
+        Restrictor(self.result_plot.ax, x=lambda x: x<= xlim[0])
+        Restrictor(self.result_plot.ax, x=lambda x: x>= xlim[1])
+
+
+    def update_plot(self):
+        plot = self.master.estimator.plot_result()
+        ax, lines, labels = plot.ax, plot.lines, plot.labels
+
+        # Update y-axis limits
+        self.result_plot.ax.set_ylim(ax.get_ylim())
+        # Clear current objects
+        self.result_plot.ax.lines = []
+        self.result_plot.ax.texts = []
+
+        for line in lines.values():
+            self.result_plot.ax.plot(
+                line.get_xdata(), line.get_ydata(), color=line.get_color(),
+                lw=line.get_lw(),
+            )
+
+        for label in labels.values():
+            self.result_plot.ax.text(
+                *label.get_position(), label.get_text(),
+                fontsize=label.get_fontsize(),
+            )
+
+        self.canvas.draw()
 
 
 class ResultButtonFrame(RootButtonFrame):
@@ -89,141 +116,52 @@ class EditParametersFrame(MyToplevel):
     optimiser"""
 
     def __init__(self, master):
-
         super().__init__(master)
+
+        # Reference to NMREsPyApp class: gives access to estimator
+        self.ctrl = self.master.master
+
         # Prevent access to other windows
         self.grab_set()
-        
+
         # Store initial parameter array incase the user want to restore
+        # after making changes
         self.previous = {
-            'result' : copy.deepcopy(master.estimator.get_result()),
-            'errors' : copy.deepcopy(master.estimator.get_errors()),
+            'result' : copy.deepcopy(self.ctrl.estimator.get_result()),
+            'errors' : copy.deepcopy(self.ctrl.estimator.get_errors()),
         }
 
         # --- Parameter table --------------------------------------------
-        self.table_frame = MyFrame(self)
-        self.table_frame.grid(column=0, row=0, padx=10, pady=(10,0))
+        titles = ['Amplitude', 'Phase (rad)', 'Frequency (ppm)', 'Damping (s⁻¹)']
+        # Parameters in ppm - to be added to the table
+        contents = self.ctrl.estimator.get_result(freq_unit='ppm')
+        # Region of interest, in ppm. Used to ensure any newly frequency
+        # satisfies the selected region of interest
+        region = self.ctrl.estimator.get_filter_info().get_region(unit='ppm')
 
-        # Generate table
-        self.construct_table(reconstruct=False)
+        self.table = MyTable(
+            self, contents=contents, titles=titles, region=region,
+            entry_state='disabled',
+        )
 
+        self.table.grid(column=0, row=0, padx=10, pady=(10,0))
 
-    def construct_table(self, reconstruct):
-        """Generate a table of the parameters. If `reconstruct` is true,
-        destroy all the previous widgets in `self.table_frame` and create
-        a new table to reflect the change in parameters"""
+        # --- Buttons ----------------------------------------------------
+        self.button_frame = MyFrame(self)
+        self.button_frame.grid(row=1, column=0, pady=10, padx=10, sticky='ew')
 
-        if reconstruct:
-            for widget in self.table_frame.winfo_children():
-                widget.destroy()
+        # Construct two rows to place buttons
+        # Row 1: Edit parameter estimate:
+        # Add, remove, merge, split, manual edit
+        self.row1 = MyFrame(self.button_frame)
+        self.row1.grid(row=0, column=0, sticky='ew')
+        # Row 2: Re-run optimiser, undo changes, close window
+        self.row2 = MyFrame(self.button_frame)
+        self.row2.grid(row=1, column=0, sticky='ew')
 
-        # Column titles
-        titles = ('#', 'Amplitude', 'Phase (rad)', 'Frequency (ppm)', 'Damping (s⁻¹)')
-        for column, title in enumerate(titles):
-            padx = 0 if column == 0 else (5, 0)
-            pady = (10, 0)
-
-            MyLabel(self.table_frame, text=title).grid(
-                row=0, column=column, padx=padx, pady=pady, sticky='w',
-            )
-
-        # Store oscillator labels, entry widgets, and string variables
-        self.table = {}
-        self.table['labs'] = []
-        self.table['ents'] = []
-        self.table['vars'] = []
-
-        for i, osc in enumerate(self.master.estimator.get_result(freq_unit='ppm')):
-            # --- Oscillator labels --------------------------------------
-            # These act as a oscillator selection widgets
-            lab = MyLabel(self.table_frame, text=str(i+1))
-            # Bind to left mouse click: select oscillator
-            lab.bind("<Button-1>", lambda ev, i=i: self.left_click(i))
-            # Bind to left mouse click + shift: select oscillator, keep
-            # other already selected oscillators still selected.
-            lab.bind('<Shift-Button-1>', lambda ev, i=i: self.shift_left_click(i))
-            lab.grid(row=i+1, column=0, ipadx=10, ipady=2, pady=(5,0))
-            self.table['labs'].append(lab)
-
-            ent_row = []
-            var_row = []
-
-            for j, param in enumerate(osc):
-                var = tk.StringVar()
-                var.set(f"{param:.5f}")
-                var_row.append(var)
-
-                ent = MyEntry(
-                    self.table_frame, return_command=self.check_param,
-                    return_args=(i, j), textvariable=var, state='disabled',
-                    width=14,
-                )
-
-                padx = (5, 0) if j == 3 else (5, 10)
-                pady = (5, 0)
-
-                ent.grid(row=i+1, column=j+1, padx=padx, pady=pady)
-                ent_row.append(ent)
-
-            self.table['ents'].append(ent_row)
-            self.table['vars'].append(var_row)
-
-
-
-    def left_click(self, idx):
-        """Deals with a <Button-1> event on a label.
-
-        Parameters
-        ----------
-        idx : int
-            Equivalent to oscillator label value - 1.
-
-        Notes
-        -----
-        This will set the background of the selected label to blue, and
-        foreground to white. Entry widgets in the corresponding row are set to
-        read-only mode. All other oscillator labels widgets are set to "disabled"
-        mode."""
-
-        # Disable all rows that do not match the index
-        for i, label in enumerate(self.table['labs']):
-            if i != idx and label['bg'] == '#0000ff':
-
-                label['bg'] = BGCOLOR
-                label['fg'] = '#000000'
-                for entry in self.table['ents'][i]:
-                    entry['state'] = 'disabled'
-
-
-        # Proceed to highlight the selected row
-        self.shift_left_click(idx)
-
-
-    def shift_left_click(self, idx):
-        """Deals with a <Shift-Button-1> event on a label.
-
-        Parameters
-        ----------
-        index : int
-            Equivalent to oscillator label value - 1.
-
-        Notes
-        -----
-        This will set the background of the selected label to blue, and
-        foreground to white.  Entry widgets in the corresponding row are set
-        to read-only mode. Other rows are unaffected.
-        """
-        if self.table['labs'][idx]['fg'] == '#000000':
-            fg, bg, state = '#ffffff', '#0000ff', 'readonly'
-        else:
-            fg, bg, state  = '#000000', BGCOLOR, 'disabled'
-
-
-        self.table['labs'][idx]['fg'] = fg
-        self.table['labs'][idx]['bg'] = bg
-
-        for entry in self.table['ents'][idx]:
-            entry['state'] = state
+        # Add oscillator(s)
+        self.add_button = MyButton(self.row1, text='Add', command=self.add)
+        self.add_button.grid(row=0, column=0, sticky='ew', padx=(0,10))
 
         # TODO
         # based on the number of rows selected, activate/deactivate
@@ -234,9 +172,98 @@ class EditParametersFrame(MyToplevel):
     def activate_buttons(self):
         pass
 
-    # TODO
-    def check_param(self):
-        pass
+    def add(self):
+        """Loads a window for adding new oscillators"""
+        add_frame = AddFrame(self)
+        add_frame.wait_window()
+        print(self.ctrl.estimator.get_result())
+
+
+class AddFrame(MyToplevel):
+    """Toplevel for adding new oscillators to result"""
+
+    def __init__(self, master):
+
+        super().__init__(master)
+        # NMREsPyApp instance
+        self.ctrl = self.master.master.master
+
+        # Prevent interacting with other windows
+        self.grab_set()
+
+        titles = ['Amplitude', 'Phase (rad)', 'Frequency (ppm)', 'Damping (s⁻¹)']
+        # Empty entry boxes to begin with
+        contents = [['', '', '', '']]
+        region = self.ctrl.estimator.get_filter_info().get_region(unit='ppm')
+
+        self.table = MyTable(
+            self, contents=contents, titles=titles, region=region,
+        )
+
+        # Turn all widgets red initially to indicate they need filling in
+        for entry, value_var in zip(self.table.entries[0], self.table.value_vars[0]):
+            entry.key_press()
+
+        self.table.grid(column=0, row=0, padx=10, pady=(10,0))
+
+        self.button_frame = MyFrame(self)
+        self.button_frame.grid(row=1, column=0, padx=10, pady=10)
+
+        self.add_button = MyButton(
+            self.button_frame, text='Add', command=self.add_row,
+        )
+        self.add_button.grid(row=0, column=0)
+
+        self.cancel_button = MyButton(
+            self.button_frame, text='Cancel', command=self.destroy,
+            bg=BUTTONRED,
+        )
+        self.cancel_button.grid(row=0, padx=(5,0), column=1)
+
+        self.confirm_button = MyButton(
+            self.button_frame, text='Confirm', command=self.confirm,
+            bg=BUTTONGREEN,
+        )
+        self.confirm_button.grid(row=0, padx=(5,0), column=2)
+
+
+    def add_row(self):
+        # Add empty row to table
+        self.table.value_vars.append(4 * [value_var_dict('', '')])
+        # Regenerate table
+        self.table.construct(reconstruct=True)
+        # Set all entry widgets that are empty to red
+        # Loop over each table row
+        for entries in self.table.entries:
+            # Loop over each entry in a row
+            for entry in entries:
+                if entry.get() == '':
+                    entry.key_press()
+
+
+    def confirm(self):
+        contents = self.table.value_vars
+        new_oscillators = np.zeros((len(contents), 4))
+        for i, osc in enumerate(contents):
+            for j, param in enumerate(osc):
+                new_oscillators[i, j] = param['value']
+
+        # convert from ppm to hz
+        new_oscillators[:, 2] = self.ctrl.estimator._converter.convert(
+            new_oscillators[:, 2], 'ppm->hz',
+        )
+
+        self.ctrl.estimator.result = np.vstack(
+            (self.ctrl.estimator.get_result(), new_oscillators)
+        )
+        self.ctrl.estimator.result = \
+            self.ctrl.estimator.result[np.argsort(self.ctrl.estimator.result[:, 2])]
+
+        self.master.table.reconstruct(contents=self.ctrl.estimator.get_result(freq_unit='ppm'))
+
+        self.master.master.update_plot()
+        self.destroy()
+
 
 
 

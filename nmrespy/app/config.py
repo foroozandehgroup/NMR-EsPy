@@ -24,6 +24,8 @@ BUTTONORANGE = '#ffb861'
 BUTTONRED = '#ff9894'
 BUTTONDEFAULT = '#6699cc'
 READONLYENTRYCOLOR = '#cde6ff'
+TABLESELECTBGCOLOR = '#0000ff'
+TABLESELECTFGCOLOR = '#ffffff'
 FIDCOLORS = [
     '#e6261f',
     '#eb7532',
@@ -164,7 +166,6 @@ def check_float(value):
 
     except:
         return False
-
 
 
 def check_invalid_entries(master):

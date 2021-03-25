@@ -476,13 +476,13 @@ class NmrespyPlot:
     def adjust_axes_position(self, top=None, bottom=None, left=None, right=None):
         """Adjust the position of the axes.
 
-        Parameters
-        ----------
         All the parameters should be between `0` and `1`. `0` denotes
         the left/bottom edge of the figure. `1` denotes the right/top
         edge of the figure. If a parameter is set to `None`, no change
         will occur to that position.
 
+        Parameters
+        ----------
         top : float or None, default: None
             Must be be larger than `bottom`
 

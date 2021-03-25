@@ -9,6 +9,8 @@
 import pathlib
 import tkinter as tk
 
+import numpy as np
+
 from nmrespy._errors import TwoDimUnsupportedError
 from nmrespy.core import Estimator
 from nmrespy.app.frames import DataType
@@ -81,6 +83,8 @@ class NMREsPyApp(tk.Tk):
         # For now, I'll just use this force-exit of the program, though it's
         # probably not ideal:
         exit()
+
+
 
 if __name__ == '__main__':
 

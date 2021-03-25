@@ -136,8 +136,11 @@ class MyEntry(tk.Entry):
         generate(self, keys, values, kwargs)
 
         if self.return_command:
-            self.bind('<Key>', lambda event: self.key_press())
-            self.bind('<Return>', lambda event: self.return_press())
+            self.bind_command()
+
+    def bind_command(self):
+        self.bind('<Key>', lambda event: self.key_press())
+        self.bind('<Return>', lambda event: self.return_press())
 
     def key_press(self):
         self['fg'] = 'red'
@@ -237,58 +240,178 @@ class MyNavigationToolbar(NavigationToolbar2Tk):
 
 class MyTable(MyFrame):
 
-    def __init__(self, parent, titles, contents, **kwargs):
+    def __init__(self, master, contents, titles, region,
+                 entry_state='normal'):
 
-        super().__init__(parent, **kwargs)
+        super().__init__(master)
+        self.titles = titles
+        self.region = region[0]
+        self.entry_state = entry_state
 
-        self.table_frame = MyFrame(self)
-        self.table_frame.grid(column=0, row=0, padx=(0,10), pady=10)
+        self.create_value_vars(contents)
+        self.construct()
 
-        self.title_labels = {}
-        self.labels = {}
-        self.entries = {}
 
-        rows, columns = len(contents), len(contents[0])
+    def create_value_vars(self, contents):
+        self.value_vars = []
+        for osc in contents:
+            value_var_row = []
+            for param in osc:
+                if isinstance(param, (int, float)):
+                    value_var = value_var_dict(param, f"{param:.5f}")
+                else:
+                    value_var = value_var_dict(param, param)
+                value_var_row.append(value_var)
+            self.value_vars.append(value_var_row)
 
-        max_width = 0
 
-        for row in range(rows+1):
-            for column in range(columns+1):
-                if row != 0 and column == 0:
-                    # oscillator labels (1, 2, 3, etc.)
-                    self.labels[row] = MyLabel(
-                        self.table_frame, text=f"{row}", bold=True,
-                    )
+    def construct(self):
+        """Generate a table of the parameters."""
 
-                    if row == rows + 1:
-                        pady = 2
-                    else:
-                        pady = (2, 0)
+        # Column titles
+        for column, title in enumerate(['#'] + self.titles):
+            padx = 0 if column == 0 else (5, 0)
+            sticky = '' if column == 0 else 'w'
+            MyLabel(self, text=title).grid(
+                row=0, column=column, padx=padx, sticky=sticky,
+            )
 
-                    self.labels[row].grid(
-                        column=column, row=row, ipadx=10, pady=pady, sticky='w',
-                    )
+        # Store entry widgets and string variables
+        self.labels = []
+        self.entries = []
 
-                elif row == 0 and column != 0:
-                    self.table_frame.columnconfigure(column, weight=1)
-                    # column titles
-                    text = titles[column-1]
-                    self.title_labels[text] = MyLabel(
-                        self.table_frame, text=text, bold=True,
-                    )
+        for i, value_var_row in enumerate(self.value_vars):
+            # --- Oscillator labels --------------------------------------
+            # These act as a oscillator selection widgets
+            label = MyLabel(self, text=str(i+1))
+            # Bind to left mouse click: select oscillator
+            label.bind("<Button-1>", lambda ev, i=i: self.left_click(i))
+            # Bind to left mouse click + shift: select oscillator, keep
+            # other already selected oscillators still selected.
+            label.bind('<Shift-Button-1>', lambda ev, i=i: self.shift_left_click(i))
+            label.grid(row=i+1, column=0, pady=(5,0), ipadx=10, ipady=2)
+            self.labels.append(label)
 
-                    self.title_labels[text].grid(
-                        column=column, row=row, sticky='w', pady=(2,0),
-                    )
+            ent_row = []
 
-                elif row != 0 and column != 0:
-                    if column == 1:
-                        self.entries[row] = {}
+            for j, value_var in enumerate(value_var_row):
+                if j == 0:
+                    type_ = 'amp'
+                elif j == 1:
+                    type_ = 'phase'
+                elif j == 2:
+                    type_ = 'freq'
+                elif j == 3:
+                    type_ = 'damp'
 
-                    self.entries[row][text] = MyEntry(
-                        self.table_frame, textvariable=contents[row-1][column-1],
-                        width=14, readonlybackground='#a0a0a0', state='readonly',
-                    )
-                    self.entries[row][text].grid(
-                        row=row, column=column, sticky='ew',
-                    )
+                ent = MyEntry(self, textvariable=value_var['var'],
+                              state=self.entry_state, width=14)
+
+                ent.return_command = self.check_param
+                ent.return_args = (value_var, type_, ent)
+                ent.bind_command()
+
+                padx = (5, 0)
+                pady = (5, 0)
+
+                ent.grid(row=i+1, column=j+1, padx=padx, pady=pady)
+                ent_row.append(ent)
+
+            self.entries.append(ent_row)
+
+
+    def reconstruct(self, contents):
+        """Regenerate table, given a new contents array"""
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        self.create_value_vars(contents)
+        self.construct()
+
+
+    def left_click(self, idx):
+        """Deals with a <Button-1> event on a label.
+
+        Parameters
+        ----------
+        idx : int
+            Equivalent to oscillator label value - 1.
+
+        Notes
+        -----
+        This will set the background of the selected label to blue, and
+        foreground to white. Entry widgets in the corresponding row are set to
+        read-only mode. All other oscillator labels widgets are set to "disabled"
+        mode."""
+
+        # Disable all rows that do not match the index
+        for i, label in enumerate(self.labels):
+            if i != idx and label['bg'] == TABLESELECTBGCOLOR:
+
+                label['bg'] = BGCOLOR
+                label['fg'] = '#000000'
+                for entry in self.entries[i]:
+                    entry['state'] = 'disabled'
+
+
+        # Proceed to highlight the selected row
+        self.shift_left_click(idx)
+
+
+    def shift_left_click(self, idx):
+        """Deals with a <Shift-Button-1> event on a label.
+
+        Parameters
+        ----------
+        index : int
+            Equivalent to oscillator label value - 1.
+
+        Notes
+        -----
+        This will set the background of the selected label to blue, and
+        foreground to white.  Entry widgets in the corresponding row are set
+        to read-only mode. Other rows are unaffected.
+        """
+        if self.labels[idx]['fg'] == '#000000':
+            fg, bg, state = TABLESELECTFGCOLOR, TABLESELECTBGCOLOR, 'readonly'
+        else:
+            fg, bg, state  = '#000000', BGCOLOR, 'disabled'
+
+
+        self.labels[idx]['fg'] = fg
+        self.labels[idx]['bg'] = bg
+
+        for entry in self.entries[idx]:
+            entry['state'] = state
+
+
+    def check_param(self, value_var, type_, entry):
+        """Given a StringVar, ensure the value corresponds to a valid
+        parameter value"""
+
+        try:
+            value = float(value_var['var'].get())
+
+            if type_ in ['amp', 'damp'] and value > 0.0:
+                pass
+            elif type_ == 'phase':
+                # Wrap phase
+                value = (value + np.pi) % (2 * np.pi) - np.pi
+            elif type_ == 'freq':
+                if min(self.region) <= value <= max(self.region):
+                    pass
+                else:
+                    raise
+            else:
+                raise
+
+            value_var['value'] = value
+
+        except:
+            pass
+
+        if isinstance(value_var['value'], (int, float)):
+            value_var['var'].set(f"{value_var['value']:.5f}")
+        else:
+            value_var['var'].set(value_var['value'])
+            entry.key_press()

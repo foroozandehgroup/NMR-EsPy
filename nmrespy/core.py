@@ -537,13 +537,14 @@ class Estimator:
         `None` will be returned.
         """
 
+        sw = copy.deepcopy(self.sw)
         if unit == 'hz':
-            return self.sw
+            return sw
         elif unit == 'ppm':
             sfo = self._check_if_none('sfo', kill)
             if sfo is None:
                 return None
-            return self._converter.convert(copy.deepcopy(self.sw), 'hz->ppm')
+            return self._converter.convert(sw, 'hz->ppm')
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
@@ -578,13 +579,14 @@ class Estimator:
         `None` will be returned.
         """
 
+        offset = copy.deepcopy(self.offset)
         if unit == 'hz':
-            return self.offset
+            return offset
         elif unit == 'ppm':
             sfo = self._check_if_none('sfo', kill)
             if sfo is None:
                 return None
-            return self._converter.convert(copy.deepcopy(self.offset), 'hz->ppm')
+            return self._converter.convert(offset, 'hz->ppm')
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 

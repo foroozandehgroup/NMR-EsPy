@@ -419,8 +419,6 @@ def load_bruker(directory, ask_convdta=True):
             )
             data[0] /= 2
 
-
-
         else:
             # Reshape data, and flip in both dimensions
             data = data.reshape(
