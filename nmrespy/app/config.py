@@ -169,6 +169,10 @@ def check_float(value):
         return False
 
 
+def strip_zeros(number):
+    return number.rstrip('0').rstrip('.')
+
+
 def check_invalid_entries(master):
     """Check whether any entry widgets in a certain frame have been
     assigned a red colour. The implication of this is that certain

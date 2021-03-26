@@ -1623,7 +1623,7 @@ class Estimator:
         index : int
             Array index of the oscilator to be split.
 
-        frequency_sep : float, or None default: None
+        separation_frequency : float, or None default: None
             The frequency separation given to adjacent oscillators formed
             from the splitting. If `None`, the splitting will be set to
             ``sw / n`` where `sw` is the sweep width and `n` is the number
@@ -1644,7 +1644,7 @@ class Estimator:
             all oscillators will be given equal amplitudes.
         """
 
-        # get frequency_Sep in correct units
+        # get separation_frequency in correct units
         if unit not in ['hz', 'ppm']:
             raise errors.InvalidUnitError('hz', 'ppm')
 

@@ -253,7 +253,7 @@ class MyTable(MyFrame):
             value_var_row = []
             for param in osc:
                 if isinstance(param, (int, float)):
-                    value_var = value_var_dict(param, self._strip_zeros(f"{param:.5f}"))
+                    value_var = value_var_dict(param, strip_zeros(f"{param:.5f}"))
                 else:
                     value_var = value_var_dict(param, param)
                 value_var_row.append(value_var)
@@ -416,7 +416,7 @@ class MyTable(MyFrame):
             pass
 
         if isinstance(value_var['value'], (int, float)):
-            value_var['var'].set(self._strip_zeros(f"{value_var['value']:.5f}"))
+            value_var['var'].set(strip_zeros(f"{value_var['value']:.5f}"))
         else:
             # The only time the result shouldn't be a numerical value
             # if when it is an empty string (this crops up in result.AddFrame)
@@ -449,8 +449,3 @@ class MyTable(MyFrame):
                 if entry['fg'] == 'red':
                     return True
         return False
-
-
-    @staticmethod
-    def _strip_zeros(number):
-        return number.rstrip('0').rstrip('.')

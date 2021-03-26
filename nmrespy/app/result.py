@@ -1,5 +1,6 @@
 import copy
 import pathlib
+import re
 import subprocess
 from tkinter import filedialog
 
@@ -208,7 +209,7 @@ class EditParametersFrame(MyToplevel):
 
     def add(self):
         """Loads a window for adding new oscillators"""
-        add_frame = AddFrame(self)
+        AddFrame(self)
 
 
     def remove(self):
@@ -226,7 +227,7 @@ class EditParametersFrame(MyToplevel):
 
 
     def split(self):
-        print('TODO')
+        SplitFrame(self, *self.table.get_selected_rows())
 
 
     def changed_result(self):
@@ -320,6 +321,190 @@ class AddFrame(MyToplevel):
         self.destroy()
 
 
+class SplitFrame(MyToplevel):
+    """Toplevel for splitting an oscillator into multiple oscillators"""
+
+    def __init__(self, master, index):
+
+        super().__init__(master)
+        # NMREsPyApp instance
+        self.ctrl = self.master.master.master
+        self.index = index
+
+        # Prevent interacting with other windows
+        self.grab_set()
+
+        # Add a frame with some padding from the window edge
+        frame = MyFrame(self)
+        frame.grid(row=0, column=0, padx=10, pady=10)
+
+        # Window title and widget labels
+        MyLabel(
+            frame, text=f"Splitting Oscillator {self.index + 1}",
+            font=(MAINFONT, 12, 'bold'),
+        ).grid(row=0, column=0, columnspan=3, sticky='w')
+        MyLabel(frame, text='Number of oscillators:').grid(
+            row=1, column=0, sticky='w', pady=(10,0),
+        )
+        MyLabel(frame, text='Frequency separation:').grid(
+            row=2, column=0, sticky='w', pady=(10,0),
+        )
+        MyLabel(frame, text='Amplitude ratio:').grid(
+            row=3, column=0, sticky='w', pady=(10,0),
+        )
+
+        # --- Number of child oscillators --------------------------------
+        # Goes from 2 to max. of 10
+        self.number_chooser = tk.Spinbox(
+            frame, values=tuple(range(2,11)), width=4,
+            command=self.update_number, state='readonly',
+            readonlybackground='white',
+        )
+        self.number_chooser.grid(
+            row=1, column=1, columnspan=2, sticky='w', padx=(10,0), pady=(10,0),
+        )
+
+        # --- Separation frequnecy ---------------------------------------
+        # Set default separation frequency as 2Hz
+        # Convert frequency to ppm
+        self.sep_freq = {
+            'hz' : 2.,
+            'ppm' : self.ctrl.estimator._converter.convert([2.], 'hz->ppm')[0],
+        }
+        self.sep_entry = MyEntry(
+            frame, width=10, return_command=self.check_freq_sep,
+            return_args=(),
+        )
+        # By default, use Hz as the unit
+        self.update_sep_entry(self.sep_freq['hz'])
+        self.sep_entry.grid(row=2, column=1, sticky='w', padx=(10,0), pady=(10,0))
+
+        # Option menu to specify the separation frequency unit to use
+        self.sep_unit = tk.StringVar()
+        self.sep_unit.set('hz')
+        options = ('hz', 'ppm')
+        self.sep_unit_box = tk.OptionMenu(
+            frame, self.sep_unit, *options, command=self.change_unit
+        )
+        self.sep_unit_box['bg'] = BGCOLOR
+        self.sep_unit_box['width'] = 2
+        self.sep_unit_box['highlightbackground'] = 'black'
+        self.sep_unit_box['highlightthickness'] = 1
+        self.sep_unit_box['menu']['bg'] = BGCOLOR
+        self.sep_unit_box['menu']['activebackground'] = ACTIVETABCOLOR
+        self.sep_unit_box['menu']['activeforeground'] = 'white'
+        self.sep_unit_box.grid(row=2, column=2, sticky='w', padx=(10,0), pady=(10,0))
+
+        # --- Ratio of amplitudes for children ---------------------------
+        # Valid values consist of  a string of colon-separated integers
+        # with the number of values matching the number specified by
+        # the number chooser.
+
+        # By default, set each child with equal amplitude
+        self.amp_ratio = value_var_dict('1:1', '1:1')
+        self.ratio_entry = MyEntry(
+            frame, width=16, textvariable=self.amp_ratio['var'],
+            return_command=self.check_amp_ratio, return_args=(),
+        )
+        self.ratio_entry.grid(
+            column=1, row=3, sticky='w', columnspan=2, padx=(10,0), pady=(10,0),
+        )
+
+        # --- Confirm and Cancel buttons ---------------------------------
+        button_frame = MyFrame(frame)
+        button_frame.grid(row=4, column=0, columnspan=3, sticky='e', pady=(10,0))
+
+        self.cancel_button = MyButton(
+            button_frame, bg=BUTTONRED, command=self.destroy, text='Cancel'
+        )
+        self.cancel_button.grid(row=0, column=0, sticky='e')
+
+        self.save_button = MyButton(
+            button_frame, bg=BUTTONGREEN, command=self.confirm, text='Confirm'
+        )
+        self.save_button.grid(row=0, column=1, sticky='e', padx=(10,0))
+
+
+    def update_number(self):
+        """Called when the number choosing spinbox is changed. Updates
+        the amplitude ratio to match the new number of children. Each child
+        oscillator is set to have the same amplitude"""
+        number = int(self.number_chooser.get())
+        self.amp_ratio['value'] = ':'.join(number * ['1'])
+        self.amp_ratio['var'].set(self.amp_ratio['value'])
+
+
+    def update_sep_entry(self, value):
+        """Update the separation frwquency entry widget"""
+        self.sep_entry.delete(0, "end")
+        self.sep_entry.insert(0, strip_zeros(f"{value:.5f}"))
+
+
+    def change_unit(self, *args):
+        """Called when the user updates the separation frequecny unit box.
+        Updates the separation frequency entry widget accordingly."""
+        unit = self.sep_unit.get()
+        self.update_sep_entry(self.sep_freq[unit])
+
+
+    def check_freq_sep(self):
+        """Called upon user entering value into the separation frequency
+        entry widget. Validates that the input is valid, and updates values
+        as required."""
+        unit = self.sep_unit.get()
+        str_value = self.sep_entry.get()
+
+        try:
+            value = float(str_value)
+            if value > 0:
+                self.sep_freq[unit] = value
+                self.update_sep_entry(self.sep_freq[unit])
+            else:
+                raise
+
+        except:
+            self.update_sep_entry(self.sep_freq[unit])
+            return
+
+        # Update values for other unit
+        from_, to = ('hz', 'ppm') if unit == 'hz' else ('ppm', 'hz')
+        self.sep_freq[to] = \
+            self.ctrl.estimator._converter.convert([value], f'{from_}->{to}')[0]
+
+
+    def check_amp_ratio(self):
+        """Determine whether a user-given amplitude ratio is valid, and if so,
+        update."""
+        ratio = self.amp_ratio['var'].get()
+        # Regex for string of ints separated by colons
+        regex = r"^\d+(:\d+)+$"
+        number = int(self.number_chooser.get())
+        # Check that:
+        # a) the ratio fully matches the regex
+        # b) the number of values matches the specified number of child
+        # oscillators
+        if re.fullmatch(regex, ratio) and len(ratio.split(':')) == number:
+            self.amp_ratio['value'] = ratio
+        # If conditions are not met, revert back the previous valid value
+        else:
+            self.amp_ratio['var'].set(self.amp_ratio['value'])
+
+
+    def confirm(self):
+        """Perform the oscillator split and the plot and parameter table"""
+        sep_freq = self.sep_freq['hz']
+        split_number = int(self.number_chooser.get())
+        amp_ratio = self.amp_ratio['var'].get()
+        amp_ratio = [int(i) for i in amp_ratio.split(':')]
+
+        self.ctrl.estimator.split_oscillator(
+            self.index, separation_frequency=sep_freq,
+            split_number=split_number, amp_ratio=amp_ratio,
+        )
+
+        self.master.changed_result()
+        self.destroy()
+
 
 class SaveFrame(MyToplevel):
     """Toplevel for choosing how to save estimation result"""
@@ -367,17 +552,17 @@ class SaveFrame(MyToplevel):
         self.fig_fmt.trace('w', self.ud_fig_fmt)
 
         options = ('eps', 'jpg', 'pdf', 'png', 'ps', 'svg')
-        self.fig_fmt_optionmenu = tk.OptionMenu(
+        self.sep_unit_box = tk.OptionMenu(
             self.fig_frame, self.fig_fmt, *options
         )
-        self.fig_fmt_optionmenu['bg'] = BGCOLOR
-        self.fig_fmt_optionmenu['width'] = 5
-        self.fig_fmt_optionmenu['highlightbackground'] = 'black'
-        self.fig_fmt_optionmenu['highlightthickness'] = 1
-        self.fig_fmt_optionmenu['menu']['bg'] = BGCOLOR
-        self.fig_fmt_optionmenu['menu']['activebackground'] = ACTIVETABCOLOR
-        self.fig_fmt_optionmenu['menu']['activeforeground'] = 'white'
-        self.fig_fmt_optionmenu.grid(
+        self.sep_unit_box['bg'] = BGCOLOR
+        self.sep_unit_box['width'] = 5
+        self.sep_unit_box['highlightbackground'] = 'black'
+        self.sep_unit_box['highlightthickness'] = 1
+        self.sep_unit_box['menu']['bg'] = BGCOLOR
+        self.sep_unit_box['menu']['activebackground'] = ACTIVETABCOLOR
+        self.sep_unit_box['menu']['activeforeground'] = 'white'
+        self.sep_unit_box.grid(
             row=2, column=1, sticky='w', pady=(10,0),
         )
 
@@ -608,7 +793,7 @@ class SaveFrame(MyToplevel):
     def ud_save_fig(self):
         state = 'normal' if self.save_fig.get() else 'disabled'
         widgets = [
-            self.fig_fmt_optionmenu,
+            self.sep_unit_box,
             self.fig_name_entry,
             self.fig_dpi_entry,
             self.fig_width_entry,
