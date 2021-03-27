@@ -1,3 +1,4 @@
+import ast
 import copy
 import pathlib
 import re
@@ -118,7 +119,7 @@ class EditParametersFrame(MyToplevel):
 
     def __init__(self, master):
         super().__init__(master)
-
+        self.grid_columnconfigure(0, weight=1)
         # Reference to NMREsPyApp class: gives access to estimator
         self.ctrl = self.master.master
 
@@ -150,6 +151,7 @@ class EditParametersFrame(MyToplevel):
         # --- Buttons ----------------------------------------------------
         self.button_frame = MyFrame(self)
         self.button_frame.grid(row=1, column=0, pady=10, padx=10, sticky='ew')
+        self.button_frame.grid_columnconfigure(0, weight=1)
 
         # Construct two rows to place buttons
         # Row 1: Edit parameter estimate:
@@ -160,26 +162,56 @@ class EditParametersFrame(MyToplevel):
         self.row2 = MyFrame(self.button_frame)
         self.row2.grid(row=1, column=0, sticky='ew')
 
+        for i in range(4):
+            self.row1.columnconfigure(i, weight=1)
+            if i < 3:
+                self.row2.columnconfigure(i, weight=1)
+
         # Add oscillator(s)
         self.add_button = MyButton(self.row1, text='Add', command=self.add)
         self.add_button.grid(row=0, column=0, sticky='ew')
 
         # Remove oscillator(s)
-        self.remove_button = MyButton(self.row1, text='Remove',
-                                      state='disabled', command=self.remove)
+        self.remove_button = MyButton(
+            self.row1, text='Remove', state='disabled', command=self.remove,
+        )
         self.remove_button.grid(row=0, column=1, sticky='ew', padx=(10,0))
 
         # Merge oscillators
-        self.merge_button = MyButton(self.row1, text='Merge',
-                                     state='disabled', command=self.merge)
+        self.merge_button = MyButton(
+            self.row1, text='Merge', state='disabled', command=self.merge,
+        )
         self.merge_button.grid(row=0, column=2, sticky='ew', padx=(10,0))
 
         # Split oscillator
-        self.split_button = MyButton(self.row1, text='Split',
-                                     state='disabled', command=self.split)
+        self.split_button = MyButton(
+            self.row1, text='Split', state='disabled', command=self.split,
+        )
         self.split_button.grid(row=0, column=3, sticky='ew', padx=(10,0))
 
         self.table.active_labels.trace('w', self.configure_button_states)
+
+        # Re-run optimiser
+        self.rerun_button = MyButton(
+            self.row2, text='Re-run optimiser', command=self.rerun,
+        )
+        self.rerun_button.grid(row=0, column=0, sticky='ew', pady=(10,0))
+
+        # Reset
+        self.rerun_button = MyButton(
+            self.row2, text='Reset', command=self.reset, state='disabled',
+        )
+        self.rerun_button.grid(
+            row=0, column=1, sticky='ew', pady=(10,0), padx=(10,0),
+        )
+
+        # Close
+        self.rerun_button = MyButton(
+            self.row2, text='Close', command=self.destroy,
+        )
+        self.rerun_button.grid(
+            row=0, column=2, sticky='ew', pady=(10,0), padx=(10,0),
+        )
 
 
     def configure_button_states(self, *args):
@@ -200,11 +232,6 @@ class EditParametersFrame(MyToplevel):
             self.remove_button['state'] = 'normal'
             self.merge_button['state'] = 'normal'
             self.split_button['state'] = 'disabled'
-
-
-    # TODO
-    def activate_buttons(self):
-        pass
 
 
     def add(self):
@@ -237,6 +264,30 @@ class EditParametersFrame(MyToplevel):
             contents=self.ctrl.estimator.get_result(freq_unit='ppm')
         )
         self.master.update_plot()
+
+
+    def rerun(self):
+        # Get info from previous call to nonlinear_programming
+        with open(self.ctrl.estimator._logpath, 'r') as fh:
+            log = fh.readlines()
+        for line in reversed(log):
+            if "nonlinear_programming" in line:
+                # Get the kwargs (these are stored within curly braces
+                kwargs = ast.literal_eval(re.findall(r"\{.*\}", line)[0])
+
+        self.ctrl.result_window.destroy()
+        self.ctrl.estimator.nonlinear_programming(
+            trim=nlp_args['trim'], max_iterations=nlp_args['max_iterations'],
+            method=nlp_args['method'], phase_variance=nlp_args['phase_variance'],
+            amp_thold=nlp_args['amp_thold'],
+        )
+        self.ctrl.result()
+
+
+    def reset(self):
+        self.ctrl.estimator.result = self.previous['result']
+        self.ctrl.estimator.errors = self.previous['errors']
+        self.changed_result()
 
 
 class AddFrame(MyToplevel):
@@ -491,7 +542,8 @@ class SplitFrame(MyToplevel):
 
 
     def confirm(self):
-        """Perform the oscillator split and the plot and parameter table"""
+        """Perform the oscillator split and update the plot and parameter
+        table"""
         sep_freq = self.sep_freq['hz']
         split_number = int(self.number_chooser.get())
         amp_ratio = self.amp_ratio['var'].get()
@@ -504,6 +556,7 @@ class SplitFrame(MyToplevel):
 
         self.master.changed_result()
         self.destroy()
+
 
 
 class SaveFrame(MyToplevel):

@@ -52,7 +52,7 @@ class NMREsPyApp(tk.Tk):
             # Wish to view result from a previously-generated result.
             # Jump straight to the result window.
             self.estimator = Estimator.from_pickle(path)
-
+            
         else:
             # Create Estimator instance from the provided path
             self.estimator = Estimator.new_bruker(path)
@@ -61,16 +61,15 @@ class NMREsPyApp(tk.Tk):
             if self.estimator.get_dim() > 1:
                 raise TwoDimUnsupportedError()
 
-            setup_window = setup.SetUp(self)
+            self.setup_window = setup.SetUp(self)
             # hold at this point
             # relieved once setup is destroyed
             # see SetUp.run()
-            self.wait_window(setup_window)
+            self.wait_window(self.setup_window)
 
         self.pdflatex = pdflatex
-        result_window = result.Result(self)
-        self.wait_window(result_window)
-        self.destroy()
+        self.result()
+        self.wait_window(self.result_window)
 
         # TODO
         # For some reason, the program hangs after destroy call
@@ -83,6 +82,10 @@ class NMREsPyApp(tk.Tk):
         # For now, I'll just use this force-exit of the program, though it's
         # probably not ideal:
         exit()
+
+    def result(self):
+        self.result_window = result.Result(self)
+        self.wait_window(self.result_window)
 
 
 

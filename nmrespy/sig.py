@@ -527,9 +527,6 @@ class PhaseApp(tk.Tk):
         self.p1 = None
 
 
-
-
-
 def make_noise(fid, snr, decibels=True):
     """Given a synthetic FID, generate an array of normally distributed
     complex noise with zero mean and a variance that abides by the desired
@@ -653,6 +650,7 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     para = para.reshape((m, 2*(dim+1)), order='F')
 
     return *make_fid(para, n, sw, offset, snr), para
+
 
 def oscillator_integral(parameters, n, sw, offset=None):
     """Determines the (absolute) integral of the Fourier transform of

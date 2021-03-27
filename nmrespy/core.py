@@ -109,7 +109,7 @@ class Estimator:
 
         Returns
         -------
-        estimator : :py:meth:`nmrespy.core.Estimator`
+        estimator : :py:class:`Estimator`
 
         Notes
         -----
@@ -176,7 +176,7 @@ class Estimator:
 
         Returns
         -------
-        estimator : :py:meth:`nmrespy.core.Estimator`
+        estimator : :py:class:`Estimator`
 
         Example
         -------
@@ -259,7 +259,7 @@ class Estimator:
 
         Returns
         -------
-        estimator : :py:meth:`nmrespy.core.Estimator`
+        estimator : :py:class:`Estimator`
 
         Notes
         -----
