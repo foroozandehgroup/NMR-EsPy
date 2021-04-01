@@ -233,21 +233,26 @@ class MyNavigationToolbar(NavigationToolbar2Tk):
 
 class MyTable(MyFrame):
 
-    def __init__(self, master, contents, titles, region,
-                 entry_state='normal'):
+    def __init__(self, master, contents, titles, region):
 
         super().__init__(master)
         self.titles = titles
         self.region = region[0]
-        self.entry_state = entry_state
-        self.active_labels = tk.IntVar()
-        self.active_labels.set(0)
+        # Number of selected rows
+        self.selected_number = tk.IntVar()
+        self.selected_number.set(0)
+        self.selected_rows = []
+
+        self.max_rows = 12
 
         self.create_value_vars(contents)
-        self.construct()
+        self.construct(top=0)
 
 
     def create_value_vars(self, contents):
+        """Create a nested list of dictionaries, each containing a tkinter
+        StringVar, and a float"""
+
         self.value_vars = []
         for osc in contents:
             value_var_row = []
@@ -255,38 +260,57 @@ class MyTable(MyFrame):
                 if isinstance(param, (int, float)):
                     value_var = value_var_dict(param, strip_zeros(f"{param:.5f}"))
                 else:
+                    # The only occasion when this should occur in the program
+                    # is when param is an empty string. This occurs when
+                    # oscillators are added in the AddFrame widget.
                     value_var = value_var_dict(param, param)
                 value_var_row.append(value_var)
             self.value_vars.append(value_var_row)
 
 
-    def construct(self):
-        """Generate a table of the parameters."""
+    def construct(self, top):
+        """Generate a table of the parameters. Creates a maximum of ``max_rows``
+        rows, starting from ``top``."""
+
+        self.table_frame = MyFrame(self)
+        self.table_frame.grid(row=0, column=0)
 
         # Column titles
         for column, title in enumerate(['#'] + self.titles):
             padx = 0 if column == 0 else (5, 0)
             sticky = '' if column == 0 else 'w'
-            MyLabel(self, text=title).grid(
+            MyLabel(self.table_frame, text=title).grid(
                 row=0, column=column, padx=padx, sticky=sticky,
             )
 
         # Store entry widgets and string variables
         self.labels = []
         self.entries = []
+        # Get the value_var dictionaries corresponding to oscillators that
+        # will be present in the table, based on `top` and `self.max_rows`.
+        value_var_rows = [elem for i, elem in enumerate(self.value_vars) \
+                          if (top <= i < top + self.max_rows)]
 
-        for i, value_var_row in enumerate(self.value_vars):
-            # --- Oscillator labels --------------------------------------
+        for i, value_var_row in enumerate(value_var_rows):
+            # Oscillator labels.
             # These act as a oscillator selection widgets
-            label = MyLabel(self, text=str(i+1))
+            label = MyLabel(self.table_frame, text=str(top+i+1))
             # Bind to left mouse click: select oscillator
-            label.bind("<Button-1>", lambda ev, i=i: self.left_click(i))
+            label.bind(
+                "<Button-1>",
+                lambda ev, i=i, top=top: self.left_click(i, top),
+            )
             # Bind to left mouse click + shift: select oscillator, keep
             # other already selected oscillators still selected.
-            label.bind('<Shift-Button-1>', lambda ev, i=i: self.shift_left_click(i))
+            label.bind(
+                '<Shift-Button-1>',
+                lambda ev, i=i, top=top: self.shift_left_click(i, top),
+            )
+            # Add some internal padding to make selection easy.
             label.grid(row=i+1, column=0, pady=(5,0), ipadx=10, ipady=2)
             self.labels.append(label)
 
+            # Row of parameter entry widgets
             ent_row = []
 
             for j, value_var in enumerate(value_var_row):
@@ -299,9 +323,10 @@ class MyTable(MyFrame):
                 elif j == 3:
                     type_ = 'damp'
 
-                ent = MyEntry(self, textvariable=value_var['var'],
-                              state=self.entry_state, width=14)
-
+                ent = MyEntry(self.table_frame, textvariable=value_var['var'],
+                              state='disabled', width=14)
+                # Ensure that entry widgets are checked after user input
+                # to ensure valid parameters.
                 ent.return_command = self.check_param
                 ent.return_args = (value_var, type_, ent)
                 ent.bind_command()
@@ -314,21 +339,50 @@ class MyTable(MyFrame):
 
             self.entries.append(ent_row)
 
+        # Activate any active oscillators
+        # Colours all row labels corresponding to oscillators selected
+        self.activate_rows(top)
+
+        # Add naviagtion buttons if more than `self.max_rows` oscillators
+        if len(self.value_vars) > self.max_rows:
+            self.navigate_frame = MyFrame(self)
+            self.navigate_frame.grid(row=1, column=0, pady=(10,0))
+
+            self.up_arrow_img = get_PhotoImage(UPARROWPATH, scale=0.5)
+            self.down_arrow_img = get_PhotoImage(DOWNARROWPATH, scale=0.5)
+
+            self.up_arrow = MyButton(
+                self.navigate_frame, image=self.up_arrow_img, width=30,
+                command=self.up,
+            )
+            self.up_arrow.grid(row=0, column=0)
+
+            self.down_arrow = MyButton(
+                self.navigate_frame, image=self.down_arrow_img, width=30,
+                command=self.down,
+            )
+            self.down_arrow.grid(row=0, column=1, padx=(5,0))
+
+            # Check if oscillator 1 is present. If so disable down arrow.
+            if self.labels[0]['text'] == '1':
+                self.up_arrow['state'] = 'disabled'
+
+            # Check if last oscillator is present. If so disable up arrow.
+            if int(self.labels[-1]['text']) == len(self.value_vars):
+                self.down_arrow['state'] = 'disabled'
 
 
-
-    def reconstruct(self, contents):
+    def reconstruct(self, contents, top=0):
         """Regenerate table, given a new contents array"""
-        self.active_labels.set(0)
-
+        # Destroy all contents in self
         for widget in self.winfo_children():
             widget.destroy()
 
         self.create_value_vars(contents)
-        self.construct()
+        self.construct(top)
 
 
-    def left_click(self, idx):
+    def left_click(self, idx, top):
         """Deals with a <Button-1> event on a label.
 
         Parameters
@@ -342,22 +396,17 @@ class MyTable(MyFrame):
         foreground to white. Entry widgets in the corresponding row are set to
         read-only mode. All other oscillator labels widgets are set to "disabled"
         mode."""
-
-        # Disable all rows that do not match the index
-        for i, label in enumerate(self.labels):
-            if i != idx and label['bg'] == TABLESELECTBGCOLOR:
-
-                label['bg'] = BGCOLOR
-                label['fg'] = '#000000'
-                for entry in self.entries[i]:
-                    entry['state'] = 'disabled'
-
+        for i in [i for i in range(len(self.value_vars)) if i != idx]:
+            try:
+                self.selected_rows.remove(i)
+            except ValueError:
+                pass
 
         # Proceed to highlight the selected row
-        self.shift_left_click(idx)
+        self.shift_left_click(idx, top)
 
 
-    def shift_left_click(self, idx):
+    def shift_left_click(self, idx, top):
         """Deals with a <Shift-Button-1> event on a label.
 
         Parameters
@@ -371,23 +420,25 @@ class MyTable(MyFrame):
         foreground to white.  Entry widgets in the corresponding row are set
         to read-only mode. Other rows are unaffected.
         """
-        if self.labels[idx]['fg'] == '#000000':
-            fg, bg, state = TABLESELECTFGCOLOR, TABLESELECTBGCOLOR, 'readonly'
+        if idx + top in self.selected_rows:
+            self.selected_rows.remove(idx + top)
         else:
-            fg, bg, state  = '#000000', BGCOLOR, 'disabled'
+            self.selected_rows.append(idx + top)
+        self.selected_number.set(len(self.selected_rows))
 
+        self.activate_rows(top)
 
-        self.labels[idx]['fg'] = fg
-        self.labels[idx]['bg'] = bg
+    def activate_rows(self, top):
+        for i, (label, entries) in enumerate(zip(self.labels, self.entries)):
+            if i + top in self.selected_rows:
+                fg, bg, state = TABLESELECTFGCOLOR, TABLESELECTBGCOLOR, 'readonly'
+            else:
+                fg, bg, state = '#000000', BGCOLOR, 'disabled'
 
-        for entry in self.entries[idx]:
-            entry['state'] = state
-
-        self.active_labels.set(len(self.get_selected_rows()))
-
-
-    def get_selected_rows(self):
-        return [idx for idx, lab in enumerate(self.labels) if lab['fg'] == TABLESELECTFGCOLOR]
+            label['fg'] = fg
+            label['bg'] = bg
+            for entry in entries:
+                entry['state'] = state
 
 
     def check_param(self, value_var, type_, entry):
@@ -449,3 +500,15 @@ class MyTable(MyFrame):
                 if entry['fg'] == 'red':
                     return True
         return False
+
+
+    def up(self):
+        """Scroll down one place in the table"""
+        top = int(self.labels[0]['text']) - 2
+        self.reconstruct(contents=self.get_values(), top=top)
+
+
+    def down(self):
+        """Scroll down one place in the table"""
+        top = int(self.labels[0]['text'])
+        self.reconstruct(contents=self.get_values(), top=top)

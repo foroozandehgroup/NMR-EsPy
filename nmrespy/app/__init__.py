@@ -30,7 +30,7 @@ class NMREsPyApp(tk.Tk):
     """
 
     # This is the "controller"
-    # When you see `self.ctrl` in other classes in this file, it refers
+    # When you see `self.ctrl` in other classes in code for the app, it refers
     # to this class
 
     def __init__(self, path, res, topspin=False, pdflatex=None):
@@ -52,7 +52,7 @@ class NMREsPyApp(tk.Tk):
             # Wish to view result from a previously-generated result.
             # Jump straight to the result window.
             self.estimator = Estimator.from_pickle(path)
-            
+
         else:
             # Create Estimator instance from the provided path
             self.estimator = Estimator.new_bruker(path)
@@ -69,7 +69,6 @@ class NMREsPyApp(tk.Tk):
 
         self.pdflatex = pdflatex
         self.result()
-        self.wait_window(self.result_window)
 
         # TODO
         # For some reason, the program hangs after destroy call

@@ -143,7 +143,6 @@ class EditParametersFrame(MyToplevel):
 
         self.table = MyTable(
             self, contents=contents, titles=titles, region=region,
-            entry_state='disabled',
         )
 
         self.table.grid(column=0, row=0, padx=10, pady=(10,0))
@@ -189,7 +188,7 @@ class EditParametersFrame(MyToplevel):
         )
         self.split_button.grid(row=0, column=3, sticky='ew', padx=(10,0))
 
-        self.table.active_labels.trace('w', self.configure_button_states)
+        self.table.active_number.trace('w', self.configure_button_states)
 
         # Re-run optimiser
         self.rerun_button = MyButton(
@@ -198,25 +197,25 @@ class EditParametersFrame(MyToplevel):
         self.rerun_button.grid(row=0, column=0, sticky='ew', pady=(10,0))
 
         # Reset
-        self.rerun_button = MyButton(
+        self.reset_button = MyButton(
             self.row2, text='Reset', command=self.reset, state='disabled',
         )
-        self.rerun_button.grid(
+        self.reset_button.grid(
             row=0, column=1, sticky='ew', pady=(10,0), padx=(10,0),
         )
 
         # Close
-        self.rerun_button = MyButton(
+        self.close_button = MyButton(
             self.row2, text='Close', command=self.destroy,
         )
-        self.rerun_button.grid(
+        self.close_button.grid(
             row=0, column=2, sticky='ew', pady=(10,0), padx=(10,0),
         )
 
 
     def configure_button_states(self, *args):
         # Number of curently selected oscillators
-        number = self.table.active_labels.get()
+        number = self.table.active_number.get()
 
         if number == 0:
             self.remove_button['state'] = 'disabled'
@@ -241,27 +240,33 @@ class EditParametersFrame(MyToplevel):
 
     def remove(self):
         """Removes selected oscillators from the result"""
-        rm_indices = self.table.get_selected_rows()
+        rm_indices = self.table.active_rows
         self.ctrl.estimator.remove_oscillators(rm_indices)
         self.changed_result()
 
 
     def merge(self):
         """Removes selected oscillators from the result"""
-        merge_indices = self.table.get_selected_rows()
+        merge_indices = self.table.active_rows
         self.ctrl.estimator.merge_oscillators(merge_indices)
         self.changed_result()
 
 
     def split(self):
-        SplitFrame(self, *self.table.get_selected_rows())
+        SplitFrame(self, *self.table.active_rows)
 
 
     def changed_result(self):
         """Regenerate parameter table and plot to reflect change in
         estimator.result"""
+        if self.reset_button['state'] == 'disabled':
+            self.reset_button['state'] = 'normal'
+
+        self.table.active_rows = []
+        self.table.active_number.set(0)
         self.table.reconstruct(
-            contents=self.ctrl.estimator.get_result(freq_unit='ppm')
+            contents=self.ctrl.estimator.get_result(freq_unit='ppm'),
+            top=0,
         )
         self.master.update_plot()
 
@@ -273,7 +278,7 @@ class EditParametersFrame(MyToplevel):
         for line in reversed(log):
             if "nonlinear_programming" in line:
                 # Get the kwargs (these are stored within curly braces
-                kwargs = ast.literal_eval(re.findall(r"\{.*\}", line)[0])
+                nlp_args = ast.literal_eval(re.findall(r"\{.*\}", line)[0])
 
         self.ctrl.result_window.destroy()
         self.ctrl.estimator.nonlinear_programming(
@@ -288,6 +293,12 @@ class EditParametersFrame(MyToplevel):
         self.ctrl.estimator.result = self.previous['result']
         self.ctrl.estimator.errors = self.previous['errors']
         self.changed_result()
+
+
+    def self.close(self):
+        if not np.array_equal(self.previous, self.ctrl.estimator.result):
+            msg = ("You should re-run the optimiser after editing the "
+                   "estimation result. Do this now?")
 
 
 class AddFrame(MyToplevel):
@@ -313,6 +324,7 @@ class AddFrame(MyToplevel):
 
         # Turn all widgets red initially to indicate they need filling in
         for entry, value_var in zip(self.table.entries[0], self.table.value_vars[0]):
+            entry['state'] = 'normal'
             entry.key_press()
 
         self.table.grid(column=0, row=0, padx=10, pady=(10,0))
@@ -341,13 +353,14 @@ class AddFrame(MyToplevel):
     def add_row(self):
         contents = self.table.get_values()
         contents.append(4 * [''])
-        self.table.reconstruct(contents)
+        self.table.reconstruct(contents, top=0)
         # Set all entry widgets that are empty to red:
         # Loop over each table row
         for entries in self.table.entries:
             # Loop over each entry in a row
             for entry in entries:
                 if entry.get() == '':
+                    entry['state'] = 'normal'
                     entry.key_press()
 
 
@@ -564,7 +577,7 @@ class SaveFrame(MyToplevel):
 
     def __init__(self, master):
         super().__init__(master)
-
+        self.ctrl = self.master.master
         self.grab_set()
 
         # --- Result figure ----------------------------------------------
@@ -969,7 +982,7 @@ class SaveFrame(MyToplevel):
                 if description == '':
                     description = None
 
-                self.master.estimator.write_result(
+                self.ctrl.estimator.write_result(
                     path=path, description=description, fmt=fmt,
                     force_overwrite=True, pdflatex_exe=self.pdflatex,
                 )
@@ -977,7 +990,7 @@ class SaveFrame(MyToplevel):
         if self.pickle_estimator.get():
             name = self.pickle_name.get()
             path = str(dir / name)
-            self.master.estimator.to_pickle(
+            self.ctrl.estimator.to_pickle(
                 path=path, force_overwrite=True
             )
 

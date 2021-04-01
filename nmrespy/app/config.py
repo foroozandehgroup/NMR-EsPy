@@ -37,6 +37,10 @@ FIDCOLORS = [
     '#d23be7',
 ]
 
+# Image paths
+UPARROWPATH = NMRESPYPATH / 'images/up_arrow.png'
+DOWNARROWPATH = NMRESPYPATH / 'images/down_arrow.png'
+
 
 def get_PhotoImage(path, scale=1.0):
     """Generate a TKinter-compatible photo image, given a path, and a scaling
