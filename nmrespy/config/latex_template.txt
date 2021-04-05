@@ -1,5 +1,5 @@
 \documentclass[8pt]{article}
-\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[a4paper,landscape,margin=1in]{geometry}
 \usepackage{cmbright}
 
 \usepackage{amsmath}
@@ -19,6 +19,7 @@ urlcolor   = urlblue,%
 }
 
 \usepackage{tcolorbox}
+\usepackage{varwidth}
 
 \setlength\parindent{0pt}
 \renewcommand{\ss}{\textsuperscript}
@@ -53,7 +54,7 @@ urlcolor   = urlblue,%
 \end{tabular}
 
 \subsection*{Result}
-\begin{longtable}[c]{<COLUMNS>}
+\begin{longtable}[l]{<COLUMNS>}
 \toprule
 <PARAMTITLES>
 \midrule
@@ -68,7 +69,8 @@ urlcolor   = urlblue,%
 
 % blurb
 \small
-\begin{tcolorbox}
+\begin{tcolorbox}[hbox]
+\begin{varwidth}{\textwidth}
 Estimation performed using \textsc{NMR-EsPy}.\\
 Author: Simon Hulse\\
 For more information:\\[5pt]
@@ -77,6 +79,7 @@ For more information:\\[5pt]
 {\raisebox{-3pt}{\includegraphics[scale=0.015]{<EMAILICONPATH>}}}\hspace{1em}\href{<MAILTOLINK>}{\texttt{simon.hulse@chem.ox.ac.uk}}\\[5pt]
 If used in a publication, please cite:\\
 \textit{No references yet...}
+\end{varwidth}
 \end{tcolorbox}
 
 \end{document}

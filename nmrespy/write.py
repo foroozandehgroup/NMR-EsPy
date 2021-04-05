@@ -22,7 +22,7 @@ from nmrespy._misc import ArgumentChecker, PathManager, significant_figures
 
 
 def write_result(
-    parameters, path='./nmrespy_result', sfo=None, integrals=None,
+    parameters, errors=None, path='./nmrespy_result', sfo=None, integrals=None,
     description=None, info_headings=None, info=None, sig_figs=5,
     sci_lims=(-2,3), fmt='txt', force_overwrite=False, pdflatex_exe=None,
 ):
@@ -32,6 +32,10 @@ def write_result(
     ----------
     parameters : numpy.ndarray
         The estimated parameter array.
+
+    errors : numpy.ndarray or None, default: None
+        The errors associated with the parameters. If not `None`, the shape
+        of `errors` should match that of `parameters`.
 
     path : str, default: './nmrespy_result'
         The path to save the file to. DO NOT INCLUDE A FILE EXTENSION.
@@ -162,6 +166,8 @@ def write_result(
         (force_overwrite, 'force_overwrite', 'bool'),
     ]
 
+    if errors is not None:
+        components.append((errors, 'errors', 'parameter'))
     if sfo is not None:
         components.append((sfo, 'sfo', 'float_list'))
     if description is not None:
@@ -196,6 +202,13 @@ def write_result(
             f'{cols.R}info and info_headings should be the same'
             f' length{cols.END}'
         )
+    # parameters and errors should be the same shape, if errors is not None
+    if isinstance(errors, np.ndarray) and errors.shape != parameters.shape:
+        raise ValueError(
+            f'{cols.R}`parameters` and `errors` should be the same'
+            f' shape{cols.END}'
+        )
+
     # Get full path
     path = Path(path).resolve()
     # Append extension to file path
@@ -220,7 +233,7 @@ def write_result(
     # --- Construct nested list of components for parameter table --------
     param_titles, param_table = \
         _construct_paramtable(
-            parameters, integrals, sfo, sig_figs, sci_lims, fmt,
+            parameters, errors, integrals, sfo, sig_figs, sci_lims, fmt,
         )
 
     # --- Write to the specified file type -------------------------------
@@ -404,6 +417,9 @@ def _write_pdf(
     txt = txt.replace('<PARAMTITLES>', _latex_tabular([param_titles]))
     txt = txt.replace('<PARAMTABLE>', _latex_tabular(param_table))
 
+    # incude plus-minus symbol
+    txt = txt.replace("±", "$\\pm$ ")
+
     # TODO support for including result figure
     txt = txt.replace(
         '% figure of result\n\\begin{center}\n'
@@ -568,7 +584,8 @@ def _map_to_latex_titles(titles):
     return latex_titles
 
 
-def _construct_paramtable(parameters, integrals, sfo, sig_figs, sci_lims, fmt):
+def _construct_paramtable(parameters, errors, integrals, sfo, sig_figs,
+                          sci_lims, fmt):
     """
     Creates a nested list of values to input to parameter table, with
     desired formatting.
@@ -577,6 +594,9 @@ def _construct_paramtable(parameters, integrals, sfo, sig_figs, sci_lims, fmt):
     -----------
     parameters : numpy.ndarray
         Parameter array.
+
+    errors : numpy.ndarray or None
+        Parameter errors.
 
     integrals : list
         Oscillator peak integrals.
@@ -657,6 +677,30 @@ def _construct_paramtable(parameters, integrals, sfo, sig_figs, sci_lims, fmt):
             row.append(_mystr(norm_integrals[m]))
         # Add row to table
         table.append(row)
+
+        if errors is not None:
+            # first element is blank entry for oscillator column
+            err_row = ['']
+            # Amplitude
+            err_row.append("±" + _mystr(errors[m, 0]))
+            # Phase
+            err_row.append("±" + _mystr(errors[m, 1]))
+            # Frequencies
+            for i in range(2, 2+dim):
+                # Hz
+                err_row.append("±" + _mystr(errors[m, i]))
+                # ppm (if sfo provided)
+                if sfo is not None:
+                    err_row.append("±" + _mystr(errors[m, i] / sfo[i-2]))
+            # Damping
+            for i in range(2+dim, 2+2*dim):
+                err_row.append("±" + _mystr(errors[m, i]))
+
+            # TODO: Integral errors
+            if integrals is not None:
+                err_row = err_row + 2 * ['-']
+            table.append(err_row)
+
 
     return titles, table
 
@@ -753,7 +797,7 @@ def _txt_tabular(columns, titles=None, separator=''):
     Parameters
     ----------
     columns : list
-        A list of lists, with each suiblist representing the columns of the
+        A list of lists, with each sublist representing the columns of the
         table. Each list must be of the same length.
 
     titles : None or list, default: None

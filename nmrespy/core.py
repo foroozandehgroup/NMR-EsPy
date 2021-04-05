@@ -1334,6 +1334,7 @@ class Estimator:
         # If self.result is None, an error will be raised inside
         # _check_if_none
         result = self.get_result()
+        errors = self.get_errors(kill=False)
 
         # Information for experiment info
         sw_h = self.get_sw()
@@ -1407,10 +1408,9 @@ class Estimator:
         elif self.get_dim() == 2:
             raise TwoDimUnsupportedError()
 
-        write_result(
-            result, integrals=integrals, info_headings=info_headings,
-            info=info, sfo=sfo, **kwargs,
-        )
+        write_result(result, errors=errors, integrals=integrals,
+                     info_headings=info_headings, info=info, sfo=sfo,
+                     **kwargs)
 
     @logger
     def plot_result(self, **kwargs):

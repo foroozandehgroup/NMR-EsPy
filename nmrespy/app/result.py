@@ -295,7 +295,7 @@ class EditParametersFrame(MyToplevel):
         self.changed_result()
 
 
-    def self.close(self):
+    def close(self):
         if not np.array_equal(self.previous, self.ctrl.estimator.result):
             msg = ("You should re-run the optimiser after editing the "
                    "estimation result. Do this now?")
