@@ -81,12 +81,9 @@ class Estimator:
         """Decorator for logging :py:class:`Estimator` method calls"""
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
-            # The first arg is the class instance. Get the path to the logfile.
-            path = args[0]._logpath
-            with open(path, 'a') as fh:
-                # Append the method call to the log file in the following format:
-                # --> method_name (args) {kwargs}
-                fh.write(f'--> {f.__name__} {args[1:]} {kwargs}\n')
+            # The first arg is the class instance.
+            # Append to the log text.
+            args[0]._log += f'--> {f.__name__} {args[1:]} {kwargs}\n'
 
             # Run the method...
             return f(*args, **kwargs)
@@ -143,7 +140,7 @@ class Estimator:
            _converter : <nmrespy._misc.FrequencyConverter object at 0x7ff282250910>
            _logpath : /home/.../python3.8/site-packages/nmrespy/logs/210212183053.log
         """
-        origin={'method':'new_bruker', 'args':locals()}
+        origin = {'method' : 'new_bruker', 'args' : locals()}
         info = load_bruker(dir, ask_convdta=ask_convdta)
 
         return cls(
@@ -388,28 +385,20 @@ class Estimator:
             list(data.shape), self.sw, self.offset, self.sfo
         )
 
-        # --- Create file for logging method calls -----------------------
-        # Set path of file to be inside the nmrespy/logs directory
-        # File name is a timestamp: yyyymmddHHMMSS.log
+        # --- Create attribute for logging method calls ------------------
         now = datetime.datetime.now()
-        self._logpath = Path(NMRESPYPATH) / \
-                       f"logs/{now.strftime('%y%m%d%H%M%S')}.log"
-
-        # Add a header to the log file
-        header = (
-            '==============================\n'
-            'Logfile for Estimator instance\n'
-            '==============================\n'
+        self._log = (
+            "==============================\n"
+            "Logfile for Estimator instance\n"
+            "==============================\n"
            f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}"
         )
 
         if _origin is not None:
-            header += f" from {_origin['method']} with args {_origin['args']}"
+            self._log += (f" from {_origin['method']} with args "
+                          f"{_origin['args']}")
 
-        header += '\n'
-
-        with open(self._logpath, 'w') as fh:
-            fh.write(header)
+        self._log += "\n"
 
 
     def __repr__(self):
@@ -1752,12 +1741,13 @@ class Estimator:
             )
 
         try:
-            shutil.copyfile(self._logpath, path)
+            with open(path, "w") as fh:
+                fh.write(self._log)
             print(
                 f'{cols.G}Log file succesfully saved to'
                 f' {str(path)}{cols.END}'
             )
 
-        # trouble copying file...
+        # trouble writing to file...
         except Exception as e:
             raise e

@@ -8,6 +8,7 @@ nmrespy/app/to_add.py
 nmrespy/logs/*
 nmrespy/app/tmp/*
 nmrespy-venv
+venv
 build
 dist
 *egg-info
