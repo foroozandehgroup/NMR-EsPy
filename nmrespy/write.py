@@ -417,7 +417,7 @@ def _write_pdf(
     txt = txt.replace('<PARAMTITLES>', _latex_tabular([param_titles]))
     txt = txt.replace('<PARAMTABLE>', _latex_tabular(param_table))
 
-    # incude plus-minus symbol
+    # Incude plus-minus symbol. For denoting errors.
     txt = txt.replace("±", "$\\pm$ ")
 
     # TODO support for including result figure

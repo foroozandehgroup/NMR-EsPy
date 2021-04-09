@@ -164,9 +164,9 @@ Below is a summary of the meaning of all of these parameters.
 * **Signal Filter Options**
 
   The basic idea behind frequency-filtering the data is to apply a band-pass
-  filter to the spectral data, and then to convert spectrum back to the
+  filter to the spectral data, and then to convert the spectrum back to the
   time domain. By applying this filter, a substantial amount of the spectrum
-  become redundant, and so it can be appropriate the "cut" off regions that are
+  becomes redundant, and so it can be appropriate the "cut" off regions that are
   not of interest. The basic idea is illustrated in this figure:
 
   .. image:: ../images_etc/gui/filter_cut/filter_cut.png
@@ -193,7 +193,7 @@ Below is a summary of the meaning of all of these parameters.
     unreliable. If the signal contains fewer the 4096 (2¹²) points, the
     full signal will be considered by default. Otherwise, the first 4096 points
     will be considered.
-  + `Use MDL` - Whether or not to you the Minimum Description Length or not.
+  + `Use MDL` - Whether or not to use the Minimum Description Length.
     By default, the MDL will be used.
   + `Number of Oscillators` - The number of oscillators used in the Matrix
     Pencil Method. This can only be specified if `Use MDL` is unticked.
@@ -217,7 +217,7 @@ Below is a summary of the meaning of all of these parameters.
     iterations, however each iteration takes longer to compute.
   + `Maximum iterations` - The largest number of iterations to perform before
     terminating an returning the result. The default value is dependent on
-    the NLP algorithm used (200 if Trust-Region selected), (500 if L-BFGS
+    the NLP algorithm used (200 if Trust-Region selected, 500 if L-BFGS
     selected).
   + `Optimise phase variance` - Specifies whether to consider the variance of
     oscillator phases during the estimation routine. If your data is derived
@@ -229,3 +229,28 @@ Below is a summary of the meaning of all of these parameters.
     :math:`\lVert\boldsymbol{a}\rVert_2` is the Euclidian (L2) norm of the
     oscillator amplitudes, and :math:`a_{\mathrm{thold}}` is the specified
     threshold. By default, no such threshold will be applied to the data.
+
+Once you are happy with the calculation setup, simply cluck the *Run* button.
+You will find that details of the routine are output to the terminal as it
+runs.
+
+Estimation Result
+^^^^^^^^^^^^^^^^^
+
+Once the routine is complete, a new window will load with the following
+appearance:
+
+.. image:: ../images_etc/gui/result_window.png
+   :align: center
+
+Featured in the plot are:
+
+* A plot of the data of interest (black line).
+* Individual peaks that comprise the estimation result (multi-coloured).
+  Each of these is given a numerical label
+* The residual between the data and the model (grey).
+
+Saving the result
+-----------------
+
+Clicking the *Save* button loads the following window:
