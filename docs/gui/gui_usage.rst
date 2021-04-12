@@ -200,7 +200,7 @@ Below is a summary of the meaning of all of these parameters.
 
 * **Nonlinear Programming**
 
-  The result of the Matrix Pencil Method is fed into a nonlinear Programming
+  The result of the Matrix Pencil Method is fed into a nonlinear programming
   (NLP) routine to determine the final signal parameter estimate.
 
   + `Datapoints to consider` - Analogous to the parameter with the same name
@@ -254,3 +254,63 @@ Saving the result
 -----------------
 
 Clicking the *Save* button loads the following window:
+
+.. image:: ../images_etc/gui/save_window.png
+   :align: center
+   :scale: 50%
+
+* **Result Figure**
+
+  This section is used for specifying whether to save a result figure, and
+  for customising some simple figure settings.
+
+  + `Save Figure` - Whether to save a figure or not.
+  + `Format` - The figure's file format. Valid options are ``eps``, ``png``,
+    ``pdf``, ``jpg``, ``ps`` and ``svg``.
+  + `Filename` - The name of the file to save the Figure to.
+  + `dpi` - Dots per inch.
+  + `Size (cm)` - The width and height of the figure, in centimeters.
+
+  .. note::
+    The most up-voted answer to
+    `this Stack Overflow question <https://stackoverflow.com/questions/47633546/relationship-between-dpi-and-figure-size>`_ provides a good
+    description of the relationship between figure size and dpi.
+
+  .. note::
+    Beyond specifying the dpi and size of the figure, the GUI does not provide
+    any means of customising the appearance of the figure in this version.
+    I intend to provide support of for in a future version.  At the moment,
+    the only means of customising the figure is to do it by writing a Python
+    script. I provide an outline of how you can achieve certain customisations
+    :doc:`here <figure_customisation>`
+
+* **Result Files**
+
+  Used for saving a table of result parameters to various file formats.
+  For each of the valid formats (``txt``, ``pdf``, and ``csv``), the associated
+  tick-boxes are used for specifying whether or not to generate a file of that
+  format. Adjacent to each tick-box is an entry box for specifying the name of
+  the result file.
+
+  Finally, the `Description` box can be used to enter a description relating
+  to the estimation, which will be added to the result file(s).
+
+* **Estimator**
+
+  Used for saving (`"pickling" <https://docs.python.org/3/library/pickle.html>`_)
+  the :py:class:`nmrespy.core.Estimator` class instance, associated with the
+  estimation result.
+
+  + `Save Estimator` - Specifies whether or not to save the estimator to a
+    binary file.
+  + `Filename` - The filename to save the estimator to.
+
+* **Directory**
+
+  The entry box is used to specify the path to the directory to save **all**
+  specified files to. The full path can either be typed out manually, or
+  selected, by loading the file navigation window, by pressing the button
+  with a folder icon.
+
+Clicking *Save* will result in all the specified files to be saved to the desired
+paths. The application will also be closed.

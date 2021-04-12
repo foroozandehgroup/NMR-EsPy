@@ -11,3 +11,4 @@ links:
 
    topspin_install
    gui_usage
+   figure_customisation
