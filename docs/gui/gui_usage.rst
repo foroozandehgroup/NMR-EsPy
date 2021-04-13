@@ -42,7 +42,7 @@ corner.
 You will be asked to select the data you wish to consider (either the
 raw time-domain data, or the processed data):
 
-.. image:: ../images_etc/gui/datatype.png
+.. image:: ../_static/gui/windows/datatype.png
    :align: center
    :scale: 70%
 
@@ -52,7 +52,7 @@ Estimation Set-up
 The following is a screenshot of the NMR-EsPy GUI calculation set-up window.
 Key features of the window are annotated:
 
-.. image:: ../images_etc/gui/setup_window.png
+.. image:: ../_static/gui/windows/setup_window.png
    :align: center
    :scale: 60%
 
@@ -69,23 +69,23 @@ toolbar, with the following buttons:
    * - Icon
      - Role
 
-   * - .. image:: ../images_etc/gui/navigation_icons/home.png
+   * - .. image:: ../_static/gui/navigation_icons/home.png
           :width: 60%
      - Return to the original plot view.
 
-   * - .. image:: ../images_etc/gui/navigation_icons/back.png
+   * - .. image:: ../_static/gui/navigation_icons/back.png
           :width: 60%
      - Return to the previous plot view.
 
-   * - .. image:: ../images_etc/gui/navigation_icons/forward.png
+   * - .. image:: ../_static/gui/navigation_icons/forward.png
           :width: 60%
      - Undo a return to a previous view
 
-   * - .. image:: ../images_etc/gui/navigation_icons/pan.png
+   * - .. image:: ../_static/gui/navigation_icons/pan.png
           :width: 60%
      - Pan. Note that panning outside the spectral window is not possible.
 
-   * - .. image:: ../images_etc/gui/navigation_icons/zoom.png
+   * - .. image:: ../_static/gui/navigation_icons/zoom.png
           :width: 60%
      - Zoom.
 
@@ -95,7 +95,7 @@ Phase Correction
 The GUI has the following appearance when the `Phase Correction` tab is
 selected:
 
-.. image:: ../images_etc/gui/setup_window_phase_tab.png
+.. image:: ../_static/gui/windows/setup_window_phase_tab.png
    :align: center
    :scale: 60%
 
@@ -125,7 +125,7 @@ inputting desired values into the adjacent entry boxes.
    .. .. raw:: html
    ..
    ..    <video controls autoplay>
-   ..      <source src="../images_etc/gui/entry_widget_example.mp4" type="video/mp4">
+   ..      <source src="../_static/gui/entry_widget_example.mp4" type="video/mp4">
    ..      Your browser doesn't support the video tag
    ..    </video>
 
@@ -151,7 +151,7 @@ Advanced Estimation Settings
 Clicking the `Advanced Settings` button will load a window enabling various
 aspects of the estimation routine to be tweaked:
 
-.. image:: ../images_etc/gui/advanced_settings_window.png
+.. image:: ../_static/gui/windows/advanced_settings_window.png
    :align: center
 
 Below is a summary of the meaning of all of these parameters.
@@ -169,7 +169,7 @@ Below is a summary of the meaning of all of these parameters.
   becomes redundant, and so it can be appropriate the "cut" off regions that are
   not of interest. The basic idea is illustrated in this figure:
 
-  .. image:: ../images_etc/gui/filter_cut/filter_cut.png
+  .. image:: ../_static/gui/filter_cut/filter_cut.png
      :align: center
      :scale: 25%
 
@@ -240,7 +240,7 @@ Estimation Result
 Once the routine is complete, a new window will load with the following
 appearance:
 
-.. image:: ../images_etc/gui/result_window.png
+.. image:: ../_static/gui/windows/result_window.png
    :align: center
 
 Featured in the plot are:
@@ -255,7 +255,7 @@ Saving the result
 
 Clicking the *Save* button loads the following window:
 
-.. image:: ../images_etc/gui/save_window.png
+.. image:: ../_static/gui/windows/save_window.png
    :align: center
    :scale: 50%
 

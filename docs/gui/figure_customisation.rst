@@ -146,7 +146,7 @@ I anticipate users will frequently want to carry out.
 
   The result in the above example is the following:
 
-  .. image:: ../images_etc/gui/displace.png
+  .. image:: ../_static/gui/displace.png
      :align: center
      :scale: 30%
 
@@ -187,7 +187,7 @@ I anticipate users will frequently want to carry out.
 
   The resulting figure is as follows:
 
-  .. image:: ../images_etc/gui/subplot.png
+  .. image:: ../_static/gui/subplot.png
      :align: center
      :scale: 30%
 

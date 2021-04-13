@@ -16,6 +16,6 @@ Getting started:
 The following figure shows the final result generated in the example
 walkthrough in NMR-EsPy's docs:
 
-.. image:: docs/images_etc/walkthrough/figures/plot_example_edited.png
+.. image:: docs/_static/walkthrough/figures/plot_example_edited.png
    :scale: 5 %
    :align: center
