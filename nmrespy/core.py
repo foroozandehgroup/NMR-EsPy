@@ -428,7 +428,7 @@ class Estimator:
 
         dic = self.__dict__
         keys, vals = dic.keys(), dic.values()
-        items = [f'{cols.MA}{k}{cols.END} : {v}' for k, v in zip(keys, vals)]
+        items = [f'{cols.MA}{k}{cols.END} : {v}' for k, v in zip(keys, vals) if k[0] != '_']
         msg += '\n'.join(items)
 
         return msg
