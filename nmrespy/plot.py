@@ -473,51 +473,110 @@ class NmrespyPlot:
         for k in self.labels.keys():
             self.labels[k].set_alpha(0)
 
-    def adjust_axes_position(self, top=None, bottom=None, left=None, right=None):
-        """Adjust the position of the axes.
-
-        All the parameters should be between `0` and `1`. `0` denotes
-        the left/bottom edge of the figure. `1` denotes the right/top
-        edge of the figure. If a parameter is set to `None`, no change
-        will occur to that position.
+    def displace_labels(self, values, displacement):
+        """Displace labels with values given by `values`
 
         Parameters
         ----------
-        top : float or None, default: None
-            Must be be larger than `bottom`
+        values : list
+            The value(s) of the label(s) to displace. All elements should be
+            ints.
 
-        bottom : float or None, default: None
-            Must be be smaller than `top`
-
-        left : float or None, default: None
-            Must be be smaller than `right`
-
-        right : float or None, default: None
-            Must be larger than `left`
+        displacement : (float, float)
+            The amount to displace the labels relative to their current
+            positions. The displacement uses the
+            `axes co-ordinate system <https://matplotlib.org/stable/tutorials/advanced/transforms_tutorial.html#axes-coordinates>`_.
+            Both values provided should be less than `1.0`.
         """
 
-        curr_pos = self.ax.get_position()
-        if top is None:
-            top = curr_pos[2] + curr_pos[4] # bottom + height
-        if bottom is None:
-            bottom = curr_pos[2] # bottom
-        if left is None:
-            left = curr_pos[1] # left
-        if right is None:
-            right =curr_pos[1] + curr_pos[3] # left + width
+        components = [
+            (values, 'values', 'generic_int_list'),
+            (displacement, 'displacement', 'displacement'),
+        ]
 
-        for pos in [left, bottom, right, top]:
-            if not 0 <= pos <= 1:
+        ArgumentChecker(components)
+
+        # Check that all values given are between 1 and number of oscillators
+        max_value = max(self.labels.keys())
+        if not all(0 < value <= max_value for value in values):
+            raise ValueError(f"{cols.R}At least one element in `values` is "
+                              "invalid. Ensure that all elements are ints "
+                             f"between 1 and {max_value}.{cols.END}")
+
+        for value in values:
+            # Get initial position (this is in data coordinates)
+            init_pos = self.labels[value].get_position()
+            # Converter from data coordinate system to axis coordinate system
+            axis_to_data = self.ax.transAxes + self.ax.transData.inverted()
+            # Converter from axis coordinate system to data coordinate system
+            data_to_axis = axis_to_data.inverted()
+            # Convert initial position to axis coordinates
+            init_pos = data_to_axis.transform(init_pos)
+
+            # Add displacement
+            new_pos = tuple(
+                init + disp for init, disp in zip(init_pos, displacement)
+            )
+            if not all(0. <= coord <= 1. for coord in new_pos):
                 raise ValueError(
-                    f'{cols.R}top, bottom, left and right should all be'
-                    f'between 0.0 and 1.0{cols.END}'
+                    f"{cols.R}The specified displacement for label {value} "
+                     "places it outside the axes! You may want to reduce the "
+                     "magnitude of displacement in one or both dimesions to "
+                    f"ensure this does not occur.{cols.END}"
                 )
 
-        if left > right or bottom > top:
-            raise ValueError(
-                f'{cols.R}right should be larger than left, and top should'
-                f' be larger than bottom.{cols.END}'
-            )
+            # Transform new position to data coordinates
+            new_pos = axis_to_data.transform(new_pos)
+            # Update position
+            self.labels[value].set_position(new_pos)
 
-        width, height = right - left, top - bottom
-        self.ax.set_position([left, bottom, width, height])
+    def transfer_to_axes(self, ax):
+        """Reproduces the plot in `self.ax` in another axes object.
+
+        Parameters
+        ----------
+        * ax : `matplotlib.axes.Axes <https://matplotlib.org/3.3.1/api/\
+        axes_api.html#matplotlib.axes.Axes>`_
+            The axes object to construct the result plot onto.
+
+        Warning
+        -------
+        `ax` will be mutated by this process, even though nothing is explictely
+        returned. Everything present in `ax` before calling the method will be
+        removed. If you want to add further things to `ax`, do it after calling
+        this method.
+        """
+
+        # Remove the contents of `ax`
+        try:
+            ax.clear()
+        except AttributeError:
+            raise ValueError(f"{cols.R}`ax` is not a valid matplotlib axes "
+                             f"object, and instead is:\n{type(ax)}.{cols.END}")
+
+        # Transfer line objects
+        for line in self.ax.__dict__['lines']:
+            x = line.get_xdata()
+            y = line.get_ydata()
+            color = line.get_color()
+            lw = line.get_lw()
+            ax.plot(x, y, color=color, lw=lw)
+
+        # Transfer text objects
+        for text in self.ax.__dict__['texts']:
+            x, y = text.get_position()
+            txt = text.get_text()
+            fontprops = text.get_fontproperties()
+            color = text.get_color()
+            ax.text(x, y, txt, fontproperties=fontprops, color=color)
+
+        # Set ticks
+        ax.set_xticks(self.ax.get_xticks())
+        ax.set_yticks(self.ax.get_yticks())
+
+        # Set correct x- and y-limits
+        ax.set_xlim(self.ax.get_xlim())
+        ax.set_ylim(self.ax.get_ylim())
+
+        # Set x-label
+        ax.set_xlabel(self.ax.get_xlabel())

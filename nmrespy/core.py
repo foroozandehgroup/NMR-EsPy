@@ -1425,8 +1425,14 @@ class Estimator:
             Valid arguments are:
 
             * `shifts_unit`
+            * `plot_residual`
+            * `plot_model`
+            * `residual_shift`
+            * `model_shift`
             * `data_color`
             * `oscillator_colors`
+            * `residual_color`
+            * `model_color`
             * `labels`
             * `stylesheet`
 

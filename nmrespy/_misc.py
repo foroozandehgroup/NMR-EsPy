@@ -58,6 +58,7 @@ class ArgumentChecker:
               + `'pos_neg_tuple'`
               + `'mpl_color'`
               + `'osc_cols'`
+              + `'displacement'`
 
     dim : 1, 2 or None, default: None
         Dimension of the data. Only needs to be specified as `1` or `2`
@@ -118,6 +119,10 @@ class ArgumentChecker:
                 test = self.check_mpl_color(obj)
             elif typ == 'osc_cols':
                 test = self.check_oscillator_colors(obj)
+            elif typ == 'generic_int_list':
+                test = isinstance(obj, list) and all(isinstance(item, int) for item in obj)
+            elif typ == 'displacement':
+                test = self.check_displacement(obj)
 
             # Error message to be shown if invalid arguments are found
             if test is False:
@@ -264,6 +269,19 @@ class ArgumentChecker:
             return True
         # No hits from the above conditionals...
         return False
+
+    @staticmethod
+    def check_displacement(obj):
+        """Check for a valid mpl label displacement tuple."""
+        if isinstance(obj, tuple) and len(obj) == 2:
+            for element in obj:
+                if isinstance(element, float) and abs(element) < 1.:
+                    pass
+                else:
+                    return False
+            return True
+        return False
+
 
 
 class FrequencyConverter:
