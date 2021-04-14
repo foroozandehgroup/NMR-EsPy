@@ -120,30 +120,25 @@ inputting desired values into the adjacent entry boxes.
    state with the new value present. If the value provided is invalid for
    whatever reason, the entry box will revert back to the previous value.
 
-   .. TODO - struggling to embed this video
+   The video below illustrates this. Initially, I try to change the value
+   of the pivot to 7ppm. As soon as the entry box is changed, it goes red,
+   indicating that it needs validating. When ``<Return>`` is pressed, as 7 is
+   a valid value for the pivot (it is a number, and is within the spectrum's
+   sweep width), the pivot is changed accordingly. Note that it is changed to
+   the closest valid value to the nearest 4dp, which happens to be 6.9999ppm
+   in this case.
 
-   .. .. raw:: html
-   ..
-   ..    <video controls autoplay>
-   ..      <source src="../_static/gui/entry_widget_example.mp4" type="video/mp4">
-   ..      Your browser doesn't support the video tag
-   ..    </video>
+   After this, I try to change the pivot to the text ``invalid`` which of
+   course makes no sense in the context of a pivot, which should be a number.
+   As it is invalid, when ``<Return>`` is pressed, the pivot entry box back
+   to the last valid value it had.
 
-Region Selection
-----------------
+   .. raw:: html
 
-For typical NMR signals, the estimation routine used in NMR-EsPy is
-too costly to analyse the entire signal. For this reason, it is typically
-necessary to generate a signal which has been frequency-filtered, drastically
-reducing the computation time, as well as the accuracy of the estimation.
-
-* The region of interest is highlighted in :regiongreen:`green`.
-* To perform the frequency filtering, it is also necessary to specify a region
-  which appears to contain no signals (i.e. is pure noise). This is indicated
-  in :regionblue:`blue`.
-
-These regions can be adjusted by editing the scale widgets and entry boxes in
-the `Region Selection` tab.
+      <video width="640" height="640" style="display:block; margin: 0 auto;" controls autoplay>
+        <source src="../_static/gui/entry_widget_example.mp4" type="video/mp4">
+        Your browser doesn't support the video tag
+      </video>
 
 Advanced Estimation Settings
 ----------------------------
