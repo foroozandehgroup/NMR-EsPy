@@ -1,7 +1,7 @@
 ==============================
 Logfile for Estimator instance
 ==============================
---> Instance created @ 01-03-21 12:02:09 from new_bruker with args {'dir': '/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1', 'ask_convdta': True}
+--> Instance created @ 14-04-21 12:00:17 from new_bruker with args {'cls': <class 'nmrespy.core.Estimator'>, 'dir': '/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1', 'ask_convdta': True}
 --> frequency_filter ([[5.54, 5.42]], [[-0.15, -0.3]]) {}
 --> matrix_pencil () {}
 --> nonlinear_programming () {'phase_variance': True}

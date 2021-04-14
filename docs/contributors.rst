@@ -8,9 +8,9 @@ Contributors
    +-------------------------------------------+---------------------------------+
    | .. image:: _static/contributors/SH.jpg    | **Simon Hulse**                 |
    |    :scale: 35 %                           |                                 |
-   |    :align: center                         | Ph.D. Student 2020-23?          |
+   |    :align: center                         | Ph.D. Student 2019-             |
    |                                           |                                 |
-   |                                           | Project Lead                    |
+   |                                           | Project's main developer        |
    +-------------------------------------------+---------------------------------+
    | .. image:: _static/contributors/MF.jpg    | **Mohammadali Foroozandeh**     |
    |    :scale: 37 %                           |                                 |
@@ -18,7 +18,7 @@ Contributors
    +-------------------------------------------+---------------------------------+
    | .. image:: _static/contributors/TM.png    | **Thomas Moss**                 |
    |    :scale: 65 %                           |                                 |
-   |    :align: center                         | MChem student 2020-21           |
+   |    :align: center                         | MChem student 2020-             |
    |                                           |                                 |
    |                                           | Focussed                        |
    |                                           | on extending NMR-EsPy to        |

@@ -111,7 +111,7 @@ def write_result(
     you have a functioning LaTeX installation, open a command
     prompt/terminal and type:
 
-    .. code:: bash
+    .. code::
 
        $ pdflatex -version
        pdfTeX 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian)
@@ -139,13 +139,12 @@ def write_result(
     * `longtable <https://ctan.org/pkg/longtable>`_
     * `siunitx <https://ctan.org/pkg/siunitx?lang=en>`_
     * `tcolorbox <https://ctan.org/pkg/tcolorbox?lang=en>`_
+    * `varwidth <https://www.ctan.org/pkg/varwidth>`_
     * `xcolor <https://ctan.org/pkg/xcolor?lang=en>`_
 
-    Most of these are pretty ubiquitous and are likely to be installed
-    even with lightweight LaTeX installations. If you wish to check the
-    packages are available, use ``kpsewhich``:
+    If you wish to check the packages are available, use ``kpsewhich``:
 
-    .. code:: bash
+    .. code::
 
         $ kpsewhich booktabs.sty
         /usr/share/texlive/texmf-dist/tex/latex/booktabs/booktabs.sty

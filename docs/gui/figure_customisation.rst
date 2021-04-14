@@ -192,7 +192,19 @@ I anticipate users will frequently want to carry out.
      :scale: 30%
 
 If there are other features that you would like to see added to the
-:py:meth:`~nmrespy.plot.NmrespyPlot` class to improve the convenience
+:py:meth:`~nmrespy.plot.NmrespyPlot` class to increase the ease
 of generating figures, feel free to make a
 `pull request <https://github.com/foroozandehgroup/NMR-EsPy/pulls>`_,
-or `get in contact <mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query>`_.
+or `get in touch <mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query>`_.
+
+Save the Figure
+^^^^^^^^^^^^^^^
+
+Once you have completed all the desired customisation, the figure can be
+saved by including the following:
+
+.. code:: python3
+
+   plot.fig.savefig("<path/to/figure>", format="<fmt>", dpi=<dpi>, ...)
+
+where 

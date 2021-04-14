@@ -89,6 +89,23 @@ toolbar, with the following buttons:
           :width: 60%
      - Zoom.
 
+
+Region Selection
+----------------
+
+For typical NMR signals, the estimation routine used in NMR-EsPy is
+too costly to analyse the entire signal. For this reason, it is typically
+necessary to generate a signal which has been frequency-filtered, drastically
+reducing the computation time, and increasing the accuracy of the estimation.
+
+* The region of interest is highlighted in :regiongreen:`green`.
+* To perform the frequency filtering, it is also necessary to specify a region
+  which appears to contain no signals (i.e. is pure noise). This is indicated
+  in :regionblue:`blue`.
+
+These regions can be adjusted by editing the scale widgets and entry boxes in
+the `Region Selection` tab.
+
 Phase Correction
 ----------------
 

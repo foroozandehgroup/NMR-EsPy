@@ -11,31 +11,38 @@ from subprocess import *
 # ---PYTHON EXECUTABLE----------------------------------------------------
 # exe should be set as the path to the Python executable that you use for
 # nmrespy.
+#
 # One way to determine this that is general for all OSes is to start an
 # interactive Python session from a terminal/command prompt and then enter
 # the following:
+#
 # 	>>> import sys
 #   >>> exe = sys.executable.replace('\\', '\\\\')
 #   >>> print(f"\"{exe}\"")
-# Set exe as exactly what the output of this is
+#
+# Set py_exe as exactly what the output of this is
 py_exe = None
 # ------------------------------------------------------------------------
 
-# ----PDFLATEX EXECUTABLE - WINDOWS USERS ONLY----------------------------
-# UNIX users: you can leave this as None
-#
+# ----PDFLATEX EXECUTABLE-----------------------------------------------
 # If you have LaTeX installed and would like to produce PDFs of results,
 # the variable `pdflatex` should be set as the full path the pdflatex
 # executable.
 #
-# Find this by entering `where pdflatex` into a command prompt.
+# Find this by entering the following into a Python interpreter:
+# Windows:
+#    >>> from subprocess import check_output as co
+#    >>> exe = str(co("where pdflatex", shell=True), 'utf-8').rstrip().replace("\\", "\\\\")
+#    >>> print(f"\"{exe}\"")
+#    "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
 #
-# Example:
-# 	C:\Users\simon>where pdflatex
-# 	C:\texlive\2020\bin\win32\pdflatex.exe
-# In this example, you should set:
-# pdflatex = "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
-# (Ensure the path is a string and ensure each backslash is escaped)
+# UNIX:
+#    >>> from subprocess import check_output as co
+#    >>> exe = str(co("which pdflatex", shell=True), 'utf-8').rstrip()
+#    >>> print(f"\"{exe}\"")
+#    "/usr/bin/pdflatex"
+#
+# Set pdflatex_exe as exactly what the output of this is
 pdflatex_exe = None
 # ------------------------------------------------------------------------
 

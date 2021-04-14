@@ -3,17 +3,17 @@ Theory Overview
 
 .. note::
 
-   This page is work in progress
+   This page is work in progress.
 
 On this page, I provide a brief overview of the goal of NMR-EsPy and how
 it attempts to achieve this. If you simply wish to use NMR-EsPy without
-worrying about the deatils of how it works, feel free to skip this.
+worrying about the underlying theory, feel free to skip this.
 
 The signal produced as a result of a typical NMR experiment (FID) can be
-thought of as a summation of a number of complex sinusoidal oscillators, in
-the presence of experimental noise. For the general case of a signal with
-:math:`D` dimensions, we expect the function form of the signal at any time
-point from the start of acquisition onwards to be:
+thought of as a summation of a number of complex exponentials, in
+the presence of experimental noise. For the general case of a signal from a
+:math:`D`-dimensional NMR experiment, we expect the functional form of the
+signal at any time during acquisition to be:
 
 .. math::
    y(t_1, \dots, t_D) = \sum_{m=1}^{M}
@@ -24,7 +24,7 @@ point from the start of acquisition onwards to be:
 where
 
 * :math:`t_d` is the time cosidered in the :math:`d`\-th dimension
-* :math:`M` is the number of oscillators
+* :math:`M` is the number of complex exponentials (oscillators) contributing to the FID.
 * :math:`a_m` is the amplitude of oscillator :math:`m`
 * :math:`\phi_m` is the phase of oscillator :math:`m`
 * :math:`f_{d,m}` is the frequency of oscillator :math:`m` in the
@@ -76,10 +76,9 @@ signal. This is rather challenging, especially for signals with many resonances,
 as one doesn't even know how many oscilltors are contained within the signal in
 general (:math:`M`).
 
-To achieve this, we apply `Newton's Method` to determine the optimal set of
-parameters to describe the signal. Newton's Method is an iterative procedure,
-which considers a particular function to be minimised. In the case of NMR-EsPy,
-the function is the following:
+To estimate :math:`\boldsymbol{\theta}`, we apply `Newton's Method`, an
+iterative procedure which attempts to locate extrema of functions.
+In the case of NMR-EsPy, we wish to minimise the following:
 
 .. math::
    \mathcal{F}(\boldsymbol{\theta}) = \lVert \tilde{\boldsymbol{Y}} -
@@ -87,20 +86,11 @@ the function is the following:
 
 where :math:`\tilde{\boldsymbol{Y}} = \boldsymbol{Y} / \lVert \boldsymbol{Y}
 \rVert`. This is a very commonly encountered function in the context of
-optimisation, called the `residual sum of squares`. There are numerous
-variants of Newton's method, but the general idea
-is to approximate the neighbourhood about the current value of
-:math:`\boldsymbol{\theta}` as quadratic, and to determine a step with a
-certain direction and size such that the value of
-:math:`\mathcal{F}(\boldsymbol{\theta})` is reduced. This procedure is repeated
-multiple times until the routine (hopefully) converges to a minimum in the
-function.
-
-Depending on the circumstances, it is often worthwhile to minimise the variance
-of phases in the FID's estimate. NMR-EsPy also allows minimisation of the
-following function to achieve this:
-
-.. math::
-   \mathcal{F}^{\phi}(\boldsymbol{\theta}) = \lVert \tilde{\boldsymbol{Y}} -
-   \boldsymbol{X}(\boldsymbol{\theta}) \rVert_2^2 + \mathrm{Var}
-   (\boldsymbol{\phi})
+optimisation, called the
+`residual sum of squares <https://en.wikipedia.org/wiki/Residual_sum_of_squares>`_.
+There are numerous variants of Newton's method, but the general idea
+is to approximate the neighbourhood of :math:`\mathcal{F}(\boldsymbol{\theta})`
+about the current value of :math:`\boldsymbol{\theta}` as quadratic, and to
+determine a step with a certain direction and size such that
+:math:`\mathcal{F}(\boldsymbol{\theta})` is reduced. This procedure is iterated
+until the routine converges to a minimum in the function.

@@ -17,7 +17,6 @@ import nmrespy
 
 
 # -- Project information -----------------------------------------------------
-
 project = 'NMR-EsPy'
 copyright = '2021, Simon Hulse'
 author = 'Simon Hulse'
@@ -30,6 +29,7 @@ version = nmrespy.__version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.autosectionlabel',
               'sphinx.ext.napoleon',
               'sphinx.ext.imgmath',
               'sphinx.ext.todo',
@@ -37,11 +37,11 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
 ]
 
-imgmath_latex_premable = '\\usepackage{nicefrac}\n'
-
 master_doc = 'index'
 
 todo_include_todos = True
+
+autosectionlabel_prefix_document = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -55,17 +55,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-# Readthedocs theme
-#
-# on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-#
-# if not on_rtd:  # only import and set the theme if we're building docs locally
-#     import sphinx_rtd_theme
-#     html_theme = 'sphinx_rtd_theme'
-#     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 html_theme = "bizstyle"
+
+html_scaled_image_link = False
 
 # otherwise, readthedocs.org uses their theme by default, so no need to specify it
 

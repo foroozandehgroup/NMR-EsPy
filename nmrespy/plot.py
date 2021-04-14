@@ -108,7 +108,7 @@ def plot_result(
     data_color : matplotlib color, default: '#000000'
         The colour used to plot the original data. Any value that is
         recognised by matplotlib as a color is permitted. See
-        `<https://matplotlib.org/3.1.0/tutorials/colors/\
+        `<here https://matplotlib.org/3.1.0/tutorials/colors/\
         colors.html>`_ for a full description of valid values.
 
     residual_color : matplotlib color, default: '#808080'
@@ -122,13 +122,12 @@ def plot_result(
         Describes how to color individual oscillators. The following
         is a complete list of options:
 
-        * If the a valid matplotlib color is given, all oscillators will
+        * If a valid matplotlib color is given, all oscillators will
           be given this color.
         * If a string corresponding to a matplotlib colormap is given,
           the oscillators will be consecutively shaded by linear increments
           of this colormap. For all valid colormaps, see
-          `<https://matplotlib.org/3.3.1/tutorials/colors/\
-          colormaps.html>`__
+          `<here https://matplotlib.org/stable/tutorials/colors/colormaps.html>`__
         * If a list or NumPy array containing valid matplotlib colors is
           given, these colors will be cycled.
           For example, if ``oscillator_colors = ['r', 'g', 'b']``:
@@ -155,8 +154,8 @@ def plot_result(
 
     stylesheet : str or None, default: None
         The name of/path to a matplotlib stylesheet for further
-        customaisation of the plot. See `<https://matplotlib.org/\
-        stable/tutorials/introductory/customizing.html>`_ for more
+        customaisation of the plot. See `<here https://matplotlib.org/\
+        stable/tutorials/introductory/customizing.html>`__ for more
         information on stylesheets.
 
     Returns

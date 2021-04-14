@@ -1,6 +1,10 @@
 Example Walkthrough
 ===================
 
+This page provides an outline of basic NMR-EsPy usage through writing
+Python code. If you wish to use the graphical user interface instead,
+:doc:`follow this link <gui/index>`.
+
 As an illustration of the typical steps involved in using NMR-EsPy, we will
 consider an example dataset that ships with TopSpin 4. Assuming you installed
 TopSpin in the default path, this should be present in the path:
@@ -46,15 +50,15 @@ Information about the estimator can be seen by printing it:
 .. code:: python3
 
    >>> print(estimator)
-   <nmrespy.core.Estimator at 0x7f702558ba90>
+   <nmrespy.core.Estimator at 0x7f50e8ad8fa0>
    source : bruker_pdata
    data : [ 8237241.76470947      +0.j          1834272.48552552-9941412.67849912j
-   -7908307.89165751+1371281.69800517j ...
-          0.              +0.j                0.              +0.j
-          0.              +0.j        ]
+    -7908307.89165751+1371281.69800517j ...
+           0.              +0.j                0.              +0.j
+           0.              +0.j        ]
    dim : 1
    n : [32768]
-   path : tests/data/1/pdata/1
+   path : /opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1
    sw : [5494.50549450549]
    offset : [2249.20599998768]
    sfo : [500.132249206]
@@ -63,10 +67,7 @@ Information about the estimator can be seen by printing it:
    filter_info : None
    result : None
    errors : None
-   _manual_edit : False
-   _converter : <nmrespy._misc.FrequencyConverter object at 0x7f702558bd30>
-   _logpath : /home/simon/Documents/DPhil/projects/spectral_estimation/
-   NMR-EsPy/nmrespy/logs/210301120209.log
+
 
 An interactive plot of the data, in the frequency domain, can be seen using the
 :py:meth:`~nmrespy.core.Estimator.view_data` method:
@@ -77,6 +78,7 @@ An interactive plot of the data, in the frequency domain, can be seen using the
 
 .. image:: _static/walkthrough/figures/view_data.png
    :align: center
+   :scale: 80%
 
 
 Frequency Filtration
@@ -94,10 +96,11 @@ In this example, I am going to focus on the spectral region between
    :align: center
 
 To generate a frequency-filtered signal from the imported data, the
-:py:meth:`~nmrespy.core.Estimator.frequency_filter` method is used. It is
-also necessary to specify a region that appears to contain no signals (this
-is used to gain an insight into the data's noise variance). In this
-example, I will set this region to be -0.15 to -0.3ppm.
+:py:meth:`~nmrespy.core.Estimator.frequency_filter` method is used. All well as
+specifying the region of interest, it is also necessary to provide a region
+that appears to contain no signals (this is used to gain an insight into the
+data's noise variance). In this example, I will set this region to be -0.15 to
+-0.3ppm.
 
 .. code:: python3
 
@@ -160,13 +163,14 @@ this example contains 12 oscillators).
    =============================
    | niter |f evals|CG iter|  obj func   |tr radius |   opt    |  c viol  | penalty  |CG stop|
    |-------|-------|-------|-------------|----------|----------|----------|----------|-------|
-   |   1   |   1   |   0   | +1.6124e-01 | 1.00e+00 | 9.28e-02 | 0.00e+00 | 1.00e+00 |   0   |
-   |   2   |   2   |   1   | +8.9788e-02 | 7.00e+00 | 6.96e-01 | 0.00e+00 | 1.00e+00 |   2   |
-   |   3   |   3   |   9   | +8.9788e-02 | 7.00e-01 | 6.96e-01 | 0.00e+00 | 1.00e+00 |   3   |
+   |   1   |   1   |   0   | +1.6287e-01 | 1.00e+00 | 9.30e-02 | 0.00e+00 | 1.00e+00 |   0   |
+   |   2   |   2   |   1   | +9.0652e-02 | 7.00e+00 | 6.92e-01 | 0.00e+00 | 1.00e+00 |   2   |
+   |   3   |   3   |   9   | +9.0652e-02 | 7.00e-01 | 6.92e-01 | 0.00e+00 | 1.00e+00 |   3   |
+
 
    --snip--
 
-   |  100  |  100  |  939  | +6.2710e-04 | 8.61e-03 | 3.17e-04 | 0.00e+00 | 1.00e+00 |   4   |
+   |  100  |  100  |  966  | +6.4830e-04 | 1.27e-01 | 2.56e-03 | 0.00e+00 | 1.00e+00 |   2   |
 
    --snip--
 
@@ -174,21 +178,22 @@ this example contains 12 oscillators).
    Updated number of oscillators: 9
    | niter |f evals|CG iter|  obj func   |tr radius |   opt    |  c viol  | penalty  |CG stop|
    |-------|-------|-------|-------------|----------|----------|----------|----------|-------|
-   |   1   |   1   |   0   | +1.5728e-03 | 1.00e+00 | 1.55e-01 | 0.00e+00 | 1.00e+00 |   0   |
+   |   1   |   1   |   0   | +1.2497e-03 | 1.00e+00 | 1.08e-01 | 0.00e+00 | 1.00e+00 |   0   |
 
    --snip--
 
-   |  100  |  100  | 2170  | +8.6101e-04 | 5.38e+00 | 3.41e-06 | 0.00e+00 | 1.00e+00 |   4   |
+   |  100  |  100  | 2228  | +8.5451e-04 | 9.95e+00 | 2.47e-05 | 0.00e+00 | 1.00e+00 |   1   |
 
    --snip--
 
    ==============================
    NONLINEAR PROGRAMMING COMPLETE
    ==============================
-   Time elapsed: 0 mins, 3 secs, 676 msecs
+   Time elapsed: 0 mins, 3 secs, 186 msecs
 
 The ``result`` attribute has now been updated with the result obtained using
-NLP.
+NLP. The routine also computes the errors associated with each parameter,
+which can be accessed with :py:meth:`~nmrespy.core.Estimator.get_errors`.
 
 Saving Results
 ^^^^^^^^^^^^^^
@@ -205,12 +210,12 @@ formats, using the :py:meth:`~nmrespy.core.Estimator.write_result` method.
   >>> for fmt in ["txt", "pdf", "csv"]:
   ...     estimator.write_result(path="example", description=msg, fmt=fmt)
   ...
-  Saved result to /home/path/to/.../example.txt
+  Saved result to /<pwd>/example.txt
   Result successfully output to:
-  /home/path/to/.../example.pdf
+  /<pwd>/example.pdf
   If you wish to customise the document, the TeX file can be found at:
-  /home/path/to/.../example.tex
-  Saved result to /home/path/to/.../example.csv
+  /<pwd>/example.tex
+  Saved result to /<pwd>/example.csv
 
 The files generated are as follows:
 
@@ -232,9 +237,9 @@ Generating Result Figures
 To generate a figure of the result, you can use the
 :py:meth:`~nmrespy.core.Estimator.plot_result` method, which utilises
 `matplotlib <https://matplotlib.org/>`_. There is wide scope for customising
-the plot, which is described in detail in the documentation of
-:py:func:`nmrespy.plot.plot_result`. See `Summary`_ for an example of some
-basic plot customisation.
+the plot, which is described in detail in
+:doc:`Figure Customisation <gui/figure_customisation>`.
+See `Summary`_ below for an example of some basic plot customisation.
 
 .. code:: python3
 
@@ -253,7 +258,7 @@ with :py:meth:`~nmrespy.core.Estimator.to_pickle`:
 .. code::
 
    >>> estimator.to_pickle(path="pickle_example")
-   Saved instance of Estimator to /home/path/to/.../pickle_example.pkl
+   Saved instance of Estimator to /<pwd>/pickle_example.pkl
 
 The estimator can subsequently be recovered using
 :py:meth:`~nmrespy.core.Estimator.from_pickle`:
@@ -273,7 +278,7 @@ A summary of the methods applied to the estimator can be saved using the
 .. code:: python3
 
    >>> estimator.save_logfile(path="logfile_example")
-   Log file successfully saved to /home/path/to/.../logfile_example.log
+   Log file successfully saved to /<pwd>/logfile_example.log
 
 * :download:`logfile_example.log <_static/walkthrough/logfile_example.log>`
 
@@ -282,58 +287,57 @@ Summary
 
 A script which performs the entire procedure described above is as follows.
 Note that further customisation has been applied to the plot to give it an
-aesthetic upgrade.
+"aesthetic upgrade".
 
 .. code:: python3
 
-   from nmrespy.core import Estimator
+    from nmrespy.core import Estimator
 
-   # Path to data. You'll need to change the 4.0.8 bit if you are using a
-   # different TopSpin version.
+    # Path to data. You'll need to change the 4.0.8 bit if you are using a
+    # different TopSpin version.
 
-   # --- Linux users ---
-   path = "/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1"
+    # --- UNIX users ---
+    path = "/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1"
 
-   # --- Windows users ---
-   # path = "C:/Bruker/TopSpin4.0.8/examdata/exam1d_1H/1/pdata/1"
+    # --- Windows users ---
+    # path = "C:/Bruker/TopSpin4.0.8/examdata/exam1d_1H/1/pdata/1"
 
-   estimator = Estimator.new_bruker(path)
-   estimator.frequency_filter([[5.54, 5.42]], [[-0.15, -0.3]])
-   estimator.matrix_pencil()
-   estimator.nonlinear_programming(phase_variance=True)
+    estimator = Estimator.new_bruker(path)
 
-   msg = "Example estimation result for NMR-EsPy docs."
-   for fmt in ["txt", "pdf", "csv"]:
-       estimator.write_result(path="example", description=msg, fmt=fmt)
+    # --- Frequency filter & estimate ---
+    estimator.frequency_filter([[5.54, 5.42]], [[-0.15, -0.3]])
+    estimator.matrix_pencil()
+    estimator.nonlinear_programming(phase_variance=True)
 
-   # Plot result. Set oscillator colours using the viridis colourmap
-   plot = estimator.plot_result(oscillator_colors='viridis')
+    # --- Write result files ---
+    msg = "Example estimation result for NMR-EsPy docs."
+    for fmt in ["txt", "pdf", "csv"]:
+        estimator.write_result(path="example", description=msg, fmt=fmt)
 
-   # Shift oscillator labels
-   label_shifts = [
-       (-0.001, 2E5),
-       (0.0, 2E5),
-       (0.001, 2E5),
-       (0.001, 2E5),
-       (-0.0015, 2E5),
-       (-0.001, 2E5),
-       (0.0025, 2E5),
-       (0.0025, 2E5),
-       (-0.001, 2E5),
-   ]
+    # --- Plot result ---
+    # Set oscillator colours using the viridis colourmap
+    plot = estimator.plot_result(oscillator_colors='viridis')
+    # Shift oscillator labels
+    # Move the labels associated with oscillators 1, 2, 5, and 6
+    # to the right and up.
+    plot.displace_labels([1,2,5,6], (0.02, 0.01))
+    # Move the labels associated with oscillators 3, 4, 7, and 8
+    # to the left and up.
+    plot.displace_labels([3,4,7,8], (-0.04, 0.01))
+    # Move oscillators 9's label to the right
+    plot.displace_labels([9], (0.02, 0.0))
 
-   for i, shifts in enumerate(label_shifts, start=1):
-        plot.labels[i].set_position(
-           tuple(p + s for p, s in zip(plot.labels[i].get_position(), shifts))
-        )
+    # Save figure as a PNG
+    plot.fig.savefig("plot_example_edited.png")
 
-   plot.fig.savefig("plot_example_edited.png")
-   estimator.to_pickle(path="pickle_example")
-   estimator.save_logfile(path="logfile_example")
+    # Save the estimator to a binary file.
+    estimator.to_pickle(path="pickle_example")
+
+    # Save a logfile of method calls
+    estimator.save_logfile(path="logfile_example")
 
 * :download:`nmrespy_example.py <_static/walkthrough/nmrespy_example.py>`
 * :download:`plot_example_edited.png <_static/walkthrough/figures/plot_example_edited.png>`
 
-More functionality is provided by the :py:class:`~nmrespy.core.Estimator`.
-Look at the docs for details, or email me (I don't usually bite):
-`simon.hulse@chem.ox.ac.uk <mailto:simon.hulse@chem.ox.ac.uk>`_
+More features are provided by :py:class:`~nmrespy.core.Estimator` beyond
+what is described on this page. Look at the class's docs for details.
