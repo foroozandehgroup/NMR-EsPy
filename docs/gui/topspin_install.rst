@@ -1,5 +1,3 @@
-.. _TS_install:
-
 Integrating the GUI into TopSpin
 ================================
 

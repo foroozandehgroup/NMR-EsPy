@@ -10,8 +10,8 @@ Loading the GUI
 ^^^^^^^^^^^^^^^
 
 The GUI can be loaded both from a terminal/command prompt, or from within
-TopSpin, provided the GUI loader has been installed
-(see :ref:`Integrating the GUI into TopSpin <TS_install>`).
+TopSpin provided the GUI loader has been installed
+(see :doc:`Integrating the GUI into TopSpin <topspin_install>`).
 
 From a terminal
 ---------------
@@ -59,52 +59,43 @@ Key features of the window are annotated:
 Plot Navigation
 ---------------
 
-The Plot navigation toolbar is an edited version of Matplotlib's default
-toolbar, with the following buttons:
+The Plot navigation toolbar enables you to change the view of the data.
+It is an edited version of
+`matplotlib's toolbar <https://matplotlib.org/3.2.2/users/navigation_toolbar.html>`_,
+with the following available buttons:
 
 .. list-table::
    :header-rows: 1
-   :widths: 1 8
+   :widths: 1 10
 
    * - Icon
      - Role
 
    * - .. image:: ../_static/gui/navigation_icons/home.png
           :width: 60%
+          :align: center
      - Return to the original plot view.
 
    * - .. image:: ../_static/gui/navigation_icons/back.png
           :width: 60%
+          :align: center
      - Return to the previous plot view.
 
    * - .. image:: ../_static/gui/navigation_icons/forward.png
           :width: 60%
+          :align: center
      - Undo a return to a previous view
 
    * - .. image:: ../_static/gui/navigation_icons/pan.png
           :width: 60%
+          :align: center
      - Pan. Note that panning outside the spectral window is not possible.
 
    * - .. image:: ../_static/gui/navigation_icons/zoom.png
           :width: 60%
+          :align: center
      - Zoom.
 
-
-Region Selection
-----------------
-
-For typical NMR signals, the estimation routine used in NMR-EsPy is
-too costly to analyse the entire signal. For this reason, it is typically
-necessary to generate a signal which has been frequency-filtered, drastically
-reducing the computation time, and increasing the accuracy of the estimation.
-
-* The region of interest is highlighted in :regiongreen:`green`.
-* To perform the frequency filtering, it is also necessary to specify a region
-  which appears to contain no signals (i.e. is pure noise). This is indicated
-  in :regionblue:`blue`.
-
-These regions can be adjusted by editing the scale widgets and entry boxes in
-the `Region Selection` tab.
 
 Phase Correction
 ----------------
@@ -116,7 +107,7 @@ selected:
    :align: center
    :scale: 60%
 
-When this tab is selected it is possible to phase the data, by editing the
+Phase correction can be carried out by editing the
 pivot (red line in the above figure), zero-order phase and first-order phase.
 This is unlikely to be necessary if you are considering processed data, however
 you will probably need to do this if you are considering the raw time-domain
@@ -130,12 +121,14 @@ inputting desired values into the adjacent entry boxes.
    **Validating entry box inputs**
 
    For the majority of entry boxes in the GUI, you will notice that the box
-   will turn red after you manually change it's contents. This indicates
-   that the input value has been `unverified`. After you have changed the value
-   in an entry box, press ``<Return>``. If the value you have provided is
-   valid for the given parameter, the entry box will go back to its normal
-   state with the new value present. If the value provided is invalid for
-   whatever reason, the entry box will revert back to the previous value.
+   turns red after you manually change its contents. This indicates
+   that the input adhere to certain criteria (i.e. it must be a number, a
+   valid path on your computer etc.), and it has not been validated. After you
+   have changed the value in an entry box, press ``<Return>``. The entry box
+   will then turn back to its original colour. If the value you
+   provided is valid for the given parameter, the value will be kept. If the
+   value provided is invalid, the entry box will revert back to the previous
+   valid value.
 
    The video below illustrates this. Initially, I try to change the value
    of the pivot to 7ppm. As soon as the entry box is changed, it goes red,
@@ -145,10 +138,10 @@ inputting desired values into the adjacent entry boxes.
    the closest valid value to the nearest 4dp, which happens to be 6.9999ppm
    in this case.
 
-   After this, I try to change the pivot to the text ``invalid`` which of
-   course makes no sense in the context of a pivot, which should be a number.
-   As it is invalid, when ``<Return>`` is pressed, the pivot entry box back
-   to the last valid value it had.
+   After this, I try to change the pivot to the value ``invalid`` which of
+   course makes no sense in the context of a pivot. As it is invalid, when
+   ``<Return>`` is pressed, the pivot entry box reverts back to the last valid
+   value it had.
 
    .. raw:: html
 
@@ -156,6 +149,33 @@ inputting desired values into the adjacent entry boxes.
         <source src="../_static/gui/entry_widget_example.mp4" type="video/mp4">
         Your browser doesn't support the video tag
       </video>
+
+  Note that if you try to run the estimation routine while at least one entry
+  box has not be validated, you will be prevented from doing so:
+
+  .. image:: ../_static/gui/windows/unverified_parameter_window.png
+     :align: center
+     :scale: 80%
+
+Region Selection
+----------------
+
+For typical NMR signals, the estimation routine used in NMR-EsPy is
+too expensive to analyse the entire signal. For this reason, it is typically
+necessary to generate a signal which has been frequency-filtered, drastically
+reducing the computation time, and increasing the accuracy of the estimation
+for the region chosen. As a rule of thumb, try to choose a region with fewer
+than 30 peaks. Any more than this, and the routine may take too long for you
+to bear.
+
+To filter the signal, two regions of the spectrum need to be indicated:
+
+* The region to estimate, highlighted in :regiongreen:`green`.
+* A region which appears to contain no signals
+  (i.e. is just experimental noise), highlighted in :regionblue:`blue`.
+
+These regions can be adjusted by editing the scale widgets and entry boxes
+in the `Region Selection` tab.
 
 Advanced Estimation Settings
 ----------------------------
@@ -165,6 +185,7 @@ aspects of the estimation routine to be tweaked:
 
 .. image:: ../_static/gui/windows/advanced_settings_window.png
    :align: center
+   :scale: 80%
 
 Below is a summary of the meaning of all of these parameters.
 
@@ -183,7 +204,7 @@ Below is a summary of the meaning of all of these parameters.
 
   .. image:: ../_static/gui/filter_cut/filter_cut.png
      :align: center
-     :scale: 25%
+     :scale: 20%
 
   + `Cut signal` - Specifies whether or not to perform cutting of the spectrum.
     By default, this is selected.
@@ -197,12 +218,12 @@ Below is a summary of the meaning of all of these parameters.
   for estimating signal parameters. It is used in NMR-EsPy to generate an
   initial guess for numerical optimisation. It is possible to either manually
   choose how many oscillators to generate using the Matrix Pencil, or to
-  estimate the number of oscillators using the Minimum Description Length.
+  estimate the number of oscillators using the Minimum Description Length (MDL).
 
   + `Datapoints to consider` - Specifies how many points in the filtered
     signal to consider. The fewer datapoints, the faster the Matrix Pencil
     will be. However, if too few datapoints are used, the result may be
-    unreliable. If the signal contains fewer the 4096 (2¹²) points, the
+    unreliable. If the signal contains fewer than 4096 (2¹²) points, the
     full signal will be considered by default. Otherwise, the first 4096 points
     will be considered.
   + `Use MDL` - Whether or not to use the Minimum Description Length.
@@ -223,12 +244,13 @@ Below is a summary of the meaning of all of these parameters.
   + `NLP algorithm` - The optimisation routine. This can be either
     `Trust Region` or `L-BFGS`. By default, Trust-Region is used. The primary
     difference between these methods is that for Trust-Region, the
-    `Hessian matrix` (a matrix of second order derivatives) is computed
+    `Hessian matrix <https://en.wikipedia.org/wiki/Hessian_matrix>`_ (a matrix
+    of second order derivatives) is computed
     explicitly. In L-BFGS, the Hessian is approximated. The upshot of this
     is that the Trust-Region routine tends to lead to convergence in fewer
     iterations, however each iteration takes longer to compute.
   + `Maximum iterations` - The largest number of iterations to perform before
-    terminating an returning the result. The default value is dependent on
+    terminating an returning the optimiser. The default value is dependent on
     the NLP algorithm used (200 if Trust-Region selected, 500 if L-BFGS
     selected).
   + `Optimise phase variance` - Specifies whether to consider the variance of
@@ -238,11 +260,12 @@ Below is a summary of the meaning of all of these parameters.
     final result with an amplitude below the threshold will be removed. The
     threshold is defined as
     :math:`a_{\mathrm{thold}} \lVert\boldsymbol{a}\rVert_2` where
-    :math:`\lVert\boldsymbol{a}\rVert_2` is the Euclidian (L2) norm of the
-    oscillator amplitudes, and :math:`a_{\mathrm{thold}}` is the specified
+    :math:`\lVert\boldsymbol{a}\rVert_2` is the
+    `Euclidian norm <https://en.wikipedia.org/wiki/Norm_(mathematics)>`_ of
+    the oscillator amplitudes, and :math:`a_{\mathrm{thold}}` is the specified
     threshold. By default, no such threshold will be applied to the data.
 
-Once you are happy with the calculation setup, simply cluck the *Run* button.
+Once you are happy with the calculation setup, simply click the *Run* button.
 You will find that details of the routine are output to the terminal as it
 runs.
 
@@ -255,12 +278,16 @@ appearance:
 .. image:: ../_static/gui/windows/result_window.png
    :align: center
 
-Featured in the plot are:
+Featured in the result plot are:
 
-* A plot of the data of interest (black line).
-* Individual peaks that comprise the estimation result (multi-coloured).
-  Each of these is given a numerical label
-* The residual between the data and the model (grey).
+* The data selected (black).
+* Individual peaks that comprise the estimation result
+  (:oscblue:`m`\ :oscorange:`u`\ :oscgreen:`l`\ :oscred:`t`\
+  :oscblue:`i`\ :oscorange:`-`\ :oscgreen:`c`\ :oscred:`o`\
+  :oscblue:`l`\ :oscorange:`o`\ :oscgreen:`u`\ :oscred:`r`\
+  :oscblue:`e`\ :oscorange:`d`).
+  Each of these is given a numerical label.
+* The residual between the data and the model (:grey:`grey`).
 
 Saving the result
 -----------------
