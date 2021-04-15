@@ -1,6 +1,9 @@
+import random
+from threading import Thread
 import webbrowser
 
 from .. import *
+from .. import sig
 from .config import *
 from .custom_widgets import *
 
@@ -649,3 +652,72 @@ class AdvancedSettings(MyToplevel):
             msg = "Some parameters have not been validated."
             WarnFrame(self, msg=msg)
             return
+
+
+# TODO: animation window
+#
+# from matplotlib.animation import FuncAnimation
+# from matplotlib.backends import backend_tkagg
+# import matplotlib.pyplot as plt
+# import numpy as np
+#
+# class WaitingWindow(MyToplevel):
+#     """A window with an animation that appears while the estimation routine
+#     is running."""
+#
+#     def __init__(self, master):
+#         super().__init__(master)
+#
+#         # Create a simple FID for the animation
+#         para = np.array([[1, 0, 2, 1.5]])
+#         n = 256
+#         sw = [50.]
+#         self.fid = np.real(sig.make_fid(para, [n], sw)[0])
+#
+#         # Create a figure
+#         self.fig = plt.figure(figsize=(3,2))
+#         self.ax = self.fig.add_axes([0.05, 0.05, 0.9, 0.9])
+#         self.ax.set_xlim(-10, n+10)
+#         pad = 0.05 * np.amax(self.fid)
+#         self.ax.set_ylim(np.amin(self.fid) - pad, np.amax(self.fid) + pad)
+#
+#         self.fig.patch.set_facecolor(BGCOLOR)
+#         self.ax.set_facecolor(BGCOLOR)
+#
+#         for pos in ('top', 'bottom', 'right', 'left'):
+#             self.ax.spines[pos].set_visible(False)
+#
+#         self.ax.set_xticks([])
+#         self.ax.set_yticks([])
+#
+#         def hex_color():
+#             """Generates a random hex colour"""
+#             r = lambda: random.randint(0,255)
+#             return f'#{r():02x}{r():02x}{r():02x}'
+#
+#         self.line, = self.ax.plot([], [], color=hex_color(), lw=5, solid_capstyle='round')
+#
+#         def animate(i):
+#             x = self.line.get_xdata()
+#             y = self.line.get_ydata()
+#             s = x.size
+#
+#             if s == n:
+#                 self.line.set_xdata(np.array([]))
+#                 self.line.set_ydata(np.array([]))
+#                 self.line.set_color(hex_color())
+#             else:
+#                 self.line.set_xdata(np.hstack((x, np.arange(s, s+4))))
+#                 self.line.set_ydata(np.hstack((y, self.fid[s:s+4])))
+#
+#             return self.line
+#
+#         ani = FuncAnimation(self.fig, animate, interval=20)
+#
+#         self.canvas = backend_tkagg.FigureCanvasTkAgg(self.fig, master=self)
+#         self.canvas.draw()
+#         self.canvas.get_tk_widget().grid(column=0, row=0, padx=50, pady=(50, 20))
+#
+#         self.label = MyLabel(
+#             self, text='Estimating...', font=('Helvetica', 14, 'bold')
+#         ).grid(row=1, padx=50, pady=(0, 30))

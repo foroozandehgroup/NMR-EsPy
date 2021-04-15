@@ -2,6 +2,8 @@ from datetime import datetime
 from matplotlib import figure, patches
 from matplotlib.backends import backend_tkagg
 import re
+import threading
+import time
 
 from .._misc import latex_nucleus
 from .config import *
@@ -709,6 +711,13 @@ class SetUp(MyToplevel):
             WarnFrame(self, msg=msg)
             return
 
+        # Get rid of setup window
+        # this allows __init__ to proceed beyond wait_window
+        self.withdraw()
+
+        # TODO: animation window
+        # self.master.waiting_window.deiconify()
+
         # Phase correction variables
         pivot = self.pivot['idx']['value']
         p0 = self.phases['p0']['rad']['value']
@@ -752,10 +761,6 @@ class SetUp(MyToplevel):
         else:
             amp_thold = None
 
-        # Get rid of setup window
-        # this allows __init__ to proceed beyond wait_window
-        self.withdraw()
-
         # --- Run through the estimation ---------------------------------
         # Phase data
         self.estimator.phase_data(p0=p0, p1=p1)
@@ -778,7 +783,10 @@ class SetUp(MyToplevel):
         tmppath = str(TMPPATH / timestamp)
         self.estimator.to_pickle(path=tmppath, force_overwrite=True)
 
+        # TODO: animation window
+        # self.master.waiting_window.destroy()
         self.destroy()
+
 
 
 class SetupButtonFrame(RootButtonFrame):

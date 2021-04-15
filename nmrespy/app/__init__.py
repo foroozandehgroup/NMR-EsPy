@@ -13,7 +13,7 @@ import numpy as np
 
 from nmrespy._errors import TwoDimUnsupportedError
 from nmrespy.core import Estimator
-from nmrespy.app.frames import DataType
+from nmrespy.app.frames import DataType # TODO: WaitingWindow
 from nmrespy.app import setup, result
 
 
@@ -40,6 +40,7 @@ class NMREsPyApp(tk.Tk):
         # will be built onto Toplevels
         self.withdraw()
         path = pathlib.Path(path)
+        self.pdflatex = pdflatex
 
         if topspin:
             # Open window to ask user for data type (fid or pdata)
@@ -61,13 +62,16 @@ class NMREsPyApp(tk.Tk):
             if self.estimator.get_dim() > 1:
                 raise TwoDimUnsupportedError()
 
+            # TODO: animation window
+            # self.waiting_window = WaitingWindow(self)
+            # self.waiting_window.withdraw()
+
             self.setup_window = setup.SetUp(self)
             # hold at this point
             # relieved once setup is destroyed
             # see SetUp.run()
             self.wait_window(self.setup_window)
 
-        self.pdflatex = pdflatex
         self.result()
 
         # TODO
@@ -85,7 +89,6 @@ class NMREsPyApp(tk.Tk):
     def result(self):
         self.result_window = result.Result(self)
         self.wait_window(self.result_window)
-
 
 
 if __name__ == '__main__':
