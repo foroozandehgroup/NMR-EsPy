@@ -214,6 +214,8 @@ class SetUp(MyToplevel):
         # (plot_frame)
         self.rowconfigure(0, weight=1)
 
+        self.protocol("WM_DELETE_WINDOW", self.click_cross)
+
         # Frame containing the plot
         self.plot_frame = MyFrame(self)
         # Make `plot_frame` resizable
@@ -391,6 +393,11 @@ class SetUp(MyToplevel):
         self.tab_frame.grid(row=2, column=0, columnspan=2, sticky='ew')
         self.logo_frame.grid(row=3, column=0, padx=10, pady=10, sticky='w')
         self.button_frame.grid(row=3, column=1, sticky='s')
+
+
+    def click_cross(self):
+        """Runs when user clicks close 'x' button. Destroy master."""
+        self.master.destroy()
 
     # --- Region selection methods ---------------------------------------
     def update_region_entry(self, name):
@@ -786,6 +793,7 @@ class SetUp(MyToplevel):
         # TODO: animation window
         # self.master.waiting_window.destroy()
         self.destroy()
+        self.master.result()
 
 
 

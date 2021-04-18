@@ -72,8 +72,6 @@ class NMREsPyApp(tk.Tk):
             # see SetUp.run()
             self.wait_window(self.setup_window)
 
-        self.result()
-
         # TODO
         # For some reason, the program hangs after destroy call
         # ie still in mainloop, even though I have apparently destroyed

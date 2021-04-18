@@ -201,12 +201,11 @@ class DataType(MyToplevel):
 
 
 class RootButtonFrame(MyFrame):
-
     def __init__(self, master):
         super().__init__(master)
 
         self.cancel_button = MyButton(
-            self, text='Cancel', bg=BUTTONRED, command=self.master.destroy
+            self, text='Cancel', bg=BUTTONRED, command=self.cancel
         )
         self.cancel_button.grid(
             row=1, column=0, padx=(10,0), pady=(10,0), sticky='e',
@@ -246,6 +245,17 @@ class RootButtonFrame(MyFrame):
         contact_info_2.grid(
             row=3, column=0, columnspan=3, padx=10, pady=(0,10), sticky='w',
         )
+
+    def cancel(self):
+        check = ConfirmWindow(
+            parent=self, msg="Are you sure you want to close NMR-EsPy?",
+            yes_text='Yes', no_text='No',
+        )
+        self.wait_window(check)
+
+        if check.conf:
+            # Destroy NMREsPyApp
+            self.master.destroy()
 
 
 class AdvancedSettings(MyToplevel):
@@ -652,6 +662,40 @@ class AdvancedSettings(MyToplevel):
             msg = "Some parameters have not been validated."
             WarnFrame(self, msg=msg)
             return
+
+
+class ConfirmWindow(MyToplevel):
+    """A window to double-check the user wants to do something."""
+
+    def __init__(self, parent, msg, yes_text='Confirm', no_text='Cancel'):
+        super().__init__(parent)
+
+        self.conf = False
+
+        # add text explaining the issue
+        text = MyLabel(self, text=msg, wraplength=400)
+        text.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+
+        # close button
+        cancel_button = MyButton(
+            self, text=no_text, bg=BUTTONRED, command=self.cancel,
+        )
+        cancel_button.grid(row=1, column=0, padx=10, pady=(0,10))
+
+        confirm_button = MyButton(
+            self, text=yes_text, bg=BUTTONGREEN, command=self.confirm,
+        )
+        confirm_button.grid(row=1, column=1, padx=(0,10), pady=(0,10))
+
+
+    def cancel(self):
+        self.conf = False
+        self.destroy()
+
+    def confirm(self):
+        self.conf = True
+        self.destroy()
+
 
 
 # TODO: animation window
