@@ -297,7 +297,7 @@ class Estimator:
 
     @logger
     def to_pickle(
-        self, path='./nmrespy_instance', force_overwrite=False
+        self, path='./nmrespy_instance', force_overwrite=False, fprint=True,
     ):
         """Converts the class instance to a byte stream using Python's
         "Pickling" protocol, and saves it to a .pkl file.
@@ -317,6 +317,9 @@ class Estimator:
             * If `force_overwrite` is set to `True`, the current file will be
               overwritten without prompt.
 
+        fprint : bool, default: True
+            Specifies whether or not to print infomation to the terminal.
+
         Notes
         -----
         This method complements :py:meth:`from_pickle`, in that
@@ -328,6 +331,7 @@ class Estimator:
             [
                 (path, 'path', 'str'),
                 (force_overwrite, 'force_overwrite', 'bool'),
+                (fprint, 'fprint', 'bool'),
             ]
         )
 
@@ -353,7 +357,8 @@ class Estimator:
         with open(path, 'wb') as fh:
             pickle.dump(self, fh, pickle.HIGHEST_PROTOCOL)
 
-        print(f'{cols.G}Saved instance of Estimator to {path}{cols.END}')
+        if fprint:
+            print(f'{cols.G}Saved instance of Estimator to {path}{cols.END}')
 
 
     def __init__(
@@ -1298,6 +1303,7 @@ class Estimator:
             * `sci_lims`
             * `fmt`
             * `force_overwrite`
+            * `fprint`
 
             Other keyword arguments that are valid in
             :py:func:`nmrespy.write.write_result` will be ignored (these are

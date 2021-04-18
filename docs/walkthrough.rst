@@ -18,8 +18,8 @@ In what follows, as I am using TopSpin 4.0.8, I shall be replacing
 I recommend that you follow this walkthrough using a Python
 interpreter to ensure everything runs smoothly on your system.
 
-Generating an NMR-EsPy instance
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Generating an Estimator instance
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To get started, it is necessary to import the :py:class:`nmrespy.core.Estimator`
 class. A new instance of this class is initialised using the static

@@ -25,6 +25,7 @@ def write_result(
     parameters, errors=None, path='./nmrespy_result', sfo=None, integrals=None,
     description=None, info_headings=None, info=None, sig_figs=5,
     sci_lims=(-2,3), fmt='txt', force_overwrite=False, pdflatex_exe=None,
+    fprint=True,
 ):
     """Writes an estimation result to a .txt, .pdf or .csv file.
 
@@ -88,6 +89,9 @@ def write_result(
 
     pdflatex_exe : str or None, default: None
         The path to the system's ``pdflatex`` executable.
+
+    fprint : bool, default: True
+        Specifies whether or not to print information to the terminal.
 
         .. note::
 
@@ -163,6 +167,7 @@ def write_result(
         (path, 'path', 'str'),
         (fmt, 'fmt', 'file_fmt'),
         (force_overwrite, 'force_overwrite', 'bool'),
+        (fprint, 'fprint', 'bool'),
     ]
 
     if errors is not None:
@@ -239,19 +244,21 @@ def write_result(
     if fmt == 'txt':
         _write_txt(
             path, description, info_headings, info, param_titles, param_table,
+            fprint,
         )
     elif fmt == 'pdf':
         _write_pdf(
             path, description, info_headings, info, param_titles, param_table,
-            pdflatex_exe,
+            pdflatex_exe, fprint,
         )
     elif fmt == 'csv':
         _write_csv(
             path, description, info_headings, info, param_titles, param_table,
+            fprint,
         )
 
 def _write_txt(
-    path, description, info_headings, info, param_titles, param_table
+    path, description, info_headings, info, param_titles, param_table, fprint,
 ):
     """
     Writes parameter estimate to a textfile.
@@ -275,6 +282,9 @@ def _write_txt(
 
     param_table : list
         Array of contents to append to the result table.
+
+    fprint: bool
+        Specifies whether or not to print output to terminal.
     """
 
     # --- Write header ---------------------------------------------------
@@ -312,12 +322,13 @@ For more information, visit the GitHub repo:
     with open(path, 'w', encoding='utf-8') as file:
         file.write(msg)
 
-    print(f'{cols.G}Saved result to {path}{cols.END}')
+    if fprint:
+        print(f'{cols.G}Saved result to {path}{cols.END}')
 
 
 def _write_pdf(
     path, description, info_headings, info, param_titles, param_table,
-    pdflatex_exe,
+    pdflatex_exe, fprint,
 ):
     """Writes parameter estimate to a PDF using ``pdflatex``.
 
@@ -340,6 +351,9 @@ def _write_pdf(
 
     param_table : list
         Array of contents to append to the result table.
+
+    fprint: bool
+        Specifies whether or not to print output to terminal.
     """
     # Open text of template .tex file which will be amended
     with open(NMRESPYPATH / 'config/latex_template.txt', 'r') as fh:
@@ -480,16 +494,18 @@ def _write_pdf(
     #     pass
 
     # Print success message
-    print(
-        f'{cols.G}Result successfuly output to:\n' \
-        f'{pdf_final_path}\n'
-        f'If you wish to customise the document, the TeX file can'
-        f' be found at:\n'
-        f'{tex_final_path}{cols.END}'
-    )
+    if fprint:
+        print(
+            f'{cols.G}Result successfuly output to:\n' \
+            f'{pdf_final_path}\n'
+            f'If you wish to customise the document, the TeX file can'
+            f' be found at:\n'
+            f'{tex_final_path}{cols.END}'
+        )
 
 def _write_csv(
     path, description, info_headings, info, param_titles, param_table,
+    fprint,
 ):
     """Writes parameter estimate to a CSV.
 
@@ -512,6 +528,9 @@ def _write_csv(
 
     param_table : list
         Array of contents to append to the result table.
+
+    fprint: bool
+        Specifies whether or not to print output to terminal.
     """
 
     with open(path, 'w', encoding='utf-8') as fh:
@@ -535,7 +554,8 @@ def _write_csv(
         for row in param_table:
             writer.writerow(row)
 
-    print(f'{cols.G}Saved result to {path}{cols.END}')
+    if fprint:
+        print(f'{cols.G}Saved result to {path}{cols.END}')
 
 
 
