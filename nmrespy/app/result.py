@@ -21,6 +21,10 @@ class Result(MyToplevel):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
+        self.title('NMR-EsPy - Result')
+
+        self.protocol("WM_DELETE_WINDOW", self.click_cross)
+
         self.create_plot()
 
         # Canvas for figure
@@ -51,6 +55,8 @@ class Result(MyToplevel):
             row=1, column=1, rowspan=2, sticky='se', padx=10, pady=10,
         )
 
+    def click_cross(self):
+        self.button_frame.cancel()
 
     def create_plot(self):
         # Generate figure of result
@@ -95,7 +101,12 @@ class ResultButtonFrame(RootButtonFrame):
 
     def __init__(self, master):
 
-        super().__init__(master)
+        cancel_msg = (
+            "Are you sure you want to close NMR-EsPy? The estimation result "
+            "will be unrecoverable."
+        )
+
+        super().__init__(master, cancel_msg=cancel_msg)
         self.green_button['command'] = self.save_options
         self.green_button['text'] = 'Save'
 
@@ -104,6 +115,10 @@ class ResultButtonFrame(RootButtonFrame):
         )
         self.edit_parameter_button.grid(
             row=0, column=0, columnspan=3, sticky='ew', padx=10, pady=(10,0)
+        )
+
+        self.help_button['command'] = lambda: webbrowser.open_new(
+            f"{DOCSLINK}gui/usage/result.html"
         )
 
     def edit_parameters(self):
@@ -120,18 +135,20 @@ class EditParametersFrame(MyToplevel):
     def __init__(self, master):
         super().__init__(master)
         self.grid_columnconfigure(0, weight=1)
+
+        self.title("NMR-EsPy - Edit Parameters")
+
+        self.protocol("WM_DELETE_WINDOW", self.click_cross)
+
         # Reference to NMREsPyApp class: gives access to estimator
         self.ctrl = self.master.master
 
         # Prevent access to other windows
         self.grab_set()
 
-        # Store initial parameter array incase the user want to restore
-        # after making changes
-        self.previous = {
-            'result' : copy.deepcopy(self.ctrl.estimator.get_result()),
-            'errors' : copy.deepcopy(self.ctrl.estimator.get_errors()),
-        }
+        # Store initial parameter array incase the user wants to restore
+        # after making changes.
+        self.previous = copy.deepcopy(self.ctrl.estimator.get_result())
 
         # --- Parameter table --------------------------------------------
         titles = ['Amplitude', 'Phase (rad)', 'Frequency (ppm)', 'Damping (s⁻¹)']
@@ -159,7 +176,7 @@ class EditParametersFrame(MyToplevel):
         self.row1.grid(row=0, column=0, sticky='ew')
         # Row 2: Re-run optimiser, undo changes, close window
         self.row2 = MyFrame(self.button_frame)
-        self.row2.grid(row=1, column=0, sticky='ew')
+        self.row2.grid(row=1, column=0, sticky='e')
 
         for i in range(4):
             self.row1.columnconfigure(i, weight=1)
@@ -188,46 +205,46 @@ class EditParametersFrame(MyToplevel):
         )
         self.split_button.grid(row=0, column=3, sticky='ew', padx=(10,0))
 
-        self.table.active_number.trace('w', self.configure_button_states)
-
-        # Re-run optimiser
-        self.rerun_button = MyButton(
-            self.row2, text='Re-run optimiser', command=self.rerun,
-        )
-        self.rerun_button.grid(row=0, column=0, sticky='ew', pady=(10,0))
+        self.table.selected_number.trace('w', self.configure_button_states)
 
         # Reset
         self.reset_button = MyButton(
             self.row2, text='Reset', command=self.reset, state='disabled',
+            width=10,
         )
         self.reset_button.grid(
-            row=0, column=1, sticky='ew', pady=(10,0), padx=(10,0),
+            row=0, column=0, sticky='e', pady=(10,0), padx=(10,0),
         )
 
-        # Close
-        self.close_button = MyButton(
-            self.row2, text='Close', command=self.destroy,
+        # Button to close if no changes have been made, and re-run optimiser
+        # if changes have been made
+        self.close_rerun_button = MyButton(
+            self.row2, text='Close', command=self.close_or_rerun,
+            width=10,
         )
-        self.close_button.grid(
-            row=0, column=2, sticky='ew', pady=(10,0), padx=(10,0),
+        self.close_rerun_button.grid(
+            row=0, column=1, sticky='e', pady=(10,0), padx=(10,0),
         )
 
 
     def configure_button_states(self, *args):
         # Number of curently selected oscillators
-        number = self.table.active_number.get()
+        number = self.table.selected_number.get()
 
         if number == 0:
+            self.add_button['state'] = 'normal'
             self.remove_button['state'] = 'disabled'
             self.merge_button['state'] = 'disabled'
             self.split_button['state'] = 'disabled'
 
         elif number == 1:
+            self.add_button['state'] = 'disabled'
             self.remove_button['state'] = 'normal'
             self.merge_button['state'] = 'disabled'
             self.split_button['state'] = 'normal'
 
         else:
+            self.add_button['state'] = 'disabled'
             self.remove_button['state'] = 'normal'
             self.merge_button['state'] = 'normal'
             self.split_button['state'] = 'disabled'
@@ -235,70 +252,100 @@ class EditParametersFrame(MyToplevel):
 
     def add(self):
         """Loads a window for adding new oscillators"""
-        AddFrame(self)
+        add_frame = AddFrame(self)
+        self.wait_window(add_frame)
 
 
     def remove(self):
         """Removes selected oscillators from the result"""
-        rm_indices = self.table.active_rows
+        rm_indices = self.table.selected_rows
         self.ctrl.estimator.remove_oscillators(rm_indices)
         self.changed_result()
 
 
     def merge(self):
         """Removes selected oscillators from the result"""
-        merge_indices = self.table.active_rows
+        merge_indices = self.table.selected_rows
         self.ctrl.estimator.merge_oscillators(merge_indices)
         self.changed_result()
 
 
     def split(self):
-        SplitFrame(self, *self.table.active_rows)
+        split_frame = SplitFrame(self, *self.table.selected_rows)
+        self.wait_window(split_frame)
+
+
+    def close_or_rerun(self):
+        if self.close_rerun_button['text'] == 'Close':
+            self.destroy()
+        else:
+            self.rerun()
 
 
     def changed_result(self):
         """Regenerate parameter table and plot to reflect change in
         estimator.result"""
-        if self.reset_button['state'] == 'disabled':
+        # If result doess not match original, provide option to re-run
+        # the optimiser. If it does match, provide the option to simply
+        # close the window.
+        if not np.array_equal(self.ctrl.estimator.result, self.previous):
+            self.close_rerun_button['text'] = 'Re-run Optimiser'
             self.reset_button['state'] = 'normal'
+        else:
+            self.close_rerun_button['text'] = 'Close'
+            self.reset_button['state'] = 'disabled'
 
-        self.table.active_rows = []
-        self.table.active_number.set(0)
+        # Un-select all table rows, and reconstuct the table.
+        self.table.selected_rows = []
+        self.table.selected_number.set(0)
         self.table.reconstruct(
             contents=self.ctrl.estimator.get_result(freq_unit='ppm'),
             top=0,
         )
+
+        # Update the plot
         self.master.update_plot()
 
 
     def rerun(self):
         # Get info from previous call to nonlinear_programming
-        with open(self.ctrl.estimator._logpath, 'r') as fh:
-            log = fh.readlines()
-        for line in reversed(log):
+        for line in reversed(self.ctrl.estimator._log.split('\n')):
             if "nonlinear_programming" in line:
-                # Get the kwargs (these are stored within curly braces
+                # Get the kwargs (these are stored within curly braces)
                 nlp_args = ast.literal_eval(re.findall(r"\{.*\}", line)[0])
 
-        self.ctrl.result_window.destroy()
+        # Kill result window
+        self.master.destroy()
+        # RE-run NLP on current set of parameters
         self.ctrl.estimator.nonlinear_programming(
             trim=nlp_args['trim'], max_iterations=nlp_args['max_iterations'],
             method=nlp_args['method'], phase_variance=nlp_args['phase_variance'],
             amp_thold=nlp_args['amp_thold'],
         )
+        # Load new result window.
         self.ctrl.result()
 
 
     def reset(self):
-        self.ctrl.estimator.result = self.previous['result']
-        self.ctrl.estimator.errors = self.previous['errors']
+        # Reset result back to original
+        self.ctrl.estimator.result = self.previous
+        # Re-set the table and plot.
         self.changed_result()
 
 
-    def close(self):
-        if not np.array_equal(self.previous, self.ctrl.estimator.result):
-            msg = ("You should re-run the optimiser after editing the "
-                   "estimation result. Do this now?")
+    def click_cross(self):
+        if self.close_rerun_button['text'] == 'Close':
+            self.destroy()
+        else:
+            msg = (
+                "You have manually changed the estimation result. It is "
+                "necessary to re-run the optimiser after doing this. Either "
+                "click the <Re-run Optimiser> button, or click the <Reset> "
+                "button  to undo the changes you have made, and then click the "
+                "<Close> button."
+            )
+            warn_window = WarnWindow(self, msg=msg)
+            self.wait_window(warn_window)
 
 
 class AddFrame(MyToplevel):
@@ -307,6 +354,9 @@ class AddFrame(MyToplevel):
     def __init__(self, master):
 
         super().__init__(master)
+
+        self.title('NMR-EsPy - Add oscillators')
+
         # NMREsPyApp instance
         self.ctrl = self.master.master.master
 
@@ -367,7 +417,8 @@ class AddFrame(MyToplevel):
     def confirm(self):
         if self.table.check_red_entry():
             msg = "Some parameters have not been validated."
-            WarnFrame(self, msg=msg)
+            warn_window = WarnWindow(self, msg=msg)
+            self.wait_window(warn_window)
             return
 
         # Extract parameters from table
@@ -391,6 +442,8 @@ class SplitFrame(MyToplevel):
     def __init__(self, master, index):
 
         super().__init__(master)
+
+        self.title('NMR-EsPy - Split oscillator')
         # NMREsPyApp instance
         self.ctrl = self.master.master.master
         self.index = index
@@ -541,8 +594,8 @@ class SplitFrame(MyToplevel):
         update."""
         ratio = self.amp_ratio['var'].get()
         # Regex for string of ints separated by colons
-        regex = r"^\d+(:\d+)+$"
         number = int(self.number_chooser.get())
+        regex = r"^\d+(:\d+)+$"
         # Check that:
         # a) the ratio fully matches the regex
         # b) the number of values matches the specified number of child
@@ -577,6 +630,7 @@ class SaveFrame(MyToplevel):
 
     def __init__(self, master):
         super().__init__(master)
+        self.title('NMR-EsPy - Save Result')
         self.ctrl = self.master.master
         self.grab_set()
 
@@ -950,7 +1004,8 @@ class SaveFrame(MyToplevel):
     def save(self):
         if not check_invalid_entries(self):
             msg = "Some parameters have not been validated."
-            WarnFrame(self, msg=msg)
+            warn_window = WarnWindow(self, msg=msg)
+            self.wait_window(warn_window)
             return
 
         # Directory

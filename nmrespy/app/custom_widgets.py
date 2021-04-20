@@ -26,15 +26,14 @@ class MyFrame(tk.Frame):
 
 
 class MyToplevel(tk.Toplevel):
-    """A Tkinter toplevel, which by default:
-
-    * Has a white background
-    * CAnnot be resized
-    * Has the title NMR-EsPy
+    """A Tkinter toplevel, with the default backgroun for the app, and
+    which is not resizable by default.
     """
 
     def __init__(self, parent, **kwargs):
-        super().__init__(master=parent)
+        super().__init__(parent)
+
+        self.iconbitmap = IMAGESPATH / 'icon.ico'
 
         generate(self, ('bg',), (BGCOLOR,), kwargs)
 
@@ -136,9 +135,10 @@ class MyEntry(tk.Entry):
         self.bind('<Return>', lambda event: self.return_press())
 
     def key_press(self):
-        self['fg'] = 'red'
-        self['highlightcolor'] = 'red'
-        self['highlightbackground'] = 'red'
+        if self['state'] == 'normal':
+            self['fg'] = 'red'
+            self['highlightcolor'] = 'red'
+            self['highlightbackground'] = 'red'
 
     def black_highlight(self):
         self['fg'] = 'black'
