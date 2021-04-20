@@ -14,5 +14,5 @@ TOPSPINPATH = NMRESPYPATH / 'app/_topspin.py'
 
 GITHUBLINK = 'https://github.com/foroozandehgroup/NMR-EsPy'
 MFGROUPLINK = 'http://foroozandeh.chem.ox.ac.uk/home'
-DOCSLINK = 'https://nmr-espy.readthedocs.io/en/latest/'
+DOCSLINK = f"https://nmr-espy.readthedocs.io/en/{__version__}/"
 MAILTOLINK = r'mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query'

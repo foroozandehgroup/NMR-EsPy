@@ -1,63 +1,15 @@
-Using The GUI
-=============
-
-.. note::
-
-   On this page, ``<pyexe>`` denotes the symbolic link/path to the Python
-   executable you are using.
-
-Loading the GUI
-^^^^^^^^^^^^^^^
-
-The GUI can be loaded both from a terminal/command prompt, or from within
-TopSpin provided the GUI loader has been installed
-(see :doc:`Integrating the GUI into TopSpin <topspin_install>`).
-
-From a terminal
----------------
-
-To set-up an estimation routine from the terminal/command prompt,
-enter the following command:
-
-.. code:: none
-
-   $ <pyexe> -m nmrespy --estimate <path_to_bruker_data>
-
-.. note::
-
-   The shorthand flag ``-e`` can be used in place of ``--estimate``.
-
-``<path_to_bruker_data>`` should be one of the following:
-
-* The path to the parent directory of the raw time-domain data (``fid``).
-* The path to the parent directory of the processed data (``1r``).
-
-From TopSpin
-------------
-
-To load the GUI from TopSpin, simply select the data you wish to look at,
-and then enter the command ``nmrespy`` into the prompt in the bottom left
-corner.
-
-You will be asked to select the data you wish to consider (either the
-raw time-domain data, or the processed data):
-
-.. image:: ../_static/gui/windows/datatype.png
-   :align: center
-   :scale: 70%
-
 Estimation Set-up
-^^^^^^^^^^^^^^^^^
+=================
 
 The following is a screenshot of the NMR-EsPy GUI calculation set-up window.
 Key features of the window are annotated:
 
-.. image:: ../_static/gui/windows/setup_window.png
+.. image:: ../../_static/gui/windows/setup_window.png
    :align: center
    :scale: 60%
 
 Plot Navigation
----------------
+^^^^^^^^^^^^^^^
 
 The Plot navigation toolbar enables you to change the view of the data.
 It is an edited version of
@@ -71,39 +23,39 @@ with the following available buttons:
    * - Icon
      - Role
 
-   * - .. image:: ../_static/gui/navigation_icons/home.png
+   * - .. image:: ../../_static/gui/navigation_icons/home.png
           :width: 60%
           :align: center
      - Return to the original plot view.
 
-   * - .. image:: ../_static/gui/navigation_icons/back.png
+   * - .. image:: ../../_static/gui/navigation_icons/back.png
           :width: 60%
           :align: center
      - Return to the previous plot view.
 
-   * - .. image:: ../_static/gui/navigation_icons/forward.png
+   * - .. image:: ../../_static/gui/navigation_icons/forward.png
           :width: 60%
           :align: center
      - Undo a return to a previous view
 
-   * - .. image:: ../_static/gui/navigation_icons/pan.png
+   * - .. image:: ../../_static/gui/navigation_icons/pan.png
           :width: 60%
           :align: center
      - Pan. Note that panning outside the spectral window is not possible.
 
-   * - .. image:: ../_static/gui/navigation_icons/zoom.png
+   * - .. image:: ../../_static/gui/navigation_icons/zoom.png
           :width: 60%
           :align: center
      - Zoom.
 
 
 Phase Correction
-----------------
+^^^^^^^^^^^^^^^^
 
 The GUI has the following appearance when the `Phase Correction` tab is
 selected:
 
-.. image:: ../_static/gui/windows/setup_window_phase_tab.png
+.. image:: ../../_static/gui/windows/setup_window_phase_tab.png
    :align: center
    :scale: 60%
 
@@ -146,19 +98,19 @@ inputting desired values into the adjacent entry boxes.
    .. raw:: html
 
       <video width="640" height="640" style="display:block; margin: 0 auto;" controls autoplay>
-        <source src="../_static/gui/entry_widget_example.mp4" type="video/mp4">
+        <source src="../../_static/gui/entry_widget_example.mp4" type="video/mp4">
         Your browser doesn't support the video tag
       </video>
 
   Note that if you try to run the estimation routine while at least one entry
   box has not be validated, you will be prevented from doing so:
 
-  .. image:: ../_static/gui/windows/unverified_parameter_window.png
+  .. image:: ../../_static/gui/windows/unverified_parameter_window.png
      :align: center
      :scale: 80%
 
 Region Selection
-----------------
+^^^^^^^^^^^^^^^^
 
 For typical NMR signals, the estimation routine used in NMR-EsPy is
 too expensive to analyse the entire signal. For this reason, it is typically
@@ -178,12 +130,12 @@ These regions can be adjusted by editing the scale widgets and entry boxes
 in the `Region Selection` tab.
 
 Advanced Estimation Settings
-----------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Clicking the `Advanced Settings` button will load a window enabling various
 aspects of the estimation routine to be tweaked:
 
-.. image:: ../_static/gui/windows/advanced_settings_window.png
+.. image:: ../../_static/gui/windows/advanced_settings_window.png
    :align: center
    :scale: 80%
 
@@ -194,7 +146,8 @@ Below is a summary of the meaning of all of these parameters.
    For the majority of cases, you should find that the default parameters
    provided will be suitable.
 
-* **Signal Filter Options**
+Signal Filter Options
+---------------------
 
   The basic idea behind frequency-filtering the data is to apply a band-pass
   filter to the spectral data, and then to convert the spectrum back to the
@@ -202,7 +155,7 @@ Below is a summary of the meaning of all of these parameters.
   becomes redundant, and so it can be appropriate the "cut" off regions that are
   not of interest. The basic idea is illustrated in this figure:
 
-  .. image:: ../_static/gui/filter_cut/filter_cut.png
+  .. image:: ../../_static/gui/filter_cut/filter_cut.png
      :align: center
      :scale: 20%
 
@@ -212,26 +165,28 @@ Below is a summary of the meaning of all of these parameters.
     will be composed of relative to the number of points the filter spans. This
     is set to 3 by default.
 
-* **Matrix Pencil**
+Matrix Pencil Method Options
+----------------------------
 
-  The Matrix Pencil Method is a singular-value decomposition-based approach
+  The Matrix Pencil Method (MPM) is a singular-value decomposition-based approach
   for estimating signal parameters. It is used in NMR-EsPy to generate an
   initial guess for numerical optimisation. It is possible to either manually
-  choose how many oscillators to generate using the Matrix Pencil, or to
+  choose how many oscillators to generate using the MPM, or to
   estimate the number of oscillators using the Minimum Description Length (MDL).
 
   + `Datapoints to consider` - Specifies how many points in the filtered
-    signal to consider. The fewer datapoints, the faster the Matrix Pencil
+    signal to consider. The fewer datapoints, the faster the MPM
     will be. However, if too few datapoints are used, the result may be
     unreliable. If the signal contains fewer than 4096 (2¹²) points, the
     full signal will be considered by default. Otherwise, the first 4096 points
     will be considered.
   + `Use MDL` - Whether or not to use the Minimum Description Length.
     By default, the MDL will be used.
-  + `Number of Oscillators` - The number of oscillators used in the Matrix
-    Pencil Method. This can only be specified if `Use MDL` is unticked.
+  + `Number of Oscillators` - The number of oscillators used in the MPM.
+    This can only be specified if `Use MDL` is unticked.
 
-* **Nonlinear Programming**
+Nonlinear Programming Options
+-----------------------------
 
   The result of the Matrix Pencil Method is fed into a nonlinear programming
   (NLP) routine to determine the final signal parameter estimate.
@@ -268,88 +223,3 @@ Below is a summary of the meaning of all of these parameters.
 Once you are happy with the calculation setup, simply click the *Run* button.
 You will find that details of the routine are output to the terminal as it
 runs.
-
-Estimation Result
-^^^^^^^^^^^^^^^^^
-
-Once the routine is complete, a new window will load with the following
-appearance:
-
-.. image:: ../_static/gui/windows/result_window.png
-   :align: center
-
-Featured in the result plot are:
-
-* The data selected (black).
-* Individual peaks that comprise the estimation result
-  (:oscblue:`m`\ :oscorange:`u`\ :oscgreen:`l`\ :oscred:`t`\
-  :oscblue:`i`\ :oscorange:`-`\ :oscgreen:`c`\ :oscred:`o`\
-  :oscblue:`l`\ :oscorange:`o`\ :oscgreen:`u`\ :oscred:`r`\
-  :oscblue:`e`\ :oscorange:`d`).
-  Each of these is given a numerical label.
-* The residual between the data and the model (:grey:`grey`).
-
-Saving the result
------------------
-
-Clicking the *Save* button loads the following window:
-
-.. image:: ../_static/gui/windows/save_window.png
-   :align: center
-   :scale: 50%
-
-* **Result Figure**
-
-  This section is used for specifying whether to save a result figure, and
-  for customising some simple figure settings.
-
-  + `Save Figure` - Whether to save a figure or not.
-  + `Format` - The figure's file format. Valid options are ``eps``, ``png``,
-    ``pdf``, ``jpg``, ``ps`` and ``svg``.
-  + `Filename` - The name of the file to save the Figure to.
-  + `dpi` - Dots per inch.
-  + `Size (cm)` - The width and height of the figure, in centimeters.
-
-  .. note::
-    The most up-voted answer to
-    `this Stack Overflow question <https://stackoverflow.com/questions/47633546/relationship-between-dpi-and-figure-size>`_ provides a good
-    description of the relationship between figure size and dpi.
-
-  .. note::
-    Beyond specifying the dpi and size of the figure, the GUI does not provide
-    any means of customising the appearance of the figure in this version.
-    I intend to provide support of for in a future version.  At the moment,
-    the only means of customising the figure is to do it by writing a Python
-    script. I provide an outline of how you can achieve certain customisations
-    :doc:`here <figure_customisation>`
-
-* **Result Files**
-
-  Used for saving a table of result parameters to various file formats.
-  For each of the valid formats (``txt``, ``pdf``, and ``csv``), the associated
-  tick-boxes are used for specifying whether or not to generate a file of that
-  format. Adjacent to each tick-box is an entry box for specifying the name of
-  the result file.
-
-  Finally, the `Description` box can be used to enter a description relating
-  to the estimation, which will be added to the result file(s).
-
-* **Estimator**
-
-  Used for saving (`"pickling" <https://docs.python.org/3/library/pickle.html>`_)
-  the :py:class:`nmrespy.core.Estimator` class instance, associated with the
-  estimation result.
-
-  + `Save Estimator` - Specifies whether or not to save the estimator to a
-    binary file.
-  + `Filename` - The filename to save the estimator to.
-
-* **Directory**
-
-  The entry box is used to specify the path to the directory to save **all**
-  specified files to. The full path can either be typed out manually, or
-  selected, by loading the file navigation window, by pressing the button
-  with a folder icon.
-
-Clicking *Save* will result in all the specified files to be saved to the desired
-paths. The application will also be closed.

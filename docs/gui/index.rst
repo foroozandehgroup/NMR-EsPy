@@ -10,7 +10,7 @@ links:
    :caption: Contents:
 
    topspin_install
-   gui_usage
+   usage/index
    figure_customisation
 
 .. image:: ../_static/gui/windows/setup_window_plain.png

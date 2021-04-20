@@ -2,6 +2,10 @@
    :scale: 10 %
    :align: center
 
+.. image:: https://readthedocs.org/projects/nmr-espy/badge/?version=latest
+   :target: https://nmr-espy.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
+
 NMR-EsPy: **N**\uclear **M**\agnetic **R**\esonance **Es**\timation in **Py**\thon
 is a Python package developed for estimating the parameters that describe
 NMR data.

@@ -13,7 +13,7 @@ Getting Started
 ^^^^^^^^^^^^^^^
 
 When saving the result of an estimation routine, make sure you "pickle" the
-estimator (see the section *Saving the Result* on :doc:`this page <gui_usage>`).
+estimator (see the section *Saving the Result* on :doc:`this page <usage/result>`).
 
 You will now have to create a Python script, which will perform the following:
 
@@ -207,4 +207,4 @@ saved by including the following:
 
    plot.fig.savefig("<path/to/figure>", format="<fmt>", dpi=<dpi>, ...)
 
-where 
+where
