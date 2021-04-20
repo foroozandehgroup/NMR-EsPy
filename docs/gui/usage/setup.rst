@@ -102,12 +102,12 @@ inputting desired values into the adjacent entry boxes.
         Your browser doesn't support the video tag
       </video>
 
-  Note that if you try to run the estimation routine while at least one entry
-  box has not be validated, you will be prevented from doing so:
+    Note that if you try to run the estimation routine while at least one entry
+    box has not be validated, you will be prevented from doing so:
 
-  .. image:: ../../_static/gui/windows/unverified_parameter_window.png
-     :align: center
-     :scale: 80%
+    .. image:: ../../_static/gui/windows/unverified_parameter_window.png
+       :align: center
+       :scale: 80%
 
 Region Selection
 ^^^^^^^^^^^^^^^^

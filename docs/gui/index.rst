@@ -11,7 +11,6 @@ links:
 
    topspin_install
    usage/index
-   figure_customisation
 
 .. image:: ../_static/gui/windows/setup_window_plain.png
    :scale: 70%

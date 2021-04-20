@@ -50,6 +50,7 @@ For more information:
    walkthrough
    gui/index
    references/index
+   misc/index
    contributors
 
 

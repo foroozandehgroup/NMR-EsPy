@@ -346,8 +346,8 @@ class SetUp(MyToplevel):
                 # Would like this to be π or 10π, however tkinter seems to
                 # convert the scale range to an int, and adjusts `to` to
                 # accommodate this.
-                from_ = -3.5 if name == 'p0' else -35.
-                to = 3.5 if name == 'p0' else 35.
+                from_ = -4 if name == 'p0' else -32.
+                to = 4 if name == 'p0' else 32.
                 resolution = 0.001
 
             self.phase_scales[name] = scale = MyScale(

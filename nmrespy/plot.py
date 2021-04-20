@@ -534,14 +534,12 @@ class NmrespyPlot:
 
         Parameters
         ----------
-        * ax : `matplotlib.axes.Axes <https://matplotlib.org/3.3.1/api/\
-        axes_api.html#matplotlib.axes.Axes>`_
+        ax : `matplotlib.axes.Axes <https://matplotlib.org/3.3.1/api/axes_api.html#matplotlib.axes.Axes>`_
             The axes object to construct the result plot onto.
 
         Warning
         -------
-        `ax` will be mutated by this process, even though nothing is explictely
-        returned. Everything present in `ax` before calling the method will be
+        Everything present in `ax` before calling the method will be
         removed. If you want to add further things to `ax`, do it after calling
         this method.
         """

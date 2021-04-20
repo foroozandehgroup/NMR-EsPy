@@ -238,7 +238,7 @@ To generate a figure of the result, you can use the
 :py:meth:`~nmrespy.core.Estimator.plot_result` method, which utilises
 `matplotlib <https://matplotlib.org/>`_. There is wide scope for customising
 the plot, which is described in detail in
-:doc:`Figure Customisation <gui/figure_customisation>`.
+:doc:`Figure Customisation <misc/figure_customisation>`.
 See `Summary`_ below for an example of some basic plot customisation.
 
 .. code:: python3

@@ -215,7 +215,7 @@ Result Figure
     I intend to provide support of for in a future version.  At the moment,
     the only means of customising the figure is to do it by writing a Python
     script. I provide an outline of how you can achieve certain customisations
-    :doc:`here <../figure_customisation>`
+    :doc:`here <../../misc/figure_customisation>`
 
 Result Files
 ------------

@@ -1,26 +1,35 @@
 Figure Customisation
 ====================
 
-Unfortunately, the GUI does not provide support for customising the result
-figure beyond setting its size and dpi. I hope to provide support for more
-customisation in a later version. The only way to customise the figure
-is by writing a Python script which achieves this. This page outlines how this
-can be done. It will help to have some experience with
-`matplotlib <https://matplotlib.org/stable/index.html>`_
-to perform customisations to your figure.
+On this page, you can find out how to customise result figures to suit your
+preferences. It will help to have some experience with
+`matplotlib <https://matplotlib.org/stable/index.html>`_.
+
+Editing result figures is the only major feature that the NMR-EsPy GUI does
+not provide support for, so if you use the GUI and want to make changes to the
+figure you'll have to do this manually with a Python script I'm afraid. I hope
+to provide support for figure customisation within the GUI in a later version.
+
+.. note::
+
+  The next two sections are intended for GUI users. If you manually write
+  scripts for the full estimation process, you can jump to
+  `Generate the Estimation Figure`_
 
 Getting Started
 ^^^^^^^^^^^^^^^
 
-When saving the result of an estimation routine, make sure you "pickle" the
-estimator (see the section *Saving the Result* on :doc:`this page <usage/result>`).
+If you are using the GUI, when saving the result of an estimation routine, make
+sure you "pickle" the estimator (see the section *Saving the Result* on
+:doc:`this page <../gui/usage/result>`).
 
 You will now have to create a Python script, which will perform the following:
 
-* Load the estimator
-* Generate a figure of the estimator
-* Customise the properties of the figure
-* Save the figure
+* Load the estimator (an instance of the :py:class:`~nmrespy.core.Estimator` class).
+* Generate a figure of the estimator using the
+  :py:class:`~nmrespy.core.Estimator.plot_result` method.
+* Customise the properties of the figure.
+* Save the figure.
 
 At the top of the script, place the following:
 
@@ -41,8 +50,10 @@ To load the estimator, include the following line:
 where ``path\to\estimator`` is the full or relative path to the saved estimator
 file. **DO NOT INCLUDE THE** ``.pkl`` **EXTENSION**.
 
-Generate the Estimator Figure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. _Generate the Estimation Figure:
+
+Generate the Estimation Figure
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To generate the estimator figure, add the following line:
 
@@ -55,17 +66,22 @@ will produce a figure which is identical to the one produced by using the GUI.
 There are some things that you can customise by providing arguments to the
 method. Notable things that can be tweaked are:
 
+* The frequency unit of the spectrum (available options are ppm (default) or Hz).
 * Whether or not to include a plot of the model (sum of individual oscillators)
   and/or a plot of the residual (difference between the data and the model).
 * The colours of the data, residual, model, and individual oscillators.
 * The vertical positioning of the residual and the model.
 * Whether or not to include oscillator labels
 * If you are familiar with matplotlib and the use of stylesheets, you can also
-  specify a path to a stylesheet, enabling highly tunable customisation.
+  specify a path to a stylesheet. One thing to note with stylesheets is that
+  even if you have a colour cycle specified in the sheet, it will be overwritten,
+  so you must still manually specify the desired oscillator colours if you want
+  these to not be the default colours.
 
 Have a look at the :py:func:`nmrespy.plot.plot_result` function for a
 description of the acceptable arguments. Only the following arguments should
-be used:
+be used (the others are automatically determined internally by the
+:py:meth:`nmrespy.core.Estimator.plot_result` method):
 
 * `shifts_unit`
 * `plot_residual`
@@ -79,8 +95,8 @@ be used:
 * `labels`
 * `stylesheet`
 
-Customise the Figure
-^^^^^^^^^^^^^^^^^^^^
+Further Customisation
+^^^^^^^^^^^^^^^^^^^^^
 
 If there are further features you would like to customise, this can be done
 by editing ``plot``.
@@ -104,12 +120,13 @@ The `lines` dictionary will possess the following keys:
 * `'data'`
 * `'residual'` (if the residual was chosen to be plotted)
 * `'model'` (if the model was chose to be plotted)
-* For each oscillator, the corresponding line is given a numerical value
-  (i.e. keys will be ``1``, ``2``, to ``<M>`` where ``<M>`` is the number of
-  oscillators in the result.)
+* For each oscillator, the corresponding line is given a numerical value as
+  its key (i.e. keys will be ``1``, ``2``, to ``<M>`` where ``<M>`` is the
+  number of oscillators in the result.)
 
-i.e. to access the line object corresponding to oscillator 6, and change
-its line-width to 2 px, you should use ``plot.lines[6].set_linewidth(2)``.
+As an example, to access the line object corresponding to oscillator 6, and
+change its line-width to 2 px, you should use
+``plot.lines[6].set_linewidth(2)``.
 
 The `labels` dictionary will possess numerical keys from ``1`` to ``<M>``
 (same as oscillator keys in the `lines` dictionary).
@@ -121,9 +138,9 @@ I have written some "convenience methods" to achieve certain things that
 I anticipate users will frequently want to carry out.
 
 * **Re-positioning oscillator labels**
-  Often, the numerical labels that are given to each oscillator in the plot
-  can overlap with other items in the figure, which is not ideal. To
-  re-position the oscillator labels, use the
+  Often, the automatically-assigned positions of the numerical labels that are
+  given to each oscillator can overlap with other items in the figure, which is
+  not ideal. To re-position the oscillator labels, use the
   :py:meth:`~nmrespy.plot.NmrespyPlot.displace_labels` method:
 
   .. code:: python3
@@ -141,53 +158,61 @@ I anticipate users will frequently want to carry out.
      # to the left and up
      plot.displace_labels([3,4,7,8], (-0.05, 0.01))
 
-  Note that the size of displacement is given using the
-  `axes co-ordinate system <https://matplotlib.org/stable/tutorials/advanced/transforms_tutorial.html#axes-coordinates>`_
+  .. note::
 
-  The result in the above example is the following:
+     The size of displacement is given using the
+     `axes co-ordinate system <https://matplotlib.org/stable/tutorials/advanced/transforms_tutorial.html#axes-coordinates>`_
 
-  .. image:: ../_static/gui/displace.png
+  The plot before and after shifting the label positions are as follows:
+
+  .. image:: ../_static/misc/displace.png
      :align: center
      :scale: 30%
 
 * **Appending a result plot to a subplot**
-  You may wish to have the result plot as a subplot amongst other plots that
+  You may wish to set the result plot as a subplot amongst other plots that
   make up a figure. The :py:meth:`~nmrespy.plot.NmrespyPlot.transfer_to_axes`
   method enables this to be achieved very easily. Here is a simple example:
 
-  .. code:: python3
+  .. code:: py
 
-      from nmrespy.core import Estimator
-      import numpy as np
-      import matplotlib.pyplot as plt
+    from nmrespy.core import Estimator
+    import numpy as np
+    import matplotlib.pyplot as plt
 
-      # Load the estimation result and create the plot (see above)
-      path = "/path/to/estimator"
-      estimator = Estimator.from_pickle(path)
-      plot = estimator.plot_result()
+    # Load the estimation result and create the plot (see above)
+    path = "estimator"
+    estimator = Estimator.from_pickle(path)
+    plot = estimator.plot_result()
 
-      # Create a simple figure with two subplots
-      fig = plt.figure(figsize=(8, 4))
-      ax0 = fig.add_axes([0.05, 0.15, 0.4, 0.8])
-      ax1 = fig.add_axes([0.55, 0.15, 0.4, 0.8])
+    # Create a simple figure with two subplots (side-by-side)
+    fig = plt.figure(figsize=(8, 4))
+    ax0 = fig.add_axes([0.05, 0.15, 0.4, 0.8])
+    ax1 = fig.add_axes([0.55, 0.15, 0.4, 0.8])
 
-      # Add some random stuff to ax1
-      theta = np.linspace(0, 2 * np.pi, 100)
-      x = np.cos(theta)
-      y = np.sin(theta)
-      ax1.plot(x, y, color='k')
-      ax1.plot(0.7 * x[60:90], 0.7 * y[60:90], color='k')
-      ax1.plot(0.05 * x - 0.4, 0.05 * y + 0.4, color='k')
-      ax1.plot(0.05 * x + 0.4, 0.05 * y + 0.4, color='k')
+    # Add some random stuff to ax1
+    theta = np.linspace(0, 2 * np.pi, 100)
+    x = np.cos(theta)
+    y = np.sin(theta)
+    ax1.plot(x, y, color='k')
+    ax1.plot(0.7 * x[60:90], 0.7 * y[60:90], color='k')
+    ax1.plot(0.05 * x - 0.4, 0.05 * y + 0.4, color='k')
+    ax1.plot(0.05 * x + 0.4, 0.05 * y + 0.4, color='k')
 
-      # Transfer contents of the result plot to ax0
-      plot.transfer_to_axes(ax0)
+    # Transfer contents of the result plot to ax0
+    plot.transfer_to_axes(ax0)
 
-      plt.show()
+    # Add label to each axes
+    # N.B. This has been done after the call to `transfer_to_axes`
+    # If it had been done beforehand, the a) label would have been cleared.
+    for txt, ax in zip(('a)', 'b)'), (ax0, ax1)):
+        ax.text(0.02, 0.92, txt, fontsize=14, transform=ax.transAxes)
+
+    plt.show()
 
   The resulting figure is as follows:
 
-  .. image:: ../_static/gui/subplot.png
+  .. image:: ../_static/misc/subplot.png
      :align: center
      :scale: 30%
 
@@ -200,11 +225,9 @@ or `get in touch <mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query>`_.
 Save the Figure
 ^^^^^^^^^^^^^^^
 
-Once you have completed all the desired customisation, the figure can be
-saved by including the following:
+Once you have completed all the desired customisation, the ``fig`` object can be
+saved using `matplotlib.savefig <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.savefig.html>`_:
 
 .. code:: python3
 
-   plot.fig.savefig("<path/to/figure>", format="<fmt>", dpi=<dpi>, ...)
-
-where
+   plot.fig.savefig("<path/to/figure>", ...)
