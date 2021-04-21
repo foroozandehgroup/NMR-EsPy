@@ -1565,14 +1565,14 @@ class Estimator:
         Notes
         -----
         Assuming that an estimation result contains a subset of oscillators
-        denoted by indices :math:`\{m_1, m_2, \cdots, m_J\}`, where
-        :math:`J \leq M`, the new oscillator formed by the merging of the
+        denoted by indices :math:`\\{m_1, m_2, \\cdots, m_J\\}`, where
+        :math:`J \\leq M`, the new oscillator formed by the merging of the
         oscillator subset will possess the following parameters:
 
             * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`
             * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\phi_{m_i}`
             * :math:`f_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J f_{m_i}`
-            * :math:`\\eta_{\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\eta_{m_i}`
+            * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\eta_{m_i}`
         """
 
         ArgumentChecker([(indices, 'indices', 'list')])

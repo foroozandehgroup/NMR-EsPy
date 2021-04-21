@@ -157,7 +157,7 @@ class NonlinearProgramming(FrequencyConverter):
         * amplitude: :math:`a = a_m + a_p`
         * phase: :math:`\\phi = \\left(\\phi_m + \\phi_p\\right) / 2`
         * frequency: :math:`f = \\left(f_m + f_p\\right) / 2`
-        * damping: :math:`\\eta = \\left(\eta_m + \eta_p\\right) / 2`
+        * damping: :math:`\\eta = \\left(\\eta_m + \\eta_p\\right) / 2`
 
         .. warning::
 

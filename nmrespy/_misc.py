@@ -564,7 +564,7 @@ def latex_nucleus(nucleus):
     Raises
     ------
     ValueError
-        If `nucleus` does not match the regex ``\d+[a-zA-Z]+``
+        If `nucleus` does not match the regex :regex:`\\d+[a-zA-Z]+`
     """
     if re.match(r'\d+[a-zA-Z]+', nucleus):
         mass = re.search(r'\d+', nucleus).group()
@@ -574,7 +574,7 @@ def latex_nucleus(nucleus):
     else:
         raise ValueError(
             f'{cols.R}`nucleus` is invalid. Should match the regex'
-            f' \d+[a-zA-Z]+{cols.END}'
+            f' \\d+[a-zA-Z]+{cols.END}'
         )
 
 
