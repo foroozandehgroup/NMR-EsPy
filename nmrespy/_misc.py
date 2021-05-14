@@ -39,6 +39,7 @@ class ArgumentChecker:
               + `'int_list'`
               + `'float_list'`
               + `'str_list'`
+              + `'array_list'`
               + `'region_int'`
               + `'region_float'`
               + `'bool'`
@@ -81,6 +82,8 @@ class ArgumentChecker:
                 test = self.check_list(obj, float)
             elif typ == 'str_list':
                 test = self.check_list(obj, str)
+            elif typ == 'array_list':
+                test = self.check_list(obj, np.ndarray)
             elif typ == 'region_int':
                 test = self.check_region(obj, int)
             elif typ == 'region_float':
@@ -123,6 +126,8 @@ class ArgumentChecker:
                 test = isinstance(obj, list) and all(isinstance(item, int) for item in obj)
             elif typ == 'displacement':
                 test = self.check_displacement(obj)
+            elif typ == 'modulation':
+                test = obj in ['none', 'amp', 'phase']
 
             # Error message to be shown if invalid arguments are found
             if test is False:
@@ -564,7 +569,7 @@ def latex_nucleus(nucleus):
     Raises
     ------
     ValueError
-        If `nucleus` does not match the regex :regex:`\\d+[a-zA-Z]+`
+        If `nucleus` does not match the regex ``^\d+[a-zA-Z]+$``
     """
     if re.match(r'\d+[a-zA-Z]+', nucleus):
         mass = re.search(r'\d+', nucleus).group()

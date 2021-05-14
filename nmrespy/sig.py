@@ -1,4 +1,4 @@
-# signal.py
+# sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
@@ -19,11 +19,13 @@ from matplotlib.backends.backend_tkagg import (
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+import nmrespy._errors as errors
 from nmrespy._misc import ArgumentChecker
 
 """Provides functionality for constructing synthetic FIDs"""
 
-def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True):
+def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
+    modulation='none'):
     """Constructs a discrete time-domain signal (FID), as a summation of
     exponentially damped complex sinusoids.
 
@@ -73,10 +75,63 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True):
         it is taken to be simply the ratio of the singal power over the
         noise power.
 
+    modulation : {'none', 'amp', 'phase'}, default: 'none'
+        The type of modulation present in the indirect dimension, if the data
+        is 2D. `In the expressions below, a it is assumed a single oscillator
+        has been provided for simplicity`.
+
+        * `'none'`: Returns a single signal of the form:
+
+          .. math::
+
+             y(t_1, t_2) = a \\exp(\\mathrm{i} \\phi)
+             \\exp \\left[ \\left( 2 \\pi \\mathrm{i} f_1 - \\eta_1 \\right)
+             t_1 \\right]
+             \\exp \\left[ \\left( 2 \\pi \\mathrm{i} f_2 - \\eta_2 \\right)
+             t_2 \\right]
+
+        * `'amp'`: Returns an amplitude-modulated pair of signals of the form:
+
+          .. math::
+
+             y_{\\mathrm{cos}}(t_1, t_2) = a \\exp(\\mathrm{i} \\phi)
+             \\cos \\left( 2 \\pi f_1 t_1 \\right)
+             \\exp \\left( - \\eta_1 t_1 \\right)
+             \\exp \\left[ \\left( 2 \\pi \\mathrm{i} f_2 - \\eta_2 \\right)
+             t_2 \\right]
+
+             y_{\\mathrm{sin}}(t_1, t_2) = a \\exp(\\mathrm{i} \\phi)
+             \\sin \\left( 2 \\pi f_1 t_1 \\right)
+             \\exp \\left( - \\eta_1 t_1 \\right)
+             \\exp \\left[ \\left( 2 \\pi \\mathrm{i} f_2 - \\eta_2 \\right)
+             t_2 \\right]
+
+        * `'phase'`: Returns an phase-modulated pair of signals of the form:
+
+          .. math::
+
+             y_{\\mathrm{P}}(t_1, t_2) = a \\exp(\\mathrm{i} \\phi)
+             \\exp \\left[ \\left( 2 \\pi \\mathrm{i} f_1 - \\eta_1 \\right)
+             t_1 \\right]
+             \\exp \\left[ \\left( 2 \\pi \\mathrm{i} f_2 - \\eta_2 \\right)
+             t_2 \\right]
+
+             y_{\\mathrm{N}}(t_1, t_2) = a \\exp(\\mathrm{i} \\phi)
+             \\exp \\left[ \\left( - 2 \\pi \\mathrm{i} f_1 - \\eta_1 \\right)
+             t_1 \\right]
+             \\exp \\left[ \\left( 2 \\pi \\mathrm{i} f_2 - \\eta_2 \\right)
+             t_2 \\right]
+
     Returns
     -------
-    fid : numpy.ndarray
-        The synthetic FID.
+    fid : numpy.ndarray, [numpy.ndarray, numpy.ndarray]
+        The synthetic signal generated.
+
+        + If the data to be constructed is 1D or 2D with `modulation` set to
+          `'none'`, the result will be a NumPy array.
+        + If the data is 2D with `modulation` set to `'amp'`, or `'phase'`
+          the result will be a length-2 list with signals of the forms
+          indicated above (See `modulation`).
 
     tp : [numpy.ndarray], [numpy.ndarray, numpy.ndarray]
         The time points the FID is sampled at in each dimension.
@@ -112,6 +167,7 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True):
         (sw, 'sw', 'float_list'),
         (offset, 'offset', 'float_list'),
         (decibels, 'decibels', 'bool'),
+        (modulation, 'modulation', 'modulation'),
     ]
 
     if snr != None:
@@ -139,19 +195,155 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True):
         fid = Z @ alpha
 
     if dim == 2:
-        # Vandermonde matrices
-        Z1 = np.exp(np.outer(tp[0], (1j*2*np.pi*freq[0] - damp[0])))
+        if modulation in ['none', 'amp']:
+            Z1 = np.exp(np.outer(tp[0], (1j*2*np.pi*freq[0] - damp[0])))
+            if modulation == 'amp':
+                Z1 = [np.real(Z1), np.imag(Z1)]
+        elif modulation == 'phase':
+            Z1 = [np.exp(np.outer(tp[0], (1j*2*np.pi*freq[0] - damp[0]))), # P
+                  np.exp(np.outer(tp[0], (-1j*2*np.pi*freq[0] - damp[0])))]
+
         Z2t = np.exp(np.outer((1j*2*np.pi*freq[1] - damp[1]), tp[1]))
         # Diagonal matrix of complex amplitudes
         A = np.diag(amp * np.exp(1j * phase))
-        # Compute FID!
-        fid = Z1 @ A @ Z2t
+
+        fid = []
+        for z1 in Z1:
+            fid.append(z1 @ A @ Z2t)
+
+        if len(fid) == 1:
+            fid = fid[0]
+
 
     # --- Add noise to FID -----------------------------------------------
     if snr == None:
         return fid, tp
     else:
-        return fid + make_noise(fid, snr, decibels), tp
+        if isinstance(fid, np.ndarray):
+            return fid + make_noise(fid, snr, decibels), tp
+        elif isinstance(fid, list):
+            for i, f in enumerate(fid):
+                fid[i] = f + make_noise(f, snr, decibels)
+            return fid, tp
+
+
+
+def make_virtual_echo(data, modulation='amp'):
+    """Given the time-domain signal `data`, generates the corresponding
+    virtual echo [#]_, a signal with a purely real Fourier-Tranform and
+    absorption mode line shape if the data is phased.
+
+    Parameters
+    ----------
+    data : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
+        The data to construct the virtual echo from. This should be a list of
+        NumPy arrays, with ``len(data) == d`` where ``d`` is the dimension
+        of the signal.
+
+    modulation : {'amp' or 'phase'}, default: 'amp'
+        If the data is 2D, this parameter specifies the type of modulation
+        present in the indirect dimension of the dataset.
+
+        * If set to `'amp'`, the two signals in the `data` should be an amplitude
+          modulated pair.
+        * If set to `'phase'`, the two signals in the `data` should be a phase
+          modulated pair.
+
+        See the docs for :py:func:`make_fid` for more info on `modulation`.
+
+    Returns
+    -------
+    virtual_echo : numpy.ndarray
+        The virtual echo signal assocaited with `data`.
+
+    References
+    ----------
+    .. [#] M. Mayzel, K. Kazimierczuk, V. Y. Orekhov, The causality principle
+           in the reconstruction of sparse nmr spectra, Chem. Commun. 50 (64)
+           (2014) 8947–8950.
+    """
+    try:
+        dim = len(data)
+    except:
+        raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
+
+    if dim > 2:
+        raise errors.MoreThanTwoDimError()
+
+    ArgumentChecker(
+        [(data, 'data', 'array_list'),
+         (modulation, 'modulation', 'modulation')],
+        dim,
+    )
+
+    if dim == 1:
+        data = data[0]
+        pts = data.size
+
+        tmp1 = np.zeros((2*pts), dtype='complex')
+        tmp1[:pts] = data
+        tmp1[0] /= 2
+
+        tmp2 = np.zeros((2*pts), dtype='complex')
+        tmp2[pts:] = data.conj()[::-1]
+        tmp2 = np.roll(tmp2, 1)
+        tmp2[0] /= 2
+
+        return tmp1 + tmp2
+
+    elif dim == 2:
+        if modulation == 'amp':
+            c = data[0]
+            s = data[1]
+        else:
+            # Phase modulated (P and N) signals
+            c = 0.5 * (data[0] + data[1])
+            s = -1j * 0.5 * (data[0] - data[1])
+
+        # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
+        # where: Re(c) -> R₁R₂, Im(c) -> R₁I₂, Re(s) -> I₁R₂, Im(s) -> I₁I₂
+        r1r2 = np.real(c)
+        r1i2 = np.imag(c)
+        i1r2 = np.real(s)
+        i1i2 = np.imag(s)
+
+        # S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)
+        pp = r1r2 - i1i2 + 1j * (r1i2 + i1r2)
+        # S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)
+        pm = r1r2 + i1i2 + 1j * (i1r2 - r1i2)
+        # S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)
+        mp = r1r2 + i1i2 + 1j * (r1i2 - i1r2)
+        # S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)
+        mm = r1r2 - i1i2 - 1j * (r1i2 + i1r2)
+
+        pts = s.shape
+
+        tmp1 = np.zeros(tuple(2 * p for p in pts), dtype='complex')
+        tmp1[:pts[0], :pts[1]] = pp
+        tmp1[0] /= 2
+        tmp1[:, 0] /= 2
+
+        tmp2 = np.zeros(tuple(2 * p for p in pts), dtype='complex')
+        tmp2[:pts[0], pts[1]:] = pm[:, ::-1]
+        tmp2[0] /= 2
+        tmp2[:, -1] /= 2
+        tmp2 = np.roll(tmp2, 1, axis=1)
+
+        tmp3 = np.zeros(tuple(2 * p for p in pts), dtype='complex')
+        tmp3[pts[0]:, :pts[1]] = mp[::-1]
+        tmp3[-1] /= 2
+        tmp3[:, 0] /= 2
+        tmp3 = np.roll(tmp3, 1, axis=0)
+
+        tmp4 = np.zeros(tuple(2 * p for p in pts), dtype='complex')
+        tmp4[pts[0]:, pts[1]:] = mm[::-1, ::-1]
+        tmp4[-1] /= 2
+        tmp4[:, -1] /= 2
+        tmp4 = np.roll(tmp4, 1, axis=(0, 1))
+
+        return tmp1 + tmp2 + tmp3 + tmp4
+
+
 
 
 def get_timepoints(n, sw):
@@ -179,7 +371,7 @@ def get_timepoints(n, sw):
 
     ArgumentChecker([(n, 'n', 'int_list'), (sw, 'sw', 'float_list')], dim)
 
-    return [np.linspace(0, float(n_) / sw_, n_) for n_, sw_ in zip(n, sw)]
+    return [np.linspace(0, float(n_ - 1) / sw_, n_) for n_, sw_ in zip(n, sw)]
 
 
 def get_shifts(n, sw, offset, flip=True):
@@ -234,7 +426,7 @@ def ft(fid, flip=True):
     Parameters
     ----------
     fid : numpy.ndarray
-        Time-domain data
+        Time-domain data.
 
     flip : bool, default: True
         Whether or not to flip the Fourier Trnasform of `fid` in each
@@ -248,13 +440,90 @@ def ft(fid, flip=True):
 
     ArgumentChecker([(fid, 'fid', 'ndarray'), (flip, 'flip', 'bool')])
 
-    for axis in range(fid.ndim):
-        try:
-            spectrum = fft(spectrum, axis=axis)
-        except NameError:
-            spectrum = fft(fid, axis=axis)
+    spectrum = fft(fid, axis=0)
+
+    for axis in range(1, fid.ndim):
+        spectrum = fft(spectrum, axis=axis)
 
     return np.flip(fftshift(spectrum)) if flip else fftshift(spectrum)
+
+
+def proc_amp_modulated(data):
+    """Takes a pair of 2D amplitude-modulated signals, and generates the
+    frequency-discriminated spectrum.
+
+    Parameters
+    ----------
+    data : [numpy.ndarray, numpy.ndarray]
+        cos-modulated signal and sin-modulated signal
+
+    Returns
+    -------
+    spectrum : dict
+        Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``."""
+
+
+    ArgumentChecker([(data, 'data', 'array_list')], dim=2)
+
+    c = data[0]
+    s = data[1]
+
+    c_t1_f2 = fftshift(fft(c, axis=1), axes=1)
+    s_t1_f2 = fftshift(fft(s, axis=1), axes=1)
+
+    return fftshift(fft(np.real(c_t1_f2) + 1j * np.real(s_t1_f2), axis=0), axes=0)
+
+
+
+def proc_phase_modulated(data):
+    """Takes a pair of 2D phase-modulated signals, and generates the
+    set of spectra corresponding to the processing protocol outlined in [#]_.
+
+    Parameters
+    ----------
+    data : [numpy.ndarray, numpy.ndarray]
+        P-type signal and N-type signal
+
+    Returns
+    -------
+    spectra : dict
+        Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``.
+
+    References
+    ----------
+    .. [#] A. L. Davis, J. Keeler, E. D. Laue, and D. Moskau, “Experiments for
+           recording pure-absorption heteronuclear correlation spectra using
+           pulsed field gradients,” Journal of Magnetic Resonance (1969),
+           vol. 98, no. 1, pp. 207–216, 1992."""
+
+
+    ArgumentChecker([(data, 'data', 'array_list')], dim=2)
+
+    p = data[0]
+    n = data[1]
+
+    p_t1_f2 = fftshift(fft(p, axis=1), axes=1) # Sₚ(t₁,f₂)
+    n_t1_f2 = fftshift(fft(n, axis=1), axes=1) # Sₙ(t₁,f₂)
+
+    # Generating rr and ir
+    plus_t1_f2 = 0.5 * (p_t1_f2 + n_t1_f2.conj()) # S⁺(t₁,f₂)
+    plus_f1_f2 = fftshift(fft(plus_t1_f2, axis=0), axes=0) # S⁺(f₁,f₂)
+    rr = np.real(plus_f1_f2) # A₁A₂
+    ir = np.imag(plus_f1_f2) # D₁A₂
+
+    # Generating ri and ii
+    minus_t1_f2 = - 0.5 * 1j * (p_t1_f2 - n_t1_f2.conj()) # S⁻(t₁,f₂)
+    minus_f1_f2 = fftshift(fft(minus_t1_f2, axis=0), axes=0) # S⁻(f₁,f₂)
+    ri = np.real(minus_f1_f2) # A₁D₂
+    ii = np.imag(minus_f1_f2) # D₁D₂
+
+    return {
+        'rr' : rr,
+        'ri' : ri,
+        'ir' : ir,
+        'ii' : ii,
+    }
+
 
 def ift(spectrum, flip=True):
     """Flips spectral data in each dimension, and then inverse Fourier
@@ -278,22 +547,22 @@ def ift(spectrum, flip=True):
     ArgumentChecker([(spectrum, 'spectrum', 'ndarray'), (flip, 'flip', 'bool')])
 
     spectrum = ifftshift(np.flip(spectrum)) if flip else ifftshift(spectrum)
-    for axis in range(spectrum.ndim):
-        try:
-            fid = ifft(fid, axis=axis)
-        except NameError:
-            fid = ifft(spectrum, axis=axis)
+
+    fid = ifft(spectrum, axis=0)
+
+    for axis in range(1, spectrum.ndim):
+        fid = ifft(fid, axis=axis)
 
     return fid
 
 
-def phase_spectrum(spectrum, p0, p1, pivot=None):
-    """Applies a linear phase correction to `spectrum`.
+def phase(data, p0, p1, pivot=None):
+    """Applies a linear phase correction to `data`.
 
     Parameters
     ----------
-    spectrum : numpy.ndarray
-        Spectrum
+    data : numpy.ndarray
+        Data to be phased.
 
     p0 : [float] or [float, float]
         Zero-order phase correction in each dimension, in radians.
@@ -307,7 +576,7 @@ def phase_spectrum(spectrum, p0, p1, pivot=None):
 
     Returns
     -------
-    phased_spectrum : numpy.ndarray
+    phased_data : numpy.ndarray
     """
 
     try:
@@ -319,7 +588,7 @@ def phase_spectrum(spectrum, p0, p1, pivot=None):
         pivot = [0] * dim
 
     components = [
-        (spectrum, 'spectrum', 'ndarray'),
+        (data, 'data', 'ndarray'),
         (p0, 'p0', 'float_list'),
         (p1, 'p1', 'float_list'),
         (pivot, 'pivot', 'int_list')
@@ -333,13 +602,13 @@ def phase_spectrum(spectrum, p0, p1, pivot=None):
     idx = ''.join([chr(i + 105) for i in range(dim)])
 
     for axis, (piv, p0_, p1_) in enumerate(zip(pivot, p0, p1)):
-        n = spectrum.shape[axis]
+        n = data.shape[axis]
         # Determine axis for einsum (i or j)
         axis = chr(axis + 105)
         p = np.exp(1j * (p0_ + p1_ * np.arange(-piv, -piv+n) / n))
-        phased_spectrum = np.einsum(f'{idx},{axis}->{idx}', spectrum, p)
+        phased_data = np.einsum(f'{idx},{axis}->{idx}', data, p)
 
-    return phased_spectrum
+    return phased_data
 
 
 def manual_phase_spectrum(spectrum, max_p1=None):

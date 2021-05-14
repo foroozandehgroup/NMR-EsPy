@@ -535,7 +535,7 @@ class Estimator:
         if unit == 'hz':
             return sw
         elif unit == 'ppm':
-            sfo = self._check_if_none('sfo', kill)
+            sfo = self.get_sfo(kill)
             if sfo is None:
                 return None
             return self._converter.convert(sw, 'hz->ppm')
@@ -577,7 +577,7 @@ class Estimator:
         if unit == 'hz':
             return offset
         elif unit == 'ppm':
-            sfo = self._check_if_none('sfo', kill)
+            sfo = self.get_sfo(kill)
             if sfo is None:
                 return None
             return self._converter.convert(offset, 'hz->ppm')
@@ -1106,17 +1106,15 @@ class Estimator:
           :py:class:`nmrespy.freqfilter.FrequencyFilter`,
           `self.filter_info.filtered_signal` will be analysed.
         """
-        filter_info = self.filter_info
+        if self.filter_info is not None:
+            data = self.filter_info.get_fid()
+            sw = self.filter_info.get_sw()
+            offset = self.filter_info.get_offset()
 
-        if filter_info == None:
-            data = self.data
-            sw = self.sw
-            offset = self.offset
-
-        elif isinstance(filter_info, FrequencyFilter):
-            data = filter_info.filtered_signal
-            sw = filter_info.sw
-            offset = filter_info.offset
+        else:
+            data = self.get_data()
+            sw = self.get_sw()
+            offset = self.get_offset()
 
         return data, sw, offset
 
@@ -1267,23 +1265,26 @@ class Estimator:
         # TODO: include freq threshold
 
         data, sw, offset = self._get_data_sw_offset()
-        kwargs['offset'] = offset
-        kwargs['sfo'] = self.get_sfo(kill=False)
 
         if trim is None:
             trim = list(data.shape)
 
         ArgumentChecker([(trim, 'trim', 'int_list')], dim=self.dim)
 
-        trim = tuple(np.s_[0:t] for t in trim)
         # Slice data
-        data = data[trim]
+        data = data[tuple(np.s_[0:t] for t in trim)]
 
         x0 = self.get_result()
 
+        kwargs['sfo'] = self.get_sfo()
+        kwargs['offset'] = offset
+
+        # nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
         nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
+
         self.result = nlp_info.get_result()
         self.errors = nlp_info.get_errors()
+
         self._manual_edit = False
 
 
@@ -1350,8 +1351,11 @@ class Estimator:
         sfo = self.get_sfo(kill=False)
         bf = self.get_bf(kill=False)
         nuc = self.get_nucleus(kill=False)
-        region_h = self.get_filter_info(kill=False).get_region(unit='hz')
-        region_p = self.get_filter_info(kill=False).get_region(unit='ppm')
+        filter = self.get_filter_info(kill=False)
+
+        if filter is not None:
+            region_h = filter.get_region(unit='hz')
+            region_p = filter.get_region(unit='ppm')
 
         # Peak integrals
         integrals = [
@@ -1397,23 +1401,26 @@ class Estimator:
                     info.append(nuc[0])
 
             # Region
-            if region_h is not None:
-                info_headings.append('Filter region (Hz):')
+            try:
                 info.append(
                     f'{significant_figures(region_h[0][0], sigfig)} -'
                     f' {significant_figures(region_h[0][1], sigfig)}'
                 )
-            if region_p is not None:
-                info_headings.append('Filter region (ppm):')
                 info.append(
                     f'{significant_figures(region_p[0][0], sigfig)} -'
                     f' {significant_figures(region_p[0][1], sigfig)}'
                 )
+                info_headings.append('Filter region (Hz):')
+                info_headings.append('Filter region (ppm):')
+
+            except NameError:
+                pass
 
         # TODO
         elif self.get_dim() == 2:
             raise TwoDimUnsupportedError()
 
+        print(len(info), len(info_headings))
         write_result(result, errors=errors, integrals=integrals,
                      info_headings=info_headings, info=info, sfo=sfo,
                      **kwargs)
