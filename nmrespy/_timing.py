@@ -12,6 +12,8 @@ def timer(f):
     @functools.wraps(f)
     def timed(*args, **kwargs):
         start = time.time()
+        if not args[0].fprint:
+            return f(*args, **kwargs)
         result = f(*args, **kwargs)
         run_time = convert(time.time() - start)
         print(f'Time elapsed: {run_time}')
