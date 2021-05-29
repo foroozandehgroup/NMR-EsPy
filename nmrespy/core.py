@@ -77,13 +77,93 @@ class Estimator:
         and :py:meth:`new_synthetic_from_parameters`.
     """
 
+    def __init__(
+        self, source, data, path, sw, off, sfo, nuc, fmt, _origin=None
+    ):
+        self.source = source
+        self.data = data
+        self.dim = self.data.ndim
+        self.n = [int(n) for n in self.data.shape]
+        self.path = path
+        self.sw = sw
+        self.offset = off
+        self.sfo = sfo
+        self.nuc = nuc
+        self.fmt = fmt
+
+        # Attributes that will be assigned to after the user runs
+        # the folowing methods:
+        # * frequency_filter (filter_info)
+        # * matrix_pencil or nonlinear_programming (result)
+        # * nonlinear_programming (errors)
+        self.filter_info = None
+        self.result = None
+        self.errors = None
+        # Specifies whether the last time self.result was changed
+        # was when nonlinear_prograaming was called.
+        self._saveable = False
+        # Create a converter object, enabling conversion idx, hz (and ppm,
+        # if sfo is not None)
+        self._converter = FrequencyConverter(
+            list(data.shape), self.sw, self.offset, self.sfo
+        )
+
+        # --- Create attribute for logging method calls ------------------
+        now = datetime.datetime.now()
+        self._log = (
+            "==============================\n"
+            "Logfile for Estimator instance\n"
+            "==============================\n"
+           f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}"
+        )
+
+        if _origin is not None:
+            self._log += (f" from `{_origin['method']}` with args "
+                          f"{_origin['args']}")
+
+        self._log += "\n"
+
+
+    def __repr__(self):
+        msg = (
+            f'nmrespy.core.Estimator('
+            f'{self.source}, '
+            f'{self.data}, '
+            f'{self.path}, '
+            f'{self.sw}, '
+            f'{self.offset}, '
+            f'{self.n}, '
+            f'{self.sfo}, '
+            f'{self.nuc}, '
+            f'{self.fmt})'
+        )
+
+        return msg
+
+
+    def __str__(self):
+        """A formatted list of class attributes"""
+
+        msg = (
+            f"{cols.MA}<{__class__.__module__}.{__class__.__qualname__} at "
+            f"{hex(id(self))}>{cols.END}\n"
+        )
+
+        dic = self.__dict__
+        keys, vals = dic.keys(), dic.values()
+        items = [f'{cols.MA}{k}{cols.END} : {v}' for k, v in zip(keys, vals) if k[0] != '_']
+        msg += '\n'.join(items)
+
+        return msg
+
+
     def logger(f):
         """Decorator for logging :py:class:`Estimator` method calls"""
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             # The first arg is the class instance.
             # Append to the log text.
-            args[0]._log += f'--> {f.__name__} {args[1:]} {kwargs}\n'
+            args[0]._log += f'--> `{f.__name__}` {args[1:]} {kwargs}\n'
 
             # Run the method...
             return f(*args, **kwargs)
@@ -111,35 +191,8 @@ class Estimator:
         Notes
         -----
         For a more detailed specification of the directory requirements,
-        see :py:meth:`nmrespy.load_bruker`
+        see :py:meth:`nmrespy.load_bruker`."""
 
-        Example
-        -------
-        .. code:: python3
-
-           >>> from nmrespy.core import Estimator
-           >>> path = "/opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1"
-           >>> estimator = Estimator.new_bruker(path)
-           >>> print(estimator)
-           <nmrespy.core.Estimator at 0x7ff2821deb80>
-           source : bruker_pdata
-           data : [ 8.23724176e+06+0.00000000e+00j  9.17136243e+05-4.97070634e+06j
-            -3.95415395e+06+6.85640849e+05j ...  4.70675320e+00-8.16149817e+01j
-            -4.41587513e+01-9.79437505e+00j  5.74582742e+00+5.69385271e+01j]
-           dim : 1
-           n : [16384]
-           path : /opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1
-           sw : [5494.50549450549]
-           off : [2249.20599998768]
-           sfo : [500.132249206]
-           nuc : ['1H']
-           fmt : <i4
-           filter_info : None
-           mpm_info : None
-           nlp_info : None
-           _converter : <nmrespy._misc.FrequencyConverter object at 0x7ff282250910>
-           _logpath : /home/.../python3.8/site-packages/nmrespy/logs/210212183053.log
-        """
         origin = {'method' : 'new_bruker', 'args' : locals()}
         info = load_bruker(dir, ask_convdta=ask_convdta)
 
@@ -150,100 +203,6 @@ class Estimator:
         )
 
     @classmethod
-    def new_synthetic_from_data(cls, data, sw, offset=None, sfo=None):
-        """Generate an instance of :py:class:`Estimator` given a NumPy
-        array, and (at the bare minimum), the sweep width.
-
-        Parameters
-        ----------
-        data : numpy.ndarray
-            Time-domain sig.
-
-        sw : [float] or [float, float]
-            Sweep width in each dimension (Hz).
-
-        offset: [float], [float, float] or None, default: None
-            TranSmitter offset in each dimension (Hz). By default, the offset
-            is set to zero in each dimension.
-
-        sfo : [float], [float, float] or None, default: None
-            The transmitter frequency in each dimension (MHz). Used to
-            convert frequencies to ppm. If `None`, conversion to ppm will
-            not be possible.
-
-        Returns
-        -------
-        estimator : :py:class:`Estimator`
-
-        Example
-        -------
-        .. code:: python3
-
-           >>> import numpy as np
-           >>> from nmrespy.core import Estimator
-           >>> from nmrespy.signal import make_fid
-           >>> parameters = np.array([
-           ...     [1, 0, 3, 0.2],
-           ...     [2, 0, 1, 0.15],
-           ...     [3, 0, -2, 0.2],
-           ... ])
-           >>> sw = [10.0]
-           >>> offset = [0.0]
-           >>> n = [2048]
-           >>> fid, _ = make_fid(parameters, n, sw)
-           >>> estimator = Estimator.new_synthetic_from_data(fid, sw)
-           >>> print(estimator)
-           <nmrespy.core.Estimator at 0x7fc926998e20>
-           source : synthetic
-           data : [ 6.00000000e+00+0.00000000e+00j  2.19679226e+00-7.06717824e-01j
-           -2.51152989e+00-4.11235694e-01j ... -7.59762676e-14-5.51367204e-14j
-           -2.86058106e-14-8.79414766e-14j  2.81452206e-14-8.66344585e-14j]
-           dim : 1
-           n : [2048]
-           path : None
-           sw : [10.0]
-           off : [0.0]
-           sfo : None
-           nuc : None
-           fmt : None
-           filter_info : None
-           mpm_info : None
-           nlp_info : None
-           _logpath : /home/.../python3.8/site-packages/nmrespy/logs/210212184026.log
-        """
-
-        # --- Check validity of parameters -------------------------------
-        # Check data is a numpy array
-        if not isinstance(data, np.ndarray):
-            raise TypeError(
-                f'{cols.R}data should be a numpy ndarray{cols.END}'
-            )
-        # Determine data dimension. If greater than 2, return error.
-        if data.ndim >= 3:
-            raise errors.MoreThanTwoDimError()
-
-        dim = data.ndim
-
-        # If offset is None, set it to zero in each dimension
-        if offset == None:
-            offset = [0.0] * dim
-
-        components = [
-            (sw, 'sw', 'float_list'),
-            (offset, 'offset', 'float_list'),
-        ]
-
-        if sfo != None:
-            components.append((sfo, 'sfo', 'float_list'))
-
-        ArgumentChecker(components, dim)
-
-        return cls(
-            'synthetic', data, None, sw, offset, sfo, None, None,
-        )
-
-
-    @classmethod
     def from_pickle(cls, path):
         """Loads an intance of :py:class:`Estimator`, which was saved
         previously using :py:meth:`to_pickle`.
@@ -251,8 +210,8 @@ class Estimator:
         Parameters
         ----------
         path : str
-            The path to the pickle file. DO NOT INCLUDE THE FILE
-            EXTENSION.
+            The path to the pickle file. **DO NOT INCLUDE THE FILE
+            EXTENSION.**
 
         Returns
         -------
@@ -285,7 +244,7 @@ class Estimator:
             else:
                 raise TypeError(
                     f'{cols.R}It is expected that the object opened by'
-                    ' from_pickle is an instance of'
+                    ' `from_pickle` is an instance of'
                     f' {__class__.__module__}.{__class__.__qualname__}.'
                     f' What was loaded didn\'t satisfy this!{cols.END}'
                 )
@@ -297,16 +256,16 @@ class Estimator:
 
     @logger
     def to_pickle(
-        self, path='./nmrespy_instance', force_overwrite=False, fprint=True,
+        self, path='./estimator', force_overwrite=False, fprint=True,
     ):
         """Converts the class instance to a byte stream using Python's
         "Pickling" protocol, and saves it to a .pkl file.
 
         Parameters
         ----------
-        path : str, default: './nmrespy_instance'
-            Path of file to save the byte stream to. DO NOT INCLUDE A
-            `'.pkl'` EXTENSION! `'.pkl'` is added to the end of the path
+        path : str, default: './estimator'
+            Path of file to save the byte stream to. **DO NOT INCLUDE A
+            `'.pkl'` EXTENSION!** `'.pkl'` is added to the end of the path
             automatically.
 
         force_overwrite : bool, default: False
@@ -361,82 +320,6 @@ class Estimator:
             print(f'{cols.G}Saved instance of Estimator to {path}{cols.END}')
 
 
-    def __init__(
-        self, source, data, path, sw, off, sfo, nuc, fmt, _origin=None
-    ):
-        self.source = source
-        self.data = data
-        self.dim = self.data.ndim
-        self.n = [int(n) for n in self.data.shape]
-        self.path = path
-        self.sw = sw
-        self.offset = off
-        self.sfo = sfo
-        self.nuc = nuc
-        self.fmt = fmt
-
-        # Attributes that will be assigned to after the user runs
-        # the folowing methods:
-        # * frequency_filter (filter_info)
-        # * matrix_pencil or nonlinear_programming (result)
-        # * nonlinear_programming (errors)
-        self.filter_info = None
-        self.result = None
-        self.errors = None
-        self._manual_edit = False
-        # Create a converter object, enabling conversion idx, hz (and ppm,
-        # if sfo is not None)
-        self._converter = FrequencyConverter(
-            list(data.shape), self.sw, self.offset, self.sfo
-        )
-
-        # --- Create attribute for logging method calls ------------------
-        now = datetime.datetime.now()
-        self._log = (
-            "==============================\n"
-            "Logfile for Estimator instance\n"
-            "==============================\n"
-           f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}"
-        )
-
-        if _origin is not None:
-            self._log += (f" from {_origin['method']} with args "
-                          f"{_origin['args']}")
-
-        self._log += "\n"
-
-
-    def __repr__(self):
-        msg = (
-            f'nmrespy.core.Estimator('
-            f'{self.source}, '
-            f'{self.data}, '
-            f'{self.path}, '
-            f'{self.sw}, '
-            f'{self.offset}, '
-            f'{self.n}, '
-            f'{self.sfo}, '
-            f'{self.nuc}, '
-            f'{self.fmt})'
-        )
-
-        return msg
-
-
-    def __str__(self):
-        """A formatted list of class attributes"""
-
-        msg = (
-            f"{cols.MA}<{__class__.__module__}.{__class__.__qualname__} at "
-            f"{hex(id(self))}>{cols.END}\n"
-        )
-
-        dic = self.__dict__
-        keys, vals = dic.keys(), dic.values()
-        items = [f'{cols.MA}{k}{cols.END} : {v}' for k, v in zip(keys, vals) if k[0] != '_']
-        msg += '\n'.join(items)
-
-        return msg
 
 
     def get_datapath(self, type_='Path', kill=True):
@@ -584,6 +467,7 @@ class Estimator:
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
+
     def get_sfo(self, kill=True):
         """Return transmitter frequency for each channel (MHz).
 
@@ -682,15 +566,14 @@ class Estimator:
         if unit not in ['ppm', 'hz']:
             raise errors.InvalidUnitError('ppm', 'hz')
 
-        shifts = sig.get_shifts(
-            self.get_n(), self.get_sw(), self.get_offset()
-        )
-
-        if unit == 'ppm':
-            sfo = self.get_sfo(kill)
-            if sfo == None:
+        if unit == 'ppm' and kill == False:
+            if self._check_if_none('sfo', kill) == None:
                 return None
-            shifts = [shifts_ / sfo for shifts_ in shifts]
+
+        shifts = sig.get_shifts(
+            self.get_n(), self.get_sw(unit=unit),
+            self.get_offset(unit=unit, kill=kill), flip=True,
+        )
 
         if self.get_dim() == 2 and meshgrid:
             return list(np.meshgrid(shifts[0], shifts[1]))
@@ -716,8 +599,10 @@ class Estimator:
         """
 
         tp = sig.get_timepoints(self.get_n(), self.get_sw())
+
         if meshgrid and self.get_dim() == 2:
-            return list(np.meshgrid(tp[0], tp[1]))
+            return list(np.meshgrid(tp[0], tp[1], indexing='ij'))
+
         return tp
 
 
@@ -852,7 +737,7 @@ class Estimator:
             if dim == 1:
                 xlabel = '$t\\ (s)$'
                 ydata = self.get_data()
-                xdata = self.get_tp()[0]
+                xdata = self.get_timepoints()[0]
 
             elif dim == 2:
                 raise errors.TwoDimUnsupportedError()
@@ -984,7 +869,7 @@ class Estimator:
             p1 = self.get_dim() * [0.0]
 
         self.data = sig.ift(
-            sig.phase_spectrum(sig.ft(self.data), p0, p1)
+            sig.phase(sig.ft(self.data), p0, p1)
         )
 
 
@@ -1004,15 +889,15 @@ class Estimator:
             ``10 * numpy.pi``.
         """
         p0, p1 = sig.manual_phase_spectrum(sig.ft(self.data), max_p1)
-        self.phase_data(p0=p0, p1=p1)
+        if not (p0 == None and p1 == None):
+            self.phase_data(p0=[p0], p1=[p1])
 
 
     @logger
     def frequency_filter(
         self, region, noise_region, cut=True, cut_ratio=3.0, region_unit='ppm',
     ):
-        """Generates frequency-filtered data from `self.data`
-        supplied.
+        """Generates frequency-filtered data from `self.data`.
 
         Parameters
         ----------
@@ -1056,8 +941,7 @@ class Estimator:
         self.filter_info = FrequencyFilter(
             self.get_data(), region, noise_region, region_unit=region_unit,
             sw=self.get_sw(), offset=self.get_offset(),
-            sfo=self.get_sfo(kill=False), cut=cut,
-            cut_ratio=cut_ratio,
+            sfo=self.get_sfo(kill=True), cut=cut, cut_ratio=cut_ratio,
         )
 
     def get_filter_info(self, kill=True):
@@ -1201,6 +1085,8 @@ class Estimator:
         )
 
         self.result = mpm_info.get_result()
+        self.errors = None
+        self._saveable = False
 
 
     # TODO: support for mode
@@ -1275,6 +1161,7 @@ class Estimator:
         data = data[tuple(np.s_[0:t] for t in trim)]
 
         x0 = self.get_result()
+        print(x0)
 
         kwargs['sfo'] = self.get_sfo()
         kwargs['offset'] = offset
@@ -1284,8 +1171,7 @@ class Estimator:
 
         self.result = nlp_info.get_result()
         self.errors = nlp_info.get_errors()
-
-        self._manual_edit = False
+        self._saveable = True
 
 
     @logger
@@ -1321,12 +1207,16 @@ class Estimator:
         :py:func:`nmrespy.write.write_result`
         """
 
-        if self._manual_edit:
-            get_yes_no(
-                f'{cols.O}The parameter estimate has been manually edited '
-                f'since the estimation has been carried out. It is '
-                f'advised that you re-run `nonlinear_programming` '
-                f'before saving. Continue? (y/n): {cols.END}'
+        # Retrieve result
+        # If self.result is None, an error will be raised inside
+        # _check_if_none
+        result = self.get_result()
+
+        if not self._saveable:
+            raise ValueError(
+                f'{cols.O}The last action to be applied to the estimation '
+                f'result was not `nonlinear_programming`. You should ensure '
+                f'this is so before saving the result.{cols.END}'
             )
 
         # Remove any invalid arguments from kwargs (avoid repetition
@@ -1337,11 +1227,7 @@ class Estimator:
             except KeyError:
                 pass
 
-        # Retrieve result
-        # If self.result is None, an error will be raised inside
-        # _check_if_none
-        result = self.get_result()
-        errors = self.get_errors(kill=False)
+        errors = self.get_errors()
 
         # Information for experiment info
         sw_h = self.get_sw()
@@ -1464,6 +1350,15 @@ class Estimator:
         :py:func:`nmrespy.plot.plot_result`
         """
 
+        result = self.get_result()
+
+        if not self._saveable:
+            raise ValueError(
+                f'{cols.O}The last action to be applied to the estimation '
+                f'result was not `nonlinear_programming`. You should ensure '
+                f'this is so before plotting the result.{cols.END}'
+            )
+
         dim = self.get_dim()
         # Check dim is valid (only 1D data supported so far)
         if dim == 2:
@@ -1481,7 +1376,7 @@ class Estimator:
             kwargs['shifts_unit'] = unit = 'ppm'
 
         return plot_result(
-            self.get_data(), self.get_result(), self.get_sw(),
+            self.get_data(), result, self.get_sw(),
             self.get_offset(), sfo=self.get_sfo(kill=False),
             nucleus=self.get_nucleus(kill=False),
             region=self.get_filter_info().get_region(unit=unit), **kwargs,
@@ -1523,7 +1418,8 @@ class Estimator:
         # Assign new result to nlp_info
         self.result = new_result
         # User has manually edited the result after estimation.
-        self._manual_edit = True
+        self._saveable = False
+        self.errors = None
 
 
     @logger
@@ -1550,7 +1446,8 @@ class Estimator:
 
         self.result = np.delete(result, indices, axis=0)
         # User has manually edited the result after estimation.
-        self._manual_edit = True
+        self._saveable = False
+        self.errors = None
 
 
     @logger
@@ -1614,6 +1511,10 @@ class Estimator:
         result = np.delete(result, indices, axis=0)
         result = np.vstack((result, new_osc))
         self.result = result[np.argsort(result[..., 2])]
+
+        # User has manually edited the result after estimation.
+        self._saveable = False
+        self.errors = None
 
     # TODO make 2D compatible
     @logger
@@ -1714,6 +1615,10 @@ class Estimator:
             result[:, 2] = result[:, 2] * self.get_sfo()[0]
 
         self.result = result[np.argsort(result[..., 2])]
+
+        # User has manually edited the result after estimation.
+        self._saveable = False
+        self.errors = None
 
 
     def save_logfile(self, path='./nmrespy_log', force_overwrite=False):
