@@ -47,6 +47,10 @@ class MatrixPencil(FrequencyConverter):
         Flag specifiying whether to print infomation to the terminal as
         the method runs.
 
+    start_point : int, default: 0
+        The first timepoint sampled, in units of
+        :math:`\\Delta t = 1 / f_{\\mathrm{sw}}`
+
     References
     ----------
     .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
@@ -74,7 +78,8 @@ class MatrixPencil(FrequencyConverter):
     start_txt = 'MATRIX PENCIL METHOD STARTED'
     end_txt = 'MATRIX PENCIL METHOD COMPLETE'
 
-    def __init__(self, data, sw, offset=None, sfo=None, M=0, fprint=True):
+    def __init__(self, data, sw, offset=None, sfo=None, M=0, fprint=True,
+    start_point=0):
         """Checks validity of inputs, and if valid, calls :py:meth:`_mpm`"""
 
         try:
@@ -95,6 +100,7 @@ class MatrixPencil(FrequencyConverter):
             (offset, 'offset', 'float_list'),
             (M, 'M', 'positive_int_or_zero'),
             (fprint, 'fprint', 'bool'),
+            (start_point, 'start_point', 'positive_int_or_zero'),
         ]
 
         if sfo != None:
@@ -109,6 +115,7 @@ class MatrixPencil(FrequencyConverter):
         self.sfo = sfo
         self.M = M
         self.fprint = fprint
+        self.start_point = start_point
 
         if sfo != None:
             self.converter = FrequencyConverter(
@@ -246,7 +253,9 @@ class MatrixPencil(FrequencyConverter):
 
         # Pseudoinverse of Vandermonde matrix of poles multiplied by
         # vector of complex amplitudes
-        alpha = nlinalg.pinv((np.power.outer(z, np.arange(N))).T) @ normed_data
+        alpha = nlinalg.pinv(
+            np.power.outer(z, np.arange(self.start_point, self.start_point+N))
+        ).T @ normed_data
 
         # Extract amplitudes, phases, frequencies and damping factors
         amp = np.abs(alpha) * norm
