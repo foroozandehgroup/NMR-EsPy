@@ -247,7 +247,6 @@ class FrequencyFilter:
             # on account of zero filling
             cut_sw = []
             for s, cut_n, uncut_n in zip(sw, cut_filt_spec.shape, filt_spec.shape):
-                print(cut_n, uncut_n)
                 cut_sw.append((cut_n - 1) / (uncut_n - 1) * s)
 
             cut_offset = self.converter.convert(

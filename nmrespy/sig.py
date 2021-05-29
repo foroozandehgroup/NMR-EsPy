@@ -921,66 +921,6 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     return *make_fid(para, n, sw, offset, snr), para
 
 
-def apodisation(data, shape='exp', params=None, axis=0):
-    """Perform apodisation of data
-
-    .. note::
-
-       Only eponential apodisation is supported currently:
-
-       .. math::
-
-          f(t) = \\exp\\left(-\\pi \\mathrm{i} \\\\right)
-
-    Parameters
-    ----------
-    data: numpy.ndarray
-        Data to be mainpulated.
-
-    shape: {exp}
-        The functional form of the apodisation function.
-
-    params : dict
-        Dictionaries of parameters of relevance to the specified window
-        function. The following is a list of all valid keys for each
-        `shape`:
-
-        * `'exp'`
-
-            + `'lb'`: Rate of decay of the exponential in units of points
-              (corresponds to the extent of line-broadening in the frequency
-              domain).
-
-    axis : int
-        The axis to apply the adpodisatio along.
-    """
-    def key_error(shape, keys):
-        msg = (f"{cols.R}For `shape` \'{shape}\', `params` may only contain "
-                "the following values:")
-        msg = '\n'.join([msg] + keys) + cols.END
-        raise ValueError(msg)
-
-    if shape == 'exp':
-        size = data.shape[axis]
-
-        if params is None:
-            params = {'lb' : 1 / size}
-
-        valids = ['lb']
-        for k in params.keys():
-            if k != 'lb':
-                raise ValueError()
-
-        window = np.exp(-np.pi * np.arange(size) * params['lb'])
-
-    full_idx = ''.join([chr(x + 105) for x in range(data.ndim)])
-    axis_idx = chr(axis + 105)
-
-    return np.einsum(f"{full_idx},{axis_idx}->{full_idx}", data, window)
-
-
-
-
 def oscillator_integral(parameters, n, sw, offset=None):
     """Determines the (absolute) integral of the Fourier transform of
     an oscillator.

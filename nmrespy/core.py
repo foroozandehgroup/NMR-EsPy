@@ -1161,7 +1161,6 @@ class Estimator:
         data = data[tuple(np.s_[0:t] for t in trim)]
 
         x0 = self.get_result()
-        print(x0)
 
         kwargs['sfo'] = self.get_sfo()
         kwargs['offset'] = offset
@@ -1306,7 +1305,6 @@ class Estimator:
         elif self.get_dim() == 2:
             raise TwoDimUnsupportedError()
 
-        print(len(info), len(info_headings))
         write_result(result, errors=errors, integrals=integrals,
                      info_headings=info_headings, info=info, sfo=sfo,
                      **kwargs)
