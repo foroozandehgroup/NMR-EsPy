@@ -1,20 +1,9 @@
-from pathlib import Path
 from setuptools import setup, find_packages
-from setuptools.command.install import install
-import subprocess
-import sys
 
 with open('README.rst', 'r') as fh:
     long_description = fh.read()
 
 exec(open('nmrespy/_version.py').read())
-
-class InstallToTopspin(install):
-    def run(self):
-        path = Path(__file__).parent.resolve()
-        install_path = path / "nmrespy" / "_install_to_topspin.py"
-        subprocess.run([sys.executable, str(install_path)], check=True)
-        super().run()
 
 
 setup(
@@ -44,7 +33,4 @@ setup(
     python_requires='>=3.7',
     include_package_data=True,
     packages=find_packages(),
-    cmdclass={
-        'install': InstallToTopspin,
-    },
 )

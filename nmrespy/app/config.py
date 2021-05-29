@@ -164,7 +164,8 @@ def check_int(value):
 
 def check_float(value):
     # Note this isn't the same as isinstance(value, float)
-    # Want to accept anything that can be interpreted as float, like int
+    # Want to accept anything that can be interpreted as float, like int,
+    # and return as a float.
     try:
         float_value = float(value)
         return True
