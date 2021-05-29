@@ -89,6 +89,10 @@ class NonlinearProgramming(FrequencyConverter):
         This is not necessary, however if it set it to `None`, no conversion
         of frequencies from Hz to ppm will be possible!
 
+    start_point : int, default: 0
+        The first timepoint sampled, in units of
+        :math:`\\Delta t = 1 / f_{\\mathrm{sw}}`
+
     phase_variance : bool, default: True
         Specifies whether or not to include the variance of oscillator
         phases into the NLP routine. The fiedlity (cost function) is
@@ -198,9 +202,10 @@ class NonlinearProgramming(FrequencyConverter):
     end_txt = 'NONLINEAR PROGRAMMING COMPLETE'
 
     def __init__(
-        self, data, theta0, sw, sfo=None, offset=None, phase_variance=True,
-        method='trust_region', bound=False, max_iterations=None,
-        amp_thold=None, freq_thold=None, negative_amps='remove', fprint=True
+        self, data, theta0, sw, sfo=None, offset=None, start_point=0,
+        phase_variance=True, method='trust_region', bound=False,
+        max_iterations=None, amp_thold=None, freq_thold=None,
+        negative_amps='remove', fprint=True, mode='apfd',
     ):
         """Initialise the class instance. Checks that all arguments are valid"""
 
@@ -210,29 +215,34 @@ class NonlinearProgramming(FrequencyConverter):
             raise TypeError(
                 f'{cols.R}data should be a numpy ndarray{cols.END}'
             )
-        self.data = data
 
-        # Number of points in each dimension
-        self.n = list(data.shape)
+        self.data = data
 
         # Determine data dimension. If greater than 2, return error.
         self.dim = self.data.ndim
         if self.dim >= 3:
             raise MoreThanTwoDimError()
 
+        # Number of "types" or parameters.
+        # This will be 4 if the signal is 1D, and 6 if 2D.
+        self.p = 2 * self.dim + 2
+
         # If offset is None, set it to zero in each dimension
         if offset is None:
             offset = [0.0] * self.dim
 
-        # TODO: allow customisation
-        mode = 'apfd'
+        if max_iterations is None:
+            max_iterations = 100
+
         # Determine validity of other args using ArgumentChecker
         components = [
             (theta0, 'theta0', 'parameter'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
+            (start_point, 'start_point', 'positive_int_or_zero'),
             (phase_variance, 'phase_variance', 'bool'),
-            (mode, 'mode', 'optimiser_mode'),
+            (max_iterations, 'max_iterations', 'positive_int'),
+            (mode, 'mode', 'optimiser_mode'), # TODO
             (negative_amps, 'negative_amps', 'negative_amplidue'),
             (fprint, 'fprint', 'bool'),
         ]
@@ -240,9 +250,6 @@ class NonlinearProgramming(FrequencyConverter):
         # Certain arguments should be checked only if they are not None...
         if sfo != None:
             components.append((sfo, 'sfo', 'float_list'))
-
-        if max_iterations != None:
-            components.append((max_iterations, 'max_iterations', 'positive_int'))
 
         if amp_thold != None:
             components.append((amp_thold, 'amp_thold', 'zero_to_one'))
@@ -253,36 +260,37 @@ class NonlinearProgramming(FrequencyConverter):
         # Check arguments are valid!
         ArgumentChecker(components, self.dim)
 
-        # Gets upset when phase variance is switched on, but phases
-        # are not to be optimised (the user is being unclear about
-        # their purpose)
-        if phase_variance and 'p' not in mode:
-            raise PhaseVarianceAmbiguityError(mode)
+        # TODO
+        # # Gets upset when phase variance is switched on, but phases
+        # # are not to be optimised (the user is being unclear about
+        # # their purpose)
+        # if phase_variance and 'p' not in mode:
+        #     raise PhaseVarianceAmbiguityError(mode)
 
         # --- Create attributes ------------------------------------------
-        # Number of "types" or parameters.
-        # This will be 4 if the signal is 1D, and 6 if 2D.
-        self.p = 2 * self.dim + 2
         # Reshape parameter array to vector:
         # (M, 4) -> (4*M,) or (M, 6) -> (6*M,)
         self.theta0 = theta0
-        # Number of oscillators
-        self.m = int(self.theta0.size / self.p)
 
         self.sw = sw
         self.offset = offset
         self.sfo = sfo
+        self.start_point = start_point
         self.method = method
         self.phase_variance = phase_variance
-        self.mode = mode
+        self.mode = mode # TODO
         self.bound = bound
         self.max_iterations = max_iterations
         self.amp_thold = amp_thold
         self.freq_thold = freq_thold
         self.negative_amps = negative_amps
+        self.fprint = fprint
 
-        # Value to specify whether or not to output info to terminal
-        self.fprint = 3 if fprint else 0
+        # Number of oscillators
+        self.m = int(self.theta0.size / self.p)
+        # Number of points in each dimension
+        self.n = list(self.data.shape)
+
 
         if self.sfo != None:
             # If sfo was given an explicit value, create a frequency
@@ -321,9 +329,12 @@ class NonlinearProgramming(FrequencyConverter):
         x0[:self.m] = x0[:self.m] / self.norm
         # 2. Shift oscillator frequencies to center about 0
         x0 = self._shift_offset(x0, 'center')
-
+        print(self.sw)
         # Time points in each dimension
-        self.tp = get_timepoints(self.n, self.sw)
+        self.tp = get_timepoints(
+            [n + self.start_point for n in self.n], self.sw,
+        )
+        self.tp = [t[self.start_point:] for t in self.tp]
 
         # Determine 'active' and 'passive' parameters based on self.mode
         # generates self.active_idx and self.passive_idx
@@ -674,6 +685,7 @@ class NonlinearProgramming(FrequencyConverter):
 
 
     def _run_optimiser(self):
+        fprint = 3 if self.fprint else 0
         # Trust-Region
         if self.method == 'trust_region':
             result = optimize.minimize(
@@ -686,7 +698,7 @@ class NonlinearProgramming(FrequencyConverter):
                 bounds = self.bounds,
                 options = {
                     'maxiter': self.max_iterations,
-                    'verbose': self.fprint,
+                    'verbose': fprint,
                 },
             )
         # L-BFGS
@@ -700,7 +712,7 @@ class NonlinearProgramming(FrequencyConverter):
                 bounds = self.bounds,
                 options = {
                     'maxiter': self.max_iterations,
-                    'iprint': self.fprint // 3,
+                    'iprint': fprint // 3,
                     'disp': True
                 }
             )
