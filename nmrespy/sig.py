@@ -279,19 +279,15 @@ def make_virtual_echo(data, modulation='amp'):
     if dim == 1:
         data = data[0]
         pts = data.size
+        ve = np.zeros((2 * pts - 1), dtype='complex')
+        ve[:pts] = data
+        ve[0] = np.real(ve[0])
+        ve[pts:] = data.conj()[1:][::-1]
+        return ve
 
-        tmp1 = np.zeros((2*pts), dtype='complex')
-        tmp1[:pts] = data
-        tmp1[0] /= 2
-
-        tmp2 = np.zeros((2*pts), dtype='complex')
-        tmp2[pts:] = data.conj()[::-1]
-        tmp2 = np.roll(tmp2, 1)
-        tmp2[0] /= 2
-
-        return tmp1 + tmp2
 
     elif dim == 2:
+        # TODO NEEDS FIXING
         if modulation == 'amp':
             c = data[0]
             s = data[1]
@@ -318,25 +314,25 @@ def make_virtual_echo(data, modulation='amp'):
 
         pts = s.shape
 
-        tmp1 = np.zeros(tuple(2 * p for p in pts), dtype='complex')
+        tmp1 = np.zeros(tuple(2 * p - 1 for p in pts), dtype='complex')
         tmp1[:pts[0], :pts[1]] = pp
         tmp1[0] /= 2
         tmp1[:, 0] /= 2
 
-        tmp2 = np.zeros(tuple(2 * p for p in pts), dtype='complex')
-        tmp2[:pts[0], pts[1]:] = pm[:, ::-1]
+        tmp2 = np.zeros(tuple(2 * p - 1 for p in pts), dtype='complex')
+        tmp2[:pts[0], pts[1] - 1:] = pm[:, ::-1]
         tmp2[0] /= 2
         tmp2[:, -1] /= 2
         tmp2 = np.roll(tmp2, 1, axis=1)
 
-        tmp3 = np.zeros(tuple(2 * p for p in pts), dtype='complex')
-        tmp3[pts[0]:, :pts[1]] = mp[::-1]
+        tmp3 = np.zeros(tuple(2 * p - 1 for p in pts), dtype='complex')
+        tmp3[pts[0] - 1:, :pts[1]] = mp[::-1]
         tmp3[-1] /= 2
         tmp3[:, 0] /= 2
         tmp3 = np.roll(tmp3, 1, axis=0)
 
-        tmp4 = np.zeros(tuple(2 * p for p in pts), dtype='complex')
-        tmp4[pts[0]:, pts[1]:] = mm[::-1, ::-1]
+        tmp4 = np.zeros(tuple(2 * p - 1 for p in pts), dtype='complex')
+        tmp4[pts[0] - 1:, pts[1] - 1:] = mm[::-1, ::-1]
         tmp4[-1] /= 2
         tmp4[:, -1] /= 2
         tmp4 = np.roll(tmp4, 1, axis=(0, 1))
@@ -374,9 +370,9 @@ def get_timepoints(n, sw):
     return [np.linspace(0, float(n_ - 1) / sw_, n_) for n_, sw_ in zip(n, sw)]
 
 
-def get_shifts(n, sw, offset, flip=True):
+def get_shifts(n, sw, offset=None, flip=True):
     """Generates the frequencies that the FT of the FID is sampled at, given
-    its sweep-width, and the number of points.
+    its sweep-width, the transmitter offset, and the number of points.
 
     Parameters
     ----------
@@ -384,25 +380,29 @@ def get_shifts(n, sw, offset, flip=True):
         The number of points in each dimension.
 
     sw : [float] or [float, float]
-        The sweep width in each dimension (Hz).
+        The sweep width in each dimension.
 
-    offset : [float] or [float, float]
-        The transmitter offset in each dimension (Hz).
+    offset : [float], [float, float], or None, default: None
+        The transmitter offset in each dimension. If `None`, the
+        offset will be set to zero in each dimension.
 
     flip : bool, default: True
-        Whether or not to flip `spectrum` in each dimension prior to Inverse
-        Fourier Transform.
+        If `True`, the shifts will be returned in descending order, as is
+        conventional in NMR. If `False, the shifts will be in ascending order.
 
     Returns
     -------
     shifts : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
-        The chemical shift values sampled in each dimension (Hz).
+        The chemical shift values sampled in each dimension.
     """
 
     try:
         dim = len(n)
     except:
         raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
+
+    if offset == None:
+        offset = dim * [0.]
 
     ArgumentChecker(
         [(n, 'n', 'int_list'),
@@ -655,7 +655,7 @@ def manual_phase_spectrum(spectrum, max_p1=None):
     app = PhaseApp(init_spectrum, max_p1)
     app.mainloop()
 
-    return [app.p0], [app.p1]
+    return app.p0, app.p1
 
 
 class PhaseApp(tk.Tk):
@@ -780,7 +780,7 @@ class PhaseApp(tk.Tk):
             self.__dict__[f'{name}_label']['text'] = \
                 f"{self.__dict__[name]:.3f}"
 
-        spectrum = phase_spectrum(
+        spectrum = phase(
             self.init_spectrum, [self.p0], [self.p1], [self.pivot],
         )
         self.specline.set_ydata(np.real(spectrum))
@@ -919,6 +919,66 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     para = para.reshape((m, 2*(dim+1)), order='F')
 
     return *make_fid(para, n, sw, offset, snr), para
+
+
+def apodisation(data, shape='exp', params=None, axis=0):
+    """Perform apodisation of data
+
+    .. note::
+
+       Only eponential apodisation is supported currently:
+
+       .. math::
+
+          f(t) = \\exp\\left(-\\pi \\mathrm{i} \\\\right)
+
+    Parameters
+    ----------
+    data: numpy.ndarray
+        Data to be mainpulated.
+
+    shape: {exp}
+        The functional form of the apodisation function.
+
+    params : dict
+        Dictionaries of parameters of relevance to the specified window
+        function. The following is a list of all valid keys for each
+        `shape`:
+
+        * `'exp'`
+
+            + `'lb'`: Rate of decay of the exponential in units of points
+              (corresponds to the extent of line-broadening in the frequency
+              domain).
+
+    axis : int
+        The axis to apply the adpodisatio along.
+    """
+    def key_error(shape, keys):
+        msg = (f"{cols.R}For `shape` \'{shape}\', `params` may only contain "
+                "the following values:")
+        msg = '\n'.join([msg] + keys) + cols.END
+        raise ValueError(msg)
+
+    if shape == 'exp':
+        size = data.shape[axis]
+
+        if params is None:
+            params = {'lb' : 1 / size}
+
+        valids = ['lb']
+        for k in params.keys():
+            if k != 'lb':
+                raise ValueError()
+
+        window = np.exp(-np.pi * np.arange(size) * params['lb'])
+
+    full_idx = ''.join([chr(x + 105) for x in range(data.ndim)])
+    axis_idx = chr(axis + 105)
+
+    return np.einsum(f"{full_idx},{axis_idx}->{full_idx}", data, window)
+
+
 
 
 def oscillator_integral(parameters, n, sw, offset=None):

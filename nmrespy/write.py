@@ -90,14 +90,14 @@ def write_result(
     pdflatex_exe : str or None, default: None
         The path to the system's ``pdflatex`` executable.
 
-    fprint : bool, default: True
-        Specifies whether or not to print information to the terminal.
-
         .. note::
 
            You are unlikely to need to set this manually. It is primarily
            present to specify the path to ``pdflatex.exe`` on Windows when
            the NMR-EsPy GUI has been loaded from TopSpin.
+
+    fprint : bool, default: True
+        Specifies whether or not to print information to the terminal.
 
     Raises
     ------
