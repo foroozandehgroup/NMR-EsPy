@@ -10,13 +10,18 @@ can be installed to TopSpin either at the point of installing NMR-EsPy using
    On this page, ``<pyexe>`` denotes the symbolic link/path to the Python
    executable you are using.
 
-Installation during pip install
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Automatic installation
+^^^^^^^^^^^^^^^^^^^^^^
 
-As part of the installation of NMR-EsPy from PyPI, you will be asked whether
-you would like to install the GUI loader to any TopSpin installations (if you
-have any). The installation script searches for directories matching the
-following glob pattern in your system:
+After installing NMR-EsPy using ``pip install``, you can set up the TopSpin
+GUI loader by entering the following into a terminal:
+
+.. code:: none
+
+   $ <pyexe> -m nmrespy --install-to-topspin
+
+The script searches for directories matching the following glob pattern in your
+system:
 
 * UNIX: ``/opt/topspin*``
 * Windows: ``C:\Bruker\TopSpin*``
@@ -54,24 +59,12 @@ an example where I try to install to both TopSpin 4.0.8 and TopSpin 3.6.3:
   SUCCESS:
       /opt/topspin4.0.8/exp/stan/nmr/py/user/nmrespy.py
 
-Installation after pip install
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To install the TopSpin GUI loader at any time after installing NMR-EsPy, load
-a terminal/command prompt, and enter the following command:
-
-.. code:: none
-
-   $ <pyexe> -m nmrespy --install-to-topspin
-
-You then have to follow the procedure outlined in the previous section.
-
 Manual Installation
 ^^^^^^^^^^^^^^^^^^^
 
 If automatic installation failed, perhaps because TopSpin isn't installed in
 the default location, you can still easily get the TopSpin GUI loader
-up-and-running.
+up-and-running with the following steps.
 
 Copying the loader script
 -------------------------
@@ -107,7 +100,7 @@ rename the copied file as ``nmrespy.py``:
 
    In the UNIX example, ``\`` followed by pressing ``<Return>`` allows
    a single long command to span multiple lines. Similarly, ``^``, followed
-   by ``<Return>`` achieves the same thing in Windows.
+   by ``<Return>`` achieves the same thing in Windows cmd.
 
 Editing the loader script
 -------------------------
@@ -121,10 +114,10 @@ Now you need to open the newly created file:
 
 * **Specifying the Python executable path**
 
-  You need to set ``py_exe`` (which is ``None`` by initially) with the path to
-  your Python executable. One way to do this which should be independent of
-  Operating System is to load a Python interpreter or write a script with the
-  following lines (below is an example on Windows):
+  You need to set ``py_exe`` (which is ``None`` initially) with the path to
+  your Python executable. One way to determine this which should be independent
+  of Operating System is to load a Python interpreter or write a script with
+  the following lines (below is an example on Windows):
 
   .. code:: pycon
 
@@ -141,9 +134,9 @@ Now you need to open the newly created file:
 
 * **(Optional) Specifying the pdflatex path**
 
-  If you have ``pdflatex`` on your system (see the *LATeX* section in
+  If you have ``pdflatex`` on your system (see the *LaTeX* section in
   :doc:`Installation <../install>`), and you want to be able to produce
-  PDF result files using LaTeX, you will also have to specify the path to the
+  PDF result files, you will also have to specify the path to the
   ``pdflatex`` executable, given by the variable ``pdflatex_exe``, which
   is set to ``None`` by default. To find this path, load a Python interpreter/
   write a Python script with the following lines:

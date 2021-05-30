@@ -18,8 +18,8 @@ import nmrespy
 
 # -- Project information -----------------------------------------------------
 project = 'NMR-EsPy'
-copyright = '2021, Simon Hulse'
-author = 'Simon Hulse'
+copyright = '2021, Simon Hulse & Mohammadali Foroozandeh'
+author = 'Simon Hulse & Mohammadali Foroozandeh'
 version = nmrespy.__version__
 
 
@@ -28,13 +28,14 @@ version = nmrespy.__version__
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.autosectionlabel',
-              'sphinx.ext.napoleon',
-              'sphinx.ext.imgmath',
-              'sphinx.ext.todo',
-              'sphinx.ext.autosummary',
-              'sphinx.ext.viewcode',
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosectionlabel',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.imgmath',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.todo',
+    'sphinx.ext.viewcode',
 ]
 
 master_doc = 'index'
@@ -99,3 +100,12 @@ html_static_path = ['_static']
 # Autosummary
 # -----------
 autosummary_generate = True
+
+latex_engine = 'xelatex'
+
+latex_elements = {
+    'inputenc': '',
+    'babel': '\\usepackage{polyglossia}',
+    'fontenc': '',
+    'maxlistdepth' : '10',
+}

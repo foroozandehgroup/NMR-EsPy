@@ -1,0 +1,56 @@
+name: publish-docs
+
+on:
+  push:
+    branches: [ test ]
+  pull-request:
+    branches: [ test ]
+
+jobs:
+  pubdocs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout nmrespy
+        uses: actions/checkout@v2
+        with:
+          ref: test
+          ref: test
+
+      - name: setup python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: install and build docs
+        run: |
+          python -m pip install --upgrade pip
+          python setup.py
+          python -m pip install -r docs/requirements.txt
+          cd master/docs/
+          sphinx-build -b html . html
+          sphinx-build -b latex . latex
+
+      - name: complex LaTeX docs
+        uses: xu-cheng/latex-action@v2
+        with:
+          working_directory: master/docs/latex/
+          root_file: nmr-espy.tex
+          latexmk_use_xelatex: true
+
+      - name: checkout gh-pages branch
+        uses: actions/checkout@v2
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: update gh-pages
+        run: |
+          cp -r master/docs/html/* gh-pages/
+          cp master/docs/latex/nmr-espy.pdf gh-pages/NMR-EsPy.pdf
+          cd gh-pages
+          git config --local user.name "GitHub Actions"
+          git config --local user.email "<>"
+          git add -A
+          git commit -m "Update documentation"
+          git push

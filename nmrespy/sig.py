@@ -388,13 +388,12 @@ def get_shifts(n, sw, offset=None, flip=True):
 
     flip : bool, default: True
         If `True`, the shifts will be returned in descending order, as is
-        conventional in NMR. If `False, the shifts will be in ascending order.
+        conventional in NMR. If `False`, the shifts will be in ascending order.
 
     Returns
     -------
     shifts : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
-        The chemical shift values sampled in each dimension.
-    """
+        The chemical shift values sampled in each dimension."""
 
     try:
         dim = len(n)

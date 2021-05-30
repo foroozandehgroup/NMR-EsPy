@@ -3,8 +3,6 @@ docs/_build/
 docs/_templates
 docs/Makefile
 tests
-nmrespy/app/to_add.py
-nmrespy/app/tmp/*
 venv
 build
 dist
