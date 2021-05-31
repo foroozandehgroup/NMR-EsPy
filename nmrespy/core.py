@@ -1,17 +1,17 @@
+import copy
 import datetime
 import functools
 from pathlib import Path
 import pickle
-import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.fft import fft, fftshift
 
 from nmrespy import *
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 import nmrespy._errors as errors
 from nmrespy._misc import *
 from nmrespy.load import load_bruker
@@ -114,7 +114,7 @@ class Estimator:
             "==============================\n"
             "Logfile for Estimator instance\n"
             "==============================\n"
-           f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}"
+            f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}"
         )
 
         if _origin is not None:
@@ -122,7 +122,6 @@ class Estimator:
                           f"{_origin['args']}")
 
         self._log += "\n"
-
 
     def __repr__(self):
         msg = (
@@ -140,7 +139,6 @@ class Estimator:
 
         return msg
 
-
     def __str__(self):
         """A formatted list of class attributes"""
 
@@ -151,11 +149,11 @@ class Estimator:
 
         dic = self.__dict__
         keys, vals = dic.keys(), dic.values()
-        items = [f'{cols.MA}{k}{cols.END} : {v}' for k, v in zip(keys, vals) if k[0] != '_']
+        items = [f'{cols.MA}{k}{cols.END} : {v}'
+                 for k, v in zip(keys, vals) if k[0] != '_']
         msg += '\n'.join(items)
 
         return msg
-
 
     def logger(f):
         """Decorator for logging :py:class:`Estimator` method calls"""
@@ -169,7 +167,6 @@ class Estimator:
             return f(*args, **kwargs)
 
         return wrapper
-
 
     @classmethod
     def new_bruker(cls, dir, ask_convdta=True):
@@ -193,7 +190,7 @@ class Estimator:
         For a more detailed specification of the directory requirements,
         see :py:meth:`nmrespy.load_bruker`."""
 
-        origin = {'method' : 'new_bruker', 'args' : locals()}
+        origin = {'method': 'new_bruker', 'args': locals()}
         info = load_bruker(dir, ask_convdta=ask_convdta)
 
         return cls(
@@ -298,9 +295,11 @@ class Estimator:
         path = Path(path).resolve()
         # Append extension to file path
         path = path.parent / (path.name + '.pkl')
-        # Check path is valid (check directory exists, ask user if they are happy
-        # overwriting if file already exists).
-        pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
+        # Check path is valid (check directory exists, ask user if they are
+        # happy overwriting if file already exists).
+        pathres = PathManager(
+            path.name, path.parent
+        ).check_file(force_overwrite)
         # Valid path, we are good to proceed
         if pathres == 0:
             pass
@@ -310,7 +309,8 @@ class Estimator:
         # pathres == 2: Directory specified doesn't exist
         else:
             raise ValueError(
-                f'{cols.R}The directory implied by path does not exist{cols.END}'
+                f'{cols.R}The directory implied by path does not'
+                f'exist{cols.END}'
             )
 
         with open(path, 'wb') as fh:
@@ -318,9 +318,6 @@ class Estimator:
 
         if fprint:
             print(f'{cols.G}Saved instance of Estimator to {path}{cols.END}')
-
-
-
 
     def get_datapath(self, type_='Path', kill=True):
         """Return path of the data directory.
@@ -353,7 +350,6 @@ class Estimator:
         else:
             raise ValueError(f'{R}type_ should be \'Path\' or \'str\'')
 
-
     def get_data(self):
         """Return the original data.
 
@@ -362,7 +358,6 @@ class Estimator:
         data : numpy.ndarray
         """
         return self.data
-
 
     def get_dim(self):
         """Return the data dimension.
@@ -373,7 +368,6 @@ class Estimator:
         """
         return self.dim
 
-
     def get_n(self):
         """Return the number of datapoints in each dimension
 
@@ -382,7 +376,6 @@ class Estimator:
         n : [int] or [int, int]
         """
         return self.n
-
 
     def get_sw(self, unit='hz', kill=True):
         """Return the experiment sweep width in each dimension.
@@ -425,7 +418,6 @@ class Estimator:
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
-
     def get_offset(self, unit='hz', kill=True):
         """Return the transmitter's offset frequency in each dimesnion.
 
@@ -467,7 +459,6 @@ class Estimator:
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
-
     def get_sfo(self, kill=True):
         """Return transmitter frequency for each channel (MHz).
 
@@ -503,7 +494,7 @@ class Estimator:
         """
 
         sfo = self._check_if_none('sfo', kill)
-        if sfo == None:
+        if sfo is None:
             return None
 
         off = self.get_offset()
@@ -538,8 +529,9 @@ class Estimator:
 
         meshgrid : bool
             Only appicable for 2D data. If set to `True`, the shifts in
-            each dimension will be fed into `numpy.meshgrid <https://numpy.org/\
-            doc/stable/reference/generated/numpy.meshgrid.html>`_
+            each dimension will be fed into
+            `numpy.meshgrid <https://numpy.org/doc/stable/reference/\
+            generated/numpy.meshgrid.html>`_
 
         kill : bool
             If `self.sfo` (need to get shifts in ppm) is `None`, `kill`
@@ -566,8 +558,8 @@ class Estimator:
         if unit not in ['ppm', 'hz']:
             raise errors.InvalidUnitError('ppm', 'hz')
 
-        if unit == 'ppm' and kill == False:
-            if self._check_if_none('sfo', kill) == None:
+        if unit == 'ppm' and kill is False:
+            if self._check_if_none('sfo', kill) is None:
                 return None
 
         shifts = sig.get_shifts(
@@ -580,7 +572,6 @@ class Estimator:
 
         return shifts
 
-
     def get_timepoints(self, meshgrid=False):
         """Return the sampled times consistent with experiment's
         parameters (sweep width, number of points).
@@ -589,8 +580,9 @@ class Estimator:
         ----------
         meshgrid : bool
             Only appicable for 2D data. If set to `True`, the time-points in
-            each dimension will be fed into `numpy.meshgrid <https://numpy.org/\
-            doc/stable/reference/generated/numpy.meshgrid.html>`_
+            each dimension will be fed into
+            `numpy.meshgrid <https://numpy.org/doc/stable/reference/\
+            generated/numpy.meshgrid.html>`_
 
         Returns
         -------
@@ -604,7 +596,6 @@ class Estimator:
             return list(np.meshgrid(tp[0], tp[1], indexing='ij'))
 
         return tp
-
 
     def get_result(self, kill=True, freq_unit='hz'):
         """Returns the estimation result
@@ -622,7 +613,6 @@ class Estimator:
         """
         return self._get_array('result', kill, freq_unit)
 
-
     def get_errors(self, kill=True, freq_unit='hz'):
         """Returns the errors of the estimation result derived from
         :py:meth:`nonlinear_programming`
@@ -639,7 +629,6 @@ class Estimator:
         freq_unit : 'hz' or 'ppm', default: 'hz'
         """
         return self._get_array('errors', kill, freq_unit)
-
 
     def _get_array(self, name, kill, freq_unit):
         """Returns an array (result or errors), wioth frequencies in either
@@ -668,7 +657,7 @@ class Estimator:
                 array[:, 2] = ppm
                 return array
 
-            except:
+            except Exception:
                 raise TypeError(
                     f'{cols.R}Error in trying to convert frequencies to '
                     f'ppm. Perhaps you didn\'t specify sfo when you made '
@@ -677,7 +666,6 @@ class Estimator:
 
         else:
             raise InvalidUnitError('hz', 'ppm')
-
 
     def _check_if_none(self, name, kill, method=None):
         """Retrieve attributes that may be assigned the value `None`. Return
@@ -713,8 +701,8 @@ class Estimator:
         else:
             return attribute
 
-
-    def view_data(self, domain='frequency', freq_xunit='ppm', component='real'):
+    def view_data(self, domain='frequency', freq_xunit='ppm',
+                  component='real'):
         """Generate a simple, interactive plot of the data using matplotlib.
 
         Parameters
@@ -788,7 +776,6 @@ class Estimator:
 # make_fid:
 # include functionality to write to Bruker files, Varian files,
 # JEOL files etc
-# =============================================================
 
     def make_fid(self, n=None, oscillators=None, kill=True):
         """Constructs a synthetic FID using a parameter estimate and
@@ -843,10 +830,8 @@ class Estimator:
             dim=self.get_dim(),
         )
 
-
-        return sig.make_fid(
-            result[[oscillators]], n, self.get_sw(), offset=self.get_offset(),
-        )
+        return sig.make_fid(result[[oscillators]], n, self.get_sw(),
+                            offset=self.get_offset())
 
     @logger
     def phase_data(self, p0=None, p1=None):
@@ -872,7 +857,6 @@ class Estimator:
             sig.phase(sig.ft(self.data), p0, p1)
         )
 
-
     def manual_phase_data(self, max_p1=None):
         """Perform manual phase correction of `self.data`.
 
@@ -889,9 +873,8 @@ class Estimator:
             ``10 * numpy.pi``.
         """
         p0, p1 = sig.manual_phase_spectrum(sig.ft(self.data), max_p1)
-        if not (p0 == None and p1 == None):
+        if not (p0 is None and p1 is None):
             self.phase_data(p0=[p0], p1=[p1])
-
 
     @logger
     def frequency_filter(
@@ -901,7 +884,8 @@ class Estimator:
 
         Parameters
         ----------
-        region: [[int, int]], [[int, int], [int, int]], [[float, float]] or [[float, float], [float, float]]
+        region: [[int, int]], [[int, int], [int, int]], [[float, float]] or
+        [[float, float], [float, float]]
             Cut-off points of the spectral region to consider.
             If the signal is 1D, this should be of the form `[[a,b]]`
             where `a` and `b` are the boundaries.
@@ -911,7 +895,8 @@ class Estimator:
             dimension 2. The ordering of the bounds in each dimension is
             not important.
 
-        noise_region: [[int, int]], [[int, int], [int, int]], [[float, float]] or [[float, float], [float, float]]
+        noise_region: [[int, int]], [[int, int], [int, int]],
+        [[float, float]] or [[float, float], [float, float]]
             Cut-off points of the spectral region to extract the spectrum's
             noise variance. This should have the same structure as `region`.
 
@@ -1064,9 +1049,9 @@ class Estimator:
            frequencies using modified matrix pencil method”. In: IEEE Trans.
            Signal Process. 55.2 (2007), pp. 718–724.
 
-        .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
-           criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
-           33 (2) (1985) 387–392.
+        .. [#] M. Wax, T. Kailath, Detection of signals by information
+           theoretic criteria, IEEE Transactions on Acoustics, Speech, and
+           Signal Processing 33 (2) (1985) 387–392.
         """
 
         data, sw, offset = self._get_data_sw_offset()
@@ -1088,9 +1073,9 @@ class Estimator:
         self.errors = None
         self._saveable = False
 
-
     # TODO: support for mode
     # Also look at nlp.nlp.NonlinearProgramming
+
     @logger
     def nonlinear_programming(self, trim=None, **kwargs):
         """Estimation of signal parameters using nonlinear programming, given
@@ -1172,7 +1157,6 @@ class Estimator:
         self.errors = nlp_info.get_errors()
         self._saveable = True
 
-
     @logger
     def write_result(self, **kwargs):
         """Saves an estimation result to a file in a human-readable format
@@ -1213,7 +1197,7 @@ class Estimator:
 
         if not self._saveable:
             raise ValueError(
-                f'{cols.O}The last action to be applied to the estimation '
+                f'{cols.OR}The last action to be applied to the estimation '
                 f'result was not `nonlinear_programming`. You should ensure '
                 f'this is so before saving the result.{cols.END}'
             )
@@ -1352,7 +1336,7 @@ class Estimator:
 
         if not self._saveable:
             raise ValueError(
-                f'{cols.O}The last action to be applied to the estimation '
+                f'{cols.OR}The last action to be applied to the estimation '
                 f'result was not `nonlinear_programming`. You should ensure '
                 f'this is so before plotting the result.{cols.END}'
             )
@@ -1379,7 +1363,6 @@ class Estimator:
             nucleus=self.get_nucleus(kill=False),
             region=self.get_filter_info().get_region(unit=unit), **kwargs,
         )
-
 
     @logger
     def add_oscillators(self, oscillators):
@@ -1419,7 +1402,6 @@ class Estimator:
         self._saveable = False
         self.errors = None
 
-
     @logger
     def remove_oscillators(self, indices):
         """Removes the oscillators corresponding to ``indices``.
@@ -1447,7 +1429,6 @@ class Estimator:
         self._saveable = False
         self.errors = None
 
-
     @logger
     def merge_oscillators(self, indices):
         """Merges the oscillators corresponding to `indices`.
@@ -1472,9 +1453,11 @@ class Estimator:
         oscillator subset will possess the following parameters:
 
             * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`
-            * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\phi_{m_i}`
+            * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
+              \\phi_{m_i}`
             * :math:`f_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J f_{m_i}`
-            * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\eta_{m_i}`
+            * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
+              \\eta_{m_i}`
         """
 
         ArgumentChecker([(indices, 'indices', 'list')])
@@ -1483,7 +1466,7 @@ class Estimator:
 
         if len(indices) < 2:
             print(
-                f'\n{cols.O}`indices` should contain at least two elements.'
+                f'\n{cols.OR}`indices` should contain at least two elements.'
                 f'No merging will happen.{cols.END}'
             )
             return
@@ -1560,7 +1543,7 @@ class Estimator:
         try:
             # Of form: [a, φ, f, η] (i.e. 1D array)
             osc = result[index]
-        except:
+        except Exception:
             raise ValueError(
                 f'{cols.R}index should be an int in range('
                 f'{result.shape[0]}){cols.END}'
@@ -1575,7 +1558,8 @@ class Estimator:
         # Highest frequency of all the new oscillators
         max_freq = osc[2] + ((split_number - 1) * separation_frequency / 2)
         # Array of all frequencies (lowest to highest)
-        freqs = [max_freq - i*separation_frequency for i in range(split_number)]
+        freqs = [max_freq - i * separation_frequency
+                 for i in range(split_number)]
 
         # --- Determine amplitudes ---------------------------------------
         if amp_ratio is None:
@@ -1618,7 +1602,6 @@ class Estimator:
         self._saveable = False
         self.errors = None
 
-
     def save_logfile(self, path='./nmrespy_log', force_overwrite=False):
         """Saves log file of class instance usage to a specified path.
 
@@ -1646,9 +1629,11 @@ class Estimator:
 
         # Get full path and extend .log extension
         path = Path(path).resolve().with_suffix('.log')
-        # Check path is valid (check directory exists, ask user if they are happy
-        # overwriting if file already exists).
-        pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
+        # Check path is valid (check directory exists, ask user if they are
+        # happy overwriting if file already exists).
+        pathres = PathManager(
+            path.name, path.parent
+        ).check_file(force_overwrite)
         # Valid path, we are good to proceed
         if pathres == 0:
             pass

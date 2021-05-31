@@ -1,10 +1,9 @@
 import pytest
-from pathlib import Path
-import pickle
 
 import numpy as np
 
-from nmrespy._misc import PathManager, FrequencyConverter, ArgumentChecker
+from nmrespy._misc import FrequencyConverter, ArgumentChecker
+
 
 def test_argchecker():
     with pytest.raises(TypeError):
@@ -23,7 +22,7 @@ def test_argchecker():
 
     ArgumentChecker(
         [
-            (np.arange(12).reshape(2,6), 'parameter', 'parameter'),
+            (np.arange(12).reshape(2, 6), 'parameter', 'parameter'),
             ([10, 43], 'int_list', 'int_list'),
             ([10.21, 43.74], 'float_list', 'float_list'),
             (True, 'bool', 'bool'),
@@ -42,7 +41,7 @@ def test_argchecker():
 
 def test_converter():
     n = [101, 101]
-    sw = [10.,100.]
+    sw = [10., 100.]
     offset = [0., 50.]
     sfo = [500., 500.]
 
@@ -105,4 +104,5 @@ def test_converter():
     assert converter._convert_value(-5., 0, 'hz->ppm') == -0.01
 
     assert converter.convert([50, 50], 'idx->hz') == [0., 50.]
-    assert converter.convert([[25, 50], [75, 100]], 'idx->hz') == [[2.5, 0.], [25., 0.]]
+    assert (converter.convert([[25, 50], [75, 100]], 'idx->hz') ==
+            [[2.5, 0.], [25., 0.]])

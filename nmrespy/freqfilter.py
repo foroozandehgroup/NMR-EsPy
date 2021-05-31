@@ -6,9 +6,13 @@
 
 import numpy as np
 import numpy.random as nrandom
-import scipy.linalg as slinalg
 
 from nmrespy._misc import ArgumentChecker, FrequencyConverter
+import nmrespy._cols as cols
+if cols.USE_COLORAMA:
+    import colorama
+    colorama.init()
+import nmrespy._errors as errors
 from nmrespy import sig
 
 
@@ -40,7 +44,7 @@ def super_gaussian(region, shape, p=40.0):
 
     Returns
     -------
-    super_gaussian : numpy.ndarray
+    sg : numpy.ndarray
         Super-Gaussian filter.
 
     center : [int] or [int, int]
@@ -59,15 +63,15 @@ def super_gaussian(region, shape, p=40.0):
         bw.append(bounds[1] - bounds[0])
 
     # Construct super gaussian
-    for n, c, b in zip(shape, center, bw):
+    for i, (n, c, b) in enumerate(zip(shape, center, bw)):
         # 1D array of super-Gaussian for particular dimension
-        sg = np.exp(-2**(p+1) * ((np.arange(1, n+1) - c) / b) ** p)
-        try:
-            super_gaussian = super_gaussian[..., None] * sg
-        except NameError:
-            super_gaussian = sg
+        s = np.exp(-2 ** (p + 1) * ((np.arange(1, n + 1) - c) / b) ** p)
+        if i == 0:
+            sg = s
+        else:
+            sg = sg[..., None] * s
 
-    return super_gaussian, center, bw
+    return sg, center, bw
 
 
 class FrequencyFilter:
@@ -78,7 +82,8 @@ class FrequencyFilter:
     data : numpy.ndarray
         The time-domain signal.
 
-    region : [[int, int]], [[float, float]], [[int, int], [int, int]] or [[float, float], [float, float]]
+    region : [[int, int]], [[float, float]], [[int, int], [int, int]] or
+    [[float, float], [float, float]]
         Boundaries specifying the region to apply the filter to.
 
     noise_region : (Same type as `region`)
@@ -184,8 +189,10 @@ class FrequencyFilter:
 
         if region_unit in ['ppm', 'hz']:
             # Convert region and noise_region to array indices
-            region = self.converter.convert(region, f'{region_unit}->idx')
-            noise_region = self.converter.convert(noise_region, f'{region_unit}->idx')
+            region = \
+                self.converter.convert(region, f'{region_unit}->idx')
+            noise_region = \
+                self.converter.convert(noise_region, f'{region_unit}->idx')
 
         # Ensure region bounds are in correct order, i.e. [low, high],
         # and double to reflect increased size of virtual echo
@@ -199,7 +206,7 @@ class FrequencyFilter:
         # of the filter in each dimension.
         sg, center, bw = super_gaussian(region, ve_shape)
         # Extract noise
-        noise_slice = tuple(np.s_[nbd[0]:nbd[1]+1] for nbd in noise_region)
+        noise_slice = tuple(np.s_[nbd[0]:nbd[1] + 1] for nbd in noise_region)
         variance = np.var(init_spec[noise_slice])
         # Generate noise array
         noise = nrandom.normal(0, np.sqrt(variance), size=ve_shape)
@@ -232,12 +239,13 @@ class FrequencyFilter:
                     mx = n - 1
                 mini.append(mn)
                 maxi.append(mx)
-                cut_slice.append(np.s_[mn:mx+1])
+                cut_slice.append(np.s_[mn:mx + 1])
 
             # Cut the filtered spectrum
             cut_filt_spec = filt_spec[tuple(cut_slice)]
             # Generate time-domain signal from spectrum
-            cut_half_slice = tuple(np.s_[0:int(s // 2)] for s in cut_filt_spec.shape)
+            cut_half_slice = \
+                tuple(np.s_[0:int(s // 2)] for s in cut_filt_spec.shape)
             cut_fid = sig.ift(cut_filt_spec)[cut_half_slice]
             # Scale signals
             cut_fid = cut_fid * cut_fid.size / uncut_fid.size
@@ -246,7 +254,9 @@ class FrequencyFilter:
             # NB division by 2 is to correct for doubling the region bounds
             # on account of zero filling
             cut_sw = []
-            for s, cut_n, uncut_n in zip(sw, cut_filt_spec.shape, filt_spec.shape):
+            for s, cut_n, uncut_n in zip(
+                sw, cut_filt_spec.shape, filt_spec.shape,
+            ):
                 cut_sw.append((cut_n - 1) / (uncut_n - 1) * s)
 
             cut_offset = self.converter.convert(
@@ -254,11 +264,10 @@ class FrequencyFilter:
                 'idx->hz',
             )
 
-
-        self.fid = {'uncut' : uncut_fid, 'cut' : None}
-        self.filtered_spectrum = {'uncut' : filt_spec, 'cut' : None}
-        self.sw = {'uncut' : sw, 'cut' : None}
-        self.offset = {'uncut' : offset, 'cut' : None}
+        self.fid = {'uncut': uncut_fid, 'cut': None}
+        self.filtered_spectrum = {'uncut': filt_spec, 'cut': None}
+        self.sw = {'uncut': sw, 'cut': None}
+        self.offset = {'uncut': offset, 'cut': None}
 
         try:
             self.fid['cut'] = cut_fid
@@ -272,14 +281,11 @@ class FrequencyFilter:
         self.region = region
         self.noise_region = noise_region
 
-
-
     def _get_cut_uncut(self, name, cut):
         if cut and self.__dict__[name]['cut'] is not None:
             return self.__dict__[name]['cut']
         else:
             return self.__dict__[name]['uncut']
-
 
     def get_fid(self, cut=True):
         """Returns frequency-filtered time domain data.
@@ -297,7 +303,6 @@ class FrequencyFilter:
 
         return self._get_cut_uncut('fid', cut)
 
-
     def get_filtered_spectrum(self, cut=True):
         """Returns frequency-filtered spectral data.
 
@@ -314,11 +319,9 @@ class FrequencyFilter:
 
         return self._get_cut_uncut('filtered_spectrum', cut)
 
-
     def get_fs(self, cut=True):
         """Shorthand for :py:meth:`get_filtered_spectrum`."""
         return self.get_filtered_spectrum(cut)
-
 
     def get_super_gaussian(self):
         """Returns the super-Gaussian filter used.
@@ -329,11 +332,9 @@ class FrequencyFilter:
         """
         return self.sg
 
-
     def get_sg(self):
         """Shorthand for :py:meth:`get_super_gaussian`."""
         return self.sg
-
 
     def get_sw(self, unit='hz', cut=True):
         """Returns the sweep width of the cut signal
@@ -352,12 +353,13 @@ class FrequencyFilter:
         if unit == 'hz':
             return self._get_cut_uncut('sw', cut)
         elif unit == 'ppm':
-            return self.converter.convert(self._get_cut_uncut('sw', cut), f'hz->ppm')
+            return self.converter.convert(
+                self._get_cut_uncut('sw', cut), 'hz->ppm',
+            )
         else:
             raise ValueError(
                 f'{cols.R}unit should be \'ppm\' or \'hz\'{cols.END}'
             )
-
 
     def get_offset(self, unit='hz', cut=True):
         """Returns the offset of the cut signal
@@ -376,12 +378,13 @@ class FrequencyFilter:
         if unit == 'hz':
             return self._get_cut_uncut('offset', cut)
         elif unit == 'ppm':
-            return self.converter.convert(self._get_cut_uncut('offset', cut), f'hz->ppm')
+            return self.converter.convert(
+                self._get_cut_uncut('offset', cut), 'hz->ppm',
+            )
         else:
             raise ValueError(
                 f'{cols.R}unit should be \'ppm\' or \'hz\'{cols.END}'
             )
-
 
     def _get_region(self, name, unit):
         """Return either `region` or `noise_region`, based on `name`
@@ -396,7 +399,8 @@ class FrequencyFilter:
 
         Returns
         -------
-        region : [[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]
+        region : [[int, int]], [[int, int], [int, int]], [[float, float]],
+        or [[float, float], [float, float]]
         """
 
         if unit == 'idx':
@@ -408,7 +412,6 @@ class FrequencyFilter:
                 f'{cols.R}unit should be \'idx\', \'ppm\' or \'hz\'{cols.END}'
             )
 
-
     def get_region(self, unit='idx'):
         """Returns the spectral region selected
 
@@ -419,11 +422,11 @@ class FrequencyFilter:
 
         Returns
         -------
-        region : [[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]
+        region : [[int, int]], [[int, int], [int, int]], [[float, float]],
+        or [[float, float], [float, float]]
         """
 
         return self._get_region('region', unit)
-
 
     def get_noise_region(self, unit='idx'):
         """Returns the spectral noise region selected
@@ -435,7 +438,8 @@ class FrequencyFilter:
 
         Returns
         -------
-        noise_region : [[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]
+        noise_region : [[int, int]], [[int, int], [int, int]],
+        [[float, float]], or [[float, float], [float, float]]
         """
 
         return self._get_region('noise_region', unit)

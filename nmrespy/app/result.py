@@ -43,7 +43,9 @@ class Result(MyToplevel):
         self.toolbar = MyNavigationToolbar(
             self.canvas, parent=self.toolbar_frame,
         )
-        self.toolbar.grid(row=0, column=0, sticky='w', padx=(10,0), pady=(0,5))
+        self.toolbar.grid(
+            row=0, column=0, sticky='w', padx=(10, 0), pady=(0, 5),
+        )
 
         # Frame with NMR-EsPy an MF group logos
         self.logo_frame = LogoFrame(self, scale=0.72)
@@ -66,9 +68,8 @@ class Result(MyToplevel):
 
         # Prevent panning outside the selected region
         xlim = self.result_plot.ax.get_xlim()
-        Restrictor(self.result_plot.ax, x=lambda x: x<= xlim[0])
-        Restrictor(self.result_plot.ax, x=lambda x: x>= xlim[1])
-
+        Restrictor(self.result_plot.ax, x=lambda x: x <= xlim[0])
+        Restrictor(self.result_plot.ax, x=lambda x: x >= xlim[1])
 
     def update_plot(self):
         plot = self.master.estimator.plot_result()
@@ -114,7 +115,7 @@ class ResultButtonFrame(RootButtonFrame):
             self, text='Edit Parameter Estimate', command=self.edit_parameters,
         )
         self.edit_parameter_button.grid(
-            row=0, column=0, columnspan=3, sticky='ew', padx=10, pady=(10,0)
+            row=0, column=0, columnspan=3, sticky='ew', padx=10, pady=(10, 0),
         )
 
         self.help_button['command'] = lambda: webbrowser.open_new(
@@ -151,7 +152,12 @@ class EditParametersFrame(MyToplevel):
         self.previous = copy.deepcopy(self.ctrl.estimator.get_result())
 
         # --- Parameter table --------------------------------------------
-        titles = ['Amplitude', 'Phase (rad)', 'Frequency (ppm)', 'Damping (s⁻¹)']
+        titles = [
+            'Amplitude',
+            'Phase (rad)',
+            'Frequency (ppm)',
+            'Damping (s⁻¹)',
+        ]
         # Parameters in ppm - to be added to the table
         contents = self.ctrl.estimator.get_result(freq_unit='ppm')
         # Region of interest, in ppm. Used to ensure any newly frequency
@@ -162,7 +168,7 @@ class EditParametersFrame(MyToplevel):
             self, contents=contents, titles=titles, region=region,
         )
 
-        self.table.grid(column=0, row=0, padx=10, pady=(10,0))
+        self.table.grid(column=0, row=0, padx=10, pady=(10, 0))
 
         # --- Buttons ----------------------------------------------------
         self.button_frame = MyFrame(self)
@@ -191,19 +197,19 @@ class EditParametersFrame(MyToplevel):
         self.remove_button = MyButton(
             self.row1, text='Remove', state='disabled', command=self.remove,
         )
-        self.remove_button.grid(row=0, column=1, sticky='ew', padx=(10,0))
+        self.remove_button.grid(row=0, column=1, sticky='ew', padx=(10, 0))
 
         # Merge oscillators
         self.merge_button = MyButton(
             self.row1, text='Merge', state='disabled', command=self.merge,
         )
-        self.merge_button.grid(row=0, column=2, sticky='ew', padx=(10,0))
+        self.merge_button.grid(row=0, column=2, sticky='ew', padx=(10, 0))
 
         # Split oscillator
         self.split_button = MyButton(
             self.row1, text='Split', state='disabled', command=self.split,
         )
-        self.split_button.grid(row=0, column=3, sticky='ew', padx=(10,0))
+        self.split_button.grid(row=0, column=3, sticky='ew', padx=(10, 0))
 
         self.table.selected_number.trace('w', self.configure_button_states)
 
@@ -213,7 +219,7 @@ class EditParametersFrame(MyToplevel):
             width=10,
         )
         self.reset_button.grid(
-            row=0, column=0, sticky='e', pady=(10,0), padx=(10,0),
+            row=0, column=0, sticky='e', pady=(10, 0), padx=(10, 0),
         )
 
         # Button to close if no changes have been made, and re-run optimiser
@@ -223,9 +229,8 @@ class EditParametersFrame(MyToplevel):
             width=10,
         )
         self.close_rerun_button.grid(
-            row=0, column=1, sticky='e', pady=(10,0), padx=(10,0),
+            row=0, column=1, sticky='e', pady=(10, 0), padx=(10, 0),
         )
-
 
     def configure_button_states(self, *args):
         # Number of curently selected oscillators
@@ -249,12 +254,10 @@ class EditParametersFrame(MyToplevel):
             self.merge_button['state'] = 'normal'
             self.split_button['state'] = 'disabled'
 
-
     def add(self):
         """Loads a window for adding new oscillators"""
         add_frame = AddFrame(self)
         self.wait_window(add_frame)
-
 
     def remove(self):
         """Removes selected oscillators from the result"""
@@ -262,25 +265,21 @@ class EditParametersFrame(MyToplevel):
         self.ctrl.estimator.remove_oscillators(rm_indices)
         self.changed_result()
 
-
     def merge(self):
         """Removes selected oscillators from the result"""
         merge_indices = self.table.selected_rows
         self.ctrl.estimator.merge_oscillators(merge_indices)
         self.changed_result()
 
-
     def split(self):
         split_frame = SplitFrame(self, *self.table.selected_rows)
         self.wait_window(split_frame)
-
 
     def close_or_rerun(self):
         if self.close_rerun_button['text'] == 'Close':
             self.destroy()
         else:
             self.rerun()
-
 
     def changed_result(self):
         """Regenerate parameter table and plot to reflect change in
@@ -306,7 +305,6 @@ class EditParametersFrame(MyToplevel):
         # Update the plot
         self.master.update_plot()
 
-
     def rerun(self):
         # Get info from previous call to nonlinear_programming
         for line in reversed(self.ctrl.estimator._log.split('\n')):
@@ -318,20 +316,20 @@ class EditParametersFrame(MyToplevel):
         self.master.destroy()
         # RE-run NLP on current set of parameters
         self.ctrl.estimator.nonlinear_programming(
-            trim=nlp_args['trim'], max_iterations=nlp_args['max_iterations'],
-            method=nlp_args['method'], phase_variance=nlp_args['phase_variance'],
+            trim=nlp_args['trim'],
+            max_iterations=nlp_args['max_iterations'],
+            method=nlp_args['method'],
+            phase_variance=nlp_args['phase_variance'],
             amp_thold=nlp_args['amp_thold'],
         )
         # Load new result window.
         self.ctrl.result()
-
 
     def reset(self):
         # Reset result back to original
         self.ctrl.estimator.result = self.previous
         # Re-set the table and plot.
         self.changed_result()
-
 
     def click_cross(self):
         if self.close_rerun_button['text'] == 'Close':
@@ -341,8 +339,8 @@ class EditParametersFrame(MyToplevel):
                 "You have manually changed the estimation result. It is "
                 "necessary to re-run the optimiser after doing this. Either "
                 "click the <Re-run Optimiser> button, or click the <Reset> "
-                "button  to undo the changes you have made, and then click the "
-                "<Close> button."
+                "button  to undo the changes you have made, and then click "
+                "the <Close> button."
             )
             warn_window = WarnWindow(self, msg=msg)
             self.wait_window(warn_window)
@@ -363,7 +361,13 @@ class AddFrame(MyToplevel):
         # Prevent interacting with other windows
         self.grab_set()
 
-        titles = ['Amplitude', 'Phase (rad)', 'Frequency (ppm)', 'Damping (s⁻¹)']
+        titles = [
+            'Amplitude',
+            'Phase (rad)',
+            'Frequency (ppm)',
+            'Damping (s⁻¹)',
+        ]
+
         # Empty entry boxes to begin with
         contents = [['', '', '', '']]
         region = self.ctrl.estimator.get_filter_info().get_region(unit='ppm')
@@ -373,11 +377,13 @@ class AddFrame(MyToplevel):
         )
 
         # Turn all widgets red initially to indicate they need filling in
-        for entry, value_var in zip(self.table.entries[0], self.table.value_vars[0]):
+        for entry, value_var in zip(
+            self.table.entries[0], self.table.value_vars[0]
+        ):
             entry['state'] = 'normal'
             entry.key_press()
 
-        self.table.grid(column=0, row=0, padx=10, pady=(10,0))
+        self.table.grid(column=0, row=0, padx=10, pady=(10, 0))
 
         self.button_frame = MyFrame(self)
         self.button_frame.grid(row=1, column=0, padx=10, pady=10)
@@ -391,14 +397,13 @@ class AddFrame(MyToplevel):
             self.button_frame, text='Cancel', command=self.destroy,
             bg=BUTTONRED,
         )
-        self.cancel_button.grid(row=0, padx=(5,0), column=1)
+        self.cancel_button.grid(row=0, padx=(5, 0), column=1)
 
         self.confirm_button = MyButton(
             self.button_frame, text='Confirm', command=self.confirm,
             bg=BUTTONGREEN,
         )
-        self.confirm_button.grid(row=0, padx=(5,0), column=2)
-
+        self.confirm_button.grid(row=0, padx=(5, 0), column=2)
 
     def add_row(self):
         contents = self.table.get_values()
@@ -412,7 +417,6 @@ class AddFrame(MyToplevel):
                 if entry.get() == '':
                     entry['state'] = 'normal'
                     entry.key_press()
-
 
     def confirm(self):
         if self.table.check_red_entry():
@@ -461,32 +465,33 @@ class SplitFrame(MyToplevel):
             font=(MAINFONT, 12, 'bold'),
         ).grid(row=0, column=0, columnspan=3, sticky='w')
         MyLabel(frame, text='Number of oscillators:').grid(
-            row=1, column=0, sticky='w', pady=(10,0),
+            row=1, column=0, sticky='w', pady=(10, 0),
         )
         MyLabel(frame, text='Frequency separation:').grid(
-            row=2, column=0, sticky='w', pady=(10,0),
+            row=2, column=0, sticky='w', pady=(10, 0),
         )
         MyLabel(frame, text='Amplitude ratio:').grid(
-            row=3, column=0, sticky='w', pady=(10,0),
+            row=3, column=0, sticky='w', pady=(10, 0),
         )
 
         # --- Number of child oscillators --------------------------------
         # Goes from 2 to max. of 10
         self.number_chooser = tk.Spinbox(
-            frame, values=tuple(range(2,11)), width=4,
+            frame, values=tuple(range(2, 11)), width=4,
             command=self.update_number, state='readonly',
             readonlybackground='white',
         )
         self.number_chooser.grid(
-            row=1, column=1, columnspan=2, sticky='w', padx=(10,0), pady=(10,0),
+            row=1, column=1, columnspan=2, sticky='w', padx=(10, 0),
+            pady=(10, 0),
         )
 
         # --- Separation frequnecy ---------------------------------------
         # Set default separation frequency as 2Hz
         # Convert frequency to ppm
         self.sep_freq = {
-            'hz' : 2.,
-            'ppm' : self.ctrl.estimator._converter.convert([2.], 'hz->ppm')[0],
+            'hz': 2.,
+            'ppm': self.ctrl.estimator._converter.convert([2.], 'hz->ppm')[0],
         }
         self.sep_entry = MyEntry(
             frame, width=10, return_command=self.check_freq_sep,
@@ -494,7 +499,9 @@ class SplitFrame(MyToplevel):
         )
         # By default, use Hz as the unit
         self.update_sep_entry(self.sep_freq['hz'])
-        self.sep_entry.grid(row=2, column=1, sticky='w', padx=(10,0), pady=(10,0))
+        self.sep_entry.grid(
+            row=2, column=1, sticky='w', padx=(10, 0), pady=(10, 0),
+        )
 
         # Option menu to specify the separation frequency unit to use
         self.sep_unit = tk.StringVar()
@@ -510,7 +517,9 @@ class SplitFrame(MyToplevel):
         self.sep_unit_box['menu']['bg'] = BGCOLOR
         self.sep_unit_box['menu']['activebackground'] = ACTIVETABCOLOR
         self.sep_unit_box['menu']['activeforeground'] = 'white'
-        self.sep_unit_box.grid(row=2, column=2, sticky='w', padx=(10,0), pady=(10,0))
+        self.sep_unit_box.grid(
+            row=2, column=2, sticky='w', padx=(10, 0), pady=(10, 0),
+        )
 
         # --- Ratio of amplitudes for children ---------------------------
         # Valid values consist of  a string of colon-separated integers
@@ -524,12 +533,15 @@ class SplitFrame(MyToplevel):
             return_command=self.check_amp_ratio, return_args=(),
         )
         self.ratio_entry.grid(
-            column=1, row=3, sticky='w', columnspan=2, padx=(10,0), pady=(10,0),
+            column=1, row=3, sticky='w', columnspan=2, padx=(10, 0),
+            pady=(10, 0),
         )
 
         # --- Confirm and Cancel buttons ---------------------------------
         button_frame = MyFrame(frame)
-        button_frame.grid(row=4, column=0, columnspan=3, sticky='e', pady=(10,0))
+        button_frame.grid(
+            row=4, column=0, columnspan=3, sticky='e', pady=(10, 0),
+        )
 
         self.cancel_button = MyButton(
             button_frame, bg=BUTTONRED, command=self.destroy, text='Cancel'
@@ -539,8 +551,7 @@ class SplitFrame(MyToplevel):
         self.save_button = MyButton(
             button_frame, bg=BUTTONGREEN, command=self.confirm, text='Confirm'
         )
-        self.save_button.grid(row=0, column=1, sticky='e', padx=(10,0))
-
+        self.save_button.grid(row=0, column=1, sticky='e', padx=(10, 0))
 
     def update_number(self):
         """Called when the number choosing spinbox is changed. Updates
@@ -550,19 +561,16 @@ class SplitFrame(MyToplevel):
         self.amp_ratio['value'] = ':'.join(number * ['1'])
         self.amp_ratio['var'].set(self.amp_ratio['value'])
 
-
     def update_sep_entry(self, value):
         """Update the separation frwquency entry widget"""
         self.sep_entry.delete(0, "end")
         self.sep_entry.insert(0, strip_zeros(f"{value:.5f}"))
-
 
     def change_unit(self, *args):
         """Called when the user updates the separation frequecny unit box.
         Updates the separation frequency entry widget accordingly."""
         unit = self.sep_unit.get()
         self.update_sep_entry(self.sep_freq[unit])
-
 
     def check_freq_sep(self):
         """Called upon user entering value into the separation frequency
@@ -579,15 +587,16 @@ class SplitFrame(MyToplevel):
             else:
                 raise
 
-        except:
+        except Exception:
             self.update_sep_entry(self.sep_freq[unit])
             return
 
         # Update values for other unit
         from_, to = ('hz', 'ppm') if unit == 'hz' else ('ppm', 'hz')
         self.sep_freq[to] = \
-            self.ctrl.estimator._converter.convert([value], f'{from_}->{to}')[0]
-
+            self.ctrl.estimator._converter.convert(
+                [value], f'{from_}->{to}'
+        )[0]
 
     def check_amp_ratio(self):
         """Determine whether a user-given amplitude ratio is valid, and if so,
@@ -606,7 +615,6 @@ class SplitFrame(MyToplevel):
         else:
             self.amp_ratio['var'].set(self.amp_ratio['value'])
 
-
     def confirm(self):
         """Perform the oscillator split and update the plot and parameter
         table"""
@@ -624,7 +632,6 @@ class SplitFrame(MyToplevel):
         self.destroy()
 
 
-
 class SaveFrame(MyToplevel):
     """Toplevel for choosing how to save estimation result"""
 
@@ -636,7 +643,7 @@ class SaveFrame(MyToplevel):
 
         # --- Result figure ----------------------------------------------
         self.fig_frame = MyFrame(self)
-        self.fig_frame.grid(row=0, column=0, pady=(10,0), padx=10, sticky='w')
+        self.fig_frame.grid(row=0, column=0, pady=(10, 0), padx=10, sticky='w')
 
         MyLabel(
             self.fig_frame, text='Result Figure',
@@ -645,19 +652,19 @@ class SaveFrame(MyToplevel):
         MyLabel(
             self.fig_frame, text='Save Figure:',
         ).grid(
-            row=1, column=0, sticky='w', pady=(10,0),
+            row=1, column=0, sticky='w', pady=(10, 0),
         )
         MyLabel(self.fig_frame, text='Format:').grid(
-            row=2, column=0, sticky='w', pady=(10,0),
+            row=2, column=0, sticky='w', pady=(10, 0),
         )
         MyLabel(self.fig_frame, text='Filename:').grid(
-            row=3, column=0, sticky='w', pady=(10,0),
+            row=3, column=0, sticky='w', pady=(10, 0),
         )
         MyLabel(self.fig_frame, text='dpi:').grid(
-            row=4, column=0, sticky='w', pady=(10,0),
+            row=4, column=0, sticky='w', pady=(10, 0),
         )
         MyLabel(self.fig_frame, text='Size (cm):').grid(
-            row=5, column=0, sticky='w', pady=(10,0),
+            row=5, column=0, sticky='w', pady=(10, 0),
         )
 
         self.save_fig = tk.IntVar()
@@ -665,7 +672,9 @@ class SaveFrame(MyToplevel):
         self.save_fig_checkbutton = MyCheckbutton(
             self.fig_frame, variable=self.save_fig, command=self.ud_save_fig,
         )
-        self.save_fig_checkbutton.grid(row=1, column=1, sticky='w', pady=(10,0))
+        self.save_fig_checkbutton.grid(
+            row=1, column=1, sticky='w', pady=(10, 0),
+        )
 
         self.fig_fmt = tk.StringVar()
         self.fig_fmt.set('pdf')
@@ -683,11 +692,11 @@ class SaveFrame(MyToplevel):
         self.sep_unit_box['menu']['activebackground'] = ACTIVETABCOLOR
         self.sep_unit_box['menu']['activeforeground'] = 'white'
         self.sep_unit_box.grid(
-            row=2, column=1, sticky='w', pady=(10,0),
+            row=2, column=1, sticky='w', pady=(10, 0),
         )
 
         self.fig_name_frame = MyFrame(self.fig_frame)
-        self.fig_name_frame.grid(row=3, column=1, sticky='w', pady=(10,0))
+        self.fig_name_frame.grid(row=3, column=1, sticky='w', pady=(10, 0))
         self.fig_name = tk.StringVar()
         self.fig_name.set('nmrespy_figure')
         self.fig_name_entry = MyEntry(
@@ -698,20 +707,20 @@ class SaveFrame(MyToplevel):
 
         self.fig_fmt_label = MyLabel(self.fig_name_frame)
         self.ud_fig_fmt()
-        self.fig_fmt_label.grid(column=1, row=0, padx=(2,0), pady=(5,0))
+        self.fig_fmt_label.grid(column=1, row=0, padx=(2, 0), pady=(5, 0))
 
         self.fig_dpi = value_var_dict(300, '300')
         self.fig_dpi_entry = MyEntry(
             self.fig_frame, textvariable=self.fig_dpi['var'], width=6,
             return_command=self.ud_fig_dpi, return_args=(),
         )
-        self.fig_dpi_entry.grid(row=4, column=1, sticky='w', pady=(10,0))
+        self.fig_dpi_entry.grid(row=4, column=1, sticky='w', pady=(10, 0))
 
         self.fig_width = value_var_dict(15, '15')
         self.fig_height = value_var_dict(10, '10')
 
         self.fig_size_frame = MyFrame(self.fig_frame)
-        self.fig_size_frame.grid(row=5, column=1, sticky='w', pady=(10,0))
+        self.fig_size_frame.grid(row=5, column=1, sticky='w', pady=(10, 0))
 
         MyLabel(self.fig_size_frame, text='w:').grid(column=0, row=0)
         MyLabel(self.fig_size_frame, text='h:').grid(column=2, row=0)
@@ -738,24 +747,24 @@ class SaveFrame(MyToplevel):
         MyLabel(
             self.file_frame, text='Result Files',
             font=('Helvetica', 12, 'bold')
-        ).grid(row=0, column=0, pady=(20,0), columnspan=4, sticky='w')
+        ).grid(row=0, column=0, pady=(20, 0), columnspan=4, sticky='w')
 
         MyLabel(
             self.file_frame, text='Format:'
-        ).grid(row=1, column=0, pady=(10,0), columnspan=2, sticky='w')
+        ).grid(row=1, column=0, pady=(10, 0), columnspan=2, sticky='w')
         MyLabel(
             self.file_frame, text='Filename:'
         ).grid(
-            row=1, column=2, columnspan=2, padx=(20,0), pady=(10,0), sticky='w',
+            row=1, column=2, columnspan=2, padx=(20, 0), pady=(10, 0),
+            sticky='w',
         )
 
         titles = ('Text:', 'PDF:', 'CSV:')
         self.fmts = ('txt', 'pdf', 'csv')
         for i, (title, tag) in enumerate(zip(titles, self.fmts)):
 
-
             MyLabel(self.file_frame, text=title).grid(
-                row=i+2, column=0, pady=(10,0), sticky='w',
+                row=i + 2, column=0, pady=(10, 0), sticky='w',
             )
 
             # Dictates whether to save the file format
@@ -763,26 +772,30 @@ class SaveFrame(MyToplevel):
             save_var.set(1)
 
             self.__dict__[f'{tag}_check'] = check = \
-            MyCheckbutton(
-                self.file_frame, variable=save_var,
-                command=lambda tag=tag: self.ud_save_file(tag)
+                MyCheckbutton(
+                    self.file_frame, variable=save_var,
+                    command=lambda tag=tag: self.ud_save_file(tag)
             )
-            check.grid(row=i+2, column=1, padx=(2,0), pady=(10,0), sticky='w')
+            check.grid(
+                row=i + 2, column=1, padx=(2, 0), pady=(10, 0), sticky='w',
+            )
 
             self.__dict__[f'name_{tag}'] = fname_var = tk.StringVar()
             fname_var.set('nmrespy_result')
 
             self.__dict__[f'{tag}_entry'] = entry = \
-            MyEntry(
-                self.file_frame, textvariable=fname_var, width=18,
-                return_command=self.ud_file_name, return_args=(fname_var,),
+                MyEntry(
+                    self.file_frame, textvariable=fname_var, width=18,
+                    return_command=self.ud_file_name, return_args=(fname_var,),
             )
-            entry.grid(row=i+2, column=2, padx=(20,0), pady=(10,0), sticky='w')
+            entry.grid(
+                row=i + 2, column=2, padx=(20, 0), pady=(10, 0), sticky='w',
+            )
 
             self.__dict__[f'{tag}_ext'] = ext = MyLabel(
                 self.file_frame, text=f".{tag}",
             )
-            ext.grid(row=i+2, column=3, pady=(15,0), sticky='w')
+            ext.grid(row=i + 2, column=3, pady=(15, 0), sticky='w')
 
         self.pdflatex = self.master.master.pdflatex
         if self.pdflatex is None:
@@ -804,12 +817,12 @@ class SaveFrame(MyToplevel):
             self.pdf_ext['fg'] = '#808080'
 
         MyLabel(self.file_frame, text='Description:').grid(
-            row=5, column=0, columnspan=4, pady=(10,0), sticky='w',
+            row=5, column=0, columnspan=4, pady=(10, 0), sticky='w',
         )
 
         self.descr_box = MyText(self.file_frame, width=30, height=3)
         self.descr_box.grid(
-            row=6, column=0, columnspan=4, pady=(10,0), sticky='ew',
+            row=6, column=0, columnspan=4, pady=(10, 0), sticky='ew',
         )
 
         # --- Pickle Estimator -------------------------------------------
@@ -819,17 +832,17 @@ class SaveFrame(MyToplevel):
         MyLabel(
             self.pickle_frame, text='Estimator',
             font=('Helvetica', 12, 'bold')
-        ).grid(row=0, column=0, pady=(20,0), columnspan=4, sticky='w')
+        ).grid(row=0, column=0, pady=(20, 0), columnspan=4, sticky='w')
 
         MyLabel(
             self.pickle_frame, text='Save Estimator:',
         ).grid(
-            row=1, column=0, sticky='w', pady=(10,0),
+            row=1, column=0, sticky='w', pady=(10, 0),
         )
         MyLabel(
             self.pickle_frame, text='Filename:',
         ).grid(
-            row=2, column=0, sticky='w', pady=(10,0),
+            row=2, column=0, sticky='w', pady=(10, 0),
         )
 
         self.pickle_estimator = tk.IntVar()
@@ -839,11 +852,11 @@ class SaveFrame(MyToplevel):
             command=self.ud_pickle_estimator,
         )
         self.pickle_estimator_checkbutton.grid(
-            row=1, column=1, sticky='w', pady=(10,0),
+            row=1, column=1, sticky='w', pady=(10, 0),
         )
 
         self.pickle_name_frame = MyFrame(self.pickle_frame)
-        self.pickle_name_frame.grid(row=2, column=1, sticky='w', pady=(10,0))
+        self.pickle_name_frame.grid(row=2, column=1, sticky='w', pady=(10, 0))
         self.pickle_name = tk.StringVar()
         self.pickle_name.set('estimator')
         self.pickle_name_entry = MyEntry(
@@ -855,7 +868,7 @@ class SaveFrame(MyToplevel):
         self.pickle_ext_label = MyLabel(
             self.pickle_name_frame, text='.pkl'
         )
-        self.pickle_ext_label.grid(column=1, row=0, padx=(2,0), pady=(5,0))
+        self.pickle_ext_label.grid(column=1, row=0, padx=(2, 0), pady=(5, 0))
 
         # --- Directory selection ----------------------------------------
         self.dir_frame = MyFrame(self)
@@ -864,7 +877,7 @@ class SaveFrame(MyToplevel):
         MyLabel(
             self.dir_frame, text='Directory',
             font=('Helvetica', 12, 'bold')
-        ).grid(row=0, column=0, pady=(20,0), columnspan=2, sticky='w')
+        ).grid(row=0, column=0, pady=(20, 0), columnspan=2, sticky='w')
 
         self.dir_name = tk.StringVar()
         path = pathlib.Path.home()
@@ -875,7 +888,7 @@ class SaveFrame(MyToplevel):
             return_command=self.ud_dir, return_args=(),
         )
         self.dir_entry.grid(
-            row=1, column=0, pady=(10,0), sticky='w'
+            row=1, column=0, pady=(10, 0), sticky='w'
         )
 
         self.img = get_PhotoImage(IMAGESPATH / 'folder_icon.png', scale=0.02)
@@ -884,20 +897,20 @@ class SaveFrame(MyToplevel):
             self.dir_frame, command=self.browse, image=self.img, width=32,
             bg=BGCOLOR,
         )
-        self.dir_button.grid(row=1, column=1, padx=(5,0), pady=(10,0))
+        self.dir_button.grid(row=1, column=1, padx=(5, 0), pady=(10, 0))
 
         # --- Save/cancel buttons ----------------------------------------
         # buttons at the bottom of the frame
         self.button_frame = MyFrame(self)
         self.button_frame.grid(
-            row=4, column=0, padx=10, pady=(0,10), sticky='e'
+            row=4, column=0, padx=10, pady=(0, 10), sticky='e'
         )
         # cancel button - returns usere to result toplevel
         self.cancel_button = MyButton(
             self.button_frame, text='Cancel', bg=BUTTONRED,
             command=self.destroy,
         )
-        self.cancel_button.grid(row=0, column=0, pady=(10,0))
+        self.cancel_button.grid(row=0, column=0, pady=(10, 0))
 
         # save button - determines what file types to save and generates them
         self.save_button = MyButton(
@@ -905,7 +918,7 @@ class SaveFrame(MyToplevel):
             command=self.save
         )
         self.save_button.grid(
-            row=0, column=1, padx=(10,0), pady=(10,0),
+            row=0, column=1, padx=(10, 0), pady=(10, 0),
         )
 
     # --- Save window methods --------------------------------------------
@@ -923,7 +936,8 @@ class SaveFrame(MyToplevel):
         for widget in widgets:
             widget['state'] = state
 
-        self.fig_fmt_label['fg'] = '#000000' if state == 'normal' else '#808080'
+        self.fig_fmt_label['fg'] = \
+            '#000000' if state == 'normal' else '#808080'
 
     def ud_fig_fmt(self, *args):
         self.fig_fmt_label['text'] = f".{self.fig_fmt.get()}"
@@ -940,7 +954,7 @@ class SaveFrame(MyToplevel):
             self.fig_dpi['var'].set(str(dpi))
             self.fig_dpi['value'] = dpi
 
-        except:
+        except Exception:
             # Failed to convert to int, reset to previous value
             self.fig_dpi['var'].set(str(self.fig_dpi['value']))
 
@@ -957,7 +971,7 @@ class SaveFrame(MyToplevel):
             self.__dict__[f"fig_{dim}"]["value"] = length
             self.__dict__[f"fig_{dim}"]["var"].set(str(length))
 
-        except:
+        except Exception:
             # Failed to convert to float, reset to previous value
             pass
 
@@ -999,7 +1013,6 @@ class SaveFrame(MyToplevel):
             self.dir_name['var'].set(path)
         else:
             self.dir_name['var'].set(str(self.dir_name['value']))
-
 
     def save(self):
         if not check_invalid_entries(self):

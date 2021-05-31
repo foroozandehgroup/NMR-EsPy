@@ -1,13 +1,11 @@
 import argparse
 import pathlib
-import sys
 
-from nmrespy import *
-from nmrespy.load import load_bruker
 from nmrespy._install_to_topspin import main as install_to_topspin
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 from .app import NMREsPyApp
 
 if __name__ == '__main__':

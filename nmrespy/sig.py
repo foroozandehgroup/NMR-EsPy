@@ -19,13 +19,15 @@ from matplotlib.backends.backend_tkagg import (
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 import nmrespy._errors as errors
 from nmrespy._misc import ArgumentChecker
 
 """Provides functionality for constructing synthetic FIDs"""
 
+
 def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
-    modulation='none'):
+             modulation='none'):
     """Constructs a discrete time-domain signal (FID), as a summation of
     exponentially damped complex sinusoids.
 
@@ -155,10 +157,10 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
     # --- Check validity of inputs ---------------------------------------
     try:
         dim = len(n)
-    except:
+    except Exception:
         raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
-    if offset == None:
+    if offset is None:
         offset = [0.0] * dim
 
     components = [
@@ -170,7 +172,7 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
         (modulation, 'modulation', 'modulation'),
     ]
 
-    if snr != None:
+    if snr is not None:
         components.append((snr, 'snr', 'float'))
 
     ArgumentChecker(components, dim)
@@ -179,8 +181,8 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
     amp = parameters[:, 0]
     phase = parameters[:, 1]
     # Center frequencies at 0 based on offset
-    freq = [parameters[:, 2+i] - offset[i] for i in range(dim)]
-    damp = [parameters[:, dim+2+i] for i in range(dim)]
+    freq = [parameters[:, 2 + i] - offset[i] for i in range(dim)]
+    damp = [parameters[:, dim + 2 + i] for i in range(dim)]
 
     # Time points in each dimension
     tp = get_timepoints(n, sw)
@@ -188,7 +190,7 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
     # --- Generate noiseless FID -----------------------------------------
     if dim == 1:
         # Vandermonde matrix of poles
-        Z = np.exp(np.outer(tp[0], (1j*2*np.pi*freq[0] - damp[0])))
+        Z = np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0])))
         # Vector of complex ampltiudes
         alpha = amp * np.exp(1j * phase)
         # Compute FID!
@@ -196,14 +198,16 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
 
     if dim == 2:
         if modulation in ['none', 'amp']:
-            Z1 = np.exp(np.outer(tp[0], (1j*2*np.pi*freq[0] - damp[0])))
+            Z1 = np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0])))
             if modulation == 'amp':
                 Z1 = [np.real(Z1), np.imag(Z1)]
         elif modulation == 'phase':
-            Z1 = [np.exp(np.outer(tp[0], (1j*2*np.pi*freq[0] - damp[0]))), # P
-                  np.exp(np.outer(tp[0], (-1j*2*np.pi*freq[0] - damp[0])))]
+            Z1 = [
+                np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0]))),
+                np.exp(np.outer(tp[0], (-1j * 2 * np.pi * freq[0] - damp[0])))
+            ]
 
-        Z2t = np.exp(np.outer((1j*2*np.pi*freq[1] - damp[1]), tp[1]))
+        Z2t = np.exp(np.outer((1j * 2 * np.pi * freq[1] - damp[1]), tp[1]))
         # Diagonal matrix of complex amplitudes
         A = np.diag(amp * np.exp(1j * phase))
 
@@ -214,9 +218,8 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
         if len(fid) == 1:
             fid = fid[0]
 
-
     # --- Add noise to FID -----------------------------------------------
-    if snr == None:
+    if snr is None:
         return fid, tp
     else:
         if isinstance(fid, np.ndarray):
@@ -225,7 +228,6 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
             for i, f in enumerate(fid):
                 fid[i] = f + make_noise(f, snr, decibels)
             return fid, tp
-
 
 
 def make_virtual_echo(data, modulation='amp'):
@@ -244,8 +246,8 @@ def make_virtual_echo(data, modulation='amp'):
         If the data is 2D, this parameter specifies the type of modulation
         present in the indirect dimension of the dataset.
 
-        * If set to `'amp'`, the two signals in the `data` should be an amplitude
-          modulated pair.
+        * If set to `'amp'`, the two signals in the `data` should be an
+          amplitude modulated pair.
         * If set to `'phase'`, the two signals in the `data` should be a phase
           modulated pair.
 
@@ -264,7 +266,7 @@ def make_virtual_echo(data, modulation='amp'):
     """
     try:
         dim = len(data)
-    except:
+    except Exception:
         raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
     if dim > 2:
@@ -284,7 +286,6 @@ def make_virtual_echo(data, modulation='amp'):
         ve[0] = np.real(ve[0])
         ve[pts:] = data.conj()[1:][::-1]
         return ve
-
 
     elif dim == 2:
         # TODO NEEDS FIXING
@@ -340,8 +341,6 @@ def make_virtual_echo(data, modulation='amp'):
         return tmp1 + tmp2 + tmp3 + tmp4
 
 
-
-
 def get_timepoints(n, sw):
     """Generates the timepoints at which an FID is sampled at, given
     its sweep-width, and the number of points.
@@ -362,7 +361,7 @@ def get_timepoints(n, sw):
 
     try:
         dim = len(n)
-    except:
+    except Exception:
         raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
     ArgumentChecker([(n, 'n', 'int_list'), (sw, 'sw', 'float_list')], dim)
@@ -397,17 +396,19 @@ def get_shifts(n, sw, offset=None, flip=True):
 
     try:
         dim = len(n)
-    except:
+    except Exception:
         raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
-    if offset == None:
+    if offset is None:
         offset = dim * [0.]
 
     ArgumentChecker(
-        [(n, 'n', 'int_list'),
-         (sw, 'sw', 'float_list'),
-         (offset, 'offset', 'float_list'),
-        ], dim=dim
+        [
+            (n, 'n', 'int_list'),
+            (sw, 'sw', 'float_list'),
+            (offset, 'offset', 'float_list'),
+        ],
+        dim=dim
     )
 
     shifts = []
@@ -417,6 +418,7 @@ def get_shifts(n, sw, offset=None, flip=True):
         )
 
     return np.flip(shifts) if flip else shifts
+
 
 def ft(fid, flip=True):
     """Performs Fourier transformation and (optionally) flips the resulting
@@ -461,7 +463,6 @@ def proc_amp_modulated(data):
     spectrum : dict
         Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``."""
 
-
     ArgumentChecker([(data, 'data', 'array_list')], dim=2)
 
     c = data[0]
@@ -470,8 +471,9 @@ def proc_amp_modulated(data):
     c_t1_f2 = fftshift(fft(c, axis=1), axes=1)
     s_t1_f2 = fftshift(fft(s, axis=1), axes=1)
 
-    return fftshift(fft(np.real(c_t1_f2) + 1j * np.real(s_t1_f2), axis=0), axes=0)
-
+    return fftshift(
+        fft(np.real(c_t1_f2) + 1j * np.real(s_t1_f2), axis=0), axes=0
+    )
 
 
 def proc_phase_modulated(data):
@@ -495,32 +497,31 @@ def proc_phase_modulated(data):
            pulsed field gradients,” Journal of Magnetic Resonance (1969),
            vol. 98, no. 1, pp. 207–216, 1992."""
 
-
     ArgumentChecker([(data, 'data', 'array_list')], dim=2)
 
     p = data[0]
     n = data[1]
 
-    p_t1_f2 = fftshift(fft(p, axis=1), axes=1) # Sₚ(t₁,f₂)
-    n_t1_f2 = fftshift(fft(n, axis=1), axes=1) # Sₙ(t₁,f₂)
+    p_t1_f2 = fftshift(fft(p, axis=1), axes=1)  # Sₚ(t₁,f₂)
+    n_t1_f2 = fftshift(fft(n, axis=1), axes=1)  # Sₙ(t₁,f₂)
 
     # Generating rr and ir
-    plus_t1_f2 = 0.5 * (p_t1_f2 + n_t1_f2.conj()) # S⁺(t₁,f₂)
-    plus_f1_f2 = fftshift(fft(plus_t1_f2, axis=0), axes=0) # S⁺(f₁,f₂)
-    rr = np.real(plus_f1_f2) # A₁A₂
-    ir = np.imag(plus_f1_f2) # D₁A₂
+    plus_t1_f2 = 0.5 * (p_t1_f2 + n_t1_f2.conj())           # S⁺(t₁,f₂)
+    plus_f1_f2 = fftshift(fft(plus_t1_f2, axis=0), axes=0)  # S⁺(f₁,f₂)
+    rr = np.real(plus_f1_f2)  # A₁A₂
+    ir = np.imag(plus_f1_f2)  # D₁A₂
 
     # Generating ri and ii
-    minus_t1_f2 = - 0.5 * 1j * (p_t1_f2 - n_t1_f2.conj()) # S⁻(t₁,f₂)
-    minus_f1_f2 = fftshift(fft(minus_t1_f2, axis=0), axes=0) # S⁻(f₁,f₂)
-    ri = np.real(minus_f1_f2) # A₁D₂
-    ii = np.imag(minus_f1_f2) # D₁D₂
+    minus_t1_f2 = - 0.5 * 1j * (p_t1_f2 - n_t1_f2.conj())     # S⁻(t₁,f₂)
+    minus_f1_f2 = fftshift(fft(minus_t1_f2, axis=0), axes=0)  # S⁻(f₁,f₂)
+    ri = np.real(minus_f1_f2)  # A₁D₂
+    ii = np.imag(minus_f1_f2)  # D₁D₂
 
     return {
-        'rr' : rr,
-        'ri' : ri,
-        'ir' : ir,
-        'ii' : ii,
+        'rr': rr,
+        'ri': ri,
+        'ir': ir,
+        'ii': ii,
     }
 
 
@@ -543,7 +544,12 @@ def ift(spectrum, flip=True):
         Inverse Fourier transform of the spectrum.
     """
 
-    ArgumentChecker([(spectrum, 'spectrum', 'ndarray'), (flip, 'flip', 'bool')])
+    ArgumentChecker(
+        [
+            (spectrum, 'spectrum', 'ndarray'),
+            (flip, 'flip', 'bool'),
+        ],
+    )
 
     spectrum = ifftshift(np.flip(spectrum)) if flip else ifftshift(spectrum)
 
@@ -580,7 +586,7 @@ def phase(data, p0, p1, pivot=None):
 
     try:
         dim = len(p0)
-    except:
+    except Exception:
         raise TypeError(f'{cols.R}p0 should be iterable.{cols.END}')
 
     if pivot is None:
@@ -604,7 +610,7 @@ def phase(data, p0, p1, pivot=None):
         n = data.shape[axis]
         # Determine axis for einsum (i or j)
         axis = chr(axis + 105)
-        p = np.exp(1j * (p0_ + p1_ * np.arange(-piv, -piv+n) / n))
+        p = np.exp(1j * (p0_ + p1_ * np.arange(-piv, -piv + n) / n))
         phased_data = np.einsum(f'{idx},{axis}->{idx}', data, p)
 
     return phased_data
@@ -640,12 +646,12 @@ def manual_phase_spectrum(spectrum, max_p1=None):
     """
     try:
         dim = spectrum.ndim
-    except:
+    except Exception:
         raise TypeError(f'{cols.R}soectrum should be a numpy array{cols.END}')
 
     # Only valid for 1D so far
     if dim != 1:
-        raise TwoDimUnsupportedError()
+        raise errors.TwoDimUnsupportedError()
 
     init_spectrum = copy.deepcopy(spectrum)
 
@@ -685,9 +691,12 @@ class PhaseApp(tk.Tk):
 
         ylim = self.ax.get_ylim()
 
-        mx = max(np.amax(np.real(spectrum)), np.abs(np.amin(np.real(spectrum))))
+        mx = max(
+            np.amax(np.real(spectrum)),
+            np.abs(np.amin(np.real(spectrum))),
+        )
         self.pivotline = self.ax.plot(
-            2 * [self.pivot], [-10*mx, 10*mx], color='r',
+            2 * [self.pivot], [-10 * mx, 10 * mx], color='r',
         )[0]
 
         self.ax.set_ylim(ylim)
@@ -698,10 +707,14 @@ class PhaseApp(tk.Tk):
             row=0, column=0, padx=10, pady=10, sticky='nsew',
         )
 
-        self.toolbar = NavigationToolbar2Tk(self.canvas, self, pack_toolbar=False)
+        self.toolbar = NavigationToolbar2Tk(
+            self.canvas, self, pack_toolbar=False,
+        )
         self.toolbar.grid(row=1, column=0, pady=(0, 10), sticky='w')
         self.scale_frame = tk.Frame(self)
-        self.scale_frame.grid(row=2, column=0, padx=10, pady=(0,10), sticky='nsew')
+        self.scale_frame.grid(
+            row=2, column=0, padx=10, pady=(0, 10), sticky='nsew',
+        )
         self.scale_frame.columnconfigure(1, weight=1)
         self.scale_frame.rowconfigure(0, weight=1)
 
@@ -719,16 +732,16 @@ class PhaseApp(tk.Tk):
 
             self.__dict__[f'{name}_scale'] = scale = tk.Scale(
                 self.scale_frame,
-                from_ = mn,
-                to = mx,
-                resolution = 0.001,
-                orient = tk.HORIZONTAL,
-                showvalue = 0,
-                sliderlength = 15,
-                bd = 0,
-                highlightthickness = 1,
-                highlightbackground = 'black',
-                relief = 'flat',
+                from_=mn,
+                to=mx,
+                resolution=0.001,
+                orient=tk.HORIZONTAL,
+                showvalue=0,
+                sliderlength=15,
+                bd=0,
+                highlightthickness=1,
+                highlightbackground='black',
+                relief='flat',
                 command=lambda value, name=name: self.update_phase(name),
             )
             scale.set(init)
@@ -736,8 +749,8 @@ class PhaseApp(tk.Tk):
 
             self.__dict__[f'{name}_label'] = label = tk.Label(
                 self.scale_frame,
-                text = f"{self.__dict__[f'{name}']:.3f}" if i != 0 \
-                    else str(self.__dict__[f'{name}'])
+                text=f"{self.__dict__[f'{name}']:.3f}"
+                     if i != 0 else str(self.__dict__[f'{name}'])
             )
             label.grid(row=i, column=2, padx=5, pady=pady, sticky='w')
 
@@ -747,24 +760,23 @@ class PhaseApp(tk.Tk):
 
         self.save_button = tk.Button(
             self.button_frame,
-            width = 8,
-            highlightbackground = 'black',
-            text = 'Save',
-            bg = '#77dd77',
-            command = self.save
+            width=8,
+            highlightbackground='black',
+            text='Save',
+            bg='#77dd77',
+            command=self.save
         )
         self.save_button.grid(row=1, column=0, sticky='e')
 
         self.cancel_button = tk.Button(
             self.button_frame,
-            width = 8,
-            highlightbackground = 'black',
-            text = 'Cancel',
-            bg = '#ff5566',
-            command = self.cancel
+            width=8,
+            highlightbackground='black',
+            text='Cancel',
+            bg='#ff5566',
+            command=self.cancel
         )
-        self.cancel_button.grid(row=1, column=1, sticky='e', padx=(10,0))
-
+        self.cancel_button.grid(row=1, column=1, sticky='e', padx=(10, 0))
 
     def update_phase(self, name):
         value = self.__dict__[f'{name}_scale'].get()
@@ -887,10 +899,10 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
 
     try:
         dim = len(n)
-    except:
+    except Exception:
         raise TypeError(f'{cols.R}n should be an iterable{cols.END}')
 
-    if offset == None:
+    if offset is None:
         offset = [0.0] * dim
 
     components = [
@@ -899,7 +911,7 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
         (sw, 'sw', 'float_list'),
     ]
 
-    if snr != None:
+    if snr is not None:
         components.append((snr, 'snr', 'positive_float'))
 
     ArgumentChecker(components, dim)
@@ -910,12 +922,13 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     # phases
     para = np.hstack((para, nrandom.uniform(low=-np.pi, high=np.pi, size=m)))
     # frequencies
-    f = [nrandom.uniform(low=-s/2+o, high=s/2+o, size=m) for s, o in zip(sw, offset)]
+    f = [nrandom.uniform(low=-s / 2 + o, high=s / 2 + o, size=m)
+         for s, o in zip(sw, offset)]
     para = np.hstack((para, *f))
     # damping
     eta = [nrandom.uniform(low=0.1, high=0.3, size=m) for _ in range(dim)]
     para = np.hstack((para, *eta))
-    para = para.reshape((m, 2*(dim+1)), order='F')
+    para = para.reshape((m, 2 * (dim + 1)), order='F')
 
     return *make_fid(para, n, sw, offset, snr), para
 

@@ -7,6 +7,7 @@
 import functools
 import time
 
+
 def timer(f):
     """Times function f, and prints result once completed."""
     @functools.wraps(f)

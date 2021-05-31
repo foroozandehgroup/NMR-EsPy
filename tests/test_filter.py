@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import pytest
 import numpy as np
 from nmrespy.sig import make_fid
 from nmrespy.freqfilter import FrequencyFilter
@@ -25,7 +24,6 @@ def test_filter():
     # offset should be -0.5 for uncut
     # offset should be 4.5 - (10 * 9 / 18) = -0.5Hz for cut
 
-
     p = np.array([[1, 0, 2, 0.1]])
     sw = [9.]
     offset = [0.]
@@ -33,7 +31,7 @@ def test_filter():
     n = [10]
     fid = make_fid(p, n, sw, offset=offset)[0]
     region = [[4, 6]]
-    noise_region = [[1, 2]] # Doesn't matter
+    noise_region = [[1, 2]]  # Doesn't matter
 
     filter = FrequencyFilter(fid, region, noise_region, sw, offset, sfo,
                              region_unit='idx', cut_ratio=2.)

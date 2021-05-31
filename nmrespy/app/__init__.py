@@ -9,11 +9,9 @@
 import pathlib
 import tkinter as tk
 
-import numpy as np
-
 from nmrespy._errors import TwoDimUnsupportedError
 from nmrespy.core import Estimator
-from nmrespy.app.frames import DataType # TODO: WaitingWindow
+from nmrespy.app.frames import DataType  # TODO: WaitingWindow
 from nmrespy.app import stup, result
 
 

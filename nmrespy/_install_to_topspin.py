@@ -1,7 +1,6 @@
 import glob
 import pathlib
 import platform
-import shutil
 import subprocess
 import sys
 
@@ -17,10 +16,11 @@ def get_opsys():
     elif system == "Windows":
         return "windows"
     else:
-        print(f"Your operating system is not supported for automatic "
-               "installation of nmrespy into TopSpin. See the documentation "
-              f"for guidance on manual installation.")
+        print("Your operating system is not supported for automatic "
+              "installation of nmrespy into TopSpin. See the documentation "
+              "for guidance on manual installation.")
         return None
+
 
 def get_topspin_paths(opsys):
     """Determine whether any TopSpin installations exist in the default
@@ -33,11 +33,11 @@ def get_topspin_paths(opsys):
     topspin_paths = glob.glob(pattern)
 
     if not topspin_paths:
-        print(f"\nNo TopSpin installations were found on your system! "
-               "If you don't have TopSpin, I guess that makes sense. If you "
-               "do have TopSpin, perhaps it is installed in a non-default "
-               "location? You'll have to perform a manual installation in "
-              f"this case. See the documentation for details.")
+        print("\nNo TopSpin installations were found on your system! "
+              "If you don't have TopSpin, I guess that makes sense. If you "
+              "do have TopSpin, perhaps it is installed in a non-default "
+              "location? You'll have to perform a manual installation in "
+              "this case. See the documentation for details.")
 
         topspin_paths = None
 
@@ -53,13 +53,13 @@ def get_install_paths(topspin_paths):
         [f"{[i]} {path}" for i, path in enumerate(topspin_paths, start=1)]
     )
 
-    print(f"\nThe following TopSpin path(s) were found on your system:"
+    print("\nThe following TopSpin path(s) were found on your system:"
           f"\n\t{path_list}\n"
-           "For each installation that you would like to install the nmrespy "
-           "app to, provide the corresponding numbers, separated by "
-           "whitespaces.\nIf you want to cancel the install to TopSpin, enter "
-           "0.\nIf you want to install to all the listed TopSpin "
-          f"installations, press <Return>:")
+          "For each installation that you would like to install the nmrespy "
+          "app to, provide the corresponding numbers, separated by "
+          "whitespaces.\nIf you want to cancel the install to TopSpin, enter "
+          "0.\nIf you want to install to all the listed TopSpin "
+          "installations, press <Return>:")
 
     user_input = input()
 
@@ -69,7 +69,7 @@ def get_install_paths(topspin_paths):
     while True:
         indices = parse_user_input(user_input, len(topspin_paths))
         if indices is False:
-            print(f"Invalid input. Please try again:")
+            print("Invalid input. Please try again:")
             user_input = input()
         else:
             return [topspin_paths[idx] for idx in indices]
@@ -84,8 +84,8 @@ def parse_user_input(user_input, number):
 
     if user_input == '0':
         # User pressed 0. Return empty list (no installation will take place)
-        print(f"No installation of the nmrespy app will "
-              f"occur...")
+        print("No installation of the nmrespy app will "
+              "occur...")
         return []
 
     # Split input at whitespace (filter out any empty elements)
@@ -97,7 +97,7 @@ def parse_user_input(user_input, number):
             return False
 
     # Return indices coresponding to TopSPin paths of interest
-    return [int(value)-1 for value in values]
+    return [int(value) - 1 for value in values]
 
 
 def get_pdflatex_executable(opsys):
@@ -120,10 +120,11 @@ def get_pdflatex_executable(opsys):
         return pdflatex_exe
 
     else:
-        print(f"I was unable to find a pdflatex executable on your"
-               "system. YOu will not be able to generate PDF\'s of your "
-              f"results")
+        print("I was unable to find a pdflatex executable on your"
+              "system. YOu will not be able to generate PDF\'s of your "
+              "results")
         return None
+
 
 def install(install_paths, txt):
     """Try to write ``txt`` to each file path"""
@@ -165,9 +166,10 @@ def main():
     txt = txt.replace("py_exe = None", f"py_exe = \"{py_exe}\"")
     if pdflatex_exe is not None:
         txt = txt.replace("pdflatex_exe = None",
-                         f"pdflatex_exe = \"{pdflatex_exe}\"")
+                          f"pdflatex_exe = \"{pdflatex_exe}\"")
 
     install(install_paths, txt)
+
 
 if __name__ == "__main__":
     main()

@@ -19,9 +19,11 @@ from nmrespy import *
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 import nmrespy._errors as errors
 from nmrespy._misc import *
 from nmrespy import sig
+
 
 def plot_result(
     data, result, sw, offset, plot_residual=True, plot_model=False,
@@ -127,7 +129,8 @@ def plot_result(
         * If a string corresponding to a matplotlib colormap is given,
           the oscillators will be consecutively shaded by linear increments
           of this colormap. For all valid colormaps, see
-          `<here https://matplotlib.org/stable/tutorials/colors/colormaps.html>`__
+          `<here https://matplotlib.org/stable/tutorials/colors/\
+          colormaps.html>`__
         * If a list or NumPy array containing valid matplotlib colors is
           given, these colors will be cycled.
           For example, if ``oscillator_colors = ['r', 'g', 'b']``:
@@ -188,12 +191,11 @@ def plot_result(
             + `False` sets alpha to 0 (making the labels invisible)
     """
 
-
     # --- Check arguments ------------------------------------------------
     try:
         dim = data.ndim
-    except:
-        raise TypeError(f'{cols.R}data should be a NUmPu array.{cols.END}')
+    except Exception:
+        raise TypeError(f'{cols.R}data should be a NumPy array.{cols.END}')
 
     if dim == 2:
         raise TwoDimUnsupportedError()
@@ -242,7 +244,7 @@ def plot_result(
         rc = str(mpl.rc_params_from_file(
             stylesheet, fail_on_error=True, use_default_template=False,
         ))
-    except:
+    except Exception:
         raise ValueError(
             f'{cols.R}Error in loading the stylesheet. Check you gave'
             ' a valid path, and that the stylesheet is formatted'
@@ -284,7 +286,8 @@ def plot_result(
             filter(lambda ln: 'axes.prop_cycle' not in ln, rc.split('\n'))
         )
         # Append the custom colorcycle to the rc text
-        col_txt = ', '.join([f'\'{c[1:].lower()}\'' for c in oscillator_colors])
+        col_txt = \
+            ', '.join([f'\'{c[1:].lower()}\'' for c in oscillator_colors])
         rc += f'\naxes.prop_cycle: cycler(\'color\', [{col_txt}])\n'
 
     # Temporary path to save stylesheet to
@@ -296,14 +299,13 @@ def plot_result(
     # Delete the stylesheet
     os.remove(tmp_path)
 
-
     if shifts_unit not in ['hz', 'ppm']:
         raise errors.InvalidUnitError('hz', 'ppm')
     if shifts_unit == 'ppm' and sfo is None:
         shifts_unit = 'hz'
         print(
-            f'{cols.O}You need to specify `sfo` if you want chemical'
-            f' shifts in ppm! Falling back to Hz...'
+            f'{cols.OR}You need to specify `sfo` if you want chemical'
+            f' shifts in ppm! Falling back to Hz...{cols.END}'
         )
 
     # Change x-axis limits if a specific region was studied
@@ -394,7 +396,6 @@ def plot_result(
             shifts, model + model_shift, color=model_color,
         )[0]
 
-
         # Initialise maxi and mini to be values that are certain to be
         # overwritten
         maxi = -np.inf
@@ -420,6 +421,7 @@ def plot_result(
     ax.set_xlabel(xlab)
 
     return NmrespyPlot(fig, ax, lines, labs)
+
 
 # TODO: Grow this class: provide functionality for easy tweaking
 # of figure
@@ -484,7 +486,8 @@ class NmrespyPlot:
         displacement : (float, float)
             The amount to displace the labels relative to their current
             positions. The displacement uses the
-            `axes co-ordinate system <https://matplotlib.org/stable/tutorials/advanced/transforms_tutorial.html#axes-coordinates>`_.
+            `axes co-ordinate system <https://matplotlib.org/stable/\
+            tutorials/advanced/transforms_tutorial.html#axes-coordinates>`_.
             Both values provided should be less than `1.0`.
         """
 
@@ -498,9 +501,9 @@ class NmrespyPlot:
         # Check that all values given are between 1 and number of oscillators
         max_value = max(self.labels.keys())
         if not all(0 < value <= max_value for value in values):
-            raise ValueError(f"{cols.R}At least one element in `values` is "
-                              "invalid. Ensure that all elements are ints "
-                             f"between 1 and {max_value}.{cols.END}")
+            raise ValueError(f'{cols.R}At least one element in `values` is '
+                             'invalid. Ensure that all elements are ints '
+                             f'between 1 and {max_value}.{cols.END}')
 
         for value in values:
             # Get initial position (this is in data coordinates)
@@ -518,10 +521,10 @@ class NmrespyPlot:
             )
             if not all(0. <= coord <= 1. for coord in new_pos):
                 raise ValueError(
-                    f"{cols.R}The specified displacement for label {value} "
-                     "places it outside the axes! You may want to reduce the "
-                     "magnitude of displacement in one or both dimesions to "
-                    f"ensure this does not occur.{cols.END}"
+                    f'{cols.R}The specified displacement for label {value} '
+                    'places it outside the axes! You may want to reduce the '
+                    'magnitude of displacement in one or both dimesions to '
+                    f'ensure this does not occur.{cols.END}'
                 )
 
             # Transform new position to data coordinates
@@ -534,7 +537,8 @@ class NmrespyPlot:
 
         Parameters
         ----------
-        ax : `matplotlib.axes.Axes <https://matplotlib.org/3.3.1/api/axes_api.html#matplotlib.axes.Axes>`_
+        ax : `matplotlib.axes.Axes <https://matplotlib.org/3.3.1/api/\
+        axes_api.html#matplotlib.axes.Axes>`_
             The axes object to construct the result plot onto.
 
         Warning

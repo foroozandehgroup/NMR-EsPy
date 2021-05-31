@@ -6,6 +6,7 @@
 
 import numpy as np
 
+
 def f_1d(active, *args):
     """
     Cost function for 1D data
@@ -21,7 +22,8 @@ def f_1d(active, *args):
         * **data:** `numpy.ndarray.` Array of the original FID data.
         * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
         * **m:** `int.` Number of oscillators
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **passive:** `numpy.ndarray.` Passive parameters (not to be
+          optimised).
         * **active_idx:** `list.` Indicates the types of parameters are present
           in the active oscillators (para_act): ``0`` - amplitudes, ``1`` -
           phases, ``2`` - frequencies, ``3`` - damping factors.
@@ -42,18 +44,22 @@ def f_1d(active, *args):
     theta = _construct_parameters(active, passive, m, active_idx)
 
     # signal pole matrix
-    Z = np.exp(np.outer(tp[0], (1j*2*np.pi*theta[2*m:3*m] - theta[3*m:])))
+    Z = np.exp(
+        np.outer(
+            tp[0], (1j * 2 * np.pi * theta[2 * m:3 * m] - theta[3 * m:])
+        )
+    )
 
-    model = Z @ (theta[:m] * np.exp(1j * theta[m:2*m]))
+    model = Z @ (theta[:m] * np.exp(1j * theta[m:2 * m]))
     diff = data - model
     func = np.real(np.vdot(diff, diff))
 
     if phasevar:
         # if 0 in active_idx, phases will be between m and 2m, as amps
         # also present if not, phases will be between 0 and m
-        phases = theta[m:2*m] if 0 in active_idx else theta[:m]
+        phases = theta[m:2 * m] if 0 in active_idx else theta[:m]
         mu = np.einsum('i->', phases) / m
-        func += ((np.einsum('i->', phases**2) / m) - mu**2) / np.pi
+        func += ((np.einsum('i->', phases ** 2) / m) - mu ** 2) / np.pi
 
     return func
 
@@ -73,7 +79,8 @@ def g_1d(active, *args):
         * **data:** `numpy.ndarray.` Array of the original FID data.
         * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
         * **m:** `int.` Number of oscillators
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **passive:** `numpy.ndarray.` Passive parameters (not to be
+          optimised).
         * **active_idx:** `list.` Indicates the types of parameters are present
           in the active oscillators (para_act): ``0`` - amplitudes, ``1`` -
           phases, ``2`` - frequencies, ``3`` - damping factors.
@@ -83,7 +90,7 @@ def g_1d(active, *args):
     Returns
     -------
     grad : numpy.ndarray
-        Gradient of cost function, with ``grad.shape = (4*m,)``.
+        Gradient of cost function, with ``grad.shape = (4 * m,)``.
     """
 
     # unpack arguments
@@ -94,11 +101,15 @@ def g_1d(active, *args):
     theta = _construct_parameters(active, passive, m, active_idx)
 
     # signal pole matrix
-    Z = np.exp(np.outer(tp[0], (1j*2*np.pi*theta[2*m:3*m] - theta[3*m:])))
+    Z = np.exp(
+        np.outer(
+            tp[0], (1j * 2 * np.pi * theta[2 * m:3 * m] - theta[3 * m:])
+        )
+    )
 
     # N x M array comprising M N-length vectors
     # each vector is the model produced by a single oscillator
-    model_per_oscillator = Z * (theta[:m] * np.exp(1j * theta[m:2*m]))
+    model_per_oscillator = Z * (theta[:m] * np.exp(1j * theta[m:2 * m]))
 
     # first derivative components
     fd = np.zeros((*data.shape, m * len(active_idx)), dtype='complex')
@@ -117,78 +128,78 @@ def g_1d(active, *args):
 
     if 2 in active_idx:
         def freq_derivative(arr):
-            return np.einsum('ij,i->ij', arr, (1j*2*np.pi*tp[0]))
+            return np.einsum('ij,i->ij', arr, (1j * 2 * np.pi * tp[0]))
 
     if 3 in active_idx:
         def damp_derivative(arr):
             return np.einsum('ij,i->ij', arr, -tp[0])
 
     if 0 in active_idx:
-        fd[:,:m] = model_per_oscillator / theta[:m] # a
+        fd[:, :m] = model_per_oscillator / theta[:m]  # a
 
         if 1 in active_idx:
-            fd[:,m:2*m] = 1j * model_per_oscillator # φ
+            fd[:, m:2 * m] = 1j * model_per_oscillator  # φ
 
             if 2 in active_idx:
-                fd[:,2*m:3*m] = freq_derivative(model_per_oscillator) # f
+                fd[:, 2 * m:3 * m] = freq_derivative(model_per_oscillator)  # f
 
                 if 3 in active_idx:
                     # ---a φ f η--- (all parameters)
-                    fd[:,3*m:] = damp_derivative(model_per_oscillator) # η
+                    fd[:, 3 * m:] = damp_derivative(model_per_oscillator)  # η
 
                 # ---a φ f---
 
             elif 3 in active_idx:
                 # ---a φ η---
-                fd[:, 2*m:] = damp_derivative(model_per_oscillator) # η
+                fd[:, 2 * m:] = damp_derivative(model_per_oscillator)  # η
 
             # ---a φ---
 
         elif 2 in active_idx:
-            fd[:, m:2*m] = freq_derivative(model_per_oscillator) # f
+            fd[:, m:2 * m] = freq_derivative(model_per_oscillator)  # f
 
             if 3 in active_idx:
                 # ---a f η---
-                fd[:, 2*m:] = damp_derivative(model_per_oscillator) # η
+                fd[:, 2 * m:] = damp_derivative(model_per_oscillator)  # η
 
             # ---a f---
 
         elif 3 in active_idx:
             # ---a η---
-            fd[:, m:] = damp_derivative(model_per_oscillator) # η
+            fd[:, m:] = damp_derivative(model_per_oscillator)  # η
 
         # ---a only---
 
     elif 1 in active_idx:
-        fd[:, :m] = 1j * model_per_oscillator # φ
+        fd[:, :m] = 1j * model_per_oscillator  # φ
 
         if 2 in active_idx:
-            fd[:, m:2*m] = freq_derivative(model_per_oscillator) # f
+            fd[:, m:2 * m] = freq_derivative(model_per_oscillator)  # f
 
             if 3 in active_idx:
                 # ---φ f η---
-                fd[:, 2*m:] = damp_derivative(model_per_oscillator) # η
+                fd[:, 2 * m:] = damp_derivative(model_per_oscillator)  # η
 
             # ---φ f---
 
         elif 3 in active_idx:
             # ---φ η---
-            fd[:, m:] = damp_derivative(model_per_oscillator) # η
+            fd[:, m:] = damp_derivative(model_per_oscillator)  # η
 
         # ---φ only---
 
     elif 2 in active_idx:
-        fd[:, :m] = freq_derivative(model_per_oscillator) # f
+        fd[:, :m] = freq_derivative(model_per_oscillator)  # f
 
         if 3 in active_idx:
             # ---f η---
-            fd[:, m:] = damp_derivative(model_per_oscillator) # η
+            fd[:, m:] = damp_derivative(model_per_oscillator)  # η
 
         # ---f only---
 
     else:
         # ---η only---
-        fd[:, :] = damp_derivative(model_per_oscillator) # η
+        fd[:, :] = damp_derivative(model_per_oscillator)  # η
 
     # sum model_per_oscillator to generate data-length vector,
     # and take residual
@@ -199,9 +210,9 @@ def g_1d(active, *args):
         # if 0 in active_idx, phases will be between m and 2m, as amps
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in active_idx else 0
-        phases = theta[i*m:(i+1)*m]
+        phases = theta[i * m:(i + 1) * m]
         mu = np.einsum('i->', phases) / m
-        grad[i*m:(i+1)*m] += ((2 / m) * (phases - mu)) / np.pi
+        grad[i * m:(i + 1) * m] += ((2 / m) * (phases - mu)) / np.pi
 
     return grad
 
@@ -221,7 +232,8 @@ def h_1d(active, *args):
         * **data:** `numpy.ndarray.` Array of the original FID data.
         * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
         * **m:** `int.` Number of oscillators
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be optimised).
+        * **passive:** `numpy.ndarray.` Passive parameters (not to be
+          optimised).
         * **active_idx:** `list.` Indicates the types of parameters are present
           in the active oscillators (para_act): ``0`` - amplitudes, ``1`` -
           phases, ``2`` - frequencies, ``3`` - damping factors.
@@ -231,7 +243,7 @@ def h_1d(active, *args):
     Returns
     -------
     hess : numpy.ndarray
-        Hessian of cost function, with ``hess.shape = (4*m,4*m)``.
+        Hessian of cost function, with ``hess.shape = (4 * m,4 * m)``.
     """
 
     # unpack arguments
@@ -242,11 +254,15 @@ def h_1d(active, *args):
     theta = _construct_parameters(active, passive, m, active_idx)
 
     # signal pole matrix
-    Z = np.exp(np.outer(tp[0], (1j*2*np.pi*theta[2*m:3*m] - theta[3*m:])))
+    Z = np.exp(
+        np.outer(
+            tp[0], (1j * 2 * np.pi * theta[2 * m:3 * m] - theta[3 * m:])
+        )
+    )
 
     # N x M array comprising M N-length vectors
     # each vector is the model produced by a single oscillator
-    model_per_oscillator = Z * (theta[:m] * np.exp(1j * theta[m:2*m]))
+    model_per_oscillator = Z * (theta[:m] * np.exp(1j * theta[m:2 * m]))
 
     p = len(active_idx)
 
@@ -284,120 +300,128 @@ def h_1d(active, *args):
 
     if 2 in active_idx:
         def freq_derivative(arr):
-            return np.einsum('ij,i->ij', arr, (1j*2*np.pi*tp[0]))
+            return np.einsum('ij,i->ij', arr, (1j * 2 * np.pi * tp[0]))
 
     if 3 in active_idx:
         def damp_derivative(arr):
             return np.einsum('ij,i->ij', arr, -tp[0])
 
     if 0 in active_idx:
-        fd[:, :m] = amp_derivative(model_per_oscillator) # a
+        fd[:, :m] = amp_derivative(model_per_oscillator)  # a
         # (a-a is trivially zero)
 
         if 1 in active_idx:
-            fd[:, m:2*m] = phase_derivative(model_per_oscillator) # φ
-            sd[:, m:2*m] = phase_derivative(fd[:, :m]) # a-φ
+            fd[:, m:2 * m] = phase_derivative(model_per_oscillator)  # φ
+            sd[:, m:2 * m] = phase_derivative(fd[:, :m])  # a-φ
 
             if 2 in active_idx:
-                fd[:, 2*m:3*m] = freq_derivative(model_per_oscillator) # f
-                sd[:, 2*m:3*m] = amp_derivative(fd[:, 2*m:3*m]) # a-f
+                fd[:, 2 * m:3 * m] = freq_derivative(model_per_oscillator)  # f
+                sd[:, 2 * m:3 * m] = amp_derivative(fd[:, 2 * m:3 * m])  # a-f
 
                 if 3 in active_idx:
                     # ---a φ f η---
-                    fd[:, 3*m:] = damp_derivative(model_per_oscillator) # η
-                    sd[:, 3*m:4*m] = amp_derivative(fd[:, 3*m:4*m])# a-η
-                    sd[:, 4*m:5*m] = phase_derivative(fd[:, :m]) # φ-φ
-                    sd[:, 5*m:6*m] = phase_derivative(fd[:, 2*m:3*m]) # φ-f
-                    sd[:, 6*m:7*m] = phase_derivative(fd[:, 3*m:4*m]) # φ-η
-                    sd[:, 7*m:8*m] = freq_derivative(fd[:, 2*m:3*m]) # f-f
-                    sd[:, 8*m:9*m] = damp_derivative(fd[:, 2*m:3*m]) # f-η
-                    sd[:, 9*m:] = damp_derivative(fd[:, 3*m:]) # η-η
+                    fd[:, 3 * m:] = \
+                        damp_derivative(model_per_oscillator)  # η
+                    sd[:, 3 * m:4 * m] = \
+                        amp_derivative(fd[:, 3 * m:4 * m])  # a-η
+                    sd[:, 4 * m:5 * m] = \
+                        phase_derivative(fd[:, :m])  # φ-φ
+                    sd[:, 5 * m:6 * m] = \
+                        phase_derivative(fd[:, 2 * m:3 * m])  # φ-f
+                    sd[:, 6 * m:7 * m] = \
+                        phase_derivative(fd[:, 3 * m:4 * m])  # φ-η
+                    sd[:, 7 * m:8 * m] = \
+                        freq_derivative(fd[:, 2 * m:3 * m])  # f-f
+                    sd[:, 8 * m:9 * m] = \
+                        damp_derivative(fd[:, 2 * m:3 * m])  # f-η
+                    sd[:, 9 * m:] = \
+                        damp_derivative(fd[:, 3 * m:])  # η-η
 
                 else:
                     # ---a φ f---
-                    sd[:, 3*m:4*m] = phase_derivative(fd[:, :m]) # φ-φ
-                    sd[:, 4*m:5*m] = phase_derivative(fd[:, 2*m:]) # φ-f
-                    sd[:, 5*m:] = freq_derivative(fd[:, 2*m:]) # f-f
+                    sd[:, 3 * m:4 * m] = phase_derivative(fd[:, :m])  # φ-φ
+                    sd[:, 4 * m:5 * m] = phase_derivative(fd[:, 2 * m:])  # φ-f
+                    sd[:, 5 * m:] = freq_derivative(fd[:, 2 * m:])  # f-f
 
             elif 3 in active_idx:
                 # ---a φ η---
-                fd[:, 2*m:] = damp_derivative(model_per_oscillator) # η
-                sd[:, 2*m:3*m] = amp_derivative(fd[:, 2*m:]) # a-η
-                sd[:, 3*m:4*m] = phase_derivative(fd[:, :m]) # φ-φ
-                sd[:, 4*m:5*m] = phase_derivative(fd[:, 2*m:]) # φ-η
-                sd[:, 5*m:] = damp_derivative(fd[:, 2*m:]) # η-η
+                fd[:, 2 * m:] = damp_derivative(model_per_oscillator)  # η
+                sd[:, 2 * m:3 * m] = amp_derivative(fd[:, 2 * m:])  # a-η
+                sd[:, 3 * m:4 * m] = phase_derivative(fd[:, :m])  # φ-φ
+                sd[:, 4 * m:5 * m] = phase_derivative(fd[:, 2 * m:])  # φ-η
+                sd[:, 5 * m:] = damp_derivative(fd[:, 2 * m:])  # η-η
 
             else:
                 # ---a φ---
-                sd[:, 2*m:] = phase_derivative(fd[:, m:]) # φ-φ
+                sd[:, 2 * m:] = phase_derivative(fd[:, m:])  # φ-φ
 
         elif 2 in active_idx:
-            fd[:, m:2*m] = freq_derivative(model_per_oscillator) # f
-            sd[:, m:2*m] = amp_derivative(fd[:, m:2*m]) # a-f
+            fd[:, m:2 * m] = freq_derivative(model_per_oscillator)  # f
+            sd[:, m:2 * m] = amp_derivative(fd[:, m:2 * m])  # a-f
 
             if 3 in active_idx:
                 # ---a f η---
-                fd[:, 2*m:] = damp_derivative(model_per_oscillator) # η
-                sd[:, 2*m:3*m] = amp_derivative(fd[:, 2*m:]) # a-η
-                sd[:, 3*m:4*m] = freq_derivative(fd[:, m:2*m]) # f-f
-                sd[:, 4*m:5*m] = damp_derivative(fd[:, m:2*m]) # f-η
-                sd[:, 5*m:] = damp_derivative(fd[:, 2*m:]) # η-η
+                fd[:, 2 * m:] = damp_derivative(model_per_oscillator)  # η
+                sd[:, 2 * m:3 * m] = amp_derivative(fd[:, 2 * m:])  # a-η
+                sd[:, 3 * m:4 * m] = freq_derivative(fd[:, m:2 * m])  # f-f
+                sd[:, 4 * m:5 * m] = damp_derivative(fd[:, m:2 * m])  # f-η
+                sd[:, 5 * m:] = damp_derivative(fd[:, 2 * m:])  # η-η
 
             else:
                 # ---a f---
-                sd[:, 2*m:] = freq_derivative(fd[:, m:]) # f-f
+                sd[:, 2 * m:] = freq_derivative(fd[:, m:])  # f-f
 
         elif 3 in active_idx:
             # ---a η---
-            fd[:, m:] = damp_derivative(model_per_oscillator) # η
-            sd[:, 2*m:] = damp_derivative(fd[:, m:]) # η-η
+            fd[:, m:] = damp_derivative(model_per_oscillator)  # η
+            sd[:, 2 * m:] = damp_derivative(fd[:, m:])  # η-η
 
         # ---a only---
 
     elif 1 in active_idx:
-        fd[:, :m] = phase_derivative(model_per_oscillator) # φ
-        sd[:, :m] = phase_derivative(fd[:, :m]) # φ-φ
+        fd[:, :m] = phase_derivative(model_per_oscillator)  # φ
+        sd[:, :m] = phase_derivative(fd[:, :m])  # φ-φ
 
         if 2 in active_idx:
-            fd[:, m:2*m] = freq_derivative(model_per_oscillator) # f
-            sd[:, m:2*m] = phase_derivative(fd[:, m:2*m]) # φ-f
+            fd[:, m:2 * m] = freq_derivative(model_per_oscillator)  # f
+            sd[:, m:2 * m] = phase_derivative(fd[:, m:2 * m])  # φ-f
 
             if 3 in active_idx:
                 # ---φ f η---
-                fd[:, 2*m:] = damp_derivative(model_per_oscillator) # η
-                sd[:, 2*m:3*m] = phase_derivative(fd[:, 2*m:]) # φ-η
-                sd[:, 3*m:4*m] = freq_derivative(fd[:, m:2*m]) # f-f
-                sd[:, 4*m:5*m] = damp_derivative(fd[:, m:2*m]) # f-η
-                sd[:, 5*m:] = damp_derivative(fd[:, 2*m:]) # η-η
+                fd[:, 2 * m:] = damp_derivative(model_per_oscillator)  # η
+                sd[:, 2 * m:3 * m] = phase_derivative(fd[:, 2 * m:])  # φ-η
+                sd[:, 3 * m:4 * m] = freq_derivative(fd[:, m:2 * m])  # f-f
+                sd[:, 4 * m:5 * m] = damp_derivative(fd[:, m:2 * m])  # f-η
+                sd[:, 5 * m:] = damp_derivative(fd[:, 2 * m:])  # η-η
 
             else:
                 # ---φ f---
-                sd[:, 2*m:] = freq_derivative(fd[:, m:]) # f-f
+                sd[:, 2 * m:] = freq_derivative(fd[:, m:])  # f-f
 
         elif 3 in active_idx:
             # ---φ η---
-            fd[:, m:] = damp_derivative(model_per_oscillator) # η
-            sd[:, m:2*m] = phase_derivative(fd[:, m:]) # φ-η
-            sd[:, 2*m:] = damp_derivative(fd[:, m:]) # η-η
+            fd[:, m:] = damp_derivative(model_per_oscillator)  # η
+            sd[:, m:2 * m] = phase_derivative(fd[:, m:])  # φ-η
+            sd[:, 2 * m:] = damp_derivative(fd[:, m:])  # η-η
 
         # ---φ only---
 
     elif 2 in active_idx:
-        fd[:, :m] = freq_derivative(model_per_oscillator) # f
-        sd[:, :m] = freq_derivative(fd[:, :m]) # f-f
+        fd[:, :m] = freq_derivative(model_per_oscillator)  # f
+        sd[:, :m] = freq_derivative(fd[:, :m])  # f-f
 
         if 3 in active_idx:
             # ---f η---
-            fd[:, m:] = damp_derivative(model_per_oscillator) # η
-            sd[:, m:2*m] = damp_derivative(fd[:, :m]) # f-η
-            sd[:, 2*m:] = damp_derivative(fd[:, m:]) # η-η
+            fd[:, m:] = damp_derivative(model_per_oscillator)  # η
+            sd[:, m:2 * m] = damp_derivative(fd[:, :m])  # f-η
+            sd[:, 2 * m:] = damp_derivative(fd[:, m:])  # η-η
 
         # ---f only---
 
     else:
         # ---η only---
-        fd = damp_derivative(model_per_oscillator) # η
-        sd = damp_derivative(fd) # η-η
+        fd = damp_derivative(model_per_oscillator)  # η
+        sd = damp_derivative(fd)  # η-η
 
     diff = data - np.einsum('ij->i', model_per_oscillator)
 
@@ -406,7 +430,7 @@ def h_1d(active, *args):
     # determine indices of elements which have non-zero second derivs
     # (specfically, those in upper triangle)
     diag_indices = _generate_diagonal_indices(p, m)
-    hess = np.zeros((p*m, p*m))
+    hess = np.zeros((p * m, p * m))
     hess[diag_indices] = diagonals
 
     main_diagonals = _diagonal_indices(hess, k=0)
@@ -424,8 +448,9 @@ def h_1d(active, *args):
         # if 0 in active_idx, phases will be between m and 2m, as amps
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in active_idx else 0
-        hess[i*m:(i+1)*m, i*m:(i+1)*m] -= (2 / (m**2 * np.pi))
-        hess[main_diagonals[0][i*m:(i+1)*m], main_diagonals[1][i*m:(i+1)*m]] \
+        hess[i * m:(i + 1) * m, i * m:(i + 1) * m] -= (2 / (m ** 2 * np.pi))
+        hess[main_diagonals[0][i * m:(i + 1) * m],
+             main_diagonals[1][i * m:(i + 1) * m]] \
             += 2 / (np.pi * m)
 
     return hess
@@ -458,14 +483,14 @@ def _construct_parameters(active, passive, m, idx):
     # number of columns in active parameter array
     p = int((active.shape[0] + passive.shape[0]) / m)
 
-    parameters = np.zeros(p*m)
+    parameters = np.zeros(p * m)
 
     for i in range(p):
         if i in idx:
-            parameters[i*m:(i+1)*m] = active[:m]
+            parameters[i * m:(i + 1) * m] = active[:m]
             active = active[m:]
         else:
-            parameters[i*m:(i+1)*m] = passive[:m]
+            parameters[i * m:(i + 1) * m] = passive[:m]
             passive = passive[m:]
 
     return parameters
@@ -495,13 +520,13 @@ def _generate_diagonal_indices(p, m):
         1-axis coordinates of indices.
     """
 
-    arr = np.zeros((p*m, p*m)) # dummy array with same shape as Hessian
-    idx_0 = [] # axis 0 indices (rows)
-    idx_1 = [] # axis 1 indices (columns)
+    arr = np.zeros((p * m, p * m))  # dummy array with same shape as Hessian
+    idx_0 = []  # axis 0 indices (rows)
+    idx_1 = []  # axis 1 indices (columns)
     for i in range(p):
         for j in range(p - i):
-            idx_0.append(_diagonal_indices(arr, k=j*m)[0][i*m:(i+1)*m])
-            idx_1.append(_diagonal_indices(arr, k=j*m)[1][i*m:(i+1)*m])
+            idx_0.append(_diagonal_indices(arr, k=j * m)[0][i * m:(i + 1) * m])
+            idx_1.append(_diagonal_indices(arr, k=j * m)[1][i * m:(i + 1) * m])
 
     return np.hstack(idx_0), np.hstack(idx_1)
 

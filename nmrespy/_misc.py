@@ -4,7 +4,6 @@
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
-import copy
 import functools
 import itertools
 from pathlib import Path
@@ -123,7 +122,8 @@ class ArgumentChecker:
             elif typ == 'osc_cols':
                 test = self.check_oscillator_colors(obj)
             elif typ == 'generic_int_list':
-                test = isinstance(obj, list) and all(isinstance(item, int) for item in obj)
+                test = (isinstance(obj, list) and
+                        all(isinstance(item, int) for item in obj))
             elif typ == 'displacement':
                 test = self.check_displacement(obj)
             elif typ == 'modulation':
@@ -157,7 +157,7 @@ class ArgumentChecker:
 
     def check_dim(f):
         def wrapper(*args, **kwargs):
-            if args[0].dim == None:
+            if args[0].dim is None:
                 raise ValueError(
                     f'{cols.R}---BUG--- dim needs to be specified{cols.END}'
                 )
@@ -241,14 +241,14 @@ class ArgumentChecker:
         positive ints.
         """
         return (isinstance(obj, tuple) and len(obj) == 2
-         and isinstance(obj[0], int) and obj[0] < 0
-         and isinstance(obj[1], int) and obj[1] > 1)
+                and isinstance(obj[0], int) and obj[0] < 0
+                and isinstance(obj[1], int) and obj[1] > 1)
 
     @staticmethod
     def check_mpl_color(obj):
         """Check for a valid matplotlib color."""
         try:
-            color = mcolors.to_hex(obj)
+            mcolors.to_hex(obj)
             return True
         except ValueError:
             return False
@@ -288,7 +288,6 @@ class ArgumentChecker:
         return False
 
 
-
 class FrequencyConverter:
     """Handles converting objects with frequency values between units
 
@@ -311,7 +310,7 @@ class FrequencyConverter:
 
         try:
             dim = len(n)
-        except:
+        except Exception:
             raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
         components = [
@@ -378,7 +377,9 @@ class FrequencyConverter:
                 while True:
                     try:
                         converted_sublst.append(
-                            self._convert_value(next(iterable), dim, conversion)
+                            self._convert_value(
+                                next(iterable), dim, conversion,
+                            )
                         )
                     except StopIteration:
                         break
@@ -393,7 +394,6 @@ class FrequencyConverter:
 
         return converted_lst
 
-
     def _check_valid_conversion(self, conversion):
         """check that conversion is a valid value"""
         units = ['idx', 'ppm', 'hz']
@@ -402,7 +402,6 @@ class FrequencyConverter:
             if f'{next(pair)}->{next(pair)}' == conversion:
                 return True
         return False
-
 
     def _convert_value(self, value, dim, conversion):
         n = self.n[dim]
@@ -424,7 +423,11 @@ class FrequencyConverter:
             return (off + sw * (0.5 - (float(value) / (n - 1)))) / sfo
 
         elif conversion == 'ppm->idx':
-            return int(round(((n - 1)) / (2 * sw) * (sw + 2 * (off - (value * sfo)))))
+            return int(
+                round(
+                    ((n - 1)) / (2 * sw) * (sw + 2 * (off - (value * sfo)))
+                )
+            )
 
         elif conversion == 'ppm->hz':
             return value * sfo
@@ -486,7 +489,7 @@ class PathManager:
         if self.path.is_file() and not force_overwrite:
             overwrite = self.ask_overwrite()
             if not overwrite:
-                print(f'{cols.O}Overwrite denied{cols.END}')
+                print(f'{cols.OR}Overwrite denied{cols.END}')
                 return 1
 
         return 0
@@ -496,7 +499,7 @@ class PathManager:
         by the path `self.path`"""
 
         prompt = (
-            f'{cols.O}The file {str(self.path)} already exists. Overwrite?\n'
+            f'{cols.OR}The file {str(self.path)} already exists. Overwrite?\n'
             f'Enter [y] or [n]:{cols.END}'
         )
 
@@ -569,7 +572,7 @@ def latex_nucleus(nucleus):
     Raises
     ------
     ValueError
-        If `nucleus` does not match the regex ``^\d+[a-zA-Z]+$``
+        If `nucleus` does not match the regex ``^[0-9]+[a-zA-Z]+$``
     """
     if re.match(r'\d+[a-zA-Z]+', nucleus):
         mass = re.search(r'\d+', nucleus).group()

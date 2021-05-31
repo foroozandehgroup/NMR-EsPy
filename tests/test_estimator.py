@@ -10,13 +10,12 @@ import numpy as np
 import nmrespy._errors as errors
 from nmrespy.core import Estimator
 from nmrespy import sig
-from nmrespy.load import load_bruker
 
 # Set this to True if you want to check interactive and visual things.
 MANUAL_TEST = False
 
-def test_estimator():
 
+def test_estimator():
     # --- Create Estimator instance from Bruker path -----------------
     path = Path().cwd() / 'data/1/pdata/1'
     estimator = Estimator.new_bruker(path)
@@ -38,7 +37,7 @@ def test_estimator():
     with pytest.raises(errors.AttributeIsNoneError):
         estimator.get_datapath()
 
-    assert estimator.get_datapath(kill=False) == None
+    assert estimator.get_datapath(kill=False) is None
 
     estimator.path = path
 
@@ -58,7 +57,7 @@ def test_estimator():
     with pytest.raises(errors.AttributeIsNoneError):
         estimator.get_sw(unit='ppm')
 
-    assert estimator.get_sw(unit='ppm', kill=False) == None
+    assert estimator.get_sw(unit='ppm', kill=False) is None
 
     estimator.sfo = _sfo
 
@@ -74,7 +73,7 @@ def test_estimator():
     with pytest.raises(errors.AttributeIsNoneError):
         estimator.get_offset(unit='ppm')
 
-    assert estimator.get_offset(unit='ppm', kill=False) == None
+    assert estimator.get_offset(unit='ppm', kill=False) is None
     estimator.sfo = _sfo
 
     # --- Transmitter and basic frequency ----------------------------
@@ -87,8 +86,8 @@ def test_estimator():
     with pytest.raises(errors.AttributeIsNoneError):
         estimator.get_bf()
 
-    assert estimator.get_sfo(kill=False) == None
-    assert estimator.get_bf(kill=False) == None
+    assert estimator.get_sfo(kill=False) is None
+    assert estimator.get_bf(kill=False) is None
 
     estimator.sfo = _sfo
 
@@ -99,7 +98,7 @@ def test_estimator():
     with pytest.raises(errors.AttributeIsNoneError):
         estimator.get_nucleus()
 
-    assert estimator.get_nucleus(kill=False) == None
+    assert estimator.get_nucleus(kill=False) is None
     estimator.nuc = ['1H']
 
     # --- Chemical shifts --------------------------------------------
@@ -123,7 +122,7 @@ def test_estimator():
     with pytest.raises(errors.AttributeIsNoneError):
         estimator.get_shifts(unit='ppm')
 
-    assert estimator.get_shifts(unit='ppm', kill=False) == None
+    assert estimator.get_shifts(unit='ppm', kill=False) is None
     estimator.sfo = _sfo
 
     # --- Time-points ------------------------------------------------
@@ -157,7 +156,7 @@ def test_estimator():
     # --- Frequency filter -------------------------------------------
     # Apply same filter to same region, using both hz and ppm for regions.
     # Ensure all attributes are matching
-    assert estimator.get_filter_info(kill=False) == None
+    assert estimator.get_filter_info(kill=False) is None
     with pytest.raises(errors.AttributeIsNoneError):
         estimator.get_filter_info(kill=True)
 
@@ -179,8 +178,9 @@ def test_estimator():
     # Ensure that two signals are identical, given some margin of error
     # for noise. Have found that it is incredibly rare for the difference
     # between two points to exceed 200
-    assert np.allclose(hz_filter.get_fid(), ppm_filter.get_fid(), rtol=0, atol=200)
-
+    assert np.allclose(
+        hz_filter.get_fid(), ppm_filter.get_fid(), rtol=0, atol=200,
+    )
 
     # --- Phase data -----------------------------------------------------
     # Apply phasing twice, in different directions, and assert that the net
@@ -208,14 +208,7 @@ def test_estimator():
     ])
 
     params = params[np.argsort(params[:, 2])]
-
-    fid = sig.make_fid(
-        params,
-        f_n,
-        f_sw,
-        offset = f_off,
-    )[0]
-
+    fid = sig.make_fid(params, f_n, f_sw, offset=f_off)[0]
     estimator.filter_info.fid['cut'] = fid
 
     # --- Matrix Pencil ----------------------------------------------
@@ -225,23 +218,17 @@ def test_estimator():
     assert np.allclose(res, params)
 
     with pytest.raises(ValueError):
-        plot = estimator.plot_result()
+        estimator.plot_result()
 
     with pytest.raises(ValueError):
         estimator.write_result()
 
-#
     # --- NonlinearProgramming ---------------------------------------
-    # This is not to check the effectiveness of the method.
-    # It is just to check that it runs with all the various options
-    # for each argument.
-    # max_iterations is set to a low number in each case to speed up
-    # the process
     estimator.result = np.array([
-        [1+0.1, 0.01, f_off[0] + 2, 1 + 0.2],
-        [2-0.1, 0.02, f_off[0] + (f_sw[0] / 4) - 4, 1 - 0.2],
-        [2+0.2, -0.05, f_off[0] - (f_sw[0] / 4) + 3, 1 + 0.2],
-        [1-0.05, -0.03, f_off[0] + (f_sw[0] / 8) - 1, 1 - 0.1],
+        [1 + 0.1, 0.01, f_off[0] + 2, 1 + 0.2],
+        [2 - 0.1, 0.02, f_off[0] + (f_sw[0] / 4) - 4, 1 - 0.2],
+        [2 + 0.2, -0.05, f_off[0] - (f_sw[0] / 4) + 3, 1 + 0.2],
+        [1 - 0.05, -0.03, f_off[0] + (f_sw[0] / 8) - 1, 1 - 0.1],
     ])
 
     estimator.nonlinear_programming(phase_variance=False, max_iterations=1000,
@@ -253,17 +240,17 @@ def test_estimator():
     for fmt in ['txt', 'pdf', 'csv']:
         estimator.write_result(
             path='./test', description='Testing', fmt=fmt,
-            force_overwrite=True, sig_figs=7, sci_lims=(-3,4),
+            force_overwrite=True, sig_figs=7, sci_lims=(-3, 4),
             fprint=False
         )
         # View output files
         if MANUAL_TEST:
             if fmt == 'txt':
-                subprocess.run(['vi', f'test.txt'])
+                subprocess.run(['vi', 'test.txt'])
             elif fmt == 'pdf':
-                subprocess.run(['evince', f'test.pdf'])
+                subprocess.run(['evince', 'test.pdf'])
             elif fmt == 'csv':
-                subprocess.run(['libreoffice', f'test.csv'])
+                subprocess.run(['libreoffice', 'test.csv'])
 
         os.remove(f'test.{fmt}')
         if fmt == 'pdf':
@@ -274,34 +261,46 @@ def test_estimator():
     # save the result.
     estimator.result = np.array([[1., 0., -4., 3.], [2., 1., 2., 3.]])
     estimator.add_oscillators(np.array([[1., 0., 0., 1.]]))
-    assert np.array_equal(estimator.result,
-                          np.array([
-                            [1., 0., -4., 3.],
-                            [1., 0., 0., 1.],
-                            [2., 1., 2., 3.]
-                          ]))
+    assert np.array_equal(
+        estimator.result,
+        np.array(
+            [
+                [1., 0., -4., 3.],
+                [1., 0., 0., 1.],
+                [2., 1., 2., 3.],
+            ]
+        ),
+    )
+
     with pytest.raises(ValueError):
         estimator.write_result()
 
     estimator.remove_oscillators([0])
-    assert np.array_equal(estimator.result,
-                          np.array([
-                            [1., 0., 0., 1.],
-                            [2., 1., 2., 3.]
-                          ]))
+    assert np.array_equal(
+        estimator.result,
+        np.array(
+            [
+                [1., 0., 0., 1.],
+                [2., 1., 2., 3.],
+            ]
+        ),
+    )
 
-    estimator.merge_oscillators([0,1])
+    estimator.merge_oscillators([0, 1])
     assert np.array_equal(estimator.result,
                           np.array([[3., 0.5, 1., 2.]]))
 
     estimator.split_oscillator(0, separation_frequency=5, split_number=3)
-    assert np.array_equal(estimator.result,
-                          np.array([
-                            [1., 0.5, -4., 2.],
-                            [1., 0.5, 1., 2.],
-                            [1., 0.5, 6., 2.],
-                          ]))
-
+    assert np.array_equal(
+        estimator.result,
+        np.array(
+            [
+                [1., 0.5, -4., 2.],
+                [1., 0.5, 1., 2.],
+                [1., 0.5, 6., 2.],
+            ]
+        ),
+    )
 
     # --- Saving logfile ---------------------------------------------
     estimator.save_logfile('test', force_overwrite=True)
@@ -311,7 +310,7 @@ def test_estimator():
 
     # --- Pickling ---------------------------------------------------
     estimator.to_pickle('info', force_overwrite=True)
-    info = Estimator.from_pickle('info')
+    Estimator.from_pickle('info')
     os.remove('info.pkl')
 
     # Check that opening a file which doesn't contain an Estimator
@@ -319,5 +318,5 @@ def test_estimator():
     with open('fail.pkl', 'wb') as fh:
         pickle.dump(1, fh)
     with pytest.raises(TypeError):
-        info = Estimator.from_pickle('fail')
+        Estimator.from_pickle('fail')
     os.remove('fail.pkl')
