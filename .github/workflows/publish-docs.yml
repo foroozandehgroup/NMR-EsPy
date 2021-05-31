@@ -20,6 +20,11 @@ jobs:
         with:
           python-version: 3.9
 
+      - name: install LaTeX
+        run: |
+          apt-get update -y
+          apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
+
       - name: install and build docs
         run: |
           python -m pip install --upgrade pip
@@ -38,7 +43,7 @@ jobs:
       - name: update gh-pages
         run: |
           cd gh-pages
-          cp -r ../develop/docs/html/* .
+          cp -r ../develop/docs/html/ .
           touch .nojekyll
           git config --local user.name "GitHub Actions"
           git config --local user.email "<>"
