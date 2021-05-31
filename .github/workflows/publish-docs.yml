@@ -25,7 +25,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended dvipng
 
-      - name: install and build docs
+      - name: install nmrespy dependencies and sphinx and build docs
         run: |
           python -m pip install --upgrade pip
           cd develop/
@@ -37,7 +37,7 @@ jobs:
 
       - name: complie with XeLaTeX
         run: |
-          cd latex/
+          cd develop/docs/latex/
           xelatex nmr-espy.tex
           xelatex nmr-espy.tex
 
