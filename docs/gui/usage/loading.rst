@@ -39,6 +39,6 @@ corner.
 You will be asked to select the data you wish to consider (either the
 raw time-domain data, or the processed data):
 
-.. image:: ../../_static/gui/windows/datatype.png
+.. image:: ../../media/gui/windows/datatype.png
    :align: center
    :scale: 70%

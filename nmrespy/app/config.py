@@ -13,10 +13,10 @@ MAINFONT = 'Helvetica'
 
 # colors related to plot
 BGCOLOR = '#e4eaef'
-PLOTCOLOR = '#ffffff' # plot background
-REGIONCOLOR = '#7fd47f' # region rectangle patch
-NOISEREGIONCOLOR = '#66b3ff' # noise region rectange patch
-PIVOTCOLOR = '#ff0000' # pivot line plot
+PLOTCOLOR = '#ffffff'  # plot background
+REGIONCOLOR = '#7fd47f'  # region rectangle patch
+NOISEREGIONCOLOR = '#66b3ff'  # noise region rectange patch
+PIVOTCOLOR = '#ff0000'  # pivot line plot
 NOTEBOOKCOLOR = '#c4d1dc'
 ACTIVETABCOLOR = '#648ba4'
 BUTTONGREEN = '#9eda88'
@@ -115,8 +115,8 @@ class Restrictor():
 
     def __init__(self, ax, x=lambda x: True, y=lambda x: True):
 
-        self.res = [x,y]
-        self.ax =ax
+        self.res = [x, y]
+        self.ax = ax
         self.limits = self.get_lim()
         self.ax.callbacks.connect(
             'xlim_changed', lambda evt: self.lims_change(axis=0)
@@ -129,7 +129,7 @@ class Restrictor():
         return [self.ax.get_xlim(), self.ax.get_ylim()]
 
     def set_lim(self, axis, lim):
-        if axis==0:
+        if axis == 0:
             self.ax.set_xlim(lim)
         else:
             self.ax.set_ylim(lim)
@@ -158,18 +158,19 @@ def check_int(value):
         else:
             return False
 
-    except:
+    except Exception:
         return False
 
 
 def check_float(value):
     # Note this isn't the same as isinstance(value, float)
-    # Want to accept anything that can be interpreted as float, like int
+    # Want to accept anything that can be interpreted as float, like int,
+    # and return as a float.
     try:
-        float_value = float(value)
+        float(value)
         return True
 
-    except:
+    except Exception:
         return False
 
 

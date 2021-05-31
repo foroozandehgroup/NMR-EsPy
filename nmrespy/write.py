@@ -24,7 +24,7 @@ from nmrespy._misc import ArgumentChecker, PathManager, significant_figures
 def write_result(
     parameters, errors=None, path='./nmrespy_result', sfo=None, integrals=None,
     description=None, info_headings=None, info=None, sig_figs=5,
-    sci_lims=(-2,3), fmt='txt', force_overwrite=False, pdflatex_exe=None,
+    sci_lims=(-2, 3), fmt='txt', force_overwrite=False, pdflatex_exe=None,
     fprint=True,
 ):
     """Writes an estimation result to a .txt, .pdf or .csv file.
@@ -90,14 +90,14 @@ def write_result(
     pdflatex_exe : str or None, default: None
         The path to the system's ``pdflatex`` executable.
 
-    fprint : bool, default: True
-        Specifies whether or not to print information to the terminal.
-
         .. note::
 
            You are unlikely to need to set this manually. It is primarily
            present to specify the path to ``pdflatex.exe`` on Windows when
            the NMR-EsPy GUI has been loaded from TopSpin.
+
+    fprint : bool, default: True
+        Specifies whether or not to print information to the terminal.
 
     Raises
     ------
@@ -159,8 +159,10 @@ def write_result(
     # --- Check validity of arguments ------------------------------------
     try:
         dim = int(parameters.shape[1] / 2) - 1
-    except:
-        raise TypeError(f'{cols.R}parameters should be a numoy array{cols.END}')
+    except Exception:
+        raise TypeError(
+            f'{cols.R}parameters should be a numoy array{cols.END}'
+        )
 
     components = [
         (parameters, 'parameters', 'parameter'),
@@ -257,6 +259,7 @@ def write_result(
             fprint,
         )
 
+
 def _write_txt(
     path, description, info_headings, info, param_titles, param_table, fprint,
 ):
@@ -310,13 +313,12 @@ def _write_txt(
     )
 
     # --- Write footer ---------------------------------------------------
-    msg += \
-    """\nEstimation performed using NMR-EsPy
-Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk
-If used in any publications, please cite:
-<no papers yet...>
-For more information, visit the GitHub repo:
-"""
+    msg += ("\nEstimation performed using NMR-EsPy\n"
+            "Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk\n"
+            "If used in any publications, please cite:\n"
+            "<no papers yet...>\n"
+            "For more information, visit the GitHub repo:\n")
+
     msg += f'{GITHUBLINK}'
     # Save message to textfile
     with open(path, 'w', encoding='utf-8') as file:
@@ -394,7 +396,6 @@ def _write_pdf(
     # Include a timestamp
     txt = txt.replace('<TIMESTAMP>', _timestamp().replace('\n', '\\\\'))
 
-
     # --- Description ----------------------------------------------------
     if description is None:
         # No description given, remove relavent section of .tex file
@@ -411,8 +412,10 @@ def _write_pdf(
     if info is None:
         # No info given, remove relavent section of .tex file
         txt = txt.replace(
-            '\n% experiment parameters\n\\subsection*{Experiment Information}\n'
-            '\\hspace{-6pt}\n\\begin{tabular}{ll}\n<INFOTABLE>\n'
+            '\n% experiment parameters\n'
+            '\\subsection*{Experiment Information}\n'
+            '\\hspace{-6pt}\n'
+            '\\begin{tabular}{ll}\n<INFOTABLE>\n'
             '\\end{tabular}\n',
             '',
         )
@@ -460,7 +463,7 @@ def _write_pdf(
             pdflatex_exe = "pdflatex"
         # -halt-on-error flag is vital. If any error arises in running
         # pdflatex, the program would get stuck
-        run_latex = subprocess.run(
+        subprocess.run(
             [pdflatex_exe,
              '-halt-on-error',
              f'-output-directory={tex_tmp_path.parent}',
@@ -495,13 +498,12 @@ def _write_pdf(
 
     # Print success message
     if fprint:
-        print(
-            f'{cols.G}Result successfuly output to:\n' \
-            f'{pdf_final_path}\n'
-            f'If you wish to customise the document, the TeX file can'
-            f' be found at:\n'
-            f'{tex_final_path}{cols.END}'
-        )
+        print(f'{cols.G}Result successfuly output to:\n'
+              f'{pdf_final_path}\n'
+              'If you wish to customise the document, the TeX file can'
+              ' be found at:\n'
+              f'{tex_final_path}{cols.END}')
+
 
 def _write_csv(
     path, description, info_headings, info, param_titles, param_table,
@@ -556,7 +558,6 @@ def _write_csv(
 
     if fprint:
         print(f'{cols.G}Saved result to {path}{cols.END}')
-
 
 
 def _map_to_latex_titles(titles):
@@ -680,14 +681,14 @@ def _construct_paramtable(parameters, errors, integrals, sfo, sig_figs,
         # Phase
         row.append(_mystr(parameters[m, 1]))
         # Frequencies
-        for i in range(2, 2+dim):
+        for i in range(2, 2 + dim):
             # Hz
             row.append(_mystr(parameters[m, i]))
             # ppm (if sfo provided)
             if sfo is not None:
-                row.append(_mystr(parameters[m, i] / sfo[i-2]))
+                row.append(_mystr(parameters[m, i] / sfo[i - 2]))
         # Damping
-        for i in range(2+dim, 2+2*dim):
+        for i in range(2 + dim, 2 + 2 * dim):
             row.append(_mystr(parameters[m, i]))
         if integrals is not None:
             # Integrals
@@ -705,21 +706,20 @@ def _construct_paramtable(parameters, errors, integrals, sfo, sig_figs,
             # Phase
             err_row.append("±" + _mystr(errors[m, 1]))
             # Frequencies
-            for i in range(2, 2+dim):
+            for i in range(2, 2 + dim):
                 # Hz
                 err_row.append("±" + _mystr(errors[m, i]))
                 # ppm (if sfo provided)
                 if sfo is not None:
-                    err_row.append("±" + _mystr(errors[m, i] / sfo[i-2]))
+                    err_row.append("±" + _mystr(errors[m, i] / sfo[i - 2]))
             # Damping
-            for i in range(2+dim, 2+2*dim):
+            for i in range(2 + dim, 2 + 2 * dim):
                 err_row.append("±" + _mystr(errors[m, i]))
 
             # TODO: Integral errors
             if integrals is not None:
                 err_row = err_row + 2 * ['-']
             table.append(err_row)
-
 
     return titles, table
 
@@ -738,10 +738,10 @@ def _timestamp():
            dd-mm-yy
     """
     now = datetime.datetime.now()
-    d = now.strftime('%d') # Day
-    m = now.strftime('%m') # Month
-    y = now.strftime('%Y') # Year
-    t = now.strftime('%X') # Time (hh:mm:ss)
+    d = now.strftime('%d')  # Day
+    m = now.strftime('%m')  # Month
+    y = now.strftime('%Y')  # Year
+    t = now.strftime('%X')  # Time (hh:mm:ss)
     return f'{t}\n{d}-{m}-{y}'
 
 
@@ -771,6 +771,7 @@ def _strval(value, sig_figs, sci_lims, fmt):
     # Determine whether to express the value in scientific notation or not
     return _scientific_notation(value, sci_lims, fmt)
 
+
 def _scientific_notation(value, sci_lims, fmt):
     """Converts value to scientific notation
 
@@ -788,9 +789,10 @@ def _scientific_notation(value, sci_lims, fmt):
     # If user speicifed to never user scientific notation, or the value
     # does not have a sufficiently high exponent, or the file type is a csv,
     # simply return the value unedited, as a string.
-    if sci_lims is None or \
-    abs(value) < 10 ** sci_lims[1] and abs(value) >= 10 ** (sci_lims[0]) or \
-    fmt == 'csv':
+    if (sci_lims is None or
+            (abs(value) < 10 ** sci_lims[1] and
+             abs(value) >= 10 ** (sci_lims[0])) or
+            fmt == 'csv'):
         return str(value)
 
     # Convert to scientific notation
@@ -862,7 +864,7 @@ def _txt_tabular(columns, titles=None, separator=''):
     """
     # If titles are given, append to the top of each column
     if titles:
-        for i,(title, column) in enumerate(zip(titles, columns)):
+        for i, (title, column) in enumerate(zip(titles, columns)):
             columns[i] = [title] + column
     # --- Determine width of each column ---------------------------------
     pads = []
@@ -902,6 +904,7 @@ def _txt_tabular(columns, titles=None, separator=''):
             table = f'{table[:-1]}\n'
 
     return table
+
 
 def _latex_tabular(rows):
     """Creates a string of text that denotes a tabular entity in LaTeX

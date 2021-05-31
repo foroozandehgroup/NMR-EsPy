@@ -4,7 +4,7 @@ Estimation Set-up
 The following is a screenshot of the NMR-EsPy GUI calculation set-up window.
 Key features of the window are annotated:
 
-.. image:: ../../_static/gui/windows/setup_window.png
+.. image:: ../../media/gui/windows/setup_window.png
    :align: center
    :scale: 60%
 
@@ -23,27 +23,27 @@ with the following available buttons:
    * - Icon
      - Role
 
-   * - .. image:: ../../_static/gui/navigation_icons/home.png
+   * - .. image:: ../../media/gui/navigation_icons/home.png
           :width: 60%
           :align: center
      - Return to the original plot view.
 
-   * - .. image:: ../../_static/gui/navigation_icons/back.png
+   * - .. image:: ../../media/gui/navigation_icons/back.png
           :width: 60%
           :align: center
      - Return to the previous plot view.
 
-   * - .. image:: ../../_static/gui/navigation_icons/forward.png
+   * - .. image:: ../../media/gui/navigation_icons/forward.png
           :width: 60%
           :align: center
      - Undo a return to a previous view
 
-   * - .. image:: ../../_static/gui/navigation_icons/pan.png
+   * - .. image:: ../../media/gui/navigation_icons/pan.png
           :width: 60%
           :align: center
      - Pan. Note that panning outside the spectral window is not possible.
 
-   * - .. image:: ../../_static/gui/navigation_icons/zoom.png
+   * - .. image:: ../../media/gui/navigation_icons/zoom.png
           :width: 60%
           :align: center
      - Zoom.
@@ -55,7 +55,7 @@ Phase Correction
 The GUI has the following appearance when the `Phase Correction` tab is
 selected:
 
-.. image:: ../../_static/gui/windows/setup_window_phase_tab.png
+.. image:: ../../media/gui/windows/setup_window_phase_tab.png
    :align: center
    :scale: 60%
 
@@ -98,14 +98,14 @@ inputting desired values into the adjacent entry boxes.
    .. raw:: html
 
       <video width="640" height="640" style="display:block; margin: 0 auto;" controls autoplay>
-        <source src="../../_static/gui/entry_widget_example.mp4" type="video/mp4">
+        <source src="../../media/gui/entry_widget_example.mp4" type="video/mp4">
         Your browser doesn't support the video tag
       </video>
 
     Note that if you try to run the estimation routine while at least one entry
     box has not be validated, you will be prevented from doing so:
 
-    .. image:: ../../_static/gui/windows/unverified_parameter_window.png
+    .. image:: ../../media/gui/windows/unverified_parameter_window.png
        :align: center
        :scale: 80%
 
@@ -135,7 +135,7 @@ Advanced Estimation Settings
 Clicking the `Advanced Settings` button will load a window enabling various
 aspects of the estimation routine to be tweaked:
 
-.. image:: ../../_static/gui/windows/advanced_settings_window.png
+.. image:: ../../media/gui/windows/advanced_settings_window.png
    :align: center
    :scale: 80%
 
@@ -155,7 +155,7 @@ Signal Filter Options
   becomes redundant, and so it can be appropriate the "cut" off regions that are
   not of interest. The basic idea is illustrated in this figure:
 
-  .. image:: ../../_static/gui/filter_cut/filter_cut.png
+  .. image:: ../../media/gui/filter_cut/filter_cut.png
      :align: center
      :scale: 20%
 

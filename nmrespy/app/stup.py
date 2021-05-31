@@ -2,8 +2,6 @@ from datetime import datetime
 from matplotlib import figure, patches
 from matplotlib.backends import backend_tkagg
 import re
-import threading
-import time
 
 from .._misc import latex_nucleus
 from .config import *
@@ -58,8 +56,9 @@ class SetUp(MyToplevel):
                 self.bounds[name][unit] = value_var_dict(value, var_str)
 
         # Number of points the selected region is composed of
-        self.region_size = self.bounds['rb']['idx']['value'] - \
-                           self.bounds['lb']['idx']['value']
+        self.region_size = \
+            self.bounds['rb']['idx']['value'] - \
+            self.bounds['lb']['idx']['value']
 
         # --- Phase correction parameters --------------------------------
         self.pivot = {}
@@ -130,7 +129,7 @@ class SetUp(MyToplevel):
         # --- Figure for setting up estimation ---------------------------
         self.setupfig = {}
         # Figure
-        self.setupfig['fig'] = figure.Figure(figsize=(6,3.5), dpi=170)
+        self.setupfig['fig'] = figure.Figure(figsize=(6, 3.5), dpi=170)
         # Axis
         self.setupfig['ax'] = \
             self.setupfig['fig'].add_axes([0.05, 0.12, 0.9, 0.83])
@@ -138,7 +137,7 @@ class SetUp(MyToplevel):
         # Generates a matplotlib.Line.Line2D object
         self.setupfig['plot'] = self.setupfig['ax'].plot(
             self.shifts['ppm'], np.real(self.spec), color='k', lw=0.6,
-        )[0] # <- unpack from list
+        )[0]  # <- unpack from list
 
         # Set x-limits as edges of spectral window
         xlim = (self.shifts['ppm'][0], self.shifts['ppm'][-1])
@@ -158,8 +157,9 @@ class SetUp(MyToplevel):
         # matplotlib.patches.Rectangle's first 3 args:
         # (left, bottom), width, height
         bottom_left = (self.bounds['lb']['ppm']['value'], -20 * ylim[1])
-        width = self.bounds['rb']['ppm']['value'] - \
-                self.bounds['lb']['ppm']['value']
+        width = \
+            self.bounds['rb']['ppm']['value'] - \
+            self.bounds['lb']['ppm']['value']
         height = 40 * ylim[1]
 
         self.setupfig['region'] = patches.Rectangle(
@@ -169,8 +169,9 @@ class SetUp(MyToplevel):
 
         # Highlight the noise region (height same as before)
         bottom_left = (self.bounds['lnb']['ppm']['value'], -20 * ylim[1])
-        width = self.bounds['rnb']['ppm']['value'] - \
-                self.bounds['lnb']['ppm']['value']
+        width = \
+            self.bounds['rnb']['ppm']['value'] - \
+            self.bounds['lnb']['ppm']['value']
 
         self.setupfig['noise_region'] = patches.Rectangle(
             bottom_left, width, height, facecolor=NOISEREGIONCOLOR
@@ -235,7 +236,9 @@ class SetUp(MyToplevel):
         self.toolbar = MyNavigationToolbar(
             self.canvas, parent=self.toolbar_frame,
         )
-        self.toolbar.grid(row=0, column=0, sticky='w', padx=(10,0), pady=(0,5))
+        self.toolbar.grid(
+            row=0, column=0, sticky='w', padx=(10, 0), pady=(0, 5),
+        )
 
         # Frame containing notebook widget: for region selection and
         # phase correction
@@ -243,7 +246,9 @@ class SetUp(MyToplevel):
         # Make notebook adjustable horizontally
         self.tab_frame.columnconfigure(0, weight=1)
         self.notebook = MyNotebook(self.tab_frame)
-        self.notebook.grid(row=0, column=0, sticky='ew', padx=10, pady=(0,10))
+        self.notebook.grid(
+            row=0, column=0, sticky='ew', padx=10, pady=(0, 10),
+        )
 
         # Whenever tab is clicked, change plot so that either region
         # selection patches are visible, or phase pivot, depending on
@@ -290,12 +295,12 @@ class SetUp(MyToplevel):
 
             self.region_scales[name] = scale = MyScale(
                 self.region_frame,
-                from_ = 0,
-                to = self.n - 1,
-                troughcolor = troughcolor,
-                bg = NOTEBOOKCOLOR,
-                command=(lambda idx, name=name:
-                    self.update_region_scale(idx, name)),
+                from_=0,
+                to=self.n - 1,
+                troughcolor=troughcolor,
+                bg=NOTEBOOKCOLOR,
+                command=(lambda idx, n=name:
+                         self.update_region_scale(idx, n)),
             )
             scale.set(self.bounds[name]['idx']['value'])
 
@@ -307,8 +312,8 @@ class SetUp(MyToplevel):
             )
 
             pady = (10, 0) if row != 3 else 10
-            title.grid(row=row, column=0, padx=(10,0), pady=pady, sticky='w')
-            scale.grid(row=row, column=1, padx=(10,0), pady=pady, sticky='ew')
+            title.grid(row=row, column=0, padx=(10, 0), pady=pady, sticky='w')
+            scale.grid(row=row, column=1, padx=(10, 0), pady=pady, sticky='ew')
             entry.grid(row=row, column=2, padx=10, pady=pady, sticky='w')
 
         # Frame with scale widgets for region selection
@@ -324,9 +329,10 @@ class SetUp(MyToplevel):
         self.phase_scales = {}
         self.phase_entries = {}
 
-        for row, (name, title) in enumerate(zip(('pivot', 'p0', 'p1'), ('pivot', 'φ₀', 'φ₁'))):
+        for row, (name, title) in enumerate(
+            zip(('pivot', 'p0', 'p1'), ('pivot', 'φ₀', 'φ₁'))
+        ):
             # Scale titles
-
             self.phase_titles[name] = title = MyLabel(
                 self.phase_frame, text=title, bg=NOTEBOOKCOLOR
             )
@@ -351,16 +357,15 @@ class SetUp(MyToplevel):
                 resolution = 0.001
 
             self.phase_scales[name] = scale = MyScale(
-                    self.phase_frame,
-                    troughcolor = troughcolor,
-                    from_ = from_,
-                    to = to,
-                    resolution = resolution,
-                    bg = NOTEBOOKCOLOR,
-                    command=(lambda value, name=name:
-                        self.update_phase_scale(value, name)),
+                self.phase_frame,
+                troughcolor=troughcolor,
+                from_=from_,
+                to=to,
+                resolution=resolution,
+                bg=NOTEBOOKCOLOR,
+                command=(lambda value, n=name:
+                         self.update_phase_scale(value, n)),
             )
-
 
             if name == 'pivot':
                 scale.set(self.pivot['idx']['value'])
@@ -376,10 +381,10 @@ class SetUp(MyToplevel):
                 textvariable=var,
             )
 
-            pady = (10,0) if row != 2 else 10
+            pady = (10, 0) if row != 2 else 10
 
-            title.grid(row=row, column=0, padx=(10,0), pady=pady, sticky='w')
-            scale.grid(row=row, column=1, padx=(10,0), pady=pady, sticky='ew')
+            title.grid(row=row, column=0, padx=(10, 0), pady=pady, sticky='w')
+            scale.grid(row=row, column=1, padx=(10, 0), pady=pady, sticky='ew')
             entry.grid(row=row, column=2, padx=10, pady=pady, sticky='w')
 
         # Frame with NMR-EsPy an MF group logos
@@ -394,7 +399,6 @@ class SetUp(MyToplevel):
         self.tab_frame.grid(row=2, column=0, columnspan=2, sticky='ew')
         self.logo_frame.grid(row=3, column=0, padx=10, pady=10, sticky='w')
         self.button_frame.grid(row=3, column=1, sticky='s')
-
 
     def click_cross(self):
         """Runs when user clicks close 'x' button. Destroy master."""
@@ -424,10 +428,9 @@ class SetUp(MyToplevel):
             else:
                 raise
 
-        except:
+        except Exception:
             # Conversion to numerical value failed, revert to previous value
             self.reset_bound(name, unit)
-
 
     def update_region_scale(self, idx, name):
         """Update the GUI after the user changes the slider on a scale
@@ -444,14 +447,12 @@ class SetUp(MyToplevel):
         self.region_scales[name].set(idx)
         self.update_bound(name, idx)
 
-
     def reset_bound(self, name, unit):
         value = self.bounds[name][unit]['value']
         if unit == 'idx':
             self.bounds[name][unit]['var'].set(str(value))
         else:
             self.bounds[name][unit]['var'].set(f'{value:.4f}')
-
 
     def check_valid_index(self, idx, name):
         """Given an update index, and the identity of the bound to change,
@@ -492,8 +493,9 @@ class SetUp(MyToplevel):
 
         if reg == 'region':
             # Update region of interest size
-            self.region_size = self.bounds['rb']['idx']['value'] - \
-                               self.bounds['lb']['idx']['value']
+            self.region_size = \
+                self.bounds['rb']['idx']['value'] - \
+                self.bounds['lb']['idx']['value']
             # Update maximum number of points possible
             self.ud_max_points()
 
@@ -508,7 +510,6 @@ class SetUp(MyToplevel):
         self.setupfig[reg].set_width(right - left)
         # update plot
         self.update_plot()
-
 
     def switch_tab(self):
         """Adjusts the appearence of the plot when a new tab is selected.
@@ -537,7 +538,6 @@ class SetUp(MyToplevel):
         else:
             self.update_p0_p1(float(value), name)
 
-
     def update_phase_entry(self, name):
         """Update the GUI after the user changes and entry widget"""
 
@@ -557,7 +557,7 @@ class SetUp(MyToplevel):
                 else:
                     raise
 
-            except:
+            except Exception:
                 self.reset_pivot(unit)
 
         else:
@@ -568,7 +568,7 @@ class SetUp(MyToplevel):
                 # Regex that matches numerical values
                 regex = r"^[+-]?(\d+(\.\d*)?|\.\d+)$"
                 if re.fullmatch(regex, value):
-                    x = float(value)#
+                    x = float(value)
                 # Check if numerical value with pi appended
                 # i.e. 1pi, 0.25pi, .25pi, 1.pi etc.
                 elif re.fullmatch(regex.replace(r'$', r'pi$'), value):
@@ -595,9 +595,8 @@ class SetUp(MyToplevel):
 
                 self.update_phase(x, name)
 
-            except:
+            except Exception:
                 self.reset_phase(name, unit)
-
 
     def reset_pivot(self, unit):
         if unit == 'idx':
@@ -606,7 +605,6 @@ class SetUp(MyToplevel):
             self.pivot[unit]['var'].set(
                 f"{self.pivot[unit]['value']:.4f}"
             )
-
 
     def reset_phase(self, name, unit):
         self.phases[name][unit]['var'].set(
@@ -632,7 +630,6 @@ class SetUp(MyToplevel):
         # Perform phase correction based on the updated pivot
         self.phase_correct()
 
-
     def update_p0_p1(self, rad, name):
         """Given a name and value in units of radians, update a phase
         correction parameter"""
@@ -645,7 +642,6 @@ class SetUp(MyToplevel):
         # Perform phase correction based on the updated phase
         self.phase_correct()
 
-
     def phase_correct(self):
         """Perform phase correction of spectral data, and update setup
         Toplevel plot"""
@@ -656,17 +652,17 @@ class SetUp(MyToplevel):
         n = self.n
 
         # Perform phase correction of spectrum
-        corrector = np.exp(1j * (p0 + p1 * np.arange(-pivot, -pivot+n, 1) / n))
+        corrector = \
+            np.exp(1j * (p0 + p1 * np.arange(-pivot, -pivot + n, 1) / n))
         self.setupfig['plot'].set_ydata(np.real(self.spec * corrector))
 
         # Update plot
         self.update_plot()
 
-
     def ud_max_points(self):
         """Update the maximum number of points StringVar"""
 
-        if self.cut['value'] == True:
+        if self.cut['value']:
             # Check range is suitable. If not, set it within the spectrum.
             # Divide by two as halving signal in `estimator.frequency_filter`
             cut_size = self.cut_size()
@@ -693,22 +689,19 @@ class SetUp(MyToplevel):
         # or they are smaller than the default number of points for
         # MPM and NLP, update
         for name, default in zip(('mpm', 'nlp'), (4096, 8192)):
-            if self.trim[name]['value'] > self.max_points['value'] \
-            or self.max_points['value'] <= default:
+            if (self.trim[name]['value'] > self.max_points['value']
+                    or self.max_points['value'] <= default):
                 self.trim[name]['value'] = self.max_points['value']
                 self.trim[name]['var'].set(str(self.max_points['value']))
-
 
     def update_plot(self):
         """Redraw the plot figure canvas"""
         self.canvas.draw_idle()
 
-
     def cut_size(self):
         """Get the theoretical number of points if cutting of the filtered
         spectrum is applied"""
         return int((self.cut_ratio['value'] * self.region_size) // 2)
-
 
     def run(self):
         """Set up the estimation routine"""
@@ -788,7 +781,8 @@ class SetUp(MyToplevel):
 
         # Pickle result class to the temporary directory
         dt = datetime.now()
-        timestamp = f"{dt.year}{dt.month}{dt.day}{dt.hour}{dt.minute}{dt.second}"
+        timestamp = (f"{dt.year}{dt.month}{dt.day}"
+                     f"{dt.hour}{dt.minute}{dt.second}")
         tmppath = str(TMPPATH / timestamp)
         self.estimator.to_pickle(path=tmppath, force_overwrite=True)
 
@@ -796,7 +790,6 @@ class SetUp(MyToplevel):
         # self.master.waiting_window.destroy()
         self.destroy()
         self.master.result()
-
 
 
 class SetupButtonFrame(RootButtonFrame):
@@ -813,7 +806,7 @@ class SetupButtonFrame(RootButtonFrame):
             command=self.advanced_settings
         )
         self.adsettings_button.grid(
-            row=0, column=0, columnspan=3, sticky='ew', padx=10, pady=(0,5),
+            row=0, column=0, columnspan=3, sticky='ew', padx=10, pady=(0, 5),
         )
 
         self.help_button['command'] = lambda: webbrowser.open_new(
@@ -841,31 +834,37 @@ class AdvancedSettings(MyToplevel):
             font=(MAINFONT, 14, 'bold'),
         )
         adsettings_title.grid(
-            row=0, column=0, columnspan=2, padx=(10,0), pady=(10,0), sticky='w',
+            row=0, column=0, columnspan=2, padx=(10, 0), pady=(10, 0),
+            sticky='w',
         )
 
         filter_title = MyLabel(
             self.main_frame, text='Signal Filter Options', bold=True,
         )
         filter_title.grid(
-            row=1, column=0, columnspan=2, padx=(10,0), pady=(10,0), sticky='w',
+            row=1, column=0, columnspan=2, padx=(10, 0), pady=(10, 0),
+            sticky='w',
         )
 
         cut_label = MyLabel(self.main_frame, text='Cut signal:')
-        cut_label.grid(row=2, column=0, padx=(10,0), pady=(10,0), sticky='w')
+        cut_label.grid(
+            row=2, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
+        )
 
         self.cut_checkbutton = MyCheckbutton(
             self.main_frame, variable=self.master.cut['var'],
             command=self.ud_cut,
         )
         self.cut_checkbutton.grid(
-            row=2, column=1, padx=10, pady=(10,0), sticky='w',
+            row=2, column=1, padx=10, pady=(10, 0), sticky='w',
         )
 
         ratio_label = MyLabel(
             self.main_frame, text='Cut width/filter width ratio:',
         )
-        ratio_label.grid(row=3, column=0, padx=(10,0), pady=(10,0), sticky='w')
+        ratio_label.grid(
+            row=3, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
+        )
 
         self.ratio_entry = MyEntry(
             self.main_frame,
@@ -873,16 +872,21 @@ class AdvancedSettings(MyToplevel):
             return_args=(),
             textvariable=self.master.cut_ratio['var'],
         )
-        self.ratio_entry.grid(row=3, column=1, padx=10, pady=(10,0), sticky='w')
+        self.ratio_entry.grid(
+            row=3, column=1, padx=10, pady=(10, 0), sticky='w',
+        )
 
         mpm_title = MyLabel(self.main_frame, text='Matrix Pencil', bold=True)
         mpm_title.grid(
-            row=4, column=0, columnspan=2, padx=(10,0), pady=(10,0), sticky='w',
+            row=4, column=0, columnspan=2, padx=(10, 0), pady=(10, 0),
+            sticky='w',
         )
 
-        datapoint_label = MyLabel(self.main_frame, text='Datapoints to consider*:')
+        datapoint_label = MyLabel(
+            self.main_frame, text='Datapoints to consider*:',
+        )
         datapoint_label.grid(
-            row=5, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=5, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         self.mpm_points_entry = MyEntry(
@@ -892,14 +896,14 @@ class AdvancedSettings(MyToplevel):
             textvariable=self.master.trim['mpm']['var'],
         )
         self.mpm_points_entry.grid(
-            row=5, column=1, padx=10, pady=(10,0), sticky='w',
+            row=5, column=1, padx=10, pady=(10, 0), sticky='w',
         )
 
         oscillator_label = MyLabel(
             self.main_frame, text='Number of oscillators:',
         )
         oscillator_label.grid(
-            row=6, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=6, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         self.oscillator_entry = MyEntry(
@@ -909,12 +913,12 @@ class AdvancedSettings(MyToplevel):
             textvariable=self.master.m['var'],
         )
         self.oscillator_entry.grid(
-            row=6, column=1, padx=10, pady=(10,0), sticky='w',
+            row=6, column=1, padx=10, pady=(10, 0), sticky='w',
         )
 
         use_mdl_label = MyLabel(self.main_frame, text='Use MDL:')
         use_mdl_label.grid(
-            row=7, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=7, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         self.mdl_checkbutton = MyCheckbutton(
@@ -922,21 +926,21 @@ class AdvancedSettings(MyToplevel):
             command=self.ud_mdl_button,
         )
         self.mdl_checkbutton.grid(
-            row=7, column=1, padx=10, pady=(10,0), sticky='w',
+            row=7, column=1, padx=10, pady=(10, 0), sticky='w',
         )
 
         nlp_title = MyLabel(
             self.main_frame, text='Nonlinear Programming', bold=True,
         )
         nlp_title.grid(
-            row=8, column=0, columnspan=2, padx=10, pady=(10,0), sticky='w',
+            row=8, column=0, columnspan=2, padx=10, pady=(10, 0), sticky='w',
         )
 
         datapoint_label = MyLabel(
             self.main_frame, text='Datapoints to consider*:',
         )
         datapoint_label.grid(
-            row=9, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=9, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         self.nlp_points_entry = MyEntry(
@@ -946,12 +950,12 @@ class AdvancedSettings(MyToplevel):
             textvariable=self.master.trim['nlp']['var'],
         )
         self.nlp_points_entry.grid(
-            row=9, column=1, padx=10, pady=(10,0), sticky='w',
+            row=9, column=1, padx=10, pady=(10, 0), sticky='w',
         )
 
         nlp_method_label = MyLabel(self.main_frame, text='NLP algorithm:')
         nlp_method_label.grid(
-            row=10, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=10, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         options = ('Trust Region', 'L-BFGS')
@@ -975,14 +979,14 @@ class AdvancedSettings(MyToplevel):
         # algorithm
         self.master.method['var'].trace('w', self.ud_nlp_algorithm)
         self.algorithm_menu.grid(
-            row=10, column=1, padx=10, pady=(10,0), sticky='w',
+            row=10, column=1, padx=10, pady=(10, 0), sticky='w',
         )
 
         max_iterations_label = MyLabel(
             self.main_frame, text='Maximum iterations:',
         )
         max_iterations_label.grid(
-            row=11, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=11, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         self.max_iterations_entry = MyEntry(
@@ -992,14 +996,14 @@ class AdvancedSettings(MyToplevel):
             textvariable=self.master.maxit['var'],
         )
         self.max_iterations_entry.grid(
-            row=11, column=1, padx=10, pady=(10,0), sticky='w',
+            row=11, column=1, padx=10, pady=(10, 0), sticky='w',
         )
 
         phase_variance_label = MyLabel(
             self.main_frame, text='Optimise phase variance:',
         )
         phase_variance_label.grid(
-            row=12, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=12, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         self.phase_var_checkbutton = MyCheckbutton(
@@ -1007,13 +1011,13 @@ class AdvancedSettings(MyToplevel):
             command=self.ud_phase_variance,
         )
         self.phase_var_checkbutton.grid(
-            row=12, column=1, padx=10, pady=(10,0), sticky='w',
+            row=12, column=1, padx=10, pady=(10, 0), sticky='w',
         )
 
         # amplitude/frequency thresholds
         amp_thold_label = MyLabel(self.main_frame, text='Amplitude threshold:')
         amp_thold_label.grid(
-            row=13, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=13, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         self.amp_thold_frame = MyFrame(self.main_frame)
@@ -1026,7 +1030,7 @@ class AdvancedSettings(MyToplevel):
             textvariable=self.master.amp_thold['var'],
         )
         self.amp_thold_entry.grid(
-            row=0, column=0, padx=(10,0), pady=(10,0), sticky='w',
+            row=0, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         )
 
         self.amp_thold_checkbutton = MyCheckbutton(
@@ -1034,13 +1038,15 @@ class AdvancedSettings(MyToplevel):
             command=self.ud_amp_thold_button,
         )
         self.amp_thold_checkbutton.grid(
-            row=0, column=1, pady=(10,0), padx=10, sticky='w',
+            row=0, column=1, pady=(10, 0), padx=10, sticky='w',
         )
 
-        ## May reincorporate later on ========================================
-        # freq_thold_label = MyLabel(self.main_frame, text='Frequency threshold:')
+        # TODO May reincorporate later on...
+        # freq_thold_label = MyLabel(
+        #    self.main_frame, text='Frequency threshold:',
+        # )
         # freq_thold_label.grid(
-        #     row=14, column=0, padx=(10,0), pady=(10,0), sticky='w',
+        #     row=14, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         # )
         #
         # self.freq_thold_frame = MyFrame(self.main_frame)
@@ -1052,7 +1058,7 @@ class AdvancedSettings(MyToplevel):
         #     textvariable=self.master.adsettings['freq_thold']['var']['ppm'],
         # )
         # self.freq_thold_entry.grid(
-        #     row=0, column=0, padx=(10,0), pady=(10,0), sticky='w',
+        #     row=0, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
         # )
         #
         # self.freq_thold_checkbutton = MyCheckbutton(
@@ -1061,9 +1067,8 @@ class AdvancedSettings(MyToplevel):
         #     command=lambda name='freq': self.ud_thold_button(name),
         # )
         # self.freq_thold_checkbutton.grid(
-        #     row=0, column=1, pady=(10,0), padx=10, sticky='w',
+        #     row=0, column=1, pady=(10, 0), padx=10, sticky='w',
         # )
-        # # ==================================================================
 
         self.button_frame = MyFrame(self)
         self.button_frame.columnconfigure(2, weight=1)
@@ -1074,7 +1079,7 @@ class AdvancedSettings(MyToplevel):
             font=(MAINFONT, 9),
         )
         max_label.grid(
-            row=0, column=0, padx=(10,0), pady=(20,10), sticky='w',
+            row=0, column=0, padx=(10, 0), pady=(20, 10), sticky='w',
         )
 
         self.max_points_label_mpm = MyLabel(
@@ -1082,14 +1087,15 @@ class AdvancedSettings(MyToplevel):
             textvariable=self.master.max_points['var'],
         )
         self.max_points_label_mpm.grid(
-            row=0, column=1, padx=(3,0), pady=(20,10), sticky='w',
+            row=0, column=1, padx=(3, 0), pady=(20, 10), sticky='w',
         )
 
         self.close_button = MyButton(
             self.button_frame, text='Close', command=self.close
         )
-        self.close_button.grid(row=0, column=2, padx=10, pady=(20,10), sticky='e')
-
+        self.close_button.grid(
+            row=0, column=2, padx=10, pady=(20, 10), sticky='e',
+        )
 
     def ud_cut(self):
 
@@ -1102,7 +1108,6 @@ class AdvancedSettings(MyToplevel):
 
         self.master.ud_max_points()
 
-
     def ud_cut_ratio(self):
 
         # check the value can be interpreted as a float
@@ -1113,14 +1118,15 @@ class AdvancedSettings(MyToplevel):
             self.master.ud_max_points()
 
         else:
-            self.master.cut_ratio['var'].set(str(self.master.cut_ratio['value']))
-
+            self.master.cut_ratio['var'].set(
+                str(self.master.cut_ratio['value']),
+            )
 
     def ud_points(self, name):
 
         str_value = self.master.trim[name]['var'].get()
-        if check_int(str_value) and \
-        0 < int(str_value) <= self.master.max_points['value']:
+        if (check_int(str_value) and
+                0 < int(str_value) <= self.master.max_points['value']):
             int_value = int(str_value)
             self.master.trim[name]['value'] = int_value
             self.master.trim[name]['var'].set(str(int_value))
@@ -1129,7 +1135,6 @@ class AdvancedSettings(MyToplevel):
             self.master.trim[name]['var'].set(
                 str(self.master.trim[name]['value'])
             )
-
 
     def ud_mdl_button(self):
         """For when the user clicks on the checkbutton relating to use the
@@ -1146,7 +1151,6 @@ class AdvancedSettings(MyToplevel):
             self.oscillator_entry['state'] = 'normal'
             self.oscillator_entry.key_press()
 
-
     def ud_oscillators(self):
 
         str_value = self.master.m['var'].get()
@@ -1162,7 +1166,6 @@ class AdvancedSettings(MyToplevel):
             else:
                 self.master.m['var'].set(str(self.master.m['value']))
 
-
     def ud_max_iterations(self):
 
         str_value = self.master.maxit['var'].get()
@@ -1173,7 +1176,6 @@ class AdvancedSettings(MyToplevel):
 
         else:
             self.master.maxit['var'].set(str(self.master.maxit['value']))
-
 
     def ud_nlp_algorithm(self, *args):
         """Called when user changes the NLP algorithm. Sets the default
@@ -1190,14 +1192,12 @@ class AdvancedSettings(MyToplevel):
             self.master.maxit['value'] = 500
             self.master.maxit['var'].set('500')
 
-
     def ud_phase_variance(self):
 
         if int(self.master.phase_variance['var'].get()):
             self.master.phase_variance['value'] = True
         else:
             self.master.phase_variance['value'] = False
-
 
     def ud_amp_thold_button(self):
         """For when the user clicks on the checkbutton relating to whether
@@ -1210,7 +1210,6 @@ class AdvancedSettings(MyToplevel):
             self.master.use_amp_thold['value'] = False
             self.amp_thold_entry['state'] = 'disabled'
 
-
     def ud_amp_thold(self):
         # check the value can be interpreted as a float
         str_value = self.master.amp_thold['var'].get()
@@ -1219,8 +1218,9 @@ class AdvancedSettings(MyToplevel):
             self.master.amp_thold['value'] = float_value
 
         else:
-            self.master.amp_thold['var'].set(str(self.master.amp_thold['value']))
-
+            self.master.amp_thold['var'].set(
+                str(self.master.amp_thold['value']),
+            )
 
     def close(self):
         valid = check_invalid_entries(self.main_frame)

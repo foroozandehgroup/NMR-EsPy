@@ -1,11 +1,14 @@
-import random
-from threading import Thread
 import webbrowser
 
 from .. import *
-from .. import sig
 from .config import *
 from .custom_widgets import *
+
+# TODO for animation
+# from matplotlib.animation import FuncAnimation
+# from matplotlib.backends import backend_tkagg
+# import matplotlib.pyplot as plt
+# import numpy as np
 
 
 class LogoFrame(MyFrame):
@@ -58,7 +61,7 @@ class WarnWindow(MyToplevel):
         # warning image
         self.img = get_PhotoImage((IMAGESPATH / 'warning.png'), 0.08)
         self.warn_sign = MyLabel(self, image=self.img)
-        self.warn_sign.grid(row=0, column=0, padx=(10,0), pady=10)
+        self.warn_sign.grid(row=0, column=0, padx=(10, 0), pady=10)
 
         # add text explaining the issue
         text = MyLabel(self, text=msg, wraplength=400)
@@ -68,7 +71,7 @@ class WarnWindow(MyToplevel):
         close_button = MyButton(
             self, text='Close', bg='#ff9894', command=self.destroy,
         )
-        close_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(0,10))
+        close_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10))
 
 
 class DataType(MyToplevel):
@@ -111,7 +114,7 @@ class DataType(MyToplevel):
             font=(MAINFONT, '12', 'bold'),
         )
         msg.grid(
-            column=0, row=0, columnspan=2, padx=10, pady=(10,0)
+            column=0, row=0, columnspan=2, padx=10, pady=(10, 0)
         )
 
         # --- Processd data checkbutton and labels -----------------------
@@ -119,7 +122,7 @@ class DataType(MyToplevel):
             self.main_frame, text='Processed Data'
         )
         pdata_label.grid(
-            column=0, row=1, padx=(10,0), pady=(10,0), sticky='w'
+            column=0, row=1, padx=(10, 0), pady=(10, 0), sticky='w'
         )
 
         pdatapath = MyLabel(
@@ -159,7 +162,7 @@ class DataType(MyToplevel):
             self.main_frame, variable=self.fid, command=self.click_fid,
         )
         self.fid_box.grid(
-            column=1, row=3, rowspan=2, padx=(10,0), sticky='nsw'
+            column=1, row=3, rowspan=2, padx=(10, 0), sticky='nsw'
         )
 
         # --- Confirm and Cancel buttons ---------------------------------
@@ -201,7 +204,8 @@ class DataType(MyToplevel):
 
 
 class RootButtonFrame(MyFrame):
-    def __init__(self, master, cancel_msg="Are you sure you want to close NMR-EsPy?"):
+    def __init__(self, master,
+                 cancel_msg="Are you sure you want to close NMR-EsPy?"):
         super().__init__(master)
 
         self.cancel_msg = cancel_msg
@@ -210,7 +214,7 @@ class RootButtonFrame(MyFrame):
             self, text='Cancel', bg=BUTTONRED, command=self.cancel
         )
         self.cancel_button.grid(
-            row=1, column=0, padx=(10,0), pady=(10,0), sticky='e',
+            row=1, column=0, padx=(10, 0), pady=(10, 0), sticky='e',
         )
 
         self.help_button = MyButton(
@@ -218,7 +222,7 @@ class RootButtonFrame(MyFrame):
             command=lambda: webbrowser.open_new(DOCSLINK)
         )
         self.help_button.grid(
-            row=1, column=1, padx=(10,0), pady=(10,0), sticky='e'
+            row=1, column=1, padx=(10, 0), pady=(10, 0), sticky='e'
         )
 
         # Command varies - will need to be defined from the class that
@@ -226,14 +230,14 @@ class RootButtonFrame(MyFrame):
         # For example, see SetupButtonFrame
         self.green_button = MyButton(self, bg=BUTTONGREEN)
         self.green_button.grid(
-            row=1, column=2, padx=10, pady=(10,0), sticky='e',
+            row=1, column=2, padx=10, pady=(10, 0), sticky='e',
         )
 
         contact_info_1 = MyLabel(
             self, text='For queries/feedback, contact',
         )
         contact_info_1.grid(
-            row=2, column=0, columnspan=3, padx=10, pady=(10,0), sticky='w',
+            row=2, column=0, columnspan=3, padx=10, pady=(10, 0), sticky='w',
         )
 
         contact_info_2 = MyLabel(
@@ -245,7 +249,7 @@ class RootButtonFrame(MyFrame):
         )
 
         contact_info_2.grid(
-            row=3, column=0, columnspan=3, padx=10, pady=(0,10), sticky='w',
+            row=3, column=0, columnspan=3, padx=10, pady=(0, 10), sticky='w',
         )
 
     def cancel(self):
@@ -276,13 +280,12 @@ class ConfirmWindow(MyToplevel):
         cancel_button = MyButton(
             self, text=no_text, bg=BUTTONRED, command=self.cancel,
         )
-        cancel_button.grid(row=1, column=0, padx=10, pady=(0,10))
+        cancel_button.grid(row=1, column=0, padx=10, pady=(0, 10))
 
         confirm_button = MyButton(
             self, text=yes_text, bg=BUTTONGREEN, command=self.confirm,
         )
-        confirm_button.grid(row=1, column=1, padx=(0,10), pady=(0,10))
-
+        confirm_button.grid(row=1, column=1, padx=(0, 10), pady=(0, 10))
 
     def cancel(self):
         self.conf = False
@@ -293,14 +296,7 @@ class ConfirmWindow(MyToplevel):
         self.destroy()
 
 
-
-# TODO: animation window
-#
-# from matplotlib.animation import FuncAnimation
-# from matplotlib.backends import backend_tkagg
-# import matplotlib.pyplot as plt
-# import numpy as np
-#
+# # TODO: fix
 # class WaitingWindow(MyToplevel):
 #     """A window with an animation that appears while the estimation routine
 #     is running."""
@@ -315,9 +311,9 @@ class ConfirmWindow(MyToplevel):
 #         self.fid = np.real(sig.make_fid(para, [n], sw)[0])
 #
 #         # Create a figure
-#         self.fig = plt.figure(figsize=(3,2))
+#         self.fig = plt.figure(figsize=(3, 2))
 #         self.ax = self.fig.add_axes([0.05, 0.05, 0.9, 0.9])
-#         self.ax.set_xlim(-10, n+10)
+#         self.ax.set_xlim(-10, n + 10)
 #         pad = 0.05 * np.amax(self.fid)
 #         self.ax.set_ylim(np.amin(self.fid) - pad, np.amax(self.fid) + pad)
 #
@@ -332,10 +328,13 @@ class ConfirmWindow(MyToplevel):
 #
 #         def hex_color():
 #             """Generates a random hex colour"""
-#             r = lambda: random.randint(0,255)
+#             def r():
+#                 return random.randint(0, 255)
 #             return f'#{r():02x}{r():02x}{r():02x}'
 #
-#         self.line, = self.ax.plot([], [], color=hex_color(), lw=5, solid_capstyle='round')
+#         self.line, = self.ax.plot(
+#             [], [], color=hex_color(), lw=5, solid_capstyle='round',
+#         )
 #
 #         def animate(i):
 #             x = self.line.get_xdata()
@@ -347,8 +346,8 @@ class ConfirmWindow(MyToplevel):
 #                 self.line.set_ydata(np.array([]))
 #                 self.line.set_color(hex_color())
 #             else:
-#                 self.line.set_xdata(np.hstack((x, np.arange(s, s+4))))
-#                 self.line.set_ydata(np.hstack((y, self.fid[s:s+4])))
+#                 self.line.set_xdata(np.hstack((x, np.arange(s, s + 4))))
+#                 self.line.set_ydata(np.hstack((y, self.fid[s:s + 4])))
 #
 #             return self.line
 #
@@ -356,7 +355,9 @@ class ConfirmWindow(MyToplevel):
 #
 #         self.canvas = backend_tkagg.FigureCanvasTkAgg(self.fig, master=self)
 #         self.canvas.draw()
-#         self.canvas.get_tk_widget().grid(column=0, row=0, padx=50, pady=(50, 20))
+#         self.canvas.get_tk_widget().grid(
+#             column=0, row=0, padx=50, pady=(50, 20),
+#         )
 #
 #         self.label = MyLabel(
 #             self, text='Estimating...', font=('Helvetica', 14, 'bold')

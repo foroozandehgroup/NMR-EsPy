@@ -31,14 +31,16 @@ py_exe = None
 #
 # Find this by entering the following into a Python interpreter:
 # Windows:
-#    >>> from subprocess import check_output as co
-#    >>> exe = str(co("where pdflatex", shell=True), 'utf-8').rstrip().replace("\\", "\\\\")
+#    >>> from subprocess import check_output
+#    >>> output = check_output("where pdflatex", shell=True)
+#    >>> exe = str(output, 'utf-8').rstrip().replace("\\", "\\\\")
 #    >>> print(f"\"{exe}\"")
 #    "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
 #
 # UNIX:
-#    >>> from subprocess import check_output as co
-#    >>> exe = str(co("which pdflatex", shell=True), 'utf-8').rstrip()
+#    >>> from subprocess import check_output
+#    >>> output = check_output("which pdflatex", shell=True)
+#    >>> exe = str(output, 'utf-8').rstrip()
 #    >>> print(f"\"{exe}\"")
 #    "/usr/bin/pdflatex"
 #
@@ -47,12 +49,12 @@ pdflatex_exe = None
 # ------------------------------------------------------------------------
 
 if py_exe is None:
-	ERRMSG(
-		'The Python 3 binary has not been specified. See the NMR-EsPy GUI '
-		'documentation for help.',
-		modal=1,
-	)
-	EXIT()
+    ERRMSG(
+        'The Python 3 binary has not been specified. See the NMR-EsPy GUI '
+        'documentation for help.',
+        modal=1,
+    )
+    EXIT()
 
 # Check whether nmrespy exists by importing
 # If it exists, $? = 0
@@ -60,20 +62,22 @@ if py_exe is None:
 checknmrespy = Popen([py_exe, "-c", "\"import nmrespy\""], stdout=PIPE)
 checknmrespy.communicate()[0]
 if checknmrespy.returncode != 0:
-	ERRMSG('Could not find NMR-EsPy in your Python 3 path!', modal=1)
-	EXIT()
+    ERRMSG('Could not find NMR-EsPy in your Python 3 path!', modal=1)
+    EXIT()
 
 # get path
 curdata = CURDATA()
 
 # curdata will be None if no active data exists.
 # Inform user if this is the case.
-if curdata == None:
-	ERRMSG("Please select a data set to run nmrespy!", modal=1)
-	EXIT()
+if curdata is None:
+    ERRMSG("Please select a data set to run nmrespy!", modal=1)
+    EXIT()
 
 # Full path to the pdata directory
 path = os.path.join(curdata[3], curdata[0], curdata[1], 'pdata', curdata[2])
 
-Popen([py_exe, "-m", "nmrespy", "--estimate", path, "--topspin", "--pdflatex",
-	   pdflatex_exe])
+Popen(
+    [py_exe, "-m", "nmrespy", "--estimate", path, "--topspin", "--pdflatex",
+     pdflatex_exe]
+)

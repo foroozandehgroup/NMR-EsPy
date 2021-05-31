@@ -1,0 +1,74 @@
+\selectlanguage *{latex}
+\contentsline {chapter}{\numberline {1}Requirements}{3}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Python Packages}{3}{section.1.1}%
+\contentsline {section}{\numberline {1.2}LaTeX}{3}{section.1.2}%
+\contentsline {chapter}{\numberline {2}Theory Overview}{5}{chapter.2}%
+\contentsline {chapter}{\numberline {3}Example Walkthrough}{7}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Generating an Estimator instance}{7}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Frequency Filtration}{8}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Estimating the Signal Parameters}{9}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Matrix Pencil Method}{9}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Nonlinear Programming}{10}{subsection.3.3.2}%
+\contentsline {section}{\numberline {3.4}Saving Results}{11}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Writing Results to a Text File/PDF/CSV}{11}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Generating Result Figures}{11}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Pickling Estimator Instances}{11}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Saving a Logfile}{12}{subsection.3.4.4}%
+\contentsline {section}{\numberline {3.5}Summary}{12}{section.3.5}%
+\contentsline {chapter}{\numberline {4}The NMR\sphinxhyphen {}EsPy GUI}{15}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Integrating the GUI into TopSpin}{15}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Automatic installation}{15}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Manual Installation}{16}{subsection.4.1.2}%
+\contentsline {subsubsection}{Copying the loader script}{16}{subsubsection*.3}%
+\contentsline {subsubsection}{Editing the loader script}{16}{subsubsection*.4}%
+\contentsline {section}{\numberline {4.2}Using The GUI}{17}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Loading the GUI}{17}{subsection.4.2.1}%
+\contentsline {subsubsection}{From a terminal}{18}{subsubsection*.5}%
+\contentsline {subsubsection}{From TopSpin}{18}{subsubsection*.6}%
+\contentsline {subsection}{\numberline {4.2.2}Estimation Set\sphinxhyphen {}up}{19}{subsection.4.2.2}%
+\contentsline {subsubsection}{Plot Navigation}{20}{subsubsection*.7}%
+\contentsline {subsubsection}{Phase Correction}{20}{subsubsection*.8}%
+\contentsline {subsubsection}{Region Selection}{22}{subsubsection*.9}%
+\contentsline {subsubsection}{Advanced Estimation Settings}{22}{subsubsection*.10}%
+\contentsline {paragraph}{Signal Filter Options}{23}{paragraph*.11}%
+\contentsline {paragraph}{Matrix Pencil Method Options}{23}{paragraph*.12}%
+\contentsline {paragraph}{Nonlinear Programming Options}{23}{paragraph*.13}%
+\contentsline {subsection}{\numberline {4.2.3}Estimation Result}{24}{subsection.4.2.3}%
+\contentsline {subsubsection}{Tweaking and Re\sphinxhyphen {}optimising the result}{25}{subsubsection*.14}%
+\contentsline {paragraph}{The Add Button}{28}{paragraph*.15}%
+\contentsline {paragraph}{The Remove Button}{29}{paragraph*.16}%
+\contentsline {paragraph}{The Merge Button}{29}{paragraph*.17}%
+\contentsline {paragraph}{The Split Button}{29}{paragraph*.18}%
+\contentsline {paragraph}{Re\sphinxhyphen {}running the Optimiser}{30}{paragraph*.19}%
+\contentsline {paragraph}{Undoing changes}{30}{paragraph*.20}%
+\contentsline {subsubsection}{Saving the result}{30}{subsubsection*.21}%
+\contentsline {paragraph}{Result Figure}{31}{paragraph*.22}%
+\contentsline {paragraph}{Result Files}{31}{paragraph*.23}%
+\contentsline {paragraph}{Estimator}{31}{paragraph*.24}%
+\contentsline {paragraph}{Directory}{31}{paragraph*.25}%
+\contentsline {chapter}{\numberline {5}Miscellaneous Topics}{33}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Figure Customisation}{33}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Getting Started}{33}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Load the Estimator}{34}{subsection.5.1.2}%
+\contentsline {subsection}{\numberline {5.1.3}Generate the Estimation Figure}{34}{subsection.5.1.3}%
+\contentsline {subsection}{\numberline {5.1.4}Further Customisation}{35}{subsection.5.1.4}%
+\contentsline {subsubsection}{General Guidance}{35}{subsubsection*.26}%
+\contentsline {subsubsection}{Specific Things}{35}{subsubsection*.27}%
+\contentsline {subsection}{\numberline {5.1.5}Save the Figure}{37}{subsection.5.1.5}%
+\contentsline {chapter}{\numberline {6}Reference}{39}{chapter.6}%
+\contentsline {section}{\numberline {6.1}nmrespy.core}{39}{section.6.1}%
+\contentsline {section}{\numberline {6.2}nmrespy.load}{51}{section.6.2}%
+\contentsline {section}{\numberline {6.3}nmrespy.freqfilter}{53}{section.6.3}%
+\contentsline {section}{\numberline {6.4}nmrespy.mpm}{56}{section.6.4}%
+\contentsline {section}{\numberline {6.5}nmrespy.nlp}{57}{section.6.5}%
+\contentsline {subsection}{\numberline {6.5.1}nmrespy.nlp.nlp}{57}{subsection.6.5.1}%
+\contentsline {subsection}{\numberline {6.5.2}nmrespy.nlp.\_funcs}{61}{subsection.6.5.2}%
+\contentsline {section}{\numberline {6.6}nmrespy.plot}{63}{section.6.6}%
+\contentsline {section}{\numberline {6.7}nmrespy.sig}{66}{section.6.7}%
+\contentsline {section}{\numberline {6.8}nmrespy.write}{71}{section.6.8}%
+\contentsline {section}{\numberline {6.9}nmrespy.\_cols}{76}{section.6.9}%
+\contentsline {section}{\numberline {6.10}nmrespy.\_errors}{76}{section.6.10}%
+\contentsline {section}{\numberline {6.11}nmrespy.\_misc}{77}{section.6.11}%
+\contentsline {chapter}{\numberline {7}Contributors}{81}{chapter.7}%
+\contentsline {chapter}{\numberline {8}Indices and tables}{83}{chapter.8}%
+\contentsline {chapter}{Python Module Index}{85}{section*.159}%

@@ -16,13 +16,14 @@ from nmrespy import *
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 from nmrespy._errors import *
-from nmrespy._misc import start_end_wrapper, ArgumentChecker, FrequencyConverter
+from nmrespy._misc import start_end_wrapper, ArgumentChecker, \
+    FrequencyConverter
 from nmrespy._timing import timer
 import nmrespy.nlp._funcs as funcs
 from nmrespy.sig import get_timepoints
 
-# ========================================================================
 # TODO in a later version
 # Add support for mode
 # Was getting indexing errors inside _check_negative_amps
@@ -39,8 +40,6 @@ from nmrespy.sig import get_timepoints
 #     * `'p'`: Phases are optimised
 #     * `'f'`: Frequencies are optimised
 #     * `'d'`: Damping factors are optimised
-# ==========================================================================
-
 
 
 class NonlinearProgramming(FrequencyConverter):
@@ -89,6 +88,10 @@ class NonlinearProgramming(FrequencyConverter):
         This is not necessary, however if it set it to `None`, no conversion
         of frequencies from Hz to ppm will be possible!
 
+    start_point : int, default: 0
+        The first timepoint sampled, in units of
+        :math:`\\Delta t = 1 / f_{\\mathrm{sw}}`
+
     phase_variance : bool, default: True
         Specifies whether or not to include the variance of oscillator
         phases into the NLP routine. The fiedlity (cost function) is
@@ -106,8 +109,8 @@ class NonlinearProgramming(FrequencyConverter):
           .. math::
 
              \\mathcal{F}\\left(\\boldsymbol{\\theta}\\right) =
-             \\left\\lVert \\boldsymbol{Y} - \\boldsymbol{X} \\right\\rVert_2^2 +
-             \\mathrm{Var}\\left(\\boldsymbol{\\phi}\\right)
+             \\left\\lVert \\boldsymbol{Y} - \\boldsymbol{X} \\right
+             \\rVert_2^2 + \\mathrm{Var}\\left(\\boldsymbol{\\phi}\\right)
 
     method : 'trust_region' or 'lbfgs', default: 'trust_region'
         Optimisation algorithm to use. These utilise
@@ -157,7 +160,7 @@ class NonlinearProgramming(FrequencyConverter):
         * amplitude: :math:`a = a_m + a_p`
         * phase: :math:`\\phi = \\left(\\phi_m + \\phi_p\\right) / 2`
         * frequency: :math:`f = \\left(f_m + f_p\\right) / 2`
-        * damping: :math:`\\eta = \\left(\eta_m + \eta_p\\right) / 2`
+        * damping: :math:`\\eta = \\left(\\eta_m + \\eta_p\\right) / 2`
 
         .. warning::
 
@@ -198,11 +201,13 @@ class NonlinearProgramming(FrequencyConverter):
     end_txt = 'NONLINEAR PROGRAMMING COMPLETE'
 
     def __init__(
-        self, data, theta0, sw, sfo=None, offset=None, phase_variance=True,
-        method='trust_region', bound=False, max_iterations=None,
-        amp_thold=None, freq_thold=None, negative_amps='remove', fprint=True
+        self, data, theta0, sw, sfo=None, offset=None, start_point=0,
+        phase_variance=True, method='trust_region', bound=False,
+        max_iterations=None, amp_thold=None, freq_thold=None,
+        negative_amps='remove', fprint=True, mode='apfd',
     ):
-        """Initialise the class instance. Checks that all arguments are valid"""
+        """Initialise the class instance. Checks that all arguments are
+        valid"""
 
         # --- Check validity of parameters -------------------------------
         # Data should be a NumPy array.
@@ -210,88 +215,90 @@ class NonlinearProgramming(FrequencyConverter):
             raise TypeError(
                 f'{cols.R}data should be a numpy ndarray{cols.END}'
             )
-        self.data = data
 
-        # Number of points in each dimension
-        self.n = list(data.shape)
+        self.data = data
 
         # Determine data dimension. If greater than 2, return error.
         self.dim = self.data.ndim
         if self.dim >= 3:
             raise MoreThanTwoDimError()
 
+        # Number of "types" or parameters.
+        # This will be 4 if the signal is 1D, and 6 if 2D.
+        self.p = 2 * self.dim + 2
+
         # If offset is None, set it to zero in each dimension
         if offset is None:
             offset = [0.0] * self.dim
 
-        # TODO: allow customisation
-        mode = 'apfd'
+        if max_iterations is None:
+            max_iterations = 100
+
         # Determine validity of other args using ArgumentChecker
         components = [
             (theta0, 'theta0', 'parameter'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
+            (start_point, 'start_point', 'positive_int_or_zero'),
             (phase_variance, 'phase_variance', 'bool'),
-            (mode, 'mode', 'optimiser_mode'),
+            (max_iterations, 'max_iterations', 'positive_int'),
+            (mode, 'mode', 'optimiser_mode'),  # TODO
             (negative_amps, 'negative_amps', 'negative_amplidue'),
             (fprint, 'fprint', 'bool'),
         ]
 
         # Certain arguments should be checked only if they are not None...
-        if sfo != None:
+        if sfo is not None:
             components.append((sfo, 'sfo', 'float_list'))
 
-        if max_iterations != None:
-            components.append((max_iterations, 'max_iterations', 'positive_int'))
-
-        if amp_thold != None:
+        if amp_thold is not None:
             components.append((amp_thold, 'amp_thold', 'zero_to_one'))
 
-        if freq_thold != None:
+        if freq_thold is not None:
             components.append((freq_thold, 'freq_thold', 'positive_float'))
 
         # Check arguments are valid!
         ArgumentChecker(components, self.dim)
 
-        # Gets upset when phase variance is switched on, but phases
-        # are not to be optimised (the user is being unclear about
-        # their purpose)
-        if phase_variance and 'p' not in mode:
-            raise PhaseVarianceAmbiguityError(mode)
+        # TODO
+        # # Gets upset when phase variance is switched on, but phases
+        # # are not to be optimised (the user is being unclear about
+        # # their purpose)
+        # if phase_variance and 'p' not in mode:
+        #     raise PhaseVarianceAmbiguityError(mode)
 
         # --- Create attributes ------------------------------------------
-        # Number of "types" or parameters.
-        # This will be 4 if the signal is 1D, and 6 if 2D.
-        self.p = 2 * self.dim + 2
         # Reshape parameter array to vector:
         # (M, 4) -> (4*M,) or (M, 6) -> (6*M,)
         self.theta0 = theta0
-        # Number of oscillators
-        self.m = int(self.theta0.size / self.p)
 
         self.sw = sw
         self.offset = offset
         self.sfo = sfo
+        self.start_point = start_point
         self.method = method
         self.phase_variance = phase_variance
-        self.mode = mode
+        self.mode = mode  # TODO
         self.bound = bound
         self.max_iterations = max_iterations
         self.amp_thold = amp_thold
         self.freq_thold = freq_thold
         self.negative_amps = negative_amps
+        self.fprint = fprint
 
-        # Value to specify whether or not to output info to terminal
-        self.fprint = 3 if fprint else 0
+        # Number of oscillators
+        self.m = int(self.theta0.size / self.p)
+        # Number of points in each dimension
+        self.n = list(self.data.shape)
 
-        if self.sfo != None:
+        if self.sfo is not None:
             # If sfo was given an explicit value, create a frequency
             # converter, enabling outputs in ppm.
             self.converter = FrequencyConverter(
                 self.n, self.sw, self.offset, self.sfo
             )
 
-        if self.max_iterations == None:
+        if self.max_iterations is None:
             # If max_iterations is set to None, set it to default value
             # If 'trust_region', set as 100. Need to explicitely compute
             # the Hessian for this alg., so each iteration is typically
@@ -299,10 +306,9 @@ class NonlinearProgramming(FrequencyConverter):
             # give it more.
             self.max_iterations = 100 if self.method == 'trust_region' else 500
 
-        self.amp_thold = 0. if self.amp_thold == None else self.amp_thold
+        self.amp_thold = 0. if self.amp_thold is None else self.amp_thold
         # TODO freq-thold?
 
-        # Good to go!
         self._run_nlp()
 
     @timer
@@ -321,9 +327,12 @@ class NonlinearProgramming(FrequencyConverter):
         x0[:self.m] = x0[:self.m] / self.norm
         # 2. Shift oscillator frequencies to center about 0
         x0 = self._shift_offset(x0, 'center')
-
+        print(self.sw)
         # Time points in each dimension
-        self.tp = get_timepoints(self.n, self.sw)
+        self.tp = get_timepoints(
+            [n + self.start_point for n in self.n], self.sw,
+        )
+        self.tp = [t[self.start_point:] for t in self.tp]
 
         # Determine 'active' and 'passive' parameters based on self.mode
         # generates self.active_idx and self.passive_idx
@@ -351,9 +360,9 @@ class NonlinearProgramming(FrequencyConverter):
         # Determine cost function, gradient, and hessian based on the data
         # dimension
         self.funcs = {
-            'fidelity' : funcs.f_1d if self.dim == 1 else funcs.f_2d,
-            'gradient' : funcs.g_1d if self.dim == 1 else funcs.g_2d,
-            'hessian' : funcs.h_1d if self.dim == 1 else funcs.h_2d,
+            'fidelity': funcs.f_1d if self.dim == 1 else funcs.f_2d,
+            'gradient': funcs.g_1d if self.dim == 1 else funcs.g_2d,
+            'hessian': funcs.h_1d if self.dim == 1 else funcs.h_2d,
         }
 
         # This method is called recursively until no negative amplitudes
@@ -445,7 +454,7 @@ class NonlinearProgramming(FrequencyConverter):
         elif freq_unit == 'ppm':
             # Check whether a frequency converter is associated with the
             # class
-            if not 'converter' in self.__dict__.keys():
+            if 'converter' not in self.__dict__.keys():
                 raise ValueError(
                     f'{cols.R}Insufficient information to determine'
                     f' frequencies in ppm. Did you perhaps forget to specify'
@@ -468,7 +477,6 @@ class NonlinearProgramming(FrequencyConverter):
         else:
             raise InvalidUnitError('hz', 'ppm')
 
-
     def _shift_offset(self, params, direction):
         """Shifts frequencies to centre to or displace from 0
 
@@ -485,7 +493,7 @@ class NonlinearProgramming(FrequencyConverter):
 
         for i, off in enumerate(self.offset):
             # Dimension (i+1)'s frequency parameters are given by this slice
-            slice = self._get_slice([2+i])
+            slice = self._get_slice([2 + i])
             # Take frequencies from offset values to be centred at zero
             # i.e.
             # | 10 9 8 7 6 5 4 3 2 1 0 | -> | 5 4 3 2 1 0 -1 -2 -3 -4 -5 |
@@ -499,7 +507,6 @@ class NonlinearProgramming(FrequencyConverter):
                 params[slice] = params[slice] + off
 
         return params
-
 
     def _get_slice(self, idx, osc_idx=None):
         """
@@ -521,9 +528,8 @@ class NonlinearProgramming(FrequencyConverter):
             Array slice.
         """
         # Array of osccilators to index
-        if osc_idx == None:
+        if osc_idx is None:
             osc_idx = list(range(self.m))
-
 
         slice = []
         for i in idx:
@@ -531,7 +537,7 @@ class NonlinearProgramming(FrequencyConverter):
             # a1  ...  am  φ1  ...  φm  f1  ...  fm  η1  ...  ηm (1D case)
             # ∴ stride length of m to go to the next "type" of parameter
             # and stride length of 1 to go to the next oscillator.
-            slice += [i*self.m + j for j in osc_idx]
+            slice += [i * self.m + j for j in osc_idx]
 
         return np.s_[slice]
 
@@ -544,14 +550,14 @@ class NonlinearProgramming(FrequencyConverter):
         # < idx = 0 >  < idx = 1 >  < idx = 2 >  < idx = 3 >
         self.active_idx = []
         for c in self.mode:
-            if c == 'a': # Amplitude
+            if c == 'a':  # Amplitude
                 self.active_idx.append(0)
-            elif c == 'p': # Phase
+            elif c == 'p':  # Phase
                 self.active_idx.append(1)
-            elif c == 'f': # Frequecy (add indices for each dim)
+            elif c == 'f':  # Frequecy (add indices for each dim)
                 for i in range(self.dim):
                     self.active_idx.append(2 + i)
-            elif c == 'd': # Damping (add indices for each dim)
+            elif c == 'd':  # Damping (add indices for each dim)
                 for i in range(self.dim):
                     self.active_idx.append(2 + self.dim + i)
 
@@ -560,7 +566,6 @@ class NonlinearProgramming(FrequencyConverter):
         self.passive_idx = list(range(2 * (self.dim + 1)))
         for i in self.active_idx:
             self.passive_idx.remove(i)
-
 
     def _merge_active_passive(self):
         """Given the active and passive parameters in vector form, merge to
@@ -600,7 +605,6 @@ class NonlinearProgramming(FrequencyConverter):
         self.result[active_slice] = self.active
         self.result[passive_slice] = self.passive
 
-
     def _split_active_passive(self, merged_vec):
         """Given a full vector of parameters, split to form vectors of active
         and passive parameters.
@@ -636,7 +640,6 @@ class NonlinearProgramming(FrequencyConverter):
         self.active, self.passive = \
             merged_vec[active_slice], merged_vec[passive_slice]
 
-
     def _get_bounds(self):
         """Constructs a list of bounding constraints to set for each
         parameter. The bounds are as follows:
@@ -666,48 +669,47 @@ class NonlinearProgramming(FrequencyConverter):
                     # the valid frequency range is:
                     # -sw / 2 -> sw / 2
                     # NOT -sw / 2 + offset -> sw / 2 + offset
-                    self.bounds += [(-sw/2, sw/2)] * self.m
+                    self.bounds += [(-sw / 2, sw / 2)] * self.m
             # Damping (iterate over each dimension)
             # 2 + self.dim = 3 for 1D and 4 for 2D
             if 2 + self.dim in self.active_idx:
                 self.bounds += [(0, np.inf)] * (self.dim * self.m)
 
-
     def _run_optimiser(self):
+        fprint = 3 if self.fprint else 0
         # Trust-Region
         if self.method == 'trust_region':
             result = optimize.minimize(
-                fun = self.funcs['fidelity'],
-                x0 = self.active,
-                args = self.optimiser_args,
-                method = 'trust-constr',
-                jac = self.funcs['gradient'],
-                hess = self.funcs['hessian'],
-                bounds = self.bounds,
-                options = {
+                fun=self.funcs['fidelity'],
+                x0=self.active,
+                args=self.optimiser_args,
+                method='trust-constr',
+                jac=self.funcs['gradient'],
+                hess=self.funcs['hessian'],
+                bounds=self.bounds,
+                options={
                     'maxiter': self.max_iterations,
-                    'verbose': self.fprint,
+                    'verbose': fprint,
                 },
             )
         # L-BFGS
         elif self.method == 'lbfgs':
             result = optimize.minimize(
-                fun = self.funcs['fidelity'],
-                x0 = self.active,
-                args = self.optimiser_args,
-                method = 'L-BFGS-B',
-                jac = self.funcs['gradient'],
-                bounds = self.bounds,
-                options = {
+                fun=self.funcs['fidelity'],
+                x0=self.active,
+                args=self.optimiser_args,
+                method='L-BFGS-B',
+                jac=self.funcs['gradient'],
+                bounds=self.bounds,
+                options={
                     'maxiter': self.max_iterations,
-                    'iprint': self.fprint // 3,
+                    'iprint': fprint // 3,
                     'disp': True
                 }
             )
 
         # Extract result from optimiser dictionary
         self.active = result['x']
-
 
     def _check_negative_amps(self):
         """Determines which oscillators (if any) have negative amplitudes, and
@@ -747,7 +749,7 @@ class NonlinearProgramming(FrequencyConverter):
 
                 if self.fprint:
                     print(
-                        f'{cols.O}Negative amplitudes detected. These'
+                        f'{cols.OR}Negative amplitudes detected. These'
                         f' oscillators will be removed\n'
                         f'Updated number of oscillators: {self.m}{cols.END}'
                     )
@@ -794,14 +796,14 @@ class NonlinearProgramming(FrequencyConverter):
 
         # See newton_meets_ockham, Eq. (22)
         self.errors = np.sqrt(
-            fidelity * np.abs(np.diag(nlinalg.inv(hessian)))
-            / functools.reduce(operator.mul, [n-1 for n in self.n])
+            fidelity * np.abs(np.diag(nlinalg.inv(hessian))) /
+            functools.reduce(operator.mul, [n - 1 for n in self.n])
         )
 
         # Re-scale amplitude errors
         self.errors[:self.m] = self.errors[:self.m] * self.norm
         self.errors = np.reshape(
-            self.errors, (int(self.errors.size/4), 4), order='F',
+            self.errors, (int(self.errors.size / 4), 4), order='F',
         )
 
     def _negligible_amplitudes(self):
@@ -818,6 +820,6 @@ class NonlinearProgramming(FrequencyConverter):
 
         if negligible_idx:
             print(
-                f'{cols.O}Oscillations with negligible amplitude removed.'
+                f'{cols.OR}Oscillations with negligible amplitude removed.'
                 f' \nUpdated number of oscillators: {self.m}{cols.END}'
             )

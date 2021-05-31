@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9]
+
+    steps:
+      - name: checkout develop branch
+        uses: actions/checkout@v2
+        with:
+          ref: develop
+          path: develop
+
+      - name: Set up python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r develop/venv_requirements.txt
+          python -m pip install develop/
+
+      - name: lint with flake8
+        run: |
+          # Ignore star imports (F403/5) and indents before/after binary operators (W503/4)
+          flake8 develop/tests/ develop/nmrespy/ develop/setup.py --ignore F405,F403,W503,W504 --per-file-ignores="develop/nmrespy/__init__.py:F401,develop/setup.py:F821"
+
+      - name: test with pytest
+        run: |
+          cd develop/tests/
+          python -m pytest

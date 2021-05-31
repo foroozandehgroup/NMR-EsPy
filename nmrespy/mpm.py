@@ -13,8 +13,10 @@ import scipy.linalg as slinalg
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 import nmrespy._errors as errors
-from nmrespy._misc import ArgumentChecker, FrequencyConverter, start_end_wrapper
+from nmrespy._misc import (ArgumentChecker, FrequencyConverter,
+                           start_end_wrapper)
 from ._timing import timer
 
 
@@ -47,6 +49,10 @@ class MatrixPencil(FrequencyConverter):
         Flag specifiying whether to print infomation to the terminal as
         the method runs.
 
+    start_point : int, default: 0
+        The first timepoint sampled, in units of
+        :math:`\\Delta t = 1 / f_{\\mathrm{sw}}`
+
     References
     ----------
     .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
@@ -57,9 +63,9 @@ class MatrixPencil(FrequencyConverter):
        parameters of exponentially damped/undamped sinusoids in noise”. In:
        IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
 
-    .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy NMR
-       signals: applications to delayed acquisition data”. In: J. Magn. Reson.
-       128.1 (1997), pp. 30–41.
+    .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy
+       NMR signals: applications to delayed acquisition data”. In: J. Magn.
+       Reson. 128.1 (1997), pp. 30–41.
 
     .. [#] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
        enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
@@ -74,19 +80,20 @@ class MatrixPencil(FrequencyConverter):
     start_txt = 'MATRIX PENCIL METHOD STARTED'
     end_txt = 'MATRIX PENCIL METHOD COMPLETE'
 
-    def __init__(self, data, sw, offset=None, sfo=None, M=0, fprint=True):
+    def __init__(self, data, sw, offset=None, sfo=None, M=0, fprint=True,
+                 start_point=0):
         """Checks validity of inputs, and if valid, calls :py:meth:`_mpm`"""
 
         try:
             self.dim = data.ndim
             if self.dim >= 3:
                 raise errors.MoreThanTwoDimError()
-        except:
+        except Exception:
             raise TypeError(
                 f'{cols.R}data should be a numpy ndarray{cols.END}'
             )
 
-        if offset == None:
+        if offset is None:
             offset = [0.0] * self.dim
 
         components = [
@@ -95,9 +102,10 @@ class MatrixPencil(FrequencyConverter):
             (offset, 'offset', 'float_list'),
             (M, 'M', 'positive_int_or_zero'),
             (fprint, 'fprint', 'bool'),
+            (start_point, 'start_point', 'positive_int_or_zero'),
         ]
 
-        if sfo != None:
+        if sfo is not None:
             components.append((sfo, 'sfo', 'float_list'))
 
         ArgumentChecker(components, dim=self.dim)
@@ -109,8 +117,9 @@ class MatrixPencil(FrequencyConverter):
         self.sfo = sfo
         self.M = M
         self.fprint = fprint
+        self.start_point = start_point
 
-        if sfo != None:
+        if sfo is not None:
             self.converter = FrequencyConverter(
                 self.n, self.sw, self.offset, self.sfo
             )
@@ -119,7 +128,6 @@ class MatrixPencil(FrequencyConverter):
             self._mpm_1d()
         else:
             self._mpm_2d()
-
 
     def get_result(self, freq_unit='hz'):
         """Obtain the result of the MPM.
@@ -141,7 +149,7 @@ class MatrixPencil(FrequencyConverter):
         elif freq_unit == 'ppm':
             # Check whether a frequency converter is associated with the
             # class
-            if not 'converter' in self.__dict__.keys():
+            if 'converter' not in self.__dict__.keys():
                 raise ValueError(
                     f'{cols.R}Insufficient information to determine'
                     f' frequencies in ppm. Did you perhaps forget to specify'
@@ -164,7 +172,6 @@ class MatrixPencil(FrequencyConverter):
         else:
             raise errors.InvalidUnitError('hz', 'ppm')
 
-
     @timer
     @start_end_wrapper(start_txt, end_txt)
     def _mpm_1d(self):
@@ -184,8 +191,8 @@ class MatrixPencil(FrequencyConverter):
             print(f'--> Pencil Parameter: {L}')
 
         # Construct Hankel matrix
-        row = normed_data[:N-L]
-        column = normed_data[N-L-1:]
+        row = normed_data[:N - L]
+        column = normed_data[N - L - 1:]
         Y = slinalg.hankel(row, column)
         if self.fprint:
             print("--> Hankel data matrix constructed:")
@@ -195,7 +202,6 @@ class MatrixPencil(FrequencyConverter):
                 print(f'\tMemory: {round(gibibytes, 4)}GiB')
             else:
                 print(f'\tMemory: {round(gibibytes * (2**10), 4)}MiB')
-
 
         # Singular value decomposition of Y
         # returns singular values: min(N-L, L)-length vector
@@ -216,9 +222,10 @@ class MatrixPencil(FrequencyConverter):
             self.mdl = np.zeros(L)
             for k in range(L):
                 self.mdl[k] = \
-                    - N * np.einsum('i->', np.log(sigma[k:L])) \
-                    + N * (L-k) * np.log((np.einsum('i->', sigma[k:L]) / (L-k))) \
-                    + (k * np.log(N) * (2*L-k)) / 2
+                    - N * np.einsum('i->', np.log(sigma[k:L])) + \
+                    N * (L - k) * \
+                    np.log(np.einsum('i->', sigma[k:L]) / (L - k)) + \
+                    k * np.log(N) * (2 * L - k) / 2
 
             self.M = np.argmin(self.mdl)
 
@@ -233,9 +240,9 @@ class MatrixPencil(FrequencyConverter):
         if self.fprint:
             print('--> Determining signal poles...')
 
-        Vm = V[:, :self.M] # Retain M first right singular vectors
-        V1 = Vm[:-1, :] # Remove last column
-        V2 = Vm[1:, :] # Remove first column
+        Vm = V[:, :self.M]  # Retain M first right singular vectors
+        V1 = Vm[:-1, :]  # Remove last column
+        V2 = Vm[1:, :]  # Remove first column
 
         # Determine first M signal poles (others should be 0)
         z = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][:self.M]
@@ -246,7 +253,11 @@ class MatrixPencil(FrequencyConverter):
 
         # Pseudoinverse of Vandermonde matrix of poles multiplied by
         # vector of complex amplitudes
-        alpha = nlinalg.pinv((np.power.outer(z, np.arange(N))).T) @ normed_data
+        alpha = nlinalg.pinv(
+            np.power.outer(
+                z, np.arange(self.start_point, self.start_point + N)
+            )
+        ).T @ normed_data
 
         # Extract amplitudes, phases, frequencies and damping factors
         amp = np.abs(alpha) * norm
@@ -271,14 +282,12 @@ class MatrixPencil(FrequencyConverter):
         self.M = self.result.shape[0]
 
         if self.M < m_init and self.fprint:
-            print(f'\t{cols.O}WARNING: Oscillations with negative damping\n'
+            print(f'\t{cols.OR}WARNING: Oscillations with negative damping\n'
                   f'\tfactors detected. These have been deleted.\n'
                   f'\tCorrected number of oscillations: {self.M}{cols.END}')
 
-
         elif self.fprint:
             print('\tNone found')
-
 
     @timer
     def _mpm_2d(self):
@@ -288,4 +297,4 @@ class MatrixPencil(FrequencyConverter):
            To be written
         """
 
-        raise TwoDimUnsupportedError()
+        raise errors.TwoDimUnsupportedError()

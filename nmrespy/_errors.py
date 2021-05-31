@@ -8,6 +8,7 @@ from nmrespy import *
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
     import colorama
+    colorama.init()
 
 
 class MoreThanTwoDimError(Exception):
@@ -24,8 +25,8 @@ class TwoDimUnsupportedError(Exception):
 
     def __init__(self):
         self.msg = (f'{cols.R}Unfortunately 2D virtual echo creation isn\'t'
-                     ' supported yet. Check if there are any more recent'
-                     ' versions of nmrespy with this feature:\n'
+                    ' supported yet. Check if there are any more recent'
+                    ' versions of nmrespy with this feature:\n'
                     f'{cols.C}{GITHUBLINK}{cols.END}')
         super().__init__(self.msg)
 
@@ -72,11 +73,11 @@ class PhaseVarianceAmbiguityError(Exception):
     """Raise when phase_variance is True, but 'p' is not specified in mode"""
 
     def __init__(self, mode):
-        self.msg = f'{cols.R}You have specified you want to minimise phase' \
-                   + f' varaince (phase_variance=True) but you have not' \
-                   + f' asked for the phases to be be optimised' \
-                   + f' (mode = \'{mode}\'). The phase variance cannot change' \
-                   + f' if you don\'t include \'p\' in mode.{cols.END}'
+        self.msg = (f'{cols.R}You have specified you want to minimise phase'
+                    ' varaince (phase_variance=True) but you have not'
+                    ' asked for the phases to be be optimised'
+                    f' (mode = \'{mode}\'). The phase variance cannot change'
+                    f' if you don\'t include \'p\' in mode.{cols.END}')
         super().__init__(self.msg)
 
 
@@ -86,7 +87,7 @@ class AttributeIsNoneError(Exception):
 
     def __init__(self, attribute, method):
         self.msg = f'{cols.R}The attribute {attribute} is None.'
-        if method != None:
+        if method is not None:
             self.msg += (
                 f' Perhaps you are yet to call {method} on the class'
                 f' instance?'
@@ -102,7 +103,7 @@ class LaTeXFailedError(Exception):
 
     def __init__(self, texpath):
         self.msg = (f'{cols.R}The file {texpath} failed to compile using'
-                    f' pdflatex. Make you sure have a LaTeX installation'
+                    ' pdflatex. Make you sure have a LaTeX installation'
                     f' by opening a terminal and entering:\n{cols.C}'
                     f' pdflatex\n{cols.R}If you have pdflatex, run:\n'
                     f' {cols.C}pdflatex {texpath}\n{cols.R}and try to fix'

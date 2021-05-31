@@ -7,6 +7,7 @@ from tkinter import ttk
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
 from .config import *
 
+
 def generate(cls_, keys, values, kwargs):
     """Configure class attributes. Enables flexibility to change default
     behaviour by including kwargs"""
@@ -111,7 +112,8 @@ class MyEntry(tk.Entry):
     changes since altering the entry widget.
     """
 
-    def __init__(self, parent, return_command=None, return_args=None, **kwargs):
+    def __init__(self, parent, return_command=None, return_args=None,
+                 **kwargs):
         super().__init__(parent)
 
         self.return_command = return_command
@@ -149,6 +151,7 @@ class MyEntry(tk.Entry):
         self.black_highlight()
         self.return_command(*self.return_args)
 
+
 class MyOptionMenu(tk.OptionMenu):
 
     def __init__(self, parent, variable, value, *values, **kwargs):
@@ -182,14 +185,17 @@ class MyNotebook(ttk.Notebook):
 
     def __init__(self, parent):
         style = ttk.Style()
-        style.theme_create('notebook', parent='alt',
+        style.theme_create(
+            'notebook',
+            parent='alt',
             settings={
                 'TNotebook': {
                     'configure': {
                         'tabmargins': [2, 0, 5, 0],
                         'background': BGCOLOR,
-                        'bordercolor': 'black'}
-                    },
+                        'bordercolor': 'black',
+                    }
+                },
                 'TNotebook.Tab': {
                     'configure': {
                         'padding': [10, 3],
@@ -208,6 +214,7 @@ class MyNotebook(ttk.Notebook):
         style.theme_use("notebook")
 
         super().__init__(parent)
+
 
 class MyNavigationToolbar(NavigationToolbar2Tk):
     """Tweak default matplotlib navigation bar to exclude subplot-config
@@ -248,7 +255,6 @@ class MyTable(MyFrame):
         self.create_value_vars(contents)
         self.construct(top=0)
 
-
     def create_value_vars(self, contents):
         """Create a nested list of dictionaries, each containing a tkinter
         StringVar, and a float"""
@@ -258,7 +264,9 @@ class MyTable(MyFrame):
             value_var_row = []
             for param in osc:
                 if isinstance(param, (int, float)):
-                    value_var = value_var_dict(param, strip_zeros(f"{param:.5f}"))
+                    value_var = value_var_dict(
+                        param, strip_zeros(f"{param:.5f}"),
+                    )
                 else:
                     # The only occasion when this should occur in the program
                     # is when param is an empty string. This occurs when
@@ -266,7 +274,6 @@ class MyTable(MyFrame):
                     value_var = value_var_dict(param, param)
                 value_var_row.append(value_var)
             self.value_vars.append(value_var_row)
-
 
     def construct(self, top):
         """Generate a table of the parameters. Creates a maximum of ``max_rows``
@@ -288,13 +295,13 @@ class MyTable(MyFrame):
         self.entries = []
         # Get the value_var dictionaries corresponding to oscillators that
         # will be present in the table, based on `top` and `self.max_rows`.
-        value_var_rows = [elem for i, elem in enumerate(self.value_vars) \
+        value_var_rows = [elem for i, elem in enumerate(self.value_vars)
                           if (top <= i < top + self.max_rows)]
 
         for i, value_var_row in enumerate(value_var_rows):
             # Oscillator labels.
             # These act as a oscillator selection widgets
-            label = MyLabel(self.table_frame, text=str(top+i+1))
+            label = MyLabel(self.table_frame, text=str(top + i + 1))
             # Bind to left mouse click: select oscillator
             label.bind(
                 "<Button-1>",
@@ -307,7 +314,7 @@ class MyTable(MyFrame):
                 lambda ev, i=i, top=top: self.shift_left_click(i, top),
             )
             # Add some internal padding to make selection easy.
-            label.grid(row=i+1, column=0, pady=(5,0), ipadx=10, ipady=2)
+            label.grid(row=i + 1, column=0, pady=(5, 0), ipadx=10, ipady=2)
             self.labels.append(label)
 
             # Row of parameter entry widgets
@@ -334,7 +341,7 @@ class MyTable(MyFrame):
                 padx = (5, 0)
                 pady = (5, 0)
 
-                ent.grid(row=i+1, column=j+1, padx=padx, pady=pady)
+                ent.grid(row=i + 1, column=j + 1, padx=padx, pady=pady)
                 ent_row.append(ent)
 
             self.entries.append(ent_row)
@@ -346,7 +353,7 @@ class MyTable(MyFrame):
         # Add naviagtion buttons if more than `self.max_rows` oscillators
         if len(self.value_vars) > self.max_rows:
             self.navigate_frame = MyFrame(self)
-            self.navigate_frame.grid(row=1, column=0, pady=(10,0))
+            self.navigate_frame.grid(row=1, column=0, pady=(10, 0))
 
             self.up_arrow_img = get_PhotoImage(UPARROWPATH, scale=0.5)
             self.down_arrow_img = get_PhotoImage(DOWNARROWPATH, scale=0.5)
@@ -361,7 +368,7 @@ class MyTable(MyFrame):
                 self.navigate_frame, image=self.down_arrow_img, width=30,
                 command=self.down,
             )
-            self.down_arrow.grid(row=0, column=1, padx=(5,0))
+            self.down_arrow.grid(row=0, column=1, padx=(5, 0))
 
             # Check if oscillator 1 is present. If so disable down arrow.
             if self.labels[0]['text'] == '1':
@@ -371,7 +378,6 @@ class MyTable(MyFrame):
             if int(self.labels[-1]['text']) == len(self.value_vars):
                 self.down_arrow['state'] = 'disabled'
 
-
     def reconstruct(self, contents, top=0):
         """Regenerate table, given a new contents array"""
         # Destroy all contents in self
@@ -380,7 +386,6 @@ class MyTable(MyFrame):
 
         self.create_value_vars(contents)
         self.construct(top)
-
 
     def left_click(self, idx, top):
         """Deals with a <Button-1> event on a label.
@@ -393,9 +398,9 @@ class MyTable(MyFrame):
         Notes
         -----
         This will set the background of the selected label to blue, and
-        foreground to white. Entry widgets in the corresponding row are set to
-        read-only mode. All other oscillator labels widgets are set to "disabled"
-        mode."""
+        foreground to white. Entry widgets in the corresponding row are set
+        to read-only mode. All other oscillator labels widgets are set to
+        "disabled" mode."""
         for i in [i for i in range(len(self.value_vars)) if i != idx]:
             try:
                 self.selected_rows.remove(i)
@@ -404,7 +409,6 @@ class MyTable(MyFrame):
 
         # Proceed to highlight the selected row
         self.shift_left_click(idx, top)
-
 
     def shift_left_click(self, idx, top):
         """Deals with a <Shift-Button-1> event on a label.
@@ -431,7 +435,8 @@ class MyTable(MyFrame):
     def activate_rows(self, top):
         for i, (label, entries) in enumerate(zip(self.labels, self.entries)):
             if i + top in self.selected_rows:
-                fg, bg, state = TABLESELECTFGCOLOR, TABLESELECTBGCOLOR, 'readonly'
+                fg, bg, state = \
+                    TABLESELECTFGCOLOR, TABLESELECTBGCOLOR, 'readonly'
             else:
                 fg, bg, state = '#000000', BGCOLOR, 'disabled'
 
@@ -439,7 +444,6 @@ class MyTable(MyFrame):
             label['bg'] = bg
             for entry in entries:
                 entry['state'] = state
-
 
     def check_param(self, value_var, type_, entry):
         """Given a StringVar, ensure the value corresponds to a valid
@@ -463,7 +467,7 @@ class MyTable(MyFrame):
 
             value_var['value'] = value
 
-        except:
+        except Exception:
             pass
 
         if isinstance(value_var['value'], (int, float)):
@@ -471,11 +475,10 @@ class MyTable(MyFrame):
         else:
             # The only time the result shouldn't be a numerical value
             # if when it is an empty string (this crops up in result.AddFrame)
-            # In this case, want to re-colour red as the entry widget should not
-            # be empty
+            # In this case, want to re-colour red as the entry widget should
+            # not be empty
             value_var['var'].set(value_var['value'])
             entry.key_press()
-
 
     def get_values(self):
         """Takes a nested list of value_var dicts and returns a list of the
@@ -491,7 +494,6 @@ class MyTable(MyFrame):
 
         return values
 
-
     def check_red_entry(self):
         """Determines whether any of the entry widgets are red, indicated
         they contain unvalidated contents"""
@@ -501,12 +503,10 @@ class MyTable(MyFrame):
                     return True
         return False
 
-
     def up(self):
         """Scroll down one place in the table"""
         top = int(self.labels[0]['text']) - 2
         self.reconstruct(contents=self.get_values(), top=top)
-
 
     def down(self):
         """Scroll down one place in the table"""

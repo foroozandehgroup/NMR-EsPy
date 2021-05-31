@@ -1,11 +1,10 @@
 **/__pycache__/
-docs/_build/
 docs/_templates
+docs/_static
 docs/Makefile
-tests
-nmrespy/app/to_add.py
-nmrespy/app/tmp/*
+docs/html
 venv
 build
 dist
-*egg-info
+.pytest_cache
+nmrespy.egg-info/

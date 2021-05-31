@@ -9,12 +9,10 @@
 import pathlib
 import tkinter as tk
 
-import numpy as np
-
 from nmrespy._errors import TwoDimUnsupportedError
 from nmrespy.core import Estimator
-from nmrespy.app.frames import DataType # TODO: WaitingWindow
-from nmrespy.app import setup_, result
+from nmrespy.app.frames import DataType  # TODO: WaitingWindow
+from nmrespy.app import stup, result
 
 
 class NMREsPyApp(tk.Tk):
@@ -66,7 +64,7 @@ class NMREsPyApp(tk.Tk):
             # self.waiting_window = WaitingWindow(self)
             # self.waiting_window.withdraw()
 
-            self.setup_window = setup_.SetUp(self)
+            self.setup_window = stup.SetUp(self)
             # hold at this point
             # relieved once setup is destroyed
             # see SetUp.run()
