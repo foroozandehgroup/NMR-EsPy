@@ -254,9 +254,12 @@ def test_estimator():
             elif fmt == 'csv':
                 subprocess.run(['libreoffice', 'test.csv'])
 
-        os.remove(f'test.{fmt}')
-        if fmt == 'pdf':
-            os.remove('test.tex')
+        try:
+            os.remove(f'test.{fmt}')
+            if fmt == 'pdf':
+                os.remove('test.tex')
+        except Exception:
+            pass
 
     # --- Check result array-amending methods-------------------------
     # After manually changing the result, it should not be possible to
