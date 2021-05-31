@@ -1,8 +1,8 @@
 **/__pycache__/
-docs/_build/
 docs/_templates
 docs/_static
 docs/Makefile
+docs/html
 venv
 build
 dist

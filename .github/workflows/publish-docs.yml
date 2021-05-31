@@ -2,8 +2,7 @@ name: publish-docs
 
 on:
   push:
-    branches:
-      -develop
+    branches: [ develop ]
 
 jobs:
   pubdocs:
