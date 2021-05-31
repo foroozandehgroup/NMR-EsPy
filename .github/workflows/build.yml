@@ -35,4 +35,4 @@ jobs:
 
       - name: test with pytest
         run: |
-          python -m pytest test/nmrespy/tests/
+          python -m pytest test/tests/
