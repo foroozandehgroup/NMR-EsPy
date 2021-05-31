@@ -1,18 +1,17 @@
-.. raw:: html
+.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png
+   :align: center
+   :width: 500
 
-   <p align="center">
-   <img width="500" src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png">
-   </p>
+**Simon Hulse and Mohammadali Foroozandeh, University of Oxford**
 
-   <p align="center">
-   <b>Simon Hulse and Mohammadali Foroozandeh, University of Oxford</b>
-   </p>
+.. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/build/badge.svg
+   :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Abuild
 
-   <p align="center">
-   <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Abuild"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/build/badge.svg" alt="GitHub Actions Build Status"></a>
-   <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg" alt="GitHub Actions Documentation Status"></a>
-   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
-   </p>
+.. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg
+   :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs
+
+.. image:: https://img.shields.io/badge/License-MIT-yellow.svg
+   :target: https://opensource.org/licenses/MIT
 
 
 NMR-EsPy: **N**\uclear **M**\agnetic **R**\esonance **Es**\timation in **Py**\thon
@@ -30,6 +29,6 @@ Getting started:
 The following figure shows the final result generated in the example
 walkthrough in NMR-EsPy's docs:
 
-.. image:: docs/media/walkthrough/figures/plot_example_edited.png
+.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/media/walkthrough/figures/plot_example_edited.png
    :scale: 5 %
    :align: center
