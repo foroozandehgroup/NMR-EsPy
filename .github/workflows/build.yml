@@ -30,9 +30,8 @@ jobs:
 
       - name: lint with flake8
         run: |
-          cd develop/
           # Ignore star imports (F403/5) and indents before/after binary operators (W503/4)
-          flake8 tests/ nmrespy/ setup.py --ignore F405,F403,W503,W504 --per-file-ignores="nmrespy/__init__.py:F401,setup.py:F821"
+          flake8 develop/tests/ develop/nmrespy/ develop/setup.py --ignore F405,F403,W503,W504 --per-file-ignores="nmrespy/__init__.py:F401,setup.py:F821"
 
       - name: test with pytest
         run: |
