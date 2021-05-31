@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: 3.9
 
-      - name: install LaTeX and fonts
+      - name: install LaTeX requirements
         run: |
           sudo apt-get update -y
           sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-xetex dvipng
@@ -29,7 +29,7 @@ jobs:
         run: |
           wget https://ftp.gnu.org/gnu/freefont/freefont-otf-20120503.tar.gz
           tar -xzvf freefont-otf-20120503.tar.gz
-          sudo mv freefont-otf-20120503 /usr/share/fonts/opentype/freefont
+          sudo mv freefont-20120503 /usr/share/fonts/opentype/freefont
 
       - name: install nmrespy dependencies and sphinx and build docs
         run: |
