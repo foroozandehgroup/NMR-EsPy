@@ -56,22 +56,19 @@ Enter the following command:
 .. code::
 
    $ pdflatex -v
-   pdfTeX 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian)
-   kpathsea version 6.3.1
-   Copyright 2019 Han The Thanh (pdfTeX) et al.
-   There is NO warranty.  Redistribution of this software is
-   covered by the terms of both the pdfTeX copyright and
-   the Lesser GNU General Public License.
-   For more information about these matters, see the file
-   named COPYING and the pdfTeX source.
-   Primary author of pdfTeX: Han The Thanh (pdfTeX) et al.
-   Compiled with libpng 1.6.37; using libpng 1.6.37
-   Compiled with zlib 1.2.11; using zlib 1.2.11
-   Compiled with xpdf version 4.01
 
-If you see something similar to the output I get, things should work fine.
-If you get an error indicating that ``pdflatex`` isn't recognised, you
-probably haven't got LaTeX installed.
+If you see something similar to the following:
+
+.. code::
+
+  pdfTeX 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian)
+  kpathsea version 6.3.1
+  Copyright 2019 Han The Thanh (pdfTeX) et al.
+
+  --snip--
+
+things should work fine. If you get an error indicating that ``pdflatex``
+isn't recognised, you probably haven't got LaTeX installed.
 
 There are a few LaTeX packages required to generate result PDFs. These
 are outlined in the *Notes* section of the documentation of
