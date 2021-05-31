@@ -9,7 +9,7 @@ version can be installed using:
 
    $ python3 -m pip install nmrespy
 
-You need to be using Python 3.7 or above.
+You need to be using Python 3.8 or above.
 
 Requirements
 ^^^^^^^^^^^^

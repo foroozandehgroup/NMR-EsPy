@@ -5,7 +5,6 @@ with open('README.rst', 'r') as fh:
 
 exec(open('nmrespy/_version.py').read())
 
-
 setup(
     name='nmrespy',
     version=__version__,
@@ -17,7 +16,6 @@ setup(
     long_description_content_type="text/x-rst",
     classifiers=[
         "Programming Language :: Python :: 3",
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         "License :: OSI Approved :: MIT License",
@@ -30,7 +28,7 @@ setup(
         "matplotlib>=3.3",
         "colorama==0.4; platform_system == 'Windows'",
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     include_package_data=True,
     packages=find_packages(),
 )
