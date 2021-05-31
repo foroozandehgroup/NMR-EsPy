@@ -6,7 +6,7 @@ import numpy as np
 
 from nmrespy._misc import PathManager, FrequencyConverter, ArgumentChecker
 
-def test_argchecker(self):
+def test_argchecker():
     with pytest.raises(TypeError):
         ArgumentChecker(
             [
@@ -51,7 +51,7 @@ def test_converter():
     with pytest.raises(TypeError):
         FrequencyConverter(n, 'not_a_list', offset, sfo)
     # lists not same length
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         FrequencyConverter(n, [sw[0]], offset, sfo)
     # some elements are not numerical values
     with pytest.raises(TypeError):

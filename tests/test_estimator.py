@@ -307,7 +307,7 @@ def test_estimator():
     estimator.save_logfile('test', force_overwrite=True)
     if MANUAL_TEST:
         subprocess.run(['vi', 'test.log'])
-        os.remove('test.log')
+    os.remove('test.log')
 
     # --- Pickling ---------------------------------------------------
     estimator.to_pickle('info', force_overwrite=True)

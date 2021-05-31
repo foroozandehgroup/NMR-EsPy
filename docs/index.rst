@@ -34,11 +34,11 @@ For more information:
 
 |email| `simon.hulse@chem.ox.ac.uk <mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy%20query>`_
 
-.. |github| image:: _static/github.png
+.. |github| image:: media/github.png
             :scale: 15%
 
 
-.. |email| image:: _static/email.png
+.. |email| image:: media/email.png
            :scale: 2%
 
 .. toctree::

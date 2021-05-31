@@ -76,7 +76,7 @@ An interactive plot of the data, in the frequency domain, can be seen using the
 
    >>> estimator.view_data()
 
-.. image:: _static/walkthrough/figures/view_data.png
+.. image:: media/walkthrough/figures/view_data.png
    :align: center
    :scale: 80%
 
@@ -92,7 +92,7 @@ which has been generated via frequency-filtration.
 In this example, I am going to focus on the spectral region between
 5.54-5.42ppm. The region looks like this:
 
-.. image:: _static/walkthrough/figures/spectral_region.png
+.. image:: media/walkthrough/figures/spectral_region.png
    :align: center
 
 To generate a frequency-filtered signal from the imported data, the
@@ -219,10 +219,10 @@ formats, using the :py:meth:`~nmrespy.core.Estimator.write_result` method.
 
 The files generated are as follows:
 
-* :download:`example.txt <_static/walkthrough/example.txt>`
-* :download:`example.tex <_static/walkthrough/example.tex>`
-* :download:`example.pdf <_static/walkthrough/example.pdf>`
-* :download:`example.csv <_static/walkthrough/example.csv>`
+* :download:`example.txt <media/walkthrough/example.txt>`
+* :download:`example.tex <media/walkthrough/example.tex>`
+* :download:`example.pdf <media/walkthrough/example.pdf>`
+* :download:`example.csv <media/walkthrough/example.csv>`
 
 
 .. note::
@@ -246,7 +246,7 @@ See `Summary`_ below for an example of some basic plot customisation.
    >>> plot = estimator.plot_result()
    >>> plot.fig.savefig("plot_example.png")
 
-* :download:`example_plot.png <_static/walkthrough/figures/plot_example.png>`
+* :download:`example_plot.png <media/walkthrough/figures/plot_example.png>`
 
 Pickling Estimator Instances
 ----------------------------
@@ -280,7 +280,7 @@ A summary of the methods applied to the estimator can be saved using the
    >>> estimator.save_logfile(path="logfile_example")
    Log file successfully saved to /<pwd>/logfile_example.log
 
-* :download:`logfile_example.log <_static/walkthrough/logfile_example.log>`
+* :download:`logfile_example.log <media/walkthrough/logfile_example.log>`
 
 Summary
 ^^^^^^^
@@ -336,8 +336,8 @@ Note that further customisation has been applied to the plot to give it an
     # Save a logfile of method calls
     estimator.save_logfile(path="logfile_example")
 
-* :download:`nmrespy_example.py <_static/walkthrough/nmrespy_example.py>`
-* :download:`plot_example_edited.png <_static/walkthrough/figures/plot_example_edited.png>`
+* :download:`nmrespy_example.py <media/walkthrough/nmrespy_example.py>`
+* :download:`plot_example_edited.png <media/walkthrough/figures/plot_example_edited.png>`
 
 More features are provided by :py:class:`~nmrespy.core.Estimator` beyond
 what is described on this page. Look at the class's docs for details.

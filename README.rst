@@ -2,9 +2,20 @@
    :scale: 10 %
    :align: center
 
-.. image:: https://readthedocs.org/projects/nmr-espy/badge/?version=latest
-   :target: https://nmr-espy.readthedocs.io/en/latest/?badge=latest
-   :alt: Documentation Status
+.. raw::
+  <p align="center">
+  <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg" alt="GitHub Actions Documentation Status"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
+  </p>
+
+  <p align="center">
+  <img width="250" src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png">
+  </p>
+
+  <p align="center">
+  <b>Simon Hulse and Mohammadali Foroozandeh, University of Oxford</b>
+  </p>
+
 
 NMR-EsPy: **N**\uclear **M**\agnetic **R**\esonance **Es**\timation in **Py**\thon
 is a Python package developed for estimating the parameters that describe
@@ -13,13 +24,13 @@ NMR data.
 Getting started:
 
 * Installation: ``pip install nmrespy``
-* Documentation: https://nmr-espy.readthedocs.io/en/latest/
-* Check out the `Example Walkthrough <https://nmr-espy.readthedocs.io/en/latest/walkthrough.html>`_
+* Documentation: https://foroozandehgroup.github.io/NMR-EsPy/
+* Check out the `Example Walkthrough <https://https://foroozandehgroup.github.io/NMR-EsPy/walkthrough.html>`_
   page in the docs for a tutorial on NMR-EsPy's basic usage.
 
 The following figure shows the final result generated in the example
 walkthrough in NMR-EsPy's docs:
 
-.. image:: docs/_static/walkthrough/figures/plot_example_edited.png
+.. image:: docs/media/walkthrough/figures/plot_example_edited.png
    :scale: 5 %
    :align: center

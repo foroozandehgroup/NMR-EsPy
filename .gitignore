@@ -2,8 +2,8 @@
 docs/_build/
 docs/_templates
 docs/Makefile
-tests
 venv
 build
 dist
-*egg-info
+.pytest_cache
+nmrespy.egg-info/
