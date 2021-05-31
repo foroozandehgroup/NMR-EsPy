@@ -22,7 +22,8 @@ NMR data.
 Getting started:
 
 * Installation: ``pip install nmrespy``
-* Documentation: https://foroozandehgroup.github.io/NMR-EsPy/
+* HTML Documentation: https://foroozandehgroup.github.io/NMR-EsPy/
+* PDF Documentation: https://github.com/foroozandehgroup/NMR-EsPy/raw/gh-pages/nmr-espy.pdf
 * Check out the `Example Walkthrough <https://https://foroozandehgroup.github.io/NMR-EsPy/walkthrough.html>`_
   page in the docs for a tutorial on NMR-EsPy's basic usage.
 
