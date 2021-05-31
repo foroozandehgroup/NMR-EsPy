@@ -43,20 +43,20 @@
           <div class="body" role="main">
             
   <h1>Source code for nmrespy.core</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">datetime</span>
+<span></span><span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
 <span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span> <span class="nn">pickle</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
 
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">numpy.fft</span> <span class="kn">import</span> <span class="n">fft</span><span class="p">,</span> <span class="n">fftshift</span>
 
 <span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">import</span> <span class="nn">nmrespy._cols</span> <span class="k">as</span> <span class="nn">cols</span>
 <span class="k">if</span> <span class="n">cols</span><span class="o">.</span><span class="n">USE_COLORAMA</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">colorama</span>
+    <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 <span class="kn">import</span> <span class="nn">nmrespy._errors</span> <span class="k">as</span> <span class="nn">errors</span>
 <span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">nmrespy.load</span> <span class="kn">import</span> <span class="n">load_bruker</span>
@@ -159,7 +159,7 @@
             <span class="s2">&quot;==============================</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;Logfile for Estimator instance</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="s2">&quot;==============================</span><span class="se">\n</span><span class="s2">&quot;</span>
-           <span class="sa">f</span><span class="s2">&quot;--&gt; Instance created @ </span><span class="si">{</span><span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">-%m-%y %H:%M:%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;--&gt; Instance created @ </span><span class="si">{</span><span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">-%m-%y %H:%M:%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">_origin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -167,7 +167,6 @@
                           <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_origin</span><span class="p">[</span><span class="s1">&#39;args&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
-
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
@@ -185,7 +184,6 @@
 
         <span class="k">return</span> <span class="n">msg</span>
 
-
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;A formatted list of class attributes&quot;&quot;&quot;</span>
 
@@ -196,11 +194,11 @@
 
         <span class="n">dic</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span>
         <span class="n">keys</span><span class="p">,</span> <span class="n">vals</span> <span class="o">=</span> <span class="n">dic</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">dic</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-        <span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">MA</span><span class="si">}{</span><span class="n">k</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1"> : </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">vals</span><span class="p">)</span> <span class="k">if</span> <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span><span class="p">]</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">MA</span><span class="si">}{</span><span class="n">k</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1"> : </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s1">&#39;</span>
+                 <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">vals</span><span class="p">)</span> <span class="k">if</span> <span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;_&#39;</span><span class="p">]</span>
         <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">msg</span>
-
 
 <div class="viewcode-block" id="Estimator.logger"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.logger">[docs]</a>    <span class="k">def</span> <span class="nf">logger</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Decorator for logging :py:class:`Estimator` method calls&quot;&quot;&quot;</span>
@@ -214,7 +212,6 @@
             <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">wrapper</span></div>
-
 
 <div class="viewcode-block" id="Estimator.new_bruker"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.new_bruker">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">new_bruker</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="nb">dir</span><span class="p">,</span> <span class="n">ask_convdta</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
@@ -238,7 +235,7 @@
 <span class="sd">        For a more detailed specification of the directory requirements,</span>
 <span class="sd">        see :py:meth:`nmrespy.load_bruker`.&quot;&quot;&quot;</span>
 
-        <span class="n">origin</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;method&#39;</span> <span class="p">:</span> <span class="s1">&#39;new_bruker&#39;</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span> <span class="p">:</span> <span class="nb">locals</span><span class="p">()}</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="s1">&#39;new_bruker&#39;</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="nb">locals</span><span class="p">()}</span>
         <span class="n">info</span> <span class="o">=</span> <span class="n">load_bruker</span><span class="p">(</span><span class="nb">dir</span><span class="p">,</span> <span class="n">ask_convdta</span><span class="o">=</span><span class="n">ask_convdta</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
@@ -343,9 +340,11 @@
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
         <span class="c1"># Append extension to file path</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;.pkl&#39;</span><span class="p">)</span>
-        <span class="c1"># Check path is valid (check directory exists, ask user if they are happy</span>
-        <span class="c1"># overwriting if file already exists).</span>
-        <span class="n">pathres</span> <span class="o">=</span> <span class="n">PathManager</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span><span class="o">.</span><span class="n">check_file</span><span class="p">(</span><span class="n">force_overwrite</span><span class="p">)</span>
+        <span class="c1"># Check path is valid (check directory exists, ask user if they are</span>
+        <span class="c1"># happy overwriting if file already exists).</span>
+        <span class="n">pathres</span> <span class="o">=</span> <span class="n">PathManager</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">check_file</span><span class="p">(</span><span class="n">force_overwrite</span><span class="p">)</span>
         <span class="c1"># Valid path, we are good to proceed</span>
         <span class="k">if</span> <span class="n">pathres</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">pass</span>
@@ -355,7 +354,8 @@
         <span class="c1"># pathres == 2: Directory specified doesn&#39;t exist</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">The directory implied by path does not exist</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">The directory implied by path does not&#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;exist</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span>
 
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
@@ -363,9 +363,6 @@
 
         <span class="k">if</span> <span class="n">fprint</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">G</span><span class="si">}</span><span class="s1">Saved instance of Estimator to </span><span class="si">{</span><span class="n">path</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div>
-
-
-
 
 <div class="viewcode-block" id="Estimator.get_datapath"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_datapath">[docs]</a>    <span class="k">def</span> <span class="nf">get_datapath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type_</span><span class="o">=</span><span class="s1">&#39;Path&#39;</span><span class="p">,</span> <span class="n">kill</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return path of the data directory.</span>
@@ -398,7 +395,6 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">R</span><span class="si">}</span><span class="s1">type_ should be </span><span class="se">\&#39;</span><span class="s1">Path</span><span class="se">\&#39;</span><span class="s1"> or </span><span class="se">\&#39;</span><span class="s1">str</span><span class="se">\&#39;</span><span class="s1">&#39;</span><span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="Estimator.get_data"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the original data.</span>
 
@@ -407,7 +403,6 @@
 <span class="sd">        data : numpy.ndarray</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span></div>
-
 
 <div class="viewcode-block" id="Estimator.get_dim"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_dim">[docs]</a>    <span class="k">def</span> <span class="nf">get_dim</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the data dimension.</span>
@@ -418,7 +413,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span></div>
 
-
 <div class="viewcode-block" id="Estimator.get_n"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_n">[docs]</a>    <span class="k">def</span> <span class="nf">get_n</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the number of datapoints in each dimension</span>
 
@@ -427,7 +421,6 @@
 <span class="sd">        n : [int] or [int, int]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span></div>
-
 
 <div class="viewcode-block" id="Estimator.get_sw"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_sw">[docs]</a>    <span class="k">def</span> <span class="nf">get_sw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="n">kill</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the experiment sweep width in each dimension.</span>
@@ -470,7 +463,6 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">InvalidUnitError</span><span class="p">(</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="Estimator.get_offset"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_offset">[docs]</a>    <span class="k">def</span> <span class="nf">get_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="n">kill</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the transmitter&#39;s offset frequency in each dimesnion.</span>
 
@@ -512,7 +504,6 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">InvalidUnitError</span><span class="p">(</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="Estimator.get_sfo"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_sfo">[docs]</a>    <span class="k">def</span> <span class="nf">get_sfo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kill</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return transmitter frequency for each channel (MHz).</span>
 
@@ -548,7 +539,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">sfo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_if_none</span><span class="p">(</span><span class="s1">&#39;sfo&#39;</span><span class="p">,</span> <span class="n">kill</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">sfo</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
 
         <span class="n">off</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_offset</span><span class="p">()</span>
@@ -583,8 +574,9 @@
 
 <span class="sd">        meshgrid : bool</span>
 <span class="sd">            Only appicable for 2D data. If set to `True`, the shifts in</span>
-<span class="sd">            each dimension will be fed into `numpy.meshgrid &lt;https://numpy.org/\</span>
-<span class="sd">            doc/stable/reference/generated/numpy.meshgrid.html&gt;`_</span>
+<span class="sd">            each dimension will be fed into</span>
+<span class="sd">            `numpy.meshgrid &lt;https://numpy.org/doc/stable/reference/\</span>
+<span class="sd">            generated/numpy.meshgrid.html&gt;`_</span>
 
 <span class="sd">        kill : bool</span>
 <span class="sd">            If `self.sfo` (need to get shifts in ppm) is `None`, `kill`</span>
@@ -611,8 +603,8 @@
         <span class="k">if</span> <span class="n">unit</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;ppm&#39;</span><span class="p">,</span> <span class="s1">&#39;hz&#39;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">InvalidUnitError</span><span class="p">(</span><span class="s1">&#39;ppm&#39;</span><span class="p">,</span> <span class="s1">&#39;hz&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;ppm&#39;</span> <span class="ow">and</span> <span class="n">kill</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_if_none</span><span class="p">(</span><span class="s1">&#39;sfo&#39;</span><span class="p">,</span> <span class="n">kill</span><span class="p">)</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;ppm&#39;</span> <span class="ow">and</span> <span class="n">kill</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_if_none</span><span class="p">(</span><span class="s1">&#39;sfo&#39;</span><span class="p">,</span> <span class="n">kill</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">return</span> <span class="kc">None</span>
 
         <span class="n">shifts</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span>
@@ -625,7 +617,6 @@
 
         <span class="k">return</span> <span class="n">shifts</span></div>
 
-
 <div class="viewcode-block" id="Estimator.get_timepoints"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_timepoints">[docs]</a>    <span class="k">def</span> <span class="nf">get_timepoints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meshgrid</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return the sampled times consistent with experiment&#39;s</span>
 <span class="sd">        parameters (sweep width, number of points).</span>
@@ -634,8 +625,9 @@
 <span class="sd">        ----------</span>
 <span class="sd">        meshgrid : bool</span>
 <span class="sd">            Only appicable for 2D data. If set to `True`, the time-points in</span>
-<span class="sd">            each dimension will be fed into `numpy.meshgrid &lt;https://numpy.org/\</span>
-<span class="sd">            doc/stable/reference/generated/numpy.meshgrid.html&gt;`_</span>
+<span class="sd">            each dimension will be fed into</span>
+<span class="sd">            `numpy.meshgrid &lt;https://numpy.org/doc/stable/reference/\</span>
+<span class="sd">            generated/numpy.meshgrid.html&gt;`_</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -649,7 +641,6 @@
             <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tp</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="n">tp</span></div>
-
 
 <div class="viewcode-block" id="Estimator.get_result"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_result">[docs]</a>    <span class="k">def</span> <span class="nf">get_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kill</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">freq_unit</span><span class="o">=</span><span class="s1">&#39;hz&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns the estimation result</span>
@@ -667,7 +658,6 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_array</span><span class="p">(</span><span class="s1">&#39;result&#39;</span><span class="p">,</span> <span class="n">kill</span><span class="p">,</span> <span class="n">freq_unit</span><span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="Estimator.get_errors"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.get_errors">[docs]</a>    <span class="k">def</span> <span class="nf">get_errors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kill</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">freq_unit</span><span class="o">=</span><span class="s1">&#39;hz&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns the errors of the estimation result derived from</span>
 <span class="sd">        :py:meth:`nonlinear_programming`</span>
@@ -684,7 +674,6 @@
 <span class="sd">        freq_unit : &#39;hz&#39; or &#39;ppm&#39;, default: &#39;hz&#39;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_array</span><span class="p">(</span><span class="s1">&#39;errors&#39;</span><span class="p">,</span> <span class="n">kill</span><span class="p">,</span> <span class="n">freq_unit</span><span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="Estimator._get_array"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator._get_array">[docs]</a>    <span class="k">def</span> <span class="nf">_get_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">kill</span><span class="p">,</span> <span class="n">freq_unit</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns an array (result or errors), wioth frequencies in either</span>
@@ -713,7 +702,7 @@
                 <span class="n">array</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">ppm</span>
                 <span class="k">return</span> <span class="n">array</span>
 
-            <span class="k">except</span><span class="p">:</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">Error in trying to convert frequencies to &#39;</span>
                     <span class="sa">f</span><span class="s1">&#39;ppm. Perhaps you didn</span><span class="se">\&#39;</span><span class="s1">t specify sfo when you made &#39;</span>
@@ -722,7 +711,6 @@
 
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">InvalidUnitError</span><span class="p">(</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="Estimator._check_if_none"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator._check_if_none">[docs]</a>    <span class="k">def</span> <span class="nf">_check_if_none</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">kill</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Retrieve attributes that may be assigned the value `None`. Return</span>
@@ -758,8 +746,8 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">attribute</span></div>
 
-
-<div class="viewcode-block" id="Estimator.view_data"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.view_data">[docs]</a>    <span class="k">def</span> <span class="nf">view_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s1">&#39;frequency&#39;</span><span class="p">,</span> <span class="n">freq_xunit</span><span class="o">=</span><span class="s1">&#39;ppm&#39;</span><span class="p">,</span> <span class="n">component</span><span class="o">=</span><span class="s1">&#39;real&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="Estimator.view_data"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.view_data">[docs]</a>    <span class="k">def</span> <span class="nf">view_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s1">&#39;frequency&#39;</span><span class="p">,</span> <span class="n">freq_xunit</span><span class="o">=</span><span class="s1">&#39;ppm&#39;</span><span class="p">,</span>
+                  <span class="n">component</span><span class="o">=</span><span class="s1">&#39;real&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Generate a simple, interactive plot of the data using matplotlib.</span>
 
 <span class="sd">        Parameters</span>
@@ -833,7 +821,6 @@
 <span class="c1"># make_fid:</span>
 <span class="c1"># include functionality to write to Bruker files, Varian files,</span>
 <span class="c1"># JEOL files etc</span>
-<span class="c1"># =============================================================</span>
 
 <div class="viewcode-block" id="Estimator.make_fid"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.make_fid">[docs]</a>    <span class="k">def</span> <span class="nf">make_fid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">oscillators</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">kill</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Constructs a synthetic FID using a parameter estimate and</span>
@@ -888,10 +875,8 @@
             <span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_dim</span><span class="p">(),</span>
         <span class="p">)</span>
 
-
-        <span class="k">return</span> <span class="n">sig</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span>
-            <span class="n">result</span><span class="p">[[</span><span class="n">oscillators</span><span class="p">]],</span> <span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sw</span><span class="p">(),</span> <span class="n">offset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_offset</span><span class="p">(),</span>
-        <span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">sig</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">result</span><span class="p">[[</span><span class="n">oscillators</span><span class="p">]],</span> <span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sw</span><span class="p">(),</span>
+                            <span class="n">offset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_offset</span><span class="p">())</span></div>
 
 <div class="viewcode-block" id="Estimator.phase_data"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.phase_data">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">phase_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">p1</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -917,7 +902,6 @@
             <span class="n">sig</span><span class="o">.</span><span class="n">phase</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="n">p0</span><span class="p">,</span> <span class="n">p1</span><span class="p">)</span>
         <span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="Estimator.manual_phase_data"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.manual_phase_data">[docs]</a>    <span class="k">def</span> <span class="nf">manual_phase_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_p1</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Perform manual phase correction of `self.data`.</span>
 
@@ -934,9 +918,8 @@
 <span class="sd">            ``10 * numpy.pi``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">p0</span><span class="p">,</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">manual_phase_spectrum</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">),</span> <span class="n">max_p1</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">p0</span> <span class="o">==</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">p1</span> <span class="o">==</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">p0</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">p1</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">phase_data</span><span class="p">(</span><span class="n">p0</span><span class="o">=</span><span class="p">[</span><span class="n">p0</span><span class="p">],</span> <span class="n">p1</span><span class="o">=</span><span class="p">[</span><span class="n">p1</span><span class="p">])</span></div>
-
 
 <div class="viewcode-block" id="Estimator.frequency_filter"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.frequency_filter">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">frequency_filter</span><span class="p">(</span>
@@ -946,7 +929,8 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        region: [[int, int]], [[int, int], [int, int]], [[float, float]] or [[float, float], [float, float]]</span>
+<span class="sd">        region: [[int, int]], [[int, int], [int, int]], [[float, float]] or</span>
+<span class="sd">        [[float, float], [float, float]]</span>
 <span class="sd">            Cut-off points of the spectral region to consider.</span>
 <span class="sd">            If the signal is 1D, this should be of the form `[[a,b]]`</span>
 <span class="sd">            where `a` and `b` are the boundaries.</span>
@@ -956,7 +940,8 @@
 <span class="sd">            dimension 2. The ordering of the bounds in each dimension is</span>
 <span class="sd">            not important.</span>
 
-<span class="sd">        noise_region: [[int, int]], [[int, int], [int, int]], [[float, float]] or [[float, float], [float, float]]</span>
+<span class="sd">        noise_region: [[int, int]], [[int, int], [int, int]],</span>
+<span class="sd">        [[float, float]] or [[float, float], [float, float]]</span>
 <span class="sd">            Cut-off points of the spectral region to extract the spectrum&#39;s</span>
 <span class="sd">            noise variance. This should have the same structure as `region`.</span>
 
@@ -1109,9 +1094,9 @@
 <span class="sd">           frequencies using modified matrix pencil method”. In: IEEE Trans.</span>
 <span class="sd">           Signal Process. 55.2 (2007), pp. 718–724.</span>
 
-<span class="sd">        .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic</span>
-<span class="sd">           criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing</span>
-<span class="sd">           33 (2) (1985) 387–392.</span>
+<span class="sd">        .. [#] M. Wax, T. Kailath, Detection of signals by information</span>
+<span class="sd">           theoretic criteria, IEEE Transactions on Acoustics, Speech, and</span>
+<span class="sd">           Signal Processing 33 (2) (1985) 387–392.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">data</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_data_sw_offset</span><span class="p">()</span>
@@ -1133,9 +1118,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_saveable</span> <span class="o">=</span> <span class="kc">False</span></div>
 
-
     <span class="c1"># TODO: support for mode</span>
     <span class="c1"># Also look at nlp.nlp.NonlinearProgramming</span>
+
 <div class="viewcode-block" id="Estimator.nonlinear_programming"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.nonlinear_programming">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">nonlinear_programming</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Estimation of signal parameters using nonlinear programming, given</span>
@@ -1217,7 +1202,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="n">nlp_info</span><span class="o">.</span><span class="n">get_errors</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_saveable</span> <span class="o">=</span> <span class="kc">True</span></div>
 
-
 <div class="viewcode-block" id="Estimator.write_result"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.write_result">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">write_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Saves an estimation result to a file in a human-readable format</span>
@@ -1258,7 +1242,7 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_saveable</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">O</span><span class="si">}</span><span class="s1">The last action to be applied to the estimation &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">OR</span><span class="si">}</span><span class="s1">The last action to be applied to the estimation &#39;</span>
                 <span class="sa">f</span><span class="s1">&#39;result was not `nonlinear_programming`. You should ensure &#39;</span>
                 <span class="sa">f</span><span class="s1">&#39;this is so before saving the result.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span>
@@ -1397,7 +1381,7 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_saveable</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">O</span><span class="si">}</span><span class="s1">The last action to be applied to the estimation &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">OR</span><span class="si">}</span><span class="s1">The last action to be applied to the estimation &#39;</span>
                 <span class="sa">f</span><span class="s1">&#39;result was not `nonlinear_programming`. You should ensure &#39;</span>
                 <span class="sa">f</span><span class="s1">&#39;this is so before plotting the result.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span>
@@ -1424,7 +1408,6 @@
             <span class="n">nucleus</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_nucleus</span><span class="p">(</span><span class="n">kill</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
             <span class="n">region</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_filter_info</span><span class="p">()</span><span class="o">.</span><span class="n">get_region</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
         <span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="Estimator.add_oscillators"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.add_oscillators">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">add_oscillators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">oscillators</span><span class="p">):</span>
@@ -1464,7 +1447,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_saveable</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="kc">None</span></div>
 
-
 <div class="viewcode-block" id="Estimator.remove_oscillators"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.remove_oscillators">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">remove_oscillators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indices</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Removes the oscillators corresponding to ``indices``.</span>
@@ -1492,7 +1474,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_saveable</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="kc">None</span></div>
 
-
 <div class="viewcode-block" id="Estimator.merge_oscillators"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.merge_oscillators">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">merge_oscillators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indices</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Merges the oscillators corresponding to `indices`.</span>
@@ -1517,9 +1498,11 @@
 <span class="sd">        oscillator subset will possess the following parameters:</span>
 
 <span class="sd">            * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`</span>
-<span class="sd">            * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\phi_{m_i}`</span>
+<span class="sd">            * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J</span>
+<span class="sd">              \\phi_{m_i}`</span>
 <span class="sd">            * :math:`f_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J f_{m_i}`</span>
-<span class="sd">            * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J \\eta_{m_i}`</span>
+<span class="sd">            * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J</span>
+<span class="sd">              \\eta_{m_i}`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">ArgumentChecker</span><span class="p">([(</span><span class="n">indices</span><span class="p">,</span> <span class="s1">&#39;indices&#39;</span><span class="p">,</span> <span class="s1">&#39;list&#39;</span><span class="p">)])</span>
@@ -1528,7 +1511,7 @@
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">O</span><span class="si">}</span><span class="s1">`indices` should contain at least two elements.&#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">OR</span><span class="si">}</span><span class="s1">`indices` should contain at least two elements.&#39;</span>
                 <span class="sa">f</span><span class="s1">&#39;No merging will happen.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span>
             <span class="k">return</span>
@@ -1605,7 +1588,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># Of form: [a, φ, f, η] (i.e. 1D array)</span>
             <span class="n">osc</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
-        <span class="k">except</span><span class="p">:</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">index should be an int in range(&#39;</span>
                 <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">)</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
@@ -1620,7 +1603,8 @@
         <span class="c1"># Highest frequency of all the new oscillators</span>
         <span class="n">max_freq</span> <span class="o">=</span> <span class="n">osc</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="p">((</span><span class="n">split_number</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">separation_frequency</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
         <span class="c1"># Array of all frequencies (lowest to highest)</span>
-        <span class="n">freqs</span> <span class="o">=</span> <span class="p">[</span><span class="n">max_freq</span> <span class="o">-</span> <span class="n">i</span><span class="o">*</span><span class="n">separation_frequency</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">split_number</span><span class="p">)]</span>
+        <span class="n">freqs</span> <span class="o">=</span> <span class="p">[</span><span class="n">max_freq</span> <span class="o">-</span> <span class="n">i</span> <span class="o">*</span> <span class="n">separation_frequency</span>
+                 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">split_number</span><span class="p">)]</span>
 
         <span class="c1"># --- Determine amplitudes ---------------------------------------</span>
         <span class="k">if</span> <span class="n">amp_ratio</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1663,7 +1647,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_saveable</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="kc">None</span></div>
 
-
 <div class="viewcode-block" id="Estimator.save_logfile"><a class="viewcode-back" href="../../references/core.html#nmrespy.core.Estimator.save_logfile">[docs]</a>    <span class="k">def</span> <span class="nf">save_logfile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./nmrespy_log&#39;</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Saves log file of class instance usage to a specified path.</span>
 
@@ -1691,9 +1674,11 @@
 
         <span class="c1"># Get full path and extend .log extension</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s1">&#39;.log&#39;</span><span class="p">)</span>
-        <span class="c1"># Check path is valid (check directory exists, ask user if they are happy</span>
-        <span class="c1"># overwriting if file already exists).</span>
-        <span class="n">pathres</span> <span class="o">=</span> <span class="n">PathManager</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span><span class="o">.</span><span class="n">check_file</span><span class="p">(</span><span class="n">force_overwrite</span><span class="p">)</span>
+        <span class="c1"># Check path is valid (check directory exists, ask user if they are</span>
+        <span class="c1"># happy overwriting if file already exists).</span>
+        <span class="n">pathres</span> <span class="o">=</span> <span class="n">PathManager</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">parent</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">check_file</span><span class="p">(</span><span class="n">force_overwrite</span><span class="p">)</span>
         <span class="c1"># Valid path, we are good to proceed</span>
         <span class="k">if</span> <span class="n">pathres</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">pass</span>

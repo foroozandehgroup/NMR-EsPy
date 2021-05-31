@@ -58,8 +58,10 @@
 <span class="kn">import</span> <span class="nn">nmrespy._cols</span> <span class="k">as</span> <span class="nn">cols</span>
 <span class="k">if</span> <span class="n">cols</span><span class="o">.</span><span class="n">USE_COLORAMA</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">colorama</span>
+    <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 <span class="kn">import</span> <span class="nn">nmrespy._errors</span> <span class="k">as</span> <span class="nn">errors</span>
-<span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="n">ArgumentChecker</span><span class="p">,</span> <span class="n">FrequencyConverter</span><span class="p">,</span> <span class="n">start_end_wrapper</span>
+<span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="p">(</span><span class="n">ArgumentChecker</span><span class="p">,</span> <span class="n">FrequencyConverter</span><span class="p">,</span>
+                           <span class="n">start_end_wrapper</span><span class="p">)</span>
 <span class="kn">from</span> <span class="nn">._timing</span> <span class="kn">import</span> <span class="n">timer</span>
 
 
@@ -106,9 +108,9 @@
 <span class="sd">       parameters of exponentially damped/undamped sinusoids in noise”. In:</span>
 <span class="sd">       IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.</span>
 
-<span class="sd">    .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy NMR</span>
-<span class="sd">       signals: applications to delayed acquisition data”. In: J. Magn. Reson.</span>
-<span class="sd">       128.1 (1997), pp. 30–41.</span>
+<span class="sd">    .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy</span>
+<span class="sd">       NMR signals: applications to delayed acquisition data”. In: J. Magn.</span>
+<span class="sd">       Reson. 128.1 (1997), pp. 30–41.</span>
 
 <span class="sd">    .. [#] Yingbo Hua. “Estimating two-dimensional frequencies by matrix</span>
 <span class="sd">       enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991</span>
@@ -124,19 +126,19 @@
     <span class="n">end_txt</span> <span class="o">=</span> <span class="s1">&#39;MATRIX PENCIL METHOD COMPLETE&#39;</span>
 
 <div class="viewcode-block" id="MatrixPencil.__init__"><a class="viewcode-back" href="../../references/mpm.html#nmrespy.mpm.MatrixPencil.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sfo</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">fprint</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">start_point</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+                 <span class="n">start_point</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Checks validity of inputs, and if valid, calls :py:meth:`_mpm`&quot;&quot;&quot;</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">MoreThanTwoDimError</span><span class="p">()</span>
-        <span class="k">except</span><span class="p">:</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">data should be a numpy ndarray</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">offset</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">offset</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span>
 
         <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
@@ -148,7 +150,7 @@
             <span class="p">(</span><span class="n">start_point</span><span class="p">,</span> <span class="s1">&#39;start_point&#39;</span><span class="p">,</span> <span class="s1">&#39;positive_int_or_zero&#39;</span><span class="p">),</span>
         <span class="p">]</span>
 
-        <span class="k">if</span> <span class="n">sfo</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sfo</span><span class="p">,</span> <span class="s1">&#39;sfo&#39;</span><span class="p">,</span> <span class="s1">&#39;float_list&#39;</span><span class="p">))</span>
 
         <span class="n">ArgumentChecker</span><span class="p">(</span><span class="n">components</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">)</span>
@@ -162,7 +164,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span> <span class="o">=</span> <span class="n">fprint</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">start_point</span> <span class="o">=</span> <span class="n">start_point</span>
 
-        <span class="k">if</span> <span class="n">sfo</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">converter</span> <span class="o">=</span> <span class="n">FrequencyConverter</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span>
             <span class="p">)</span>
@@ -171,7 +173,6 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_mpm_1d</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_mpm_2d</span><span class="p">()</span></div>
-
 
 <div class="viewcode-block" id="MatrixPencil.get_result"><a class="viewcode-back" href="../../references/mpm.html#nmrespy.mpm.MatrixPencil.get_result">[docs]</a>    <span class="k">def</span> <span class="nf">get_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq_unit</span><span class="o">=</span><span class="s1">&#39;hz&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Obtain the result of the MPM.</span>
@@ -193,7 +194,7 @@
         <span class="k">elif</span> <span class="n">freq_unit</span> <span class="o">==</span> <span class="s1">&#39;ppm&#39;</span><span class="p">:</span>
             <span class="c1"># Check whether a frequency converter is associated with the</span>
             <span class="c1"># class</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;converter&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s1">&#39;converter&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">Insufficient information to determine&#39;</span>
                     <span class="sa">f</span><span class="s1">&#39; frequencies in ppm. Did you perhaps forget to specify&#39;</span>
@@ -216,7 +217,6 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">InvalidUnitError</span><span class="p">(</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="MatrixPencil._mpm_1d"><a class="viewcode-back" href="../../references/mpm.html#nmrespy.mpm.MatrixPencil._mpm_1d">[docs]</a>    <span class="nd">@timer</span>
     <span class="nd">@start_end_wrapper</span><span class="p">(</span><span class="n">start_txt</span><span class="p">,</span> <span class="n">end_txt</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_mpm_1d</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -236,8 +236,8 @@
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--&gt; Pencil Parameter: </span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
         <span class="c1"># Construct Hankel matrix</span>
-        <span class="n">row</span> <span class="o">=</span> <span class="n">normed_data</span><span class="p">[:</span><span class="n">N</span><span class="o">-</span><span class="n">L</span><span class="p">]</span>
-        <span class="n">column</span> <span class="o">=</span> <span class="n">normed_data</span><span class="p">[</span><span class="n">N</span><span class="o">-</span><span class="n">L</span><span class="o">-</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">normed_data</span><span class="p">[:</span><span class="n">N</span> <span class="o">-</span> <span class="n">L</span><span class="p">]</span>
+        <span class="n">column</span> <span class="o">=</span> <span class="n">normed_data</span><span class="p">[</span><span class="n">N</span> <span class="o">-</span> <span class="n">L</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:]</span>
         <span class="n">Y</span> <span class="o">=</span> <span class="n">slinalg</span><span class="o">.</span><span class="n">hankel</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--&gt; Hankel data matrix constructed:&quot;</span><span class="p">)</span>
@@ -247,7 +247,6 @@
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Memory: </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">gibibytes</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s1">GiB&#39;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Memory: </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">gibibytes</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mi">10</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s1">MiB&#39;</span><span class="p">)</span>
-
 
         <span class="c1"># Singular value decomposition of Y</span>
         <span class="c1"># returns singular values: min(N-L, L)-length vector</span>
@@ -268,9 +267,10 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> \
-                    <span class="o">-</span> <span class="n">N</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;i-&gt;&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="n">k</span><span class="p">:</span><span class="n">L</span><span class="p">]))</span> \
-                    <span class="o">+</span> <span class="n">N</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span><span class="o">-</span><span class="n">k</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;i-&gt;&#39;</span><span class="p">,</span> <span class="n">sigma</span><span class="p">[</span><span class="n">k</span><span class="p">:</span><span class="n">L</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">L</span><span class="o">-</span><span class="n">k</span><span class="p">)))</span> \
-                    <span class="o">+</span> <span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">L</span><span class="o">-</span><span class="n">k</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span>
+                    <span class="o">-</span> <span class="n">N</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;i-&gt;&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="n">k</span><span class="p">:</span><span class="n">L</span><span class="p">]))</span> <span class="o">+</span> \
+                    <span class="n">N</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span> <span class="o">*</span> \
+                    <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;i-&gt;&#39;</span><span class="p">,</span> <span class="n">sigma</span><span class="p">[</span><span class="n">k</span><span class="p">:</span><span class="n">L</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">))</span> <span class="o">+</span> \
+                    <span class="n">k</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="p">)</span>
 
@@ -285,9 +285,9 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;--&gt; Determining signal poles...&#39;</span><span class="p">)</span>
 
-        <span class="n">Vm</span> <span class="o">=</span> <span class="n">V</span><span class="p">[:,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">]</span> <span class="c1"># Retain M first right singular vectors</span>
-        <span class="n">V1</span> <span class="o">=</span> <span class="n">Vm</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span> <span class="c1"># Remove last column</span>
-        <span class="n">V2</span> <span class="o">=</span> <span class="n">Vm</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="p">:]</span> <span class="c1"># Remove first column</span>
+        <span class="n">Vm</span> <span class="o">=</span> <span class="n">V</span><span class="p">[:,</span> <span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">]</span>  <span class="c1"># Retain M first right singular vectors</span>
+        <span class="n">V1</span> <span class="o">=</span> <span class="n">Vm</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># Remove last column</span>
+        <span class="n">V2</span> <span class="o">=</span> <span class="n">Vm</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="p">:]</span>  <span class="c1"># Remove first column</span>
 
         <span class="c1"># Determine first M signal poles (others should be 0)</span>
         <span class="n">z</span> <span class="o">=</span> <span class="n">nlinalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">V2</span> <span class="o">@</span> <span class="n">nlinalg</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">V1</span><span class="p">))[</span><span class="mi">0</span><span class="p">][:</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">]</span>
@@ -299,7 +299,9 @@
         <span class="c1"># Pseudoinverse of Vandermonde matrix of poles multiplied by</span>
         <span class="c1"># vector of complex amplitudes</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="n">nlinalg</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_point</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_point</span><span class="o">+</span><span class="n">N</span><span class="p">))</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span>
+                <span class="n">z</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_point</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_point</span> <span class="o">+</span> <span class="n">N</span><span class="p">)</span>
+            <span class="p">)</span>
         <span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">normed_data</span>
 
         <span class="c1"># Extract amplitudes, phases, frequencies and damping factors</span>
@@ -325,14 +327,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">&lt;</span> <span class="n">m_init</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">O</span><span class="si">}</span><span class="s1">WARNING: Oscillations with negative damping</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">OR</span><span class="si">}</span><span class="s1">WARNING: Oscillations with negative damping</span><span class="se">\n</span><span class="s1">&#39;</span>
                   <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">factors detected. These have been deleted.</span><span class="se">\n</span><span class="s1">&#39;</span>
                   <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Corrected number of oscillations: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
-
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">None found&#39;</span><span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="MatrixPencil._mpm_2d"><a class="viewcode-back" href="../../references/mpm.html#nmrespy.mpm.MatrixPencil._mpm_2d">[docs]</a>    <span class="nd">@timer</span>
     <span class="k">def</span> <span class="nf">_mpm_2d</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -342,7 +342,7 @@
 <span class="sd">           To be written</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="k">raise</span> <span class="n">TwoDimUnsupportedError</span><span class="p">()</span></div></div>
+        <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TwoDimUnsupportedError</span><span class="p">()</span></div></div>
 </pre></div>
 
             <div class="clearer"></div>

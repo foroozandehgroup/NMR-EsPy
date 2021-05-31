@@ -61,13 +61,14 @@
 <span class="kn">import</span> <span class="nn">nmrespy._cols</span> <span class="k">as</span> <span class="nn">cols</span>
 <span class="k">if</span> <span class="n">cols</span><span class="o">.</span><span class="n">USE_COLORAMA</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">colorama</span>
+    <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 <span class="kn">from</span> <span class="nn">nmrespy._errors</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="n">start_end_wrapper</span><span class="p">,</span> <span class="n">ArgumentChecker</span><span class="p">,</span> <span class="n">FrequencyConverter</span>
+<span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="n">start_end_wrapper</span><span class="p">,</span> <span class="n">ArgumentChecker</span><span class="p">,</span> \
+    <span class="n">FrequencyConverter</span>
 <span class="kn">from</span> <span class="nn">nmrespy._timing</span> <span class="kn">import</span> <span class="n">timer</span>
 <span class="kn">import</span> <span class="nn">nmrespy.nlp._funcs</span> <span class="k">as</span> <span class="nn">funcs</span>
 <span class="kn">from</span> <span class="nn">nmrespy.sig</span> <span class="kn">import</span> <span class="n">get_timepoints</span>
 
-<span class="c1"># ========================================================================</span>
 <span class="c1"># TODO in a later version</span>
 <span class="c1"># Add support for mode</span>
 <span class="c1"># Was getting indexing errors inside _check_negative_amps</span>
@@ -84,8 +85,6 @@
 <span class="c1">#     * `&#39;p&#39;`: Phases are optimised</span>
 <span class="c1">#     * `&#39;f&#39;`: Frequencies are optimised</span>
 <span class="c1">#     * `&#39;d&#39;`: Damping factors are optimised</span>
-<span class="c1"># ==========================================================================</span>
-
 
 
 <div class="viewcode-block" id="NonlinearProgramming"><a class="viewcode-back" href="../../../references/nlp/nlp.html#nmrespy.nlp.nlp.NonlinearProgramming">[docs]</a><span class="k">class</span> <span class="nc">NonlinearProgramming</span><span class="p">(</span><span class="n">FrequencyConverter</span><span class="p">):</span>
@@ -155,8 +154,8 @@
 <span class="sd">          .. math::</span>
 
 <span class="sd">             \\mathcal{F}\\left(\\boldsymbol{\\theta}\\right) =</span>
-<span class="sd">             \\left\\lVert \\boldsymbol{Y} - \\boldsymbol{X} \\right\\rVert_2^2 +</span>
-<span class="sd">             \\mathrm{Var}\\left(\\boldsymbol{\\phi}\\right)</span>
+<span class="sd">             \\left\\lVert \\boldsymbol{Y} - \\boldsymbol{X} \\right</span>
+<span class="sd">             \\rVert_2^2 + \\mathrm{Var}\\left(\\boldsymbol{\\phi}\\right)</span>
 
 <span class="sd">    method : &#39;trust_region&#39; or &#39;lbfgs&#39;, default: &#39;trust_region&#39;</span>
 <span class="sd">        Optimisation algorithm to use. These utilise</span>
@@ -252,7 +251,8 @@
         <span class="n">max_iterations</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">amp_thold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freq_thold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">negative_amps</span><span class="o">=</span><span class="s1">&#39;remove&#39;</span><span class="p">,</span> <span class="n">fprint</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;apfd&#39;</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Initialise the class instance. Checks that all arguments are valid&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Initialise the class instance. Checks that all arguments are</span>
+<span class="sd">        valid&quot;&quot;&quot;</span>
 
         <span class="c1"># --- Check validity of parameters -------------------------------</span>
         <span class="c1"># Data should be a NumPy array.</span>
@@ -287,19 +287,19 @@
             <span class="p">(</span><span class="n">start_point</span><span class="p">,</span> <span class="s1">&#39;start_point&#39;</span><span class="p">,</span> <span class="s1">&#39;positive_int_or_zero&#39;</span><span class="p">),</span>
             <span class="p">(</span><span class="n">phase_variance</span><span class="p">,</span> <span class="s1">&#39;phase_variance&#39;</span><span class="p">,</span> <span class="s1">&#39;bool&#39;</span><span class="p">),</span>
             <span class="p">(</span><span class="n">max_iterations</span><span class="p">,</span> <span class="s1">&#39;max_iterations&#39;</span><span class="p">,</span> <span class="s1">&#39;positive_int&#39;</span><span class="p">),</span>
-            <span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="s1">&#39;mode&#39;</span><span class="p">,</span> <span class="s1">&#39;optimiser_mode&#39;</span><span class="p">),</span> <span class="c1"># TODO</span>
+            <span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="s1">&#39;mode&#39;</span><span class="p">,</span> <span class="s1">&#39;optimiser_mode&#39;</span><span class="p">),</span>  <span class="c1"># TODO</span>
             <span class="p">(</span><span class="n">negative_amps</span><span class="p">,</span> <span class="s1">&#39;negative_amps&#39;</span><span class="p">,</span> <span class="s1">&#39;negative_amplidue&#39;</span><span class="p">),</span>
             <span class="p">(</span><span class="n">fprint</span><span class="p">,</span> <span class="s1">&#39;fprint&#39;</span><span class="p">,</span> <span class="s1">&#39;bool&#39;</span><span class="p">),</span>
         <span class="p">]</span>
 
         <span class="c1"># Certain arguments should be checked only if they are not None...</span>
-        <span class="k">if</span> <span class="n">sfo</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sfo</span><span class="p">,</span> <span class="s1">&#39;sfo&#39;</span><span class="p">,</span> <span class="s1">&#39;float_list&#39;</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="n">amp_thold</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">amp_thold</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">amp_thold</span><span class="p">,</span> <span class="s1">&#39;amp_thold&#39;</span><span class="p">,</span> <span class="s1">&#39;zero_to_one&#39;</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="n">freq_thold</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">freq_thold</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">freq_thold</span><span class="p">,</span> <span class="s1">&#39;freq_thold&#39;</span><span class="p">,</span> <span class="s1">&#39;positive_float&#39;</span><span class="p">))</span>
 
         <span class="c1"># Check arguments are valid!</span>
@@ -323,7 +323,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">start_point</span> <span class="o">=</span> <span class="n">start_point</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">phase_variance</span> <span class="o">=</span> <span class="n">phase_variance</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span> <span class="c1"># TODO</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>  <span class="c1"># TODO</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bound</span> <span class="o">=</span> <span class="n">bound</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">=</span> <span class="n">max_iterations</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">amp_thold</span> <span class="o">=</span> <span class="n">amp_thold</span>
@@ -336,15 +336,14 @@
         <span class="c1"># Number of points in each dimension</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># If sfo was given an explicit value, create a frequency</span>
             <span class="c1"># converter, enabling outputs in ppm.</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">converter</span> <span class="o">=</span> <span class="n">FrequencyConverter</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span>
             <span class="p">)</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iterations</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># If max_iterations is set to None, set it to default value</span>
             <span class="c1"># If &#39;trust_region&#39;, set as 100. Need to explicitely compute</span>
             <span class="c1"># the Hessian for this alg., so each iteration is typically</span>
@@ -352,10 +351,9 @@
             <span class="c1"># give it more.</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">=</span> <span class="mi">100</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;trust_region&#39;</span> <span class="k">else</span> <span class="mi">500</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">amp_thold</span> <span class="o">=</span> <span class="mf">0.</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">amp_thold</span> <span class="o">==</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">amp_thold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">amp_thold</span> <span class="o">=</span> <span class="mf">0.</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">amp_thold</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">amp_thold</span>
         <span class="c1"># TODO freq-thold?</span>
 
-        <span class="c1"># Good to go!</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_nlp</span><span class="p">()</span></div>
 
 <div class="viewcode-block" id="NonlinearProgramming._run_nlp"><a class="viewcode-back" href="../../../references/nlp/nlp.html#nmrespy.nlp.nlp.NonlinearProgramming._run_nlp">[docs]</a>    <span class="nd">@timer</span>
@@ -407,9 +405,9 @@
         <span class="c1"># Determine cost function, gradient, and hessian based on the data</span>
         <span class="c1"># dimension</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">funcs</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;fidelity&#39;</span> <span class="p">:</span> <span class="n">funcs</span><span class="o">.</span><span class="n">f_1d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">funcs</span><span class="o">.</span><span class="n">f_2d</span><span class="p">,</span>
-            <span class="s1">&#39;gradient&#39;</span> <span class="p">:</span> <span class="n">funcs</span><span class="o">.</span><span class="n">g_1d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">funcs</span><span class="o">.</span><span class="n">g_2d</span><span class="p">,</span>
-            <span class="s1">&#39;hessian&#39;</span> <span class="p">:</span> <span class="n">funcs</span><span class="o">.</span><span class="n">h_1d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">funcs</span><span class="o">.</span><span class="n">h_2d</span><span class="p">,</span>
+            <span class="s1">&#39;fidelity&#39;</span><span class="p">:</span> <span class="n">funcs</span><span class="o">.</span><span class="n">f_1d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">funcs</span><span class="o">.</span><span class="n">f_2d</span><span class="p">,</span>
+            <span class="s1">&#39;gradient&#39;</span><span class="p">:</span> <span class="n">funcs</span><span class="o">.</span><span class="n">g_1d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">funcs</span><span class="o">.</span><span class="n">g_2d</span><span class="p">,</span>
+            <span class="s1">&#39;hessian&#39;</span><span class="p">:</span> <span class="n">funcs</span><span class="o">.</span><span class="n">h_1d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">funcs</span><span class="o">.</span><span class="n">h_2d</span><span class="p">,</span>
         <span class="p">}</span>
 
         <span class="c1"># This method is called recursively until no negative amplitudes</span>
@@ -501,7 +499,7 @@
         <span class="k">elif</span> <span class="n">freq_unit</span> <span class="o">==</span> <span class="s1">&#39;ppm&#39;</span><span class="p">:</span>
             <span class="c1"># Check whether a frequency converter is associated with the</span>
             <span class="c1"># class</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;converter&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s1">&#39;converter&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">Insufficient information to determine&#39;</span>
                     <span class="sa">f</span><span class="s1">&#39; frequencies in ppm. Did you perhaps forget to specify&#39;</span>
@@ -524,7 +522,6 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">InvalidUnitError</span><span class="p">(</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">)</span>
 
-
 <div class="viewcode-block" id="NonlinearProgramming._shift_offset"><a class="viewcode-back" href="../../../references/nlp/nlp.html#nmrespy.nlp.nlp.NonlinearProgramming._shift_offset">[docs]</a>    <span class="k">def</span> <span class="nf">_shift_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">direction</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Shifts frequencies to centre to or displace from 0</span>
 
@@ -541,7 +538,7 @@
 
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">off</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">):</span>
             <span class="c1"># Dimension (i+1)&#39;s frequency parameters are given by this slice</span>
-            <span class="nb">slice</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_slice</span><span class="p">([</span><span class="mi">2</span><span class="o">+</span><span class="n">i</span><span class="p">])</span>
+            <span class="nb">slice</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_slice</span><span class="p">([</span><span class="mi">2</span> <span class="o">+</span> <span class="n">i</span><span class="p">])</span>
             <span class="c1"># Take frequencies from offset values to be centred at zero</span>
             <span class="c1"># i.e.</span>
             <span class="c1"># | 10 9 8 7 6 5 4 3 2 1 0 | -&gt; | 5 4 3 2 1 0 -1 -2 -3 -4 -5 |</span>
@@ -555,7 +552,6 @@
                 <span class="n">params</span><span class="p">[</span><span class="nb">slice</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="nb">slice</span><span class="p">]</span> <span class="o">+</span> <span class="n">off</span>
 
         <span class="k">return</span> <span class="n">params</span></div>
-
 
 <div class="viewcode-block" id="NonlinearProgramming._get_slice"><a class="viewcode-back" href="../../../references/nlp/nlp.html#nmrespy.nlp.nlp.NonlinearProgramming._get_slice">[docs]</a>    <span class="k">def</span> <span class="nf">_get_slice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">osc_idx</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -577,9 +573,8 @@
 <span class="sd">            Array slice.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Array of osccilators to index</span>
-        <span class="k">if</span> <span class="n">osc_idx</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">osc_idx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">osc_idx</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">))</span>
-
 
         <span class="nb">slice</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idx</span><span class="p">:</span>
@@ -587,7 +582,7 @@
             <span class="c1"># a1  ...  am  φ1  ...  φm  f1  ...  fm  η1  ...  ηm (1D case)</span>
             <span class="c1"># ∴ stride length of m to go to the next &quot;type&quot; of parameter</span>
             <span class="c1"># and stride length of 1 to go to the next oscillator.</span>
-            <span class="nb">slice</span> <span class="o">+=</span> <span class="p">[</span><span class="n">i</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">+</span> <span class="n">j</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">osc_idx</span><span class="p">]</span>
+            <span class="nb">slice</span> <span class="o">+=</span> <span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">+</span> <span class="n">j</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">osc_idx</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="nb">slice</span><span class="p">]</span></div>
 
@@ -600,14 +595,14 @@
         <span class="c1"># &lt; idx = 0 &gt;  &lt; idx = 1 &gt;  &lt; idx = 2 &gt;  &lt; idx = 3 &gt;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">active_idx</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="c1"># Amplitude</span>
+            <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;a&#39;</span><span class="p">:</span>  <span class="c1"># Amplitude</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">active_idx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="c1"># Phase</span>
+            <span class="k">elif</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span>  <span class="c1"># Phase</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">active_idx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;f&#39;</span><span class="p">:</span> <span class="c1"># Frequecy (add indices for each dim)</span>
+            <span class="k">elif</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;f&#39;</span><span class="p">:</span>  <span class="c1"># Frequecy (add indices for each dim)</span>
                 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">active_idx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span>
-            <span class="k">elif</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;d&#39;</span><span class="p">:</span> <span class="c1"># Damping (add indices for each dim)</span>
+            <span class="k">elif</span> <span class="n">c</span> <span class="o">==</span> <span class="s1">&#39;d&#39;</span><span class="p">:</span>  <span class="c1"># Damping (add indices for each dim)</span>
                 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">active_idx</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span>
 
@@ -616,7 +611,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">passive_idx</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_idx</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">passive_idx</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">i</span><span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="NonlinearProgramming._merge_active_passive"><a class="viewcode-back" href="../../../references/nlp/nlp.html#nmrespy.nlp.nlp.NonlinearProgramming._merge_active_passive">[docs]</a>    <span class="k">def</span> <span class="nf">_merge_active_passive</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Given the active and passive parameters in vector form, merge to</span>
@@ -656,7 +650,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="n">active_slice</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">[</span><span class="n">passive_slice</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">passive</span></div>
 
-
 <div class="viewcode-block" id="NonlinearProgramming._split_active_passive"><a class="viewcode-back" href="../../../references/nlp/nlp.html#nmrespy.nlp.nlp.NonlinearProgramming._split_active_passive">[docs]</a>    <span class="k">def</span> <span class="nf">_split_active_passive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">merged_vec</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Given a full vector of parameters, split to form vectors of active</span>
 <span class="sd">        and passive parameters.</span>
@@ -692,7 +685,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">passive</span> <span class="o">=</span> \
             <span class="n">merged_vec</span><span class="p">[</span><span class="n">active_slice</span><span class="p">],</span> <span class="n">merged_vec</span><span class="p">[</span><span class="n">passive_slice</span><span class="p">]</span></div>
 
-
 <div class="viewcode-block" id="NonlinearProgramming._get_bounds"><a class="viewcode-back" href="../../../references/nlp/nlp.html#nmrespy.nlp.nlp.NonlinearProgramming._get_bounds">[docs]</a>    <span class="k">def</span> <span class="nf">_get_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Constructs a list of bounding constraints to set for each</span>
 <span class="sd">        parameter. The bounds are as follows:</span>
@@ -722,26 +714,25 @@
                     <span class="c1"># the valid frequency range is:</span>
                     <span class="c1"># -sw / 2 -&gt; sw / 2</span>
                     <span class="c1"># NOT -sw / 2 + offset -&gt; sw / 2 + offset</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">+=</span> <span class="p">[(</span><span class="o">-</span><span class="n">sw</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">sw</span><span class="o">/</span><span class="mi">2</span><span class="p">)]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">+=</span> <span class="p">[(</span><span class="o">-</span><span class="n">sw</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">sw</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span>
             <span class="c1"># Damping (iterate over each dimension)</span>
             <span class="c1"># 2 + self.dim = 3 for 1D and 4 for 2D</span>
             <span class="k">if</span> <span class="mi">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_idx</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">+=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)]</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span></div>
-
 
     <span class="k">def</span> <span class="nf">_run_optimiser</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">fprint</span> <span class="o">=</span> <span class="mi">3</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span> <span class="k">else</span> <span class="mi">0</span>
         <span class="c1"># Trust-Region</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;trust_region&#39;</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
-                <span class="n">fun</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;fidelity&#39;</span><span class="p">],</span>
-                <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">,</span>
-                <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimiser_args</span><span class="p">,</span>
-                <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;trust-constr&#39;</span><span class="p">,</span>
-                <span class="n">jac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;gradient&#39;</span><span class="p">],</span>
-                <span class="n">hess</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;hessian&#39;</span><span class="p">],</span>
-                <span class="n">bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span>
-                <span class="n">options</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">fun</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;fidelity&#39;</span><span class="p">],</span>
+                <span class="n">x0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">,</span>
+                <span class="n">args</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">optimiser_args</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="s1">&#39;trust-constr&#39;</span><span class="p">,</span>
+                <span class="n">jac</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;gradient&#39;</span><span class="p">],</span>
+                <span class="n">hess</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;hessian&#39;</span><span class="p">],</span>
+                <span class="n">bounds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span>
+                <span class="n">options</span><span class="o">=</span><span class="p">{</span>
                     <span class="s1">&#39;maxiter&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iterations</span><span class="p">,</span>
                     <span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="n">fprint</span><span class="p">,</span>
                 <span class="p">},</span>
@@ -749,13 +740,13 @@
         <span class="c1"># L-BFGS</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;lbfgs&#39;</span><span class="p">:</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
-                <span class="n">fun</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;fidelity&#39;</span><span class="p">],</span>
-                <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">,</span>
-                <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimiser_args</span><span class="p">,</span>
-                <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;L-BFGS-B&#39;</span><span class="p">,</span>
-                <span class="n">jac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;gradient&#39;</span><span class="p">],</span>
-                <span class="n">bounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span>
-                <span class="n">options</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">fun</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;fidelity&#39;</span><span class="p">],</span>
+                <span class="n">x0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">,</span>
+                <span class="n">args</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">optimiser_args</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="s1">&#39;L-BFGS-B&#39;</span><span class="p">,</span>
+                <span class="n">jac</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">funcs</span><span class="p">[</span><span class="s1">&#39;gradient&#39;</span><span class="p">],</span>
+                <span class="n">bounds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span>
+                <span class="n">options</span><span class="o">=</span><span class="p">{</span>
                     <span class="s1">&#39;maxiter&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iterations</span><span class="p">,</span>
                     <span class="s1">&#39;iprint&#39;</span><span class="p">:</span> <span class="n">fprint</span> <span class="o">//</span> <span class="mi">3</span><span class="p">,</span>
                     <span class="s1">&#39;disp&#39;</span><span class="p">:</span> <span class="kc">True</span>
@@ -764,7 +755,6 @@
 
         <span class="c1"># Extract result from optimiser dictionary</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">active</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span>
-
 
 <div class="viewcode-block" id="NonlinearProgramming._check_negative_amps"><a class="viewcode-back" href="../../../references/nlp/nlp.html#nmrespy.nlp.nlp.NonlinearProgramming._check_negative_amps">[docs]</a>    <span class="k">def</span> <span class="nf">_check_negative_amps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Determines which oscillators (if any) have negative amplitudes, and</span>
@@ -804,7 +794,7 @@
 
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
                     <span class="nb">print</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">O</span><span class="si">}</span><span class="s1">Negative amplitudes detected. These&#39;</span>
+                        <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">OR</span><span class="si">}</span><span class="s1">Negative amplitudes detected. These&#39;</span>
                         <span class="sa">f</span><span class="s1">&#39; oscillators will be removed</span><span class="se">\n</span><span class="s1">&#39;</span>
                         <span class="sa">f</span><span class="s1">&#39;Updated number of oscillators: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
                     <span class="p">)</span>
@@ -851,14 +841,14 @@
 
         <span class="c1"># See newton_meets_ockham, Eq. (22)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
-            <span class="n">fidelity</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">nlinalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">hessian</span><span class="p">)))</span>
-            <span class="o">/</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="p">[</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">])</span>
+            <span class="n">fidelity</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">nlinalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">hessian</span><span class="p">)))</span> <span class="o">/</span>
+            <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="p">[</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">])</span>
         <span class="p">)</span>
 
         <span class="c1"># Re-scale amplitude errors</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">size</span><span class="o">/</span><span class="mi">4</span><span class="p">),</span> <span class="mi">4</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="mi">4</span><span class="p">),</span> <span class="mi">4</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">,</span>
         <span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_negligible_amplitudes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -875,7 +865,7 @@
 
         <span class="k">if</span> <span class="n">negligible_idx</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">O</span><span class="si">}</span><span class="s1">Oscillations with negligible amplitude removed.&#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">OR</span><span class="si">}</span><span class="s1">Oscillations with negligible amplitude removed.&#39;</span>
                 <span class="sa">f</span><span class="s1">&#39; </span><span class="se">\n</span><span class="s1">Updated number of oscillators: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span></div>
 </pre></div>

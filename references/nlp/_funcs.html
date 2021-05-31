@@ -147,7 +147,8 @@ will be 2N + 2</p></li>
 <li><p><strong>data:</strong> <cite>numpy.ndarray.</cite> Array of the original FID data.</p></li>
 <li><p><strong>tp:</strong> <cite>numpy.ndarray.</cite> The time-points the signal was sampled at</p></li>
 <li><p><strong>m:</strong> <cite>int.</cite> Number of oscillators</p></li>
-<li><p><strong>passive:</strong> <cite>numpy.ndarray.</cite> Passive parameters (not to be optimised).</p></li>
+<li><p><strong>passive:</strong> <cite>numpy.ndarray.</cite> Passive parameters (not to be
+optimised).</p></li>
 <li><p><strong>active_idx:</strong> <cite>list.</cite> Indicates the types of parameters are present
 in the active oscillators (para_act): <code class="docutils literal notranslate"><span class="pre">0</span></code> - amplitudes, <code class="docutils literal notranslate"><span class="pre">1</span></code> -
 phases, <code class="docutils literal notranslate"><span class="pre">2</span></code> - frequencies, <code class="docutils literal notranslate"><span class="pre">3</span></code> - damping factors.</p></li>
@@ -179,7 +180,8 @@ variance to the cost function.</p></li>
 <li><p><strong>data:</strong> <cite>numpy.ndarray.</cite> Array of the original FID data.</p></li>
 <li><p><strong>tp:</strong> <cite>numpy.ndarray.</cite> The time-points the signal was sampled at</p></li>
 <li><p><strong>m:</strong> <cite>int.</cite> Number of oscillators</p></li>
-<li><p><strong>passive:</strong> <cite>numpy.ndarray.</cite> Passive parameters (not to be optimised).</p></li>
+<li><p><strong>passive:</strong> <cite>numpy.ndarray.</cite> Passive parameters (not to be
+optimised).</p></li>
 <li><p><strong>active_idx:</strong> <cite>list.</cite> Indicates the types of parameters are present
 in the active oscillators (para_act): <code class="docutils literal notranslate"><span class="pre">0</span></code> - amplitudes, <code class="docutils literal notranslate"><span class="pre">1</span></code> -
 phases, <code class="docutils literal notranslate"><span class="pre">2</span></code> - frequencies, <code class="docutils literal notranslate"><span class="pre">3</span></code> - damping factors.</p></li>
@@ -190,7 +192,7 @@ variance to the cost function.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>grad</strong> – Gradient of cost function, with <code class="docutils literal notranslate"><span class="pre">grad.shape</span> <span class="pre">=</span> <span class="pre">(4*m,)</span></code>.</p>
+<dd class="field-even"><p><strong>grad</strong> – Gradient of cost function, with <code class="docutils literal notranslate"><span class="pre">grad.shape</span> <span class="pre">=</span> <span class="pre">(4</span> <span class="pre">*</span> <span class="pre">m,)</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>numpy.ndarray</p>
@@ -211,7 +213,8 @@ variance to the cost function.</p></li>
 <li><p><strong>data:</strong> <cite>numpy.ndarray.</cite> Array of the original FID data.</p></li>
 <li><p><strong>tp:</strong> <cite>numpy.ndarray.</cite> The time-points the signal was sampled at</p></li>
 <li><p><strong>m:</strong> <cite>int.</cite> Number of oscillators</p></li>
-<li><p><strong>passive:</strong> <cite>numpy.ndarray.</cite> Passive parameters (not to be optimised).</p></li>
+<li><p><strong>passive:</strong> <cite>numpy.ndarray.</cite> Passive parameters (not to be
+optimised).</p></li>
 <li><p><strong>active_idx:</strong> <cite>list.</cite> Indicates the types of parameters are present
 in the active oscillators (para_act): <code class="docutils literal notranslate"><span class="pre">0</span></code> - amplitudes, <code class="docutils literal notranslate"><span class="pre">1</span></code> -
 phases, <code class="docutils literal notranslate"><span class="pre">2</span></code> - frequencies, <code class="docutils literal notranslate"><span class="pre">3</span></code> - damping factors.</p></li>
@@ -222,7 +225,7 @@ variance to the cost function.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>hess</strong> – Hessian of cost function, with <code class="docutils literal notranslate"><span class="pre">hess.shape</span> <span class="pre">=</span> <span class="pre">(4*m,4*m)</span></code>.</p>
+<dd class="field-even"><p><strong>hess</strong> – Hessian of cost function, with <code class="docutils literal notranslate"><span class="pre">hess.shape</span> <span class="pre">=</span> <span class="pre">(4</span> <span class="pre">*</span> <span class="pre">m,4</span> <span class="pre">*</span> <span class="pre">m)</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>numpy.ndarray</p>

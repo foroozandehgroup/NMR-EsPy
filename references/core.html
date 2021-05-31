@@ -194,7 +194,8 @@ even if only one oscillator is being added:</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>region</strong> (<em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>, </em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] or </em><em>[</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>, </em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em>) – Cut-off points of the spectral region to consider.
+<li><p><strong>region</strong> (<em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>, </em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] </em><em>or</em>) – </p></li>
+<li><p><strong>[</strong><strong>[</strong><strong>float</strong> – Cut-off points of the spectral region to consider.
 If the signal is 1D, this should be of the form <cite>[[a,b]]</cite>
 where <cite>a</cite> and <cite>b</cite> are the boundaries.
 If the signal is 2D, this should be of the form
@@ -202,7 +203,40 @@ If the signal is 2D, this should be of the form
 dimension 1, and <cite>c</cite> and <cite>d</cite> are the boundaries in
 dimension 2. The ordering of the bounds in each dimension is
 not important.</p></li>
-<li><p><strong>noise_region</strong> (<em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>, </em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>] or </em><em>[</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>, </em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em>) – Cut-off points of the spectral region to extract the spectrum’s
+<li><p><strong>float</strong><strong>]</strong> – Cut-off points of the spectral region to consider.
+If the signal is 1D, this should be of the form <cite>[[a,b]]</cite>
+where <cite>a</cite> and <cite>b</cite> are the boundaries.
+If the signal is 2D, this should be of the form
+<cite>[[a,b], [c,d]]</cite> where <cite>a</cite> and <cite>b</cite> are the boundaries in
+dimension 1, and <cite>c</cite> and <cite>d</cite> are the boundaries in
+dimension 2. The ordering of the bounds in each dimension is
+not important.</p></li>
+<li><p><strong>[</strong><strong>float</strong> – Cut-off points of the spectral region to consider.
+If the signal is 1D, this should be of the form <cite>[[a,b]]</cite>
+where <cite>a</cite> and <cite>b</cite> are the boundaries.
+If the signal is 2D, this should be of the form
+<cite>[[a,b], [c,d]]</cite> where <cite>a</cite> and <cite>b</cite> are the boundaries in
+dimension 1, and <cite>c</cite> and <cite>d</cite> are the boundaries in
+dimension 2. The ordering of the bounds in each dimension is
+not important.</p></li>
+<li><p><strong>float</strong><strong>]</strong><strong>]</strong> – Cut-off points of the spectral region to consider.
+If the signal is 1D, this should be of the form <cite>[[a,b]]</cite>
+where <cite>a</cite> and <cite>b</cite> are the boundaries.
+If the signal is 2D, this should be of the form
+<cite>[[a,b], [c,d]]</cite> where <cite>a</cite> and <cite>b</cite> are the boundaries in
+dimension 1, and <cite>c</cite> and <cite>d</cite> are the boundaries in
+dimension 2. The ordering of the bounds in each dimension is
+not important.</p></li>
+<li><p><strong>noise_region</strong> (<em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>, </em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>,</em>) – </p></li>
+<li><p><strong>[</strong><strong>[</strong><strong>float</strong> – Cut-off points of the spectral region to extract the spectrum’s
+noise variance. This should have the same structure as <cite>region</cite>.</p></li>
+<li><p><strong>or</strong><strong> [</strong><strong>[</strong><strong>float</strong> (<em>float</em><em>]</em><em>]</em>) – Cut-off points of the spectral region to extract the spectrum’s
+noise variance. This should have the same structure as <cite>region</cite>.</p></li>
+<li><p><strong>float</strong><strong>]</strong> – Cut-off points of the spectral region to extract the spectrum’s
+noise variance. This should have the same structure as <cite>region</cite>.</p></li>
+<li><p><strong>[</strong><strong>float</strong> – Cut-off points of the spectral region to extract the spectrum’s
+noise variance. This should have the same structure as <cite>region</cite>.</p></li>
+<li><p><strong>float</strong><strong>]</strong><strong>]</strong> – Cut-off points of the spectral region to extract the spectrum’s
 noise variance. This should have the same structure as <cite>region</cite>.</p></li>
 <li><p><strong>cut</strong> (<em>bool</em><em>, </em><em>default: True</em>) – If <cite>False</cite>, the filtered signal will comprise the same number of
 data points as the original data. If <cite>True</cite>, prior to inverse
@@ -496,7 +530,8 @@ parameters (sweep width, transmitter offset, number of points).</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>unit</strong> (<em>'ppm'</em><em> or </em><em>'hz'</em><em>, </em><em>default: 'ppm'</em>) – The unit of the value(s).</p></li>
 <li><p><strong>meshgrid</strong> (<em>bool</em>) – Only appicable for 2D data. If set to <cite>True</cite>, the shifts in
-each dimension will be fed into <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html">numpy.meshgrid</a></p></li>
+each dimension will be fed into
+<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html">numpy.meshgrid</a></p></li>
 <li><p><strong>kill</strong> (<em>bool</em>) – <p>If <cite>self.sfo</cite> (need to get shifts in ppm) is <cite>None</cite>, <cite>kill</cite>
 specifies how the method will act:</p>
 <ul>
@@ -561,7 +596,8 @@ parameters (sweep width, number of points).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>meshgrid</strong> (<em>bool</em>) – <p>Only appicable for 2D data. If set to <cite>True</cite>, the time-points in
-each dimension will be fed into <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html">numpy.meshgrid</a></p>
+each dimension will be fed into
+<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html">numpy.meshgrid</a></p>
 </p>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -696,9 +732,9 @@ frequencies using modified matrix pencil method”. In: IEEE Trans.
 Signal Process. 55.2 (2007), pp. 718–724.</p>
 </dd>
 <dt class="label" id="id11"><span class="brackets"><a class="fn-backref" href="#id6">5</a></span></dt>
-<dd><p>M. Wax, T. Kailath, Detection of signals by information theoretic
-criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
-33 (2) (1985) 387–392.</p>
+<dd><p>M. Wax, T. Kailath, Detection of signals by information
+theoretic criteria, IEEE Transactions on Acoustics, Speech, and
+Signal Processing 33 (2) (1985) 387–392.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -726,9 +762,11 @@ oscillator subset will possess the following parameters:</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><span class="math">a_{\mathrm{new}} = \sum_{i=1}^J a_{m_i}</span></p></li>
-<li><p><span class="math">\phi_{\mathrm{new}} = \frac{1}{J} \sum_{i=1}^J \phi_{m_i}</span></p></li>
+<li><p><span class="math">\phi_{\mathrm{new}} = \frac{1}{J} \sum_{i=1}^J
+\phi_{m_i}</span></p></li>
 <li><p><span class="math">f_{\mathrm{new}} = \frac{1}{J} \sum_{i=1}^J f_{m_i}</span></p></li>
-<li><p><span class="math">\eta_{\mathrm{new}} = \frac{1}{J} \sum_{i=1}^J \eta_{m_i}</span></p></li>
+<li><p><span class="math">\eta_{\mathrm{new}} = \frac{1}{J} \sum_{i=1}^J
+\eta_{m_i}</span></p></li>
 </ul>
 </div></blockquote>
 </dd></dl>

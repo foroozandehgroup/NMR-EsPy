@@ -51,9 +51,13 @@
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">numpy.random</span> <span class="k">as</span> <span class="nn">nrandom</span>
-<span class="kn">import</span> <span class="nn">scipy.linalg</span> <span class="k">as</span> <span class="nn">slinalg</span>
 
 <span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="n">ArgumentChecker</span><span class="p">,</span> <span class="n">FrequencyConverter</span>
+<span class="kn">import</span> <span class="nn">nmrespy._cols</span> <span class="k">as</span> <span class="nn">cols</span>
+<span class="k">if</span> <span class="n">cols</span><span class="o">.</span><span class="n">USE_COLORAMA</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">colorama</span>
+    <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<span class="kn">import</span> <span class="nn">nmrespy._errors</span> <span class="k">as</span> <span class="nn">errors</span>
 <span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">sig</span>
 
 
@@ -85,7 +89,7 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    super_gaussian : numpy.ndarray</span>
+<span class="sd">    sg : numpy.ndarray</span>
 <span class="sd">        Super-Gaussian filter.</span>
 
 <span class="sd">    center : [int] or [int, int]</span>
@@ -104,15 +108,15 @@
         <span class="n">bw</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 
     <span class="c1"># Construct super gaussian</span>
-    <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">bw</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">bw</span><span class="p">)):</span>
         <span class="c1"># 1D array of super-Gaussian for particular dimension</span>
-        <span class="n">sg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span> <span class="o">**</span> <span class="n">p</span><span class="p">)</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">super_gaussian</span> <span class="o">=</span> <span class="n">super_gaussian</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">sg</span>
-        <span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
-            <span class="n">super_gaussian</span> <span class="o">=</span> <span class="n">sg</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="n">p</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span> <span class="o">/</span> <span class="n">b</span><span class="p">)</span> <span class="o">**</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sg</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sg</span> <span class="o">=</span> <span class="n">sg</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span>
 
-    <span class="k">return</span> <span class="n">super_gaussian</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">bw</span></div>
+    <span class="k">return</span> <span class="n">sg</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">bw</span></div>
 
 
 <div class="viewcode-block" id="FrequencyFilter"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter">[docs]</a><span class="k">class</span> <span class="nc">FrequencyFilter</span><span class="p">:</span>
@@ -123,7 +127,8 @@
 <span class="sd">    data : numpy.ndarray</span>
 <span class="sd">        The time-domain signal.</span>
 
-<span class="sd">    region : [[int, int]], [[float, float]], [[int, int], [int, int]] or [[float, float], [float, float]]</span>
+<span class="sd">    region : [[int, int]], [[float, float]], [[int, int], [int, int]] or</span>
+<span class="sd">    [[float, float], [float, float]]</span>
 <span class="sd">        Boundaries specifying the region to apply the filter to.</span>
 
 <span class="sd">    noise_region : (Same type as `region`)</span>
@@ -229,8 +234,10 @@
 
         <span class="k">if</span> <span class="n">region_unit</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;ppm&#39;</span><span class="p">,</span> <span class="s1">&#39;hz&#39;</span><span class="p">]:</span>
             <span class="c1"># Convert region and noise_region to array indices</span>
-            <span class="n">region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">region_unit</span><span class="si">}</span><span class="s1">-&gt;idx&#39;</span><span class="p">)</span>
-            <span class="n">noise_region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">noise_region</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">region_unit</span><span class="si">}</span><span class="s1">-&gt;idx&#39;</span><span class="p">)</span>
+            <span class="n">region</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">region_unit</span><span class="si">}</span><span class="s1">-&gt;idx&#39;</span><span class="p">)</span>
+            <span class="n">noise_region</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">noise_region</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">region_unit</span><span class="si">}</span><span class="s1">-&gt;idx&#39;</span><span class="p">)</span>
 
         <span class="c1"># Ensure region bounds are in correct order, i.e. [low, high],</span>
         <span class="c1"># and double to reflect increased size of virtual echo</span>
@@ -244,7 +251,7 @@
         <span class="c1"># of the filter in each dimension.</span>
         <span class="n">sg</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">bw</span> <span class="o">=</span> <span class="n">super_gaussian</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">ve_shape</span><span class="p">)</span>
         <span class="c1"># Extract noise</span>
-        <span class="n">noise_slice</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="n">nbd</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">nbd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">nbd</span> <span class="ow">in</span> <span class="n">noise_region</span><span class="p">)</span>
+        <span class="n">noise_slice</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="n">nbd</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">nbd</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">nbd</span> <span class="ow">in</span> <span class="n">noise_region</span><span class="p">)</span>
         <span class="n">variance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">init_spec</span><span class="p">[</span><span class="n">noise_slice</span><span class="p">])</span>
         <span class="c1"># Generate noise array</span>
         <span class="n">noise</span> <span class="o">=</span> <span class="n">nrandom</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">ve_shape</span><span class="p">)</span>
@@ -277,12 +284,13 @@
                     <span class="n">mx</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span>
                 <span class="n">mini</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mn</span><span class="p">)</span>
                 <span class="n">maxi</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mx</span><span class="p">)</span>
-                <span class="n">cut_slice</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="n">mn</span><span class="p">:</span><span class="n">mx</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+                <span class="n">cut_slice</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="n">mn</span><span class="p">:</span><span class="n">mx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
 
             <span class="c1"># Cut the filtered spectrum</span>
             <span class="n">cut_filt_spec</span> <span class="o">=</span> <span class="n">filt_spec</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">cut_slice</span><span class="p">)]</span>
             <span class="c1"># Generate time-domain signal from spectrum</span>
-            <span class="n">cut_half_slice</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">cut_filt_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">cut_half_slice</span> <span class="o">=</span> \
+                <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">cut_filt_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
             <span class="n">cut_fid</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">ift</span><span class="p">(</span><span class="n">cut_filt_spec</span><span class="p">)[</span><span class="n">cut_half_slice</span><span class="p">]</span>
             <span class="c1"># Scale signals</span>
             <span class="n">cut_fid</span> <span class="o">=</span> <span class="n">cut_fid</span> <span class="o">*</span> <span class="n">cut_fid</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">uncut_fid</span><span class="o">.</span><span class="n">size</span>
@@ -291,7 +299,9 @@
             <span class="c1"># NB division by 2 is to correct for doubling the region bounds</span>
             <span class="c1"># on account of zero filling</span>
             <span class="n">cut_sw</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">cut_n</span><span class="p">,</span> <span class="n">uncut_n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sw</span><span class="p">,</span> <span class="n">cut_filt_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">filt_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">cut_n</span><span class="p">,</span> <span class="n">uncut_n</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                <span class="n">sw</span><span class="p">,</span> <span class="n">cut_filt_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">filt_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+            <span class="p">):</span>
                 <span class="n">cut_sw</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">cut_n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">uncut_n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">s</span><span class="p">)</span>
 
             <span class="n">cut_offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span>
@@ -299,11 +309,10 @@
                 <span class="s1">&#39;idx-&gt;hz&#39;</span><span class="p">,</span>
             <span class="p">)</span>
 
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">fid</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uncut&#39;</span> <span class="p">:</span> <span class="n">uncut_fid</span><span class="p">,</span> <span class="s1">&#39;cut&#39;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">filtered_spectrum</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uncut&#39;</span> <span class="p">:</span> <span class="n">filt_spec</span><span class="p">,</span> <span class="s1">&#39;cut&#39;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sw</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uncut&#39;</span> <span class="p">:</span> <span class="n">sw</span><span class="p">,</span> <span class="s1">&#39;cut&#39;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uncut&#39;</span> <span class="p">:</span> <span class="n">offset</span><span class="p">,</span> <span class="s1">&#39;cut&#39;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fid</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uncut&#39;</span><span class="p">:</span> <span class="n">uncut_fid</span><span class="p">,</span> <span class="s1">&#39;cut&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filtered_spectrum</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uncut&#39;</span><span class="p">:</span> <span class="n">filt_spec</span><span class="p">,</span> <span class="s1">&#39;cut&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sw</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uncut&#39;</span><span class="p">:</span> <span class="n">sw</span><span class="p">,</span> <span class="s1">&#39;cut&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uncut&#39;</span><span class="p">:</span> <span class="n">offset</span><span class="p">,</span> <span class="s1">&#39;cut&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">fid</span><span class="p">[</span><span class="s1">&#39;cut&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cut_fid</span>
@@ -317,14 +326,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="n">region</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">noise_region</span> <span class="o">=</span> <span class="n">noise_region</span>
 
-
-
     <span class="k">def</span> <span class="nf">_get_cut_uncut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cut</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">cut</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;cut&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;cut&#39;</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;uncut&#39;</span><span class="p">]</span>
-
 
 <div class="viewcode-block" id="FrequencyFilter.get_fid"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_fid">[docs]</a>    <span class="k">def</span> <span class="nf">get_fid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cut</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns frequency-filtered time domain data.</span>
@@ -342,7 +348,6 @@
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cut_uncut</span><span class="p">(</span><span class="s1">&#39;fid&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="FrequencyFilter.get_filtered_spectrum"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_filtered_spectrum">[docs]</a>    <span class="k">def</span> <span class="nf">get_filtered_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cut</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns frequency-filtered spectral data.</span>
 
@@ -359,11 +364,9 @@
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cut_uncut</span><span class="p">(</span><span class="s1">&#39;filtered_spectrum&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="FrequencyFilter.get_fs"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_fs">[docs]</a>    <span class="k">def</span> <span class="nf">get_fs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cut</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Shorthand for :py:meth:`get_filtered_spectrum`.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_filtered_spectrum</span><span class="p">(</span><span class="n">cut</span><span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="FrequencyFilter.get_super_gaussian"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_super_gaussian">[docs]</a>    <span class="k">def</span> <span class="nf">get_super_gaussian</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns the super-Gaussian filter used.</span>
@@ -374,11 +377,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sg</span></div>
 
-
 <div class="viewcode-block" id="FrequencyFilter.get_sg"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_sg">[docs]</a>    <span class="k">def</span> <span class="nf">get_sg</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Shorthand for :py:meth:`get_super_gaussian`.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sg</span></div>
-
 
 <div class="viewcode-block" id="FrequencyFilter.get_sw"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_sw">[docs]</a>    <span class="k">def</span> <span class="nf">get_sw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns the sweep width of the cut signal</span>
@@ -397,12 +398,13 @@
         <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;hz&#39;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cut_uncut</span><span class="p">(</span><span class="s1">&#39;sw&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;ppm&#39;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_cut_uncut</span><span class="p">(</span><span class="s1">&#39;sw&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="p">),</span> <span class="sa">f</span><span class="s1">&#39;hz-&gt;ppm&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_get_cut_uncut</span><span class="p">(</span><span class="s1">&#39;sw&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="p">),</span> <span class="s1">&#39;hz-&gt;ppm&#39;</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">unit should be </span><span class="se">\&#39;</span><span class="s1">ppm</span><span class="se">\&#39;</span><span class="s1"> or </span><span class="se">\&#39;</span><span class="s1">hz</span><span class="se">\&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="FrequencyFilter.get_offset"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_offset">[docs]</a>    <span class="k">def</span> <span class="nf">get_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns the offset of the cut signal</span>
@@ -421,12 +423,13 @@
         <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;hz&#39;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_cut_uncut</span><span class="p">(</span><span class="s1">&#39;offset&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;ppm&#39;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_cut_uncut</span><span class="p">(</span><span class="s1">&#39;offset&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="p">),</span> <span class="sa">f</span><span class="s1">&#39;hz-&gt;ppm&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">converter</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_get_cut_uncut</span><span class="p">(</span><span class="s1">&#39;offset&#39;</span><span class="p">,</span> <span class="n">cut</span><span class="p">),</span> <span class="s1">&#39;hz-&gt;ppm&#39;</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">unit should be </span><span class="se">\&#39;</span><span class="s1">ppm</span><span class="se">\&#39;</span><span class="s1"> or </span><span class="se">\&#39;</span><span class="s1">hz</span><span class="se">\&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="FrequencyFilter._get_region"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter._get_region">[docs]</a>    <span class="k">def</span> <span class="nf">_get_region</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">unit</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return either `region` or `noise_region`, based on `name`</span>
@@ -441,7 +444,8 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        region : [[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]</span>
+<span class="sd">        region : [[int, int]], [[int, int], [int, int]], [[float, float]],</span>
+<span class="sd">        or [[float, float], [float, float]]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">if</span> <span class="n">unit</span> <span class="o">==</span> <span class="s1">&#39;idx&#39;</span><span class="p">:</span>
@@ -453,7 +457,6 @@
                 <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">unit should be </span><span class="se">\&#39;</span><span class="s1">idx</span><span class="se">\&#39;</span><span class="s1">, </span><span class="se">\&#39;</span><span class="s1">ppm</span><span class="se">\&#39;</span><span class="s1"> or </span><span class="se">\&#39;</span><span class="s1">hz</span><span class="se">\&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
             <span class="p">)</span></div>
 
-
 <div class="viewcode-block" id="FrequencyFilter.get_region"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_region">[docs]</a>    <span class="k">def</span> <span class="nf">get_region</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;idx&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns the spectral region selected</span>
 
@@ -464,11 +467,11 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        region : [[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]</span>
+<span class="sd">        region : [[int, int]], [[int, int], [int, int]], [[float, float]],</span>
+<span class="sd">        or [[float, float], [float, float]]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_region</span><span class="p">(</span><span class="s1">&#39;region&#39;</span><span class="p">,</span> <span class="n">unit</span><span class="p">)</span></div>
-
 
 <div class="viewcode-block" id="FrequencyFilter.get_noise_region"><a class="viewcode-back" href="../../references/freqfilter.html#nmrespy.freqfilter.FrequencyFilter.get_noise_region">[docs]</a>    <span class="k">def</span> <span class="nf">get_noise_region</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;idx&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Returns the spectral noise region selected</span>
@@ -480,7 +483,8 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        noise_region : [[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]</span>
+<span class="sd">        noise_region : [[int, int]], [[int, int], [int, int]],</span>
+<span class="sd">        [[float, float]], or [[float, float], [float, float]]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_region</span><span class="p">(</span><span class="s1">&#39;noise_region&#39;</span><span class="p">,</span> <span class="n">unit</span><span class="p">)</span></div></div>

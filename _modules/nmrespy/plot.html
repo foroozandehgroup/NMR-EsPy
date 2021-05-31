@@ -64,9 +64,11 @@
 <span class="kn">import</span> <span class="nn">nmrespy._cols</span> <span class="k">as</span> <span class="nn">cols</span>
 <span class="k">if</span> <span class="n">cols</span><span class="o">.</span><span class="n">USE_COLORAMA</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">colorama</span>
+    <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 <span class="kn">import</span> <span class="nn">nmrespy._errors</span> <span class="k">as</span> <span class="nn">errors</span>
 <span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">sig</span>
+
 
 <div class="viewcode-block" id="plot_result"><a class="viewcode-back" href="../../references/plot.html#nmrespy.plot.plot_result">[docs]</a><span class="k">def</span> <span class="nf">plot_result</span><span class="p">(</span>
     <span class="n">data</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">plot_residual</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">plot_model</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -172,7 +174,8 @@
 <span class="sd">        * If a string corresponding to a matplotlib colormap is given,</span>
 <span class="sd">          the oscillators will be consecutively shaded by linear increments</span>
 <span class="sd">          of this colormap. For all valid colormaps, see</span>
-<span class="sd">          `&lt;here https://matplotlib.org/stable/tutorials/colors/colormaps.html&gt;`__</span>
+<span class="sd">          `&lt;here https://matplotlib.org/stable/tutorials/colors/\</span>
+<span class="sd">          colormaps.html&gt;`__</span>
 <span class="sd">        * If a list or NumPy array containing valid matplotlib colors is</span>
 <span class="sd">          given, these colors will be cycled.</span>
 <span class="sd">          For example, if ``oscillator_colors = [&#39;r&#39;, &#39;g&#39;, &#39;b&#39;]``:</span>
@@ -233,12 +236,11 @@
 <span class="sd">            + `False` sets alpha to 0 (making the labels invisible)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-
     <span class="c1"># --- Check arguments ------------------------------------------------</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span>
-    <span class="k">except</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">data should be a NUmPu array.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">data should be a NumPy array.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">TwoDimUnsupportedError</span><span class="p">()</span>
@@ -287,7 +289,7 @@
         <span class="n">rc</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">mpl</span><span class="o">.</span><span class="n">rc_params_from_file</span><span class="p">(</span>
             <span class="n">stylesheet</span><span class="p">,</span> <span class="n">fail_on_error</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_default_template</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">))</span>
-    <span class="k">except</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">Error in loading the stylesheet. Check you gave&#39;</span>
             <span class="s1">&#39; a valid path, and that the stylesheet is formatted&#39;</span>
@@ -329,7 +331,8 @@
             <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">ln</span><span class="p">:</span> <span class="s1">&#39;axes.prop_cycle&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ln</span><span class="p">,</span> <span class="n">rc</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">))</span>
         <span class="p">)</span>
         <span class="c1"># Append the custom colorcycle to the rc text</span>
-        <span class="n">col_txt</span> <span class="o">=</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\&#39;</span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="si">}</span><span class="se">\&#39;</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">oscillator_colors</span><span class="p">])</span>
+        <span class="n">col_txt</span> <span class="o">=</span> \
+            <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\&#39;</span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="si">}</span><span class="se">\&#39;</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">oscillator_colors</span><span class="p">])</span>
         <span class="n">rc</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">axes.prop_cycle: cycler(</span><span class="se">\&#39;</span><span class="s1">color</span><span class="se">\&#39;</span><span class="s1">, [</span><span class="si">{</span><span class="n">col_txt</span><span class="si">}</span><span class="s1">])</span><span class="se">\n</span><span class="s1">&#39;</span>
 
     <span class="c1"># Temporary path to save stylesheet to</span>
@@ -341,14 +344,13 @@
     <span class="c1"># Delete the stylesheet</span>
     <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span>
 
-
     <span class="k">if</span> <span class="n">shifts_unit</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">]:</span>
         <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">InvalidUnitError</span><span class="p">(</span><span class="s1">&#39;hz&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">shifts_unit</span> <span class="o">==</span> <span class="s1">&#39;ppm&#39;</span> <span class="ow">and</span> <span class="n">sfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">shifts_unit</span> <span class="o">=</span> <span class="s1">&#39;hz&#39;</span>
         <span class="nb">print</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">O</span><span class="si">}</span><span class="s1">You need to specify `sfo` if you want chemical&#39;</span>
-            <span class="sa">f</span><span class="s1">&#39; shifts in ppm! Falling back to Hz...&#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">OR</span><span class="si">}</span><span class="s1">You need to specify `sfo` if you want chemical&#39;</span>
+            <span class="sa">f</span><span class="s1">&#39; shifts in ppm! Falling back to Hz...</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
         <span class="p">)</span>
 
     <span class="c1"># Change x-axis limits if a specific region was studied</span>
@@ -439,7 +441,6 @@
             <span class="n">shifts</span><span class="p">,</span> <span class="n">model</span> <span class="o">+</span> <span class="n">model_shift</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">model_color</span><span class="p">,</span>
         <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
-
         <span class="c1"># Initialise maxi and mini to be values that are certain to be</span>
         <span class="c1"># overwritten</span>
         <span class="n">maxi</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
@@ -465,6 +466,7 @@
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlab</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">NmrespyPlot</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">lines</span><span class="p">,</span> <span class="n">labs</span><span class="p">)</span></div>
+
 
 <span class="c1"># TODO: Grow this class: provide functionality for easy tweaking</span>
 <span class="c1"># of figure</span>
@@ -529,7 +531,8 @@
 <span class="sd">        displacement : (float, float)</span>
 <span class="sd">            The amount to displace the labels relative to their current</span>
 <span class="sd">            positions. The displacement uses the</span>
-<span class="sd">            `axes co-ordinate system &lt;https://matplotlib.org/stable/tutorials/advanced/transforms_tutorial.html#axes-coordinates&gt;`_.</span>
+<span class="sd">            `axes co-ordinate system &lt;https://matplotlib.org/stable/\</span>
+<span class="sd">            tutorials/advanced/transforms_tutorial.html#axes-coordinates&gt;`_.</span>
 <span class="sd">            Both values provided should be less than `1.0`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -543,9 +546,9 @@
         <span class="c1"># Check that all values given are between 1 and number of oscillators</span>
         <span class="n">max_value</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">labels</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">max_value</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s2">At least one element in `values` is &quot;</span>
-                              <span class="s2">&quot;invalid. Ensure that all elements are ints &quot;</span>
-                             <span class="sa">f</span><span class="s2">&quot;between 1 and </span><span class="si">{</span><span class="n">max_value</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">At least one element in `values` is &#39;</span>
+                             <span class="s1">&#39;invalid. Ensure that all elements are ints &#39;</span>
+                             <span class="sa">f</span><span class="s1">&#39;between 1 and </span><span class="si">{</span><span class="n">max_value</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
             <span class="c1"># Get initial position (this is in data coordinates)</span>
@@ -563,10 +566,10 @@
             <span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="mf">0.</span> <span class="o">&lt;=</span> <span class="n">coord</span> <span class="o">&lt;=</span> <span class="mf">1.</span> <span class="k">for</span> <span class="n">coord</span> <span class="ow">in</span> <span class="n">new_pos</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s2">The specified displacement for label </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2"> &quot;</span>
-                     <span class="s2">&quot;places it outside the axes! You may want to reduce the &quot;</span>
-                     <span class="s2">&quot;magnitude of displacement in one or both dimesions to &quot;</span>
-                    <span class="sa">f</span><span class="s2">&quot;ensure this does not occur.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">The specified displacement for label </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s1"> &#39;</span>
+                    <span class="s1">&#39;places it outside the axes! You may want to reduce the &#39;</span>
+                    <span class="s1">&#39;magnitude of displacement in one or both dimesions to &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;ensure this does not occur.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
                 <span class="p">)</span>
 
             <span class="c1"># Transform new position to data coordinates</span>
@@ -579,7 +582,8 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        ax : `matplotlib.axes.Axes &lt;https://matplotlib.org/3.3.1/api/axes_api.html#matplotlib.axes.Axes&gt;`_</span>
+<span class="sd">        ax : `matplotlib.axes.Axes &lt;https://matplotlib.org/3.3.1/api/\</span>
+<span class="sd">        axes_api.html#matplotlib.axes.Axes&gt;`_</span>
 <span class="sd">            The axes object to construct the result plot onto.</span>
 
 <span class="sd">        Warning</span>

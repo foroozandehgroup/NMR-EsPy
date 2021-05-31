@@ -69,7 +69,7 @@
 <div class="viewcode-block" id="write_result"><a class="viewcode-back" href="../../references/write.html#nmrespy.write.write_result">[docs]</a><span class="k">def</span> <span class="nf">write_result</span><span class="p">(</span>
     <span class="n">parameters</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;./nmrespy_result&#39;</span><span class="p">,</span> <span class="n">sfo</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">integrals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">info_headings</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">info</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sig_figs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
-    <span class="n">sci_lims</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;txt&#39;</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pdflatex_exe</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">sci_lims</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;txt&#39;</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pdflatex_exe</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">fprint</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Writes an estimation result to a .txt, .pdf or .csv file.</span>
@@ -204,8 +204,10 @@
     <span class="c1"># --- Check validity of arguments ------------------------------------</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
-    <span class="k">except</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">parameters should be a numoy array</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">parameters should be a numoy array</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="p">)</span>
 
     <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
         <span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="s1">&#39;parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;parameter&#39;</span><span class="p">),</span>
@@ -302,6 +304,7 @@
             <span class="n">fprint</span><span class="p">,</span>
         <span class="p">)</span></div>
 
+
 <div class="viewcode-block" id="_write_txt"><a class="viewcode-back" href="../../references/write.html#nmrespy.write._write_txt">[docs]</a><span class="k">def</span> <span class="nf">_write_txt</span><span class="p">(</span>
     <span class="n">path</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">info_headings</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">param_titles</span><span class="p">,</span> <span class="n">param_table</span><span class="p">,</span> <span class="n">fprint</span><span class="p">,</span>
 <span class="p">):</span>
@@ -355,13 +358,12 @@
     <span class="p">)</span>
 
     <span class="c1"># --- Write footer ---------------------------------------------------</span>
-    <span class="n">msg</span> <span class="o">+=</span> \
-    <span class="sd">&quot;&quot;&quot;\nEstimation performed using NMR-EsPy</span>
-<span class="sd">Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk</span>
-<span class="sd">If used in any publications, please cite:</span>
-<span class="sd">&lt;no papers yet...&gt;</span>
-<span class="sd">For more information, visit the GitHub repo:</span>
-<span class="sd">&quot;&quot;&quot;</span>
+    <span class="n">msg</span> <span class="o">+=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Estimation performed using NMR-EsPy</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;If used in any publications, please cite:</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;&lt;no papers yet...&gt;</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;For more information, visit the GitHub repo:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
     <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">GITHUBLINK</span><span class="si">}</span><span class="s1">&#39;</span>
     <span class="c1"># Save message to textfile</span>
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
@@ -439,7 +441,6 @@
     <span class="c1"># Include a timestamp</span>
     <span class="n">txt</span> <span class="o">=</span> <span class="n">txt</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&lt;TIMESTAMP&gt;&#39;</span><span class="p">,</span> <span class="n">_timestamp</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\\\\</span><span class="s1">&#39;</span><span class="p">))</span>
 
-
     <span class="c1"># --- Description ----------------------------------------------------</span>
     <span class="k">if</span> <span class="n">description</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># No description given, remove relavent section of .tex file</span>
@@ -456,8 +457,10 @@
     <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># No info given, remove relavent section of .tex file</span>
         <span class="n">txt</span> <span class="o">=</span> <span class="n">txt</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-            <span class="s1">&#39;</span><span class="se">\n</span><span class="si">% e</span><span class="s1">xperiment parameters</span><span class="se">\n\\</span><span class="s1">subsection*{Experiment Information}</span><span class="se">\n</span><span class="s1">&#39;</span>
-            <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">hspace{-6pt}</span><span class="se">\n\\</span><span class="s1">begin</span><span class="si">{tabular}{ll}</span><span class="se">\n</span><span class="s1">&lt;INFOTABLE&gt;</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="s1">&#39;</span><span class="se">\n</span><span class="si">% e</span><span class="s1">xperiment parameters</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">subsection*{Experiment Information}</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">hspace{-6pt}</span><span class="se">\n</span><span class="s1">&#39;</span>
+            <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">begin</span><span class="si">{tabular}{ll}</span><span class="se">\n</span><span class="s1">&lt;INFOTABLE&gt;</span><span class="se">\n</span><span class="s1">&#39;</span>
             <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">end</span><span class="si">{tabular}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span>
             <span class="s1">&#39;&#39;</span><span class="p">,</span>
         <span class="p">)</span>
@@ -505,7 +508,7 @@
             <span class="n">pdflatex_exe</span> <span class="o">=</span> <span class="s2">&quot;pdflatex&quot;</span>
         <span class="c1"># -halt-on-error flag is vital. If any error arises in running</span>
         <span class="c1"># pdflatex, the program would get stuck</span>
-        <span class="n">run_latex</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
             <span class="p">[</span><span class="n">pdflatex_exe</span><span class="p">,</span>
              <span class="s1">&#39;-halt-on-error&#39;</span><span class="p">,</span>
              <span class="sa">f</span><span class="s1">&#39;-output-directory=</span><span class="si">{</span><span class="n">tex_tmp_path</span><span class="o">.</span><span class="n">parent</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
@@ -540,13 +543,12 @@
 
     <span class="c1"># Print success message</span>
     <span class="k">if</span> <span class="n">fprint</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">G</span><span class="si">}</span><span class="s1">Result successfuly output to:</span><span class="se">\n</span><span class="s1">&#39;</span> \
-            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">pdf_final_path</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
-            <span class="sa">f</span><span class="s1">&#39;If you wish to customise the document, the TeX file can&#39;</span>
-            <span class="sa">f</span><span class="s1">&#39; be found at:</span><span class="se">\n</span><span class="s1">&#39;</span>
-            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">tex_final_path</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span>
-        <span class="p">)</span></div>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">G</span><span class="si">}</span><span class="s1">Result successfuly output to:</span><span class="se">\n</span><span class="s1">&#39;</span>
+              <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">pdf_final_path</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
+              <span class="s1">&#39;If you wish to customise the document, the TeX file can&#39;</span>
+              <span class="s1">&#39; be found at:</span><span class="se">\n</span><span class="s1">&#39;</span>
+              <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">tex_final_path</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="_write_csv"><a class="viewcode-back" href="../../references/write.html#nmrespy.write._write_csv">[docs]</a><span class="k">def</span> <span class="nf">_write_csv</span><span class="p">(</span>
     <span class="n">path</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">info_headings</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">param_titles</span><span class="p">,</span> <span class="n">param_table</span><span class="p">,</span>
@@ -601,7 +603,6 @@
 
     <span class="k">if</span> <span class="n">fprint</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">G</span><span class="si">}</span><span class="s1">Saved result to </span><span class="si">{</span><span class="n">path</span><span class="si">}{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span></div>
-
 
 
 <div class="viewcode-block" id="_map_to_latex_titles"><a class="viewcode-back" href="../../references/write.html#nmrespy.write._map_to_latex_titles">[docs]</a><span class="k">def</span> <span class="nf">_map_to_latex_titles</span><span class="p">(</span><span class="n">titles</span><span class="p">):</span>
@@ -725,14 +726,14 @@
         <span class="c1"># Phase</span>
         <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_mystr</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
         <span class="c1"># Frequencies</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="o">+</span><span class="n">dim</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">dim</span><span class="p">):</span>
             <span class="c1"># Hz</span>
             <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_mystr</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">]))</span>
             <span class="c1"># ppm (if sfo provided)</span>
             <span class="k">if</span> <span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_mystr</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">sfo</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+                <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_mystr</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">sfo</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]))</span>
         <span class="c1"># Damping</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="o">+</span><span class="n">dim</span><span class="p">,</span> <span class="mi">2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">dim</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dim</span><span class="p">,</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">dim</span><span class="p">):</span>
             <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_mystr</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">]))</span>
         <span class="k">if</span> <span class="n">integrals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Integrals</span>
@@ -750,21 +751,20 @@
             <span class="c1"># Phase</span>
             <span class="n">err_row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;±&quot;</span> <span class="o">+</span> <span class="n">_mystr</span><span class="p">(</span><span class="n">errors</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
             <span class="c1"># Frequencies</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="o">+</span><span class="n">dim</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">dim</span><span class="p">):</span>
                 <span class="c1"># Hz</span>
                 <span class="n">err_row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;±&quot;</span> <span class="o">+</span> <span class="n">_mystr</span><span class="p">(</span><span class="n">errors</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">]))</span>
                 <span class="c1"># ppm (if sfo provided)</span>
                 <span class="k">if</span> <span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">err_row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;±&quot;</span> <span class="o">+</span> <span class="n">_mystr</span><span class="p">(</span><span class="n">errors</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">sfo</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+                    <span class="n">err_row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;±&quot;</span> <span class="o">+</span> <span class="n">_mystr</span><span class="p">(</span><span class="n">errors</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">sfo</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]))</span>
             <span class="c1"># Damping</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="o">+</span><span class="n">dim</span><span class="p">,</span> <span class="mi">2</span><span class="o">+</span><span class="mi">2</span><span class="o">*</span><span class="n">dim</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="n">dim</span><span class="p">,</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">dim</span><span class="p">):</span>
                 <span class="n">err_row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;±&quot;</span> <span class="o">+</span> <span class="n">_mystr</span><span class="p">(</span><span class="n">errors</span><span class="p">[</span><span class="n">m</span><span class="p">,</span> <span class="n">i</span><span class="p">]))</span>
 
             <span class="c1"># TODO: Integral errors</span>
             <span class="k">if</span> <span class="n">integrals</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">err_row</span> <span class="o">=</span> <span class="n">err_row</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">[</span><span class="s1">&#39;-&#39;</span><span class="p">]</span>
             <span class="n">table</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">err_row</span><span class="p">)</span>
-
 
     <span class="k">return</span> <span class="n">titles</span><span class="p">,</span> <span class="n">table</span></div>
 
@@ -783,10 +783,10 @@
 <span class="sd">           dd-mm-yy</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span> <span class="c1"># Day</span>
-    <span class="n">m</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m&#39;</span><span class="p">)</span> <span class="c1"># Month</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y&#39;</span><span class="p">)</span> <span class="c1"># Year</span>
-    <span class="n">t</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%X</span><span class="s1">&#39;</span><span class="p">)</span> <span class="c1"># Time (hh:mm:ss)</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>  <span class="c1"># Day</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%m&#39;</span><span class="p">)</span>  <span class="c1"># Month</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y&#39;</span><span class="p">)</span>  <span class="c1"># Year</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%X</span><span class="s1">&#39;</span><span class="p">)</span>  <span class="c1"># Time (hh:mm:ss)</span>
     <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s1">&#39;</span></div>
 
 
@@ -816,6 +816,7 @@
     <span class="c1"># Determine whether to express the value in scientific notation or not</span>
     <span class="k">return</span> <span class="n">_scientific_notation</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">sci_lims</span><span class="p">,</span> <span class="n">fmt</span><span class="p">)</span></div>
 
+
 <div class="viewcode-block" id="_scientific_notation"><a class="viewcode-back" href="../../references/write.html#nmrespy.write._scientific_notation">[docs]</a><span class="k">def</span> <span class="nf">_scientific_notation</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">sci_lims</span><span class="p">,</span> <span class="n">fmt</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Converts value to scientific notation</span>
 
@@ -833,9 +834,10 @@
     <span class="c1"># If user speicifed to never user scientific notation, or the value</span>
     <span class="c1"># does not have a sufficiently high exponent, or the file type is a csv,</span>
     <span class="c1"># simply return the value unedited, as a string.</span>
-    <span class="k">if</span> <span class="n">sci_lims</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> \
-    <span class="nb">abs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">sci_lims</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sci_lims</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">or</span> \
-    <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;csv&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sci_lims</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span>
+            <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">sci_lims</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span>
+             <span class="nb">abs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sci_lims</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="ow">or</span>
+            <span class="n">fmt</span> <span class="o">==</span> <span class="s1">&#39;csv&#39;</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
     <span class="c1"># Convert to scientific notation</span>
@@ -907,7 +909,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># If titles are given, append to the top of each column</span>
     <span class="k">if</span> <span class="n">titles</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,(</span><span class="n">title</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">titles</span><span class="p">,</span> <span class="n">columns</span><span class="p">)):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">titles</span><span class="p">,</span> <span class="n">columns</span><span class="p">)):</span>
             <span class="n">columns</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">title</span><span class="p">]</span> <span class="o">+</span> <span class="n">column</span>
     <span class="c1"># --- Determine width of each column ---------------------------------</span>
     <span class="n">pads</span> <span class="o">=</span> <span class="p">[]</span>
@@ -947,6 +949,7 @@
             <span class="n">table</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">table</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span>
 
     <span class="k">return</span> <span class="n">table</span></div>
+
 
 <div class="viewcode-block" id="_latex_tabular"><a class="viewcode-back" href="../../references/write.html#nmrespy.write._latex_tabular">[docs]</a><span class="k">def</span> <span class="nf">_latex_tabular</span><span class="p">(</span><span class="n">rows</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Creates a string of text that denotes a tabular entity in LaTeX</span>

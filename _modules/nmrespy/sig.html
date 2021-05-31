@@ -64,13 +64,15 @@
 <span class="kn">import</span> <span class="nn">nmrespy._cols</span> <span class="k">as</span> <span class="nn">cols</span>
 <span class="k">if</span> <span class="n">cols</span><span class="o">.</span><span class="n">USE_COLORAMA</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">colorama</span>
+    <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 <span class="kn">import</span> <span class="nn">nmrespy._errors</span> <span class="k">as</span> <span class="nn">errors</span>
 <span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="n">ArgumentChecker</span>
 
 <span class="sd">&quot;&quot;&quot;Provides functionality for constructing synthetic FIDs&quot;&quot;&quot;</span>
 
+
 <div class="viewcode-block" id="make_fid"><a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.make_fid">[docs]</a><span class="k">def</span> <span class="nf">make_fid</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">snr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">decibels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">modulation</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">):</span>
+             <span class="n">modulation</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Constructs a discrete time-domain signal (FID), as a summation of</span>
 <span class="sd">    exponentially damped complex sinusoids.</span>
 
@@ -200,10 +202,10 @@
     <span class="c1"># --- Check validity of inputs ---------------------------------------</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-    <span class="k">except</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">n should be iterable.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">offset</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">offset</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="n">dim</span>
 
     <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
@@ -215,7 +217,7 @@
         <span class="p">(</span><span class="n">modulation</span><span class="p">,</span> <span class="s1">&#39;modulation&#39;</span><span class="p">,</span> <span class="s1">&#39;modulation&#39;</span><span class="p">),</span>
     <span class="p">]</span>
 
-    <span class="k">if</span> <span class="n">snr</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">snr</span><span class="p">,</span> <span class="s1">&#39;snr&#39;</span><span class="p">,</span> <span class="s1">&#39;float&#39;</span><span class="p">))</span>
 
     <span class="n">ArgumentChecker</span><span class="p">(</span><span class="n">components</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
@@ -224,8 +226,8 @@
     <span class="n">amp</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
     <span class="n">phase</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
     <span class="c1"># Center frequencies at 0 based on offset</span>
-    <span class="n">freq</span> <span class="o">=</span> <span class="p">[</span><span class="n">parameters</span><span class="p">[:,</span> <span class="mi">2</span><span class="o">+</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">offset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">)]</span>
-    <span class="n">damp</span> <span class="o">=</span> <span class="p">[</span><span class="n">parameters</span><span class="p">[:,</span> <span class="n">dim</span><span class="o">+</span><span class="mi">2</span><span class="o">+</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">)]</span>
+    <span class="n">freq</span> <span class="o">=</span> <span class="p">[</span><span class="n">parameters</span><span class="p">[:,</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">offset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">)]</span>
+    <span class="n">damp</span> <span class="o">=</span> <span class="p">[</span><span class="n">parameters</span><span class="p">[:,</span> <span class="n">dim</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">)]</span>
 
     <span class="c1"># Time points in each dimension</span>
     <span class="n">tp</span> <span class="o">=</span> <span class="n">get_timepoints</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">sw</span><span class="p">)</span>
@@ -233,7 +235,7 @@
     <span class="c1"># --- Generate noiseless FID -----------------------------------------</span>
     <span class="k">if</span> <span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="c1"># Vandermonde matrix of poles</span>
-        <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="mi">1</span><span class="n">j</span><span class="o">*</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+        <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
         <span class="c1"># Vector of complex ampltiudes</span>
         <span class="n">alpha</span> <span class="o">=</span> <span class="n">amp</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">phase</span><span class="p">)</span>
         <span class="c1"># Compute FID!</span>
@@ -241,14 +243,16 @@
 
     <span class="k">if</span> <span class="n">dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">modulation</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="s1">&#39;amp&#39;</span><span class="p">]:</span>
-            <span class="n">Z1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="mi">1</span><span class="n">j</span><span class="o">*</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+            <span class="n">Z1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
             <span class="k">if</span> <span class="n">modulation</span> <span class="o">==</span> <span class="s1">&#39;amp&#39;</span><span class="p">:</span>
                 <span class="n">Z1</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">Z1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">Z1</span><span class="p">)]</span>
         <span class="k">elif</span> <span class="n">modulation</span> <span class="o">==</span> <span class="s1">&#39;phase&#39;</span><span class="p">:</span>
-            <span class="n">Z1</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="mi">1</span><span class="n">j</span><span class="o">*</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))),</span> <span class="c1"># P</span>
-                  <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span><span class="o">*</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">])))]</span>
+            <span class="n">Z1</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">]))),</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">])))</span>
+            <span class="p">]</span>
 
-        <span class="n">Z2t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">((</span><span class="mi">1</span><span class="n">j</span><span class="o">*</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">tp</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">Z2t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">((</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">tp</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
         <span class="c1"># Diagonal matrix of complex amplitudes</span>
         <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">amp</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">phase</span><span class="p">))</span>
 
@@ -259,9 +263,8 @@
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">fid</span> <span class="o">=</span> <span class="n">fid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-
     <span class="c1"># --- Add noise to FID -----------------------------------------------</span>
-    <span class="k">if</span> <span class="n">snr</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">snr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">fid</span><span class="p">,</span> <span class="n">tp</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
@@ -270,7 +273,6 @@
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fid</span><span class="p">):</span>
                 <span class="n">fid</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span> <span class="o">+</span> <span class="n">make_noise</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">decibels</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">fid</span><span class="p">,</span> <span class="n">tp</span></div>
-
 
 
 <div class="viewcode-block" id="make_virtual_echo"><a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.make_virtual_echo">[docs]</a><span class="k">def</span> <span class="nf">make_virtual_echo</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">modulation</span><span class="o">=</span><span class="s1">&#39;amp&#39;</span><span class="p">):</span>
@@ -289,8 +291,8 @@
 <span class="sd">        If the data is 2D, this parameter specifies the type of modulation</span>
 <span class="sd">        present in the indirect dimension of the dataset.</span>
 
-<span class="sd">        * If set to `&#39;amp&#39;`, the two signals in the `data` should be an amplitude</span>
-<span class="sd">          modulated pair.</span>
+<span class="sd">        * If set to `&#39;amp&#39;`, the two signals in the `data` should be an</span>
+<span class="sd">          amplitude modulated pair.</span>
 <span class="sd">        * If set to `&#39;phase&#39;`, the two signals in the `data` should be a phase</span>
 <span class="sd">          modulated pair.</span>
 
@@ -309,7 +311,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-    <span class="k">except</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">n should be iterable.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">dim</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
@@ -329,7 +331,6 @@
         <span class="n">ve</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">ve</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
         <span class="n">ve</span><span class="p">[</span><span class="n">pts</span><span class="p">:]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">conj</span><span class="p">()[</span><span class="mi">1</span><span class="p">:][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">ve</span>
-
 
     <span class="k">elif</span> <span class="n">dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
         <span class="c1"># TODO NEEDS FIXING</span>
@@ -385,8 +386,6 @@
         <span class="k">return</span> <span class="n">tmp1</span> <span class="o">+</span> <span class="n">tmp2</span> <span class="o">+</span> <span class="n">tmp3</span> <span class="o">+</span> <span class="n">tmp4</span></div>
 
 
-
-
 <div class="viewcode-block" id="get_timepoints"><a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.get_timepoints">[docs]</a><span class="k">def</span> <span class="nf">get_timepoints</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">sw</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Generates the timepoints at which an FID is sampled at, given</span>
 <span class="sd">    its sweep-width, and the number of points.</span>
@@ -407,7 +406,7 @@
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-    <span class="k">except</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">n should be iterable.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="n">ArgumentChecker</span><span class="p">([(</span><span class="n">n</span><span class="p">,</span> <span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;int_list&#39;</span><span class="p">),</span> <span class="p">(</span><span class="n">sw</span><span class="p">,</span> <span class="s1">&#39;sw&#39;</span><span class="p">,</span> <span class="s1">&#39;float_list&#39;</span><span class="p">)],</span> <span class="n">dim</span><span class="p">)</span>
@@ -442,17 +441,19 @@
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-    <span class="k">except</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">n should be iterable.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">offset</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">offset</span> <span class="o">=</span> <span class="n">dim</span> <span class="o">*</span> <span class="p">[</span><span class="mf">0.</span><span class="p">]</span>
 
     <span class="n">ArgumentChecker</span><span class="p">(</span>
-        <span class="p">[(</span><span class="n">n</span><span class="p">,</span> <span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;int_list&#39;</span><span class="p">),</span>
-         <span class="p">(</span><span class="n">sw</span><span class="p">,</span> <span class="s1">&#39;sw&#39;</span><span class="p">,</span> <span class="s1">&#39;float_list&#39;</span><span class="p">),</span>
-         <span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="s1">&#39;offset&#39;</span><span class="p">,</span> <span class="s1">&#39;float_list&#39;</span><span class="p">),</span>
-        <span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="n">dim</span>
+        <span class="p">[</span>
+            <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;int_list&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">sw</span><span class="p">,</span> <span class="s1">&#39;sw&#39;</span><span class="p">,</span> <span class="s1">&#39;float_list&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="s1">&#39;offset&#39;</span><span class="p">,</span> <span class="s1">&#39;float_list&#39;</span><span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">dim</span><span class="o">=</span><span class="n">dim</span>
     <span class="p">)</span>
 
     <span class="n">shifts</span> <span class="o">=</span> <span class="p">[]</span>
@@ -462,6 +463,7 @@
         <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">shifts</span><span class="p">)</span> <span class="k">if</span> <span class="n">flip</span> <span class="k">else</span> <span class="n">shifts</span></div>
+
 
 <div class="viewcode-block" id="ft"><a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.ft">[docs]</a><span class="k">def</span> <span class="nf">ft</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">flip</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Performs Fourier transformation and (optionally) flips the resulting</span>
@@ -506,7 +508,6 @@
 <span class="sd">    spectrum : dict</span>
 <span class="sd">        Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``.&quot;&quot;&quot;</span>
 
-
     <span class="n">ArgumentChecker</span><span class="p">([(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;array_list&#39;</span><span class="p">)],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
     <span class="n">c</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -515,8 +516,9 @@
     <span class="n">c_t1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">s_t1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">c_t1_f2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">s_t1_f2</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
-
+    <span class="k">return</span> <span class="n">fftshift</span><span class="p">(</span>
+        <span class="n">fft</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">c_t1_f2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">s_t1_f2</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="proc_phase_modulated"><a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.proc_phase_modulated">[docs]</a><span class="k">def</span> <span class="nf">proc_phase_modulated</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
@@ -540,32 +542,31 @@
 <span class="sd">           pulsed field gradients,” Journal of Magnetic Resonance (1969),</span>
 <span class="sd">           vol. 98, no. 1, pp. 207–216, 1992.&quot;&quot;&quot;</span>
 
-
     <span class="n">ArgumentChecker</span><span class="p">([(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;array_list&#39;</span><span class="p">)],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
     <span class="n">p</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">n</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
 
-    <span class="n">p_t1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># Sₚ(t₁,f₂)</span>
-    <span class="n">n_t1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># Sₙ(t₁,f₂)</span>
+    <span class="n">p_t1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Sₚ(t₁,f₂)</span>
+    <span class="n">n_t1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Sₙ(t₁,f₂)</span>
 
     <span class="c1"># Generating rr and ir</span>
-    <span class="n">plus_t1_f2</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_t1_f2</span> <span class="o">+</span> <span class="n">n_t1_f2</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span> <span class="c1"># S⁺(t₁,f₂)</span>
-    <span class="n">plus_f1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">plus_t1_f2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># S⁺(f₁,f₂)</span>
-    <span class="n">rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">plus_f1_f2</span><span class="p">)</span> <span class="c1"># A₁A₂</span>
-    <span class="n">ir</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">plus_f1_f2</span><span class="p">)</span> <span class="c1"># D₁A₂</span>
+    <span class="n">plus_t1_f2</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_t1_f2</span> <span class="o">+</span> <span class="n">n_t1_f2</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span>           <span class="c1"># S⁺(t₁,f₂)</span>
+    <span class="n">plus_f1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">plus_t1_f2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># S⁺(f₁,f₂)</span>
+    <span class="n">rr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">plus_f1_f2</span><span class="p">)</span>  <span class="c1"># A₁A₂</span>
+    <span class="n">ir</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">plus_f1_f2</span><span class="p">)</span>  <span class="c1"># D₁A₂</span>
 
     <span class="c1"># Generating ri and ii</span>
-    <span class="n">minus_t1_f2</span> <span class="o">=</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_t1_f2</span> <span class="o">-</span> <span class="n">n_t1_f2</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span> <span class="c1"># S⁻(t₁,f₂)</span>
-    <span class="n">minus_f1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">minus_t1_f2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># S⁻(f₁,f₂)</span>
-    <span class="n">ri</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">minus_f1_f2</span><span class="p">)</span> <span class="c1"># A₁D₂</span>
-    <span class="n">ii</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">minus_f1_f2</span><span class="p">)</span> <span class="c1"># D₁D₂</span>
+    <span class="n">minus_t1_f2</span> <span class="o">=</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_t1_f2</span> <span class="o">-</span> <span class="n">n_t1_f2</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span>     <span class="c1"># S⁻(t₁,f₂)</span>
+    <span class="n">minus_f1_f2</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">minus_t1_f2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># S⁻(f₁,f₂)</span>
+    <span class="n">ri</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">minus_f1_f2</span><span class="p">)</span>  <span class="c1"># A₁D₂</span>
+    <span class="n">ii</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">minus_f1_f2</span><span class="p">)</span>  <span class="c1"># D₁D₂</span>
 
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s1">&#39;rr&#39;</span> <span class="p">:</span> <span class="n">rr</span><span class="p">,</span>
-        <span class="s1">&#39;ri&#39;</span> <span class="p">:</span> <span class="n">ri</span><span class="p">,</span>
-        <span class="s1">&#39;ir&#39;</span> <span class="p">:</span> <span class="n">ir</span><span class="p">,</span>
-        <span class="s1">&#39;ii&#39;</span> <span class="p">:</span> <span class="n">ii</span><span class="p">,</span>
+        <span class="s1">&#39;rr&#39;</span><span class="p">:</span> <span class="n">rr</span><span class="p">,</span>
+        <span class="s1">&#39;ri&#39;</span><span class="p">:</span> <span class="n">ri</span><span class="p">,</span>
+        <span class="s1">&#39;ir&#39;</span><span class="p">:</span> <span class="n">ir</span><span class="p">,</span>
+        <span class="s1">&#39;ii&#39;</span><span class="p">:</span> <span class="n">ii</span><span class="p">,</span>
     <span class="p">}</span></div>
 
 
@@ -588,7 +589,12 @@
 <span class="sd">        Inverse Fourier transform of the spectrum.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">ArgumentChecker</span><span class="p">([(</span><span class="n">spectrum</span><span class="p">,</span> <span class="s1">&#39;spectrum&#39;</span><span class="p">,</span> <span class="s1">&#39;ndarray&#39;</span><span class="p">),</span> <span class="p">(</span><span class="n">flip</span><span class="p">,</span> <span class="s1">&#39;flip&#39;</span><span class="p">,</span> <span class="s1">&#39;bool&#39;</span><span class="p">)])</span>
+    <span class="n">ArgumentChecker</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="s1">&#39;spectrum&#39;</span><span class="p">,</span> <span class="s1">&#39;ndarray&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">flip</span><span class="p">,</span> <span class="s1">&#39;flip&#39;</span><span class="p">,</span> <span class="s1">&#39;bool&#39;</span><span class="p">),</span>
+        <span class="p">],</span>
+    <span class="p">)</span>
 
     <span class="n">spectrum</span> <span class="o">=</span> <span class="n">ifftshift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">spectrum</span><span class="p">))</span> <span class="k">if</span> <span class="n">flip</span> <span class="k">else</span> <span class="n">ifftshift</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)</span>
 
@@ -625,7 +631,7 @@
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">p0</span><span class="p">)</span>
-    <span class="k">except</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">p0 should be iterable.</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">pivot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -649,7 +655,7 @@
         <span class="n">n</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">axis</span><span class="p">]</span>
         <span class="c1"># Determine axis for einsum (i or j)</span>
         <span class="n">axis</span> <span class="o">=</span> <span class="nb">chr</span><span class="p">(</span><span class="n">axis</span> <span class="o">+</span> <span class="mi">105</span><span class="p">)</span>
-        <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">p0_</span> <span class="o">+</span> <span class="n">p1_</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">piv</span><span class="p">,</span> <span class="o">-</span><span class="n">piv</span><span class="o">+</span><span class="n">n</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span><span class="p">))</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">p0_</span> <span class="o">+</span> <span class="n">p1_</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">piv</span><span class="p">,</span> <span class="o">-</span><span class="n">piv</span> <span class="o">+</span> <span class="n">n</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span><span class="p">))</span>
         <span class="n">phased_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="n">axis</span><span class="si">}</span><span class="s1">-&gt;</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">phased_data</span></div>
@@ -685,12 +691,12 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">ndim</span>
-    <span class="k">except</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">soectrum should be a numpy array</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="c1"># Only valid for 1D so far</span>
     <span class="k">if</span> <span class="n">dim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">TwoDimUnsupportedError</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">TwoDimUnsupportedError</span><span class="p">()</span>
 
     <span class="n">init_spectrum</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)</span>
 
@@ -730,9 +736,12 @@
 
         <span class="n">ylim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()</span>
 
-        <span class="n">mx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">spectrum</span><span class="p">))))</span>
+        <span class="n">mx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)),</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">spectrum</span><span class="p">))),</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pivotline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-            <span class="mi">2</span> <span class="o">*</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pivot</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="o">*</span><span class="n">mx</span><span class="p">,</span> <span class="mi">10</span><span class="o">*</span><span class="n">mx</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span>
+            <span class="mi">2</span> <span class="o">*</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pivot</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">10</span> <span class="o">*</span> <span class="n">mx</span><span class="p">,</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">mx</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span>
         <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ylim</span><span class="p">)</span>
@@ -743,10 +752,14 @@
             <span class="n">row</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">padx</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">pady</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">sticky</span><span class="o">=</span><span class="s1">&#39;nsew&#39;</span><span class="p">,</span>
         <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">toolbar</span> <span class="o">=</span> <span class="n">NavigationToolbar2Tk</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">pack_toolbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">toolbar</span> <span class="o">=</span> <span class="n">NavigationToolbar2Tk</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">pack_toolbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">toolbar</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">pady</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sticky</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scale_frame</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scale_frame</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">padx</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">pady</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">10</span><span class="p">),</span> <span class="n">sticky</span><span class="o">=</span><span class="s1">&#39;nsew&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale_frame</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span>
+            <span class="n">row</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">padx</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">pady</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">sticky</span><span class="o">=</span><span class="s1">&#39;nsew&#39;</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scale_frame</span><span class="o">.</span><span class="n">columnconfigure</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scale_frame</span><span class="o">.</span><span class="n">rowconfigure</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
@@ -764,16 +777,16 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">_scale&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scale</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Scale</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">scale_frame</span><span class="p">,</span>
-                <span class="n">from_</span> <span class="o">=</span> <span class="n">mn</span><span class="p">,</span>
-                <span class="n">to</span> <span class="o">=</span> <span class="n">mx</span><span class="p">,</span>
-                <span class="n">resolution</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span>
-                <span class="n">orient</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">HORIZONTAL</span><span class="p">,</span>
-                <span class="n">showvalue</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="n">sliderlength</span> <span class="o">=</span> <span class="mi">15</span><span class="p">,</span>
-                <span class="n">bd</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-                <span class="n">highlightthickness</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="n">highlightbackground</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span>
-                <span class="n">relief</span> <span class="o">=</span> <span class="s1">&#39;flat&#39;</span><span class="p">,</span>
+                <span class="n">from_</span><span class="o">=</span><span class="n">mn</span><span class="p">,</span>
+                <span class="n">to</span><span class="o">=</span><span class="n">mx</span><span class="p">,</span>
+                <span class="n">resolution</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+                <span class="n">orient</span><span class="o">=</span><span class="n">tk</span><span class="o">.</span><span class="n">HORIZONTAL</span><span class="p">,</span>
+                <span class="n">showvalue</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">sliderlength</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+                <span class="n">bd</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">highlightthickness</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">highlightbackground</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span>
+                <span class="n">relief</span><span class="o">=</span><span class="s1">&#39;flat&#39;</span><span class="p">,</span>
                 <span class="n">command</span><span class="o">=</span><span class="k">lambda</span> <span class="n">value</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">update_phase</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="n">scale</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">init</span><span class="p">)</span>
@@ -781,8 +794,8 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">_label&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">scale_frame</span><span class="p">,</span>
-                <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span> \
-                    <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">])</span>
+                <span class="n">text</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span>
+                     <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">])</span>
             <span class="p">)</span>
             <span class="n">label</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="n">i</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">padx</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">pady</span><span class="o">=</span><span class="n">pady</span><span class="p">,</span> <span class="n">sticky</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span>
 
@@ -792,24 +805,23 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">save_button</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">button_frame</span><span class="p">,</span>
-            <span class="n">width</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
-            <span class="n">highlightbackground</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span>
-            <span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Save&#39;</span><span class="p">,</span>
-            <span class="n">bg</span> <span class="o">=</span> <span class="s1">&#39;#77dd77&#39;</span><span class="p">,</span>
-            <span class="n">command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">save</span>
+            <span class="n">width</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+            <span class="n">highlightbackground</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="s1">&#39;Save&#39;</span><span class="p">,</span>
+            <span class="n">bg</span><span class="o">=</span><span class="s1">&#39;#77dd77&#39;</span><span class="p">,</span>
+            <span class="n">command</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">save</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">save_button</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">sticky</span><span class="o">=</span><span class="s1">&#39;e&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">cancel_button</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Button</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">button_frame</span><span class="p">,</span>
-            <span class="n">width</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
-            <span class="n">highlightbackground</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span>
-            <span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Cancel&#39;</span><span class="p">,</span>
-            <span class="n">bg</span> <span class="o">=</span> <span class="s1">&#39;#ff5566&#39;</span><span class="p">,</span>
-            <span class="n">command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cancel</span>
+            <span class="n">width</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+            <span class="n">highlightbackground</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span>
+            <span class="n">text</span><span class="o">=</span><span class="s1">&#39;Cancel&#39;</span><span class="p">,</span>
+            <span class="n">bg</span><span class="o">=</span><span class="s1">&#39;#ff5566&#39;</span><span class="p">,</span>
+            <span class="n">command</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cancel</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cancel_button</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sticky</span><span class="o">=</span><span class="s1">&#39;e&#39;</span><span class="p">,</span> <span class="n">padx</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">cancel_button</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sticky</span><span class="o">=</span><span class="s1">&#39;e&#39;</span><span class="p">,</span> <span class="n">padx</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
 
     <span class="k">def</span> <span class="nf">update_phase</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">_scale&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
@@ -932,10 +944,10 @@
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
-    <span class="k">except</span><span class="p">:</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">n should be an iterable</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">offset</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">offset</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="n">dim</span>
 
     <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
@@ -944,7 +956,7 @@
         <span class="p">(</span><span class="n">sw</span><span class="p">,</span> <span class="s1">&#39;sw&#39;</span><span class="p">,</span> <span class="s1">&#39;float_list&#39;</span><span class="p">),</span>
     <span class="p">]</span>
 
-    <span class="k">if</span> <span class="n">snr</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">snr</span><span class="p">,</span> <span class="s1">&#39;snr&#39;</span><span class="p">,</span> <span class="s1">&#39;positive_float&#39;</span><span class="p">))</span>
 
     <span class="n">ArgumentChecker</span><span class="p">(</span><span class="n">components</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
@@ -955,12 +967,13 @@
     <span class="c1"># phases</span>
     <span class="n">para</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">para</span><span class="p">,</span> <span class="n">nrandom</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">m</span><span class="p">)))</span>
     <span class="c1"># frequencies</span>
-    <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="n">nrandom</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="n">s</span><span class="o">/</span><span class="mi">2</span><span class="o">+</span><span class="n">o</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">s</span><span class="o">/</span><span class="mi">2</span><span class="o">+</span><span class="n">o</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sw</span><span class="p">,</span> <span class="n">offset</span><span class="p">)]</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="n">nrandom</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="n">s</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">o</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">s</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">o</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">m</span><span class="p">)</span>
+         <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">sw</span><span class="p">,</span> <span class="n">offset</span><span class="p">)]</span>
     <span class="n">para</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">para</span><span class="p">,</span> <span class="o">*</span><span class="n">f</span><span class="p">))</span>
     <span class="c1"># damping</span>
     <span class="n">eta</span> <span class="o">=</span> <span class="p">[</span><span class="n">nrandom</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">)]</span>
     <span class="n">para</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">para</span><span class="p">,</span> <span class="o">*</span><span class="n">eta</span><span class="p">))</span>
-    <span class="n">para</span> <span class="o">=</span> <span class="n">para</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">m</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">dim</span><span class="o">+</span><span class="mi">1</span><span class="p">)),</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">)</span>
+    <span class="n">para</span> <span class="o">=</span> <span class="n">para</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">m</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">dim</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="o">*</span><span class="n">make_fid</span><span class="p">(</span><span class="n">para</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">snr</span><span class="p">),</span> <span class="n">para</span></div>
 

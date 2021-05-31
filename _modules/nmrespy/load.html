@@ -58,6 +58,7 @@
 <span class="kn">import</span> <span class="nn">nmrespy._cols</span> <span class="k">as</span> <span class="nn">cols</span>
 <span class="k">if</span> <span class="n">cols</span><span class="o">.</span><span class="n">USE_COLORAMA</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">colorama</span>
+    <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 <span class="kn">import</span> <span class="nn">nmrespy._errors</span> <span class="k">as</span> <span class="nn">errors</span>
 <span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="n">get_yes_no</span>
 
@@ -67,10 +68,10 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    directory : str</span>
+<span class="sd">    directory: str</span>
 <span class="sd">        Absolute path to data directory.</span>
 
-<span class="sd">    ask_convdta : bool, optional</span>
+<span class="sd">    ask_convdta: bool, optional</span>
 <span class="sd">        If `True` (default), the user will be warned that the data should</span>
 <span class="sd">        have its digitial filter removed prior to importing if the data to be</span>
 <span class="sd">        impoprted is from an `fid` or `ser` file. If `False`, the user is</span>
@@ -78,7 +79,7 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    result : dict</span>
+<span class="sd">    result: dict</span>
 <span class="sd">        A dictionary containing items with the following keys:</span>
 
 <span class="sd">        * `&#39;source&#39;` (str) - The type of data imported (`&#39;bruker_fid&#39;` or</span>
@@ -163,10 +164,10 @@
     <span class="c1"># |convdta| applied to it.</span>
     <span class="k">if</span> <span class="n">ask_convdta</span><span class="p">:</span>
         <span class="n">convdta_prompt</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">O</span><span class="si">}</span><span class="s1">WARNING: It is necessary that the FID you import has been&#39;</span>
-            <span class="s1">&#39; digitally filtered, using the &lt;convdta&gt; command in TopSpin. If&#39;</span>
-            <span class="s1">&#39; you have not done this, please do so before proceeding</span><span class="se">\n</span><span class="s1">If you&#39;</span>
-            <span class="s1">&#39; wish to proceed, enter [y]</span><span class="se">\n</span><span class="s1">If you wish to quit, enter [n]:&#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">OR</span><span class="si">}</span><span class="s1">WARNING: It is necessary that the FID you import has &#39;</span>
+            <span class="s1">&#39;been digitally filtered, using the &lt;convdta&gt; command in TopSpin. &#39;</span>
+            <span class="s1">&#39;If you have not done this, please do so before proceeding</span><span class="se">\n</span><span class="s1">If &#39;</span>
+            <span class="s1">&#39;you wish to proceed, enter [y]</span><span class="se">\n</span><span class="s1">If you wish to quit, enter [n]: &#39;</span>
             <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1"> &#39;</span>
         <span class="p">)</span>
 
@@ -178,8 +179,6 @@
         <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">R</span><span class="si">}</span><span class="s1">directory </span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s1"> doesn</span><span class="se">\&#39;</span><span class="s1">t exist!&#39;</span>
                       <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cols</span><span class="o">.</span><span class="n">END</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
-
-    <span class="c1"># --- Search for data and parameter files ----------------------------</span>
     <span class="k">def</span> <span class="nf">check_file_paths</span><span class="p">(</span><span class="n">path_info</span><span class="p">):</span>
         <span class="c1"># Goes through the entries in path_info and determines whether</span>
         <span class="c1"># the binary file path and and parameter file path(s) in each</span>
@@ -210,44 +209,44 @@
     <span class="n">path_info</span> <span class="o">=</span> <span class="p">[</span>
         <span class="c1"># 1D FID</span>
         <span class="p">{</span>
-            <span class="s1">&#39;bin&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;fid&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;param&#39;</span> <span class="p">:</span> <span class="p">{</span>
-                <span class="s1">&#39;acqus&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;acqus&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;bin&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;fid&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;param&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;acqus&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;acqus&#39;</span><span class="p">,</span>
             <span class="p">},</span>
-            <span class="s1">&#39;dim&#39;</span> <span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="s1">&#39;dtype&#39;</span> <span class="p">:</span> <span class="s1">&#39;fid&#39;</span> <span class="p">,</span>
+            <span class="s1">&#39;dim&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="s1">&#39;fid&#39;</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="c1"># 2D FID</span>
         <span class="p">{</span>
-            <span class="s1">&#39;bin&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;ser&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;param&#39;</span> <span class="p">:</span> <span class="p">{</span>
-                <span class="s1">&#39;acqus&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;acqus&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;acqu2s&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;acqu2s&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;bin&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;ser&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;param&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;acqus&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;acqus&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;acqu2s&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;acqu2s&#39;</span><span class="p">,</span>
             <span class="p">},</span>
-            <span class="s1">&#39;dim&#39;</span> <span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-            <span class="s1">&#39;dtype&#39;</span> <span class="p">:</span> <span class="s1">&#39;fid&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;dim&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="s1">&#39;fid&#39;</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="c1"># 1D Processed data</span>
         <span class="p">{</span>
-            <span class="s1">&#39;bin&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;1r&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;param&#39;</span> <span class="p">:</span> <span class="p">{</span>
-                <span class="s1">&#39;acqus&#39;</span> <span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="s1">&#39;acqus&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;procs&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;procs&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;bin&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;1r&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;param&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;acqus&#39;</span><span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="s1">&#39;acqus&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;procs&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;procs&#39;</span><span class="p">,</span>
             <span class="p">},</span>
-            <span class="s1">&#39;dim&#39;</span> <span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="s1">&#39;dtype&#39;</span> <span class="p">:</span> <span class="s1">&#39;pdata&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;dim&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="s1">&#39;pdata&#39;</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="c1"># 2D Processed data</span>
         <span class="p">{</span>
-            <span class="s1">&#39;bin&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;2rr&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;param&#39;</span> <span class="p">:</span> <span class="p">{</span>
-                <span class="s1">&#39;acqus&#39;</span> <span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="s1">&#39;acqus&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;acqu2s&#39;</span> <span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="s1">&#39;acqu2s&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;procs&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;procs&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;proc2s&#39;</span> <span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;proc2s&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;bin&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;2rr&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;param&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;acqus&#39;</span><span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="s1">&#39;acqus&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;acqu2s&#39;</span><span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="s1">&#39;acqu2s&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;procs&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;procs&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;proc2s&#39;</span><span class="p">:</span> <span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;proc2s&#39;</span><span class="p">,</span>
             <span class="p">},</span>
-            <span class="s1">&#39;dim&#39;</span> <span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-            <span class="s1">&#39;dtype&#39;</span> <span class="p">:</span> <span class="s1">&#39;pdata&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;dim&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="s1">&#39;pdata&#39;</span><span class="p">,</span>
         <span class="p">},</span>
     <span class="p">]</span>
 
@@ -268,10 +267,10 @@
     <span class="c1"># will have ser, acqus and acqu2s files. Check if there is an</span>
     <span class="c1"># acqu3s file implying the dimension is greater than or equal</span>
     <span class="c1"># to 3.</span>
-    <span class="k">elif</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dim&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span> \
-    <span class="ow">and</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;fid&#39;</span> \
-    <span class="ow">and</span> <span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;acqu3s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-            <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">MoreThanTwoDimError</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;dim&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span>
+          <span class="ow">and</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;fid&#39;</span>
+          <span class="ow">and</span> <span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="s1">&#39;acqu3s&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()):</span>
+        <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">MoreThanTwoDimError</span><span class="p">()</span>
 
     <span class="c1"># --- Search parameter files to get required info --------------------</span>
     <span class="k">if</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;pdata&#39;</span><span class="p">:</span>
@@ -299,26 +298,26 @@
     <span class="c1"># Other parameters of interest:</span>
     <span class="c1"># Nucleus, sweep width, transmitter offset, transmitter frequency.</span>
     <span class="n">nuc</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">off</span><span class="p">,</span> <span class="n">sfo</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dim&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
-        <span class="n">j</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="c1"># 1 -&gt; &#39;&#39;, 2 -&gt; &#39;2&#39;</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dim&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>  <span class="c1"># 1 -&gt; &#39;&#39;, 2 -&gt; &#39;2&#39;</span>
         <span class="n">file</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;param&#39;</span><span class="p">][</span><span class="sa">f</span><span class="s1">&#39;acqu</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1">s&#39;</span><span class="p">]</span>
 
         <span class="c1"># Nucleus is indicated by &lt;1H&gt;, &lt;13C&gt;, etc.</span>
         <span class="n">nuc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s1">&#39;&lt;(.+?)&gt;&#39;</span><span class="p">,</span> <span class="n">_get_param</span><span class="p">(</span><span class="s1">&#39;NUC1&#39;</span><span class="p">,</span> <span class="n">file</span><span class="p">))</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
         <span class="n">sw</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">_get_param</span><span class="p">(</span><span class="s1">&#39;SW_h&#39;</span><span class="p">,</span> <span class="n">file</span><span class="p">)))</span>
-        <span class="n">off</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">_get_param</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;O1&#39;</span><span class="p">,</span> <span class="n">file</span><span class="p">)))</span>
-        <span class="n">sfo</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">_get_param</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;SFO1&#39;</span><span class="p">,</span> <span class="n">file</span><span class="p">)))</span>
+        <span class="n">off</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">_get_param</span><span class="p">(</span><span class="s1">&#39;O1&#39;</span><span class="p">,</span> <span class="n">file</span><span class="p">)))</span>
+        <span class="n">sfo</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">_get_param</span><span class="p">(</span><span class="s1">&#39;SFO1&#39;</span><span class="p">,</span> <span class="n">file</span><span class="p">)))</span>
 
     <span class="c1"># If data is 2D, need at least one of the dimension sizes in order</span>
     <span class="c1"># to reshape the data after loading from the binary file. Get</span>
     <span class="c1"># indirect dimension size.</span>
     <span class="k">if</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dim&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">p</span><span class="p">,</span> <span class="n">file</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;TD&#39;</span><span class="p">,</span> <span class="s1">&#39;acqu2s&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;fid&#39;</span> <span class="k">else</span> <span class="p">(</span><span class="s1">&#39;SI&#39;</span><span class="p">,</span> <span class="s1">&#39;proc2s&#39;</span><span class="p">)</span>
+        <span class="n">p</span><span class="p">,</span> <span class="n">file</span> <span class="o">=</span> <span class="p">((</span><span class="s1">&#39;TD&#39;</span><span class="p">,</span> <span class="s1">&#39;acqu2s&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;fid&#39;</span>
+                   <span class="k">else</span> <span class="p">(</span><span class="s1">&#39;SI&#39;</span><span class="p">,</span> <span class="s1">&#39;proc2s&#39;</span><span class="p">))</span>
         <span class="n">n_indirect</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">_get_param</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;param&#39;</span><span class="p">][</span><span class="n">file</span><span class="p">]))</span>
 
     <span class="c1"># --- Import and format binary file data -----------------------------</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fromfile</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;bin&#39;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">fmt</span><span class="p">)</span>
-
 
     <span class="k">if</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;fid&#39;</span><span class="p">:</span>
         <span class="c1"># fid and ser files store real and imaginary points consectively</span>
@@ -359,7 +358,6 @@
             <span class="c1"># robust</span>
             <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">]</span>
             <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n_indirect</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">n_indirect</span><span class="p">))</span>
-
 
             <span class="c1"># # Continuation of testing with plot</span>
             <span class="c1"># x, y = tuple(np.arange(s) for s in data.shape)</span>
@@ -437,7 +435,7 @@
             <span class="c1"># Reshape data, and flip in both dimensions</span>
             <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
                 <span class="n">n_indirect</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="n">n_indirect</span><span class="p">),</span>
-            <span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
             <span class="c1"># Inverse Fourier Tranform in both dimensions</span>
             <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
                 <span class="n">data</span> <span class="o">=</span> <span class="n">ifft</span><span class="p">(</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axis</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">)</span>
@@ -446,14 +444,14 @@
 
     <span class="c1"># Compile a dictionary of parameters</span>
     <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s1">&#39;source&#39;</span> <span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;bruker_</span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-        <span class="s1">&#39;data&#39;</span> <span class="p">:</span> <span class="n">data</span><span class="p">,</span>
-        <span class="s1">&#39;directory&#39;</span> <span class="p">:</span> <span class="n">d</span><span class="p">,</span>
-        <span class="s1">&#39;sweep_width&#39;</span> <span class="p">:</span> <span class="n">sw</span><span class="p">,</span>
-        <span class="s1">&#39;offset&#39;</span> <span class="p">:</span> <span class="n">off</span><span class="p">,</span>
-        <span class="s1">&#39;transmitter_frequency&#39;</span> <span class="p">:</span> <span class="n">sfo</span><span class="p">,</span>
-        <span class="s1">&#39;nuclei&#39;</span> <span class="p">:</span> <span class="n">nuc</span><span class="p">,</span>
-        <span class="s1">&#39;binary_format&#39;</span> <span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+        <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;bruker_</span><span class="si">{</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">data</span><span class="p">,</span>
+        <span class="s1">&#39;directory&#39;</span><span class="p">:</span> <span class="n">d</span><span class="p">,</span>
+        <span class="s1">&#39;sweep_width&#39;</span><span class="p">:</span> <span class="n">sw</span><span class="p">,</span>
+        <span class="s1">&#39;offset&#39;</span><span class="p">:</span> <span class="n">off</span><span class="p">,</span>
+        <span class="s1">&#39;transmitter_frequency&#39;</span><span class="p">:</span> <span class="n">sfo</span><span class="p">,</span>
+        <span class="s1">&#39;nuclei&#39;</span><span class="p">:</span> <span class="n">nuc</span><span class="p">,</span>
+        <span class="s1">&#39;binary_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="k">return</span> <span class="n">result</span></div>
@@ -464,15 +462,15 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    name : str</span>
+<span class="sd">    name: str</span>
 <span class="sd">        The name of the parameter.</span>
 
-<span class="sd">    path : pathlib.Path</span>
+<span class="sd">    path: pathlib.Path</span>
 <span class="sd">        The path to the parameter file.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    param : str</span>
+<span class="sd">    param: str</span>
 <span class="sd">        The value of the desired parameter as a string.</span>
 
 <span class="sd">    Notes</span>

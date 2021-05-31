@@ -73,7 +73,11 @@
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> (<em>numpy.ndarray</em>) – The time-domain signal.</p></li>
-<li><p><strong>region</strong> (<em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>, </em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>] or </em><em>[</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>, </em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em>) – Boundaries specifying the region to apply the filter to.</p></li>
+<li><p><strong>region</strong> (<em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em><em>, </em><em>[</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>, </em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>] </em><em>or</em>) – </p></li>
+<li><p><strong>[</strong><strong>[</strong><strong>float</strong> – Boundaries specifying the region to apply the filter to.</p></li>
+<li><p><strong>float</strong><strong>]</strong> – Boundaries specifying the region to apply the filter to.</p></li>
+<li><p><strong>[</strong><strong>float</strong> – Boundaries specifying the region to apply the filter to.</p></li>
+<li><p><strong>float</strong><strong>]</strong><strong>]</strong> – Boundaries specifying the region to apply the filter to.</p></li>
 <li><p><strong>noise_region</strong> ((Same type as <cite>region</cite>)) – Boundaries specifying a region which does not contain any noticable
 signals (i.e. just containing experiemntal noise).</p></li>
 <li><p><strong>region_unit</strong> (<em>'idx'</em><em>, </em><em>'ppm'</em><em> or </em><em>'hz'</em><em>, </em><em>default: 'idx'</em>) – The units which the boundaries in <cite>region</cite> and <cite>noise_region</cite> are
@@ -113,10 +117,11 @@ bandwidth and the filter bandwidth. This should be greater than 1.0.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>region</strong></p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>[[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]</p>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>region</strong> (<em>[[int, int]], [[int, int], [int, int]], [[float, float]],</em>)</p></li>
+<li><p><em>or [[float, float], [float, float]]</em></p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -174,10 +179,11 @@ the uncut spectrum is returned.</p>
 <dd class="field-odd"><p><strong>unit</strong> (<em>'idx'</em><em>, </em><em>'hz'</em><em>, </em><em>'ppm'</em><em>, </em><em>default: 'idx'</em>) – Unit to express the region bounds in.</p>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>noise_region</strong></p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>[[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]</p>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>noise_region</strong> (<em>[[int, int]], [[int, int], [int, int]],</em>)</p></li>
+<li><p><em>[[float, float]], or [[float, float], [float, float]]</em></p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -207,10 +213,11 @@ returned.</p></li>
 <dd class="field-odd"><p><strong>unit</strong> (<em>'idx'</em><em>, </em><em>'hz'</em><em>, </em><em>'ppm'</em><em>, </em><em>default: 'idx'</em>) – Unit to express the region bounds in.</p>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>region</strong></p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>[[int, int]], [[int, int], [int, int]], [[float, float]], or [[float, float], [float, float]]</p>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>region</strong> (<em>[[int, int]], [[int, int], [int, int]], [[float, float]],</em>)</p></li>
+<li><p><em>or [[float, float], [float, float]]</em></p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -276,7 +283,7 @@ the filter.</p></li>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p><ul class="simple">
-<li><p><strong>super_gaussian</strong> (<em>numpy.ndarray</em>) – Super-Gaussian filter.</p></li>
+<li><p><strong>sg</strong> (<em>numpy.ndarray</em>) – Super-Gaussian filter.</p></li>
 <li><p><strong>center</strong> (<em>[int] or [int, int]</em>) – Index of the center of the filter in each dimension.</p></li>
 <li><p><strong>bw</strong> (<em>[int] or [int, int]</em>) – Bandwidth of the filter in each dimension, in terms of the number
 of points spanned.</p></li>
