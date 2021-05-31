@@ -2,19 +2,19 @@
    :scale: 10 %
    :align: center
 
-.. raw::
-  <p align="center">
-  <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg" alt="GitHub Actions Documentation Status"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
-  </p>
+.. raw:: html
+   <p align="center">
+   <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg" alt="GitHub Actions Documentation Status"></a>
+   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
+   </p>
 
-  <p align="center">
-  <img width="250" src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png">
-  </p>
+   <p align="center">
+   <img width="250" src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png">
+   </p>
 
-  <p align="center">
-  <b>Simon Hulse and Mohammadali Foroozandeh, University of Oxford</b>
-  </p>
+   <p align="center">
+   <b>Simon Hulse and Mohammadali Foroozandeh, University of Oxford</b>
+   </p>
 
 
 NMR-EsPy: **N**\uclear **M**\agnetic **R**\esonance **Es**\timation in **Py**\thon
