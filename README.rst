@@ -9,6 +9,7 @@
    </p>
 
    <p align="center">
+   <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Abuild"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/build/badge.svg" alt="GitHub Actions Build Status"></a>
    <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg" alt="GitHub Actions Documentation Status"></a>
    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
    </p>
