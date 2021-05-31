@@ -37,7 +37,7 @@ class Estimator:
 
     Parameters
     ----------
-    source : 'bruker_fid', 'bruker_pdata', 'synthetic'
+    source : {'bruker_fid', 'bruker_pdata', 'synthetic'}
         The type of data imported. `'bruker_fid'` indicates the data is
         derived from a FID file (`fid` for 1D data, `ser` for 2D data).
         `'bruker_pdata'` indicates the data is derived from files found
@@ -884,7 +884,7 @@ class Estimator:
 
         Parameters
         ----------
-        region: [[int, int]], [[int, int], [int, int]], [[float, float]] or
+        region: [[int, int]], [[int, int], [int, int]], [[float, float]] or\
         [[float, float], [float, float]]
             Cut-off points of the spectral region to consider.
             If the signal is 1D, this should be of the form `[[a,b]]`
@@ -895,7 +895,7 @@ class Estimator:
             dimension 2. The ordering of the bounds in each dimension is
             not important.
 
-        noise_region: [[int, int]], [[int, int], [int, int]],
+        noise_region: [[int, int]], [[int, int], [int, int]],\
         [[float, float]] or [[float, float], [float, float]]
             Cut-off points of the spectral region to extract the spectrum's
             noise variance. This should have the same structure as `region`.

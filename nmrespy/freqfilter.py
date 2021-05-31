@@ -82,7 +82,7 @@ class FrequencyFilter:
     data : numpy.ndarray
         The time-domain signal.
 
-    region : [[int, int]], [[float, float]], [[int, int], [int, int]] or
+    region : [[int, int]], [[float, float]], [[int, int], [int, int]] or\
     [[float, float], [float, float]]
         Boundaries specifying the region to apply the filter to.
 
@@ -399,7 +399,7 @@ class FrequencyFilter:
 
         Returns
         -------
-        region : [[int, int]], [[int, int], [int, int]], [[float, float]],
+        region : [[int, int]], [[int, int], [int, int]], [[float, float]],\
         or [[float, float], [float, float]]
         """
 
@@ -422,7 +422,7 @@ class FrequencyFilter:
 
         Returns
         -------
-        region : [[int, int]], [[int, int], [int, int]], [[float, float]],
+        region : [[int, int]], [[int, int], [int, int]], [[float, float]],\
         or [[float, float], [float, float]]
         """
 
@@ -438,7 +438,7 @@ class FrequencyFilter:
 
         Returns
         -------
-        noise_region : [[int, int]], [[int, int], [int, int]],
+        noise_region : [[int, int]], [[int, int], [int, int]],\
         [[float, float]], or [[float, float], [float, float]]
         """
 
