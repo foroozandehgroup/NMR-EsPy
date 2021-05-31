@@ -13,6 +13,7 @@ from nmrespy import sig
 
 # Set this to True if you want to check interactive and visual things.
 MANUAL_TEST = False
+RUN_PDFLATEX = False
 
 
 def test_estimator():
@@ -238,16 +239,17 @@ def test_estimator():
 
     # --- Writing result files ---------------------------------------
     for fmt in ['txt', 'pdf', 'csv']:
-        estimator.write_result(
-            path='./test', description='Testing', fmt=fmt,
-            force_overwrite=True, sig_figs=7, sci_lims=(-3, 4),
-            fprint=False
-        )
+        if (fmt in ['txt', 'csv']) or (fmt == 'pdf' and RUN_PDFLATEX):
+            estimator.write_result(
+                path='./test', description='Testing', fmt=fmt,
+                force_overwrite=True, sig_figs=7, sci_lims=(-3, 4),
+                fprint=False
+            )
         # View output files
         if MANUAL_TEST:
             if fmt == 'txt':
                 subprocess.run(['vi', 'test.txt'])
-            elif fmt == 'pdf':
+            elif fmt == 'pdf' and RUN_PDFLATEX:
                 subprocess.run(['evince', 'test.pdf'])
             elif fmt == 'csv':
                 subprocess.run(['libreoffice', 'test.csv'])
