@@ -73,72 +73,72 @@ worrying about the underlying theory, feel free to skip this.</p>
 <p>The signal produced as a result of a typical NMR experiment (FID) can be
 thought of as a summation of a number of complex exponentials, in
 the presence of experimental noise. For the general case of a signal from a
-<span class="math">D</span>-dimensional NMR experiment, we expect the functional form of the
+<img class="math" src="_images/math/0fcab9067b50b87e868c4fd70f213a086addb964.png" alt="D"/>-dimensional NMR experiment, we expect the functional form of the
 signal at any time during acquisition to be:</p>
 <div class="math">
-<p><span class="math">y(t_1, \dots, t_D) = \sum_{m=1}^{M}
+<p><img src="_images/math/230d8e58f60af395c2b1d6daf0bf38c878511539.png" alt="y(t_1, \dots, t_D) = \sum_{m=1}^{M}
 \left\lbrace a_m \exp\left(\mathrm{i} \phi_m\right)
 \prod_{d=1}^{D} \exp\left[\left(2 \pi \mathrm{i} f_{d,m} -
-\eta_{d,m}\right)t_d\right]\right\rbrace + w(t_1, \dots, t_D),</span></p>
+\eta_{d,m}\right)t_d\right]\right\rbrace + w(t_1, \dots, t_D),"/></p>
 </div><p>where</p>
 <ul class="simple">
-<li><p><span class="math">t_d</span> is the time cosidered in the <span class="math">d</span>-th dimension</p></li>
-<li><p><span class="math">M</span> is the number of complex exponentials (oscillators) contributing to the FID.</p></li>
-<li><p><span class="math">a_m</span> is the amplitude of oscillator <span class="math">m</span></p></li>
-<li><p><span class="math">\phi_m</span> is the phase of oscillator <span class="math">m</span></p></li>
-<li><p><span class="math">f_{d,m}</span> is the frequency of oscillator <span class="math">m</span> in the
-<span class="math">d</span>-th dimension</p></li>
-<li><p><span class="math">\eta_{d,m}</span> is the damping factor of oscillator <span class="math">m</span> in the
-<span class="math">d</span>-th dimension</p></li>
-<li><p><span class="math">w(t_1, \dots, t_D)</span> is the contribution from experimental noise</p></li>
+<li><p><img class="math" src="_images/math/d5ad5d92c3d9caa09a150db8e2859031ed7ab3e0.png" alt="t_d"/> is the time cosidered in the <img class="math" src="_images/math/badad346f6fbe2e237af99bfbd9a93a4da53a3da.png" alt="d"/>-th dimension</p></li>
+<li><p><img class="math" src="_images/math/4abba779877abb276b98ccb2b4ba9bf2e41947ab.png" alt="M"/> is the number of complex exponentials (oscillators) contributing to the FID.</p></li>
+<li><p><img class="math" src="_images/math/976cc3f2965c17dcddef7bea316a60b611d1f9aa.png" alt="a_m"/> is the amplitude of oscillator <img class="math" src="_images/math/e9bc7da808d33a16a8347f27a519bd067186aa66.png" alt="m"/></p></li>
+<li><p><img class="math" src="_images/math/d7c1795aadf7e98e723e221ea7b1e219651e77bb.png" alt="\phi_m"/> is the phase of oscillator <img class="math" src="_images/math/e9bc7da808d33a16a8347f27a519bd067186aa66.png" alt="m"/></p></li>
+<li><p><img class="math" src="_images/math/df572e72215b2cb4956fde086c0a043ab3ffb528.png" alt="f_{d,m}"/> is the frequency of oscillator <img class="math" src="_images/math/e9bc7da808d33a16a8347f27a519bd067186aa66.png" alt="m"/> in the
+<img class="math" src="_images/math/badad346f6fbe2e237af99bfbd9a93a4da53a3da.png" alt="d"/>-th dimension</p></li>
+<li><p><img class="math" src="_images/math/ff56e75ac9a08cb0a93b30af5c2cc7e611c27860.png" alt="\eta_{d,m}"/> is the damping factor of oscillator <img class="math" src="_images/math/e9bc7da808d33a16a8347f27a519bd067186aa66.png" alt="m"/> in the
+<img class="math" src="_images/math/badad346f6fbe2e237af99bfbd9a93a4da53a3da.png" alt="d"/>-th dimension</p></li>
+<li><p><img class="math" src="_images/math/c23063dc733bab31bdb39037ccb9067db1e54eeb.png" alt="w(t_1, \dots, t_D)"/> is the contribution from experimental noise</p></li>
 </ul>
 <p>Of course, NMR signals are digitised, and so the raw output of an experiment
-will be a <span class="math">D</span>-dimensional array <span class="math">\boldsymbol{Y}</span> of a finite
+will be a <img class="math" src="_images/math/0fcab9067b50b87e868c4fd70f213a086addb964.png" alt="D"/>-dimensional array <img class="math" src="_images/math/826b3cc4d83fe14690eb9b4941cc8860d0f528fd.png" alt="\boldsymbol{Y}"/> of a finite
 shape:</p>
 <div class="math">
-<p><span class="math">\boldsymbol{Y} \in \mathbb{C}^{N_1 \times \dots \times N_D},</span></p>
-</div><p>where <span class="math">N_d</span> is the number of points sampled in the <span class="math">d</span>-th
+<p><img src="_images/math/eda7519faa0aab895a64f9b6b4ab2d25d1c18ab1.png" alt="\boldsymbol{Y} \in \mathbb{C}^{N_1 \times \dots \times N_D},"/></p>
+</div><p>where <img class="math" src="_images/math/a2994552c81c2335b9bb35a8f34ac012f888b807.png" alt="N_d"/> is the number of points sampled in the <img class="math" src="_images/math/badad346f6fbe2e237af99bfbd9a93a4da53a3da.png" alt="d"/>-th
 dimension. Assuming that the signal is uniformly sampled in each dimesnion,
 the time at which any point is sampled is given by</p>
 <div class="math">
-<p><span class="math">\tau_{n}^{(d)} = n_d \Delta t_d, \quad n_d \in \{0, 1, \dots, N_d - 1\},</span></p>
-</div><p>where <span class="math">\Delta t_d</span> is the sampling rate (the time between successive
-samples) in dimension <span class="math">d</span>. The discrete fid <span class="math">\boldsymbol{Y}</span>
-therefore has elements <span class="math">Y\left[n_1, \dots, n_D\right]</span> of the form</p>
+<p><img src="_images/math/378c6e214d79c2ca14130951244ee55be4724685.png" alt="\tau_{n}^{(d)} = n_d \Delta t_d, \quad n_d \in \{0, 1, \dots, N_d - 1\},"/></p>
+</div><p>where <img class="math" src="_images/math/f0a002027452aa165de0d0fd55db794b20935e2d.png" alt="\Delta t_d"/> is the sampling rate (the time between successive
+samples) in dimension <img class="math" src="_images/math/badad346f6fbe2e237af99bfbd9a93a4da53a3da.png" alt="d"/>. The discrete fid <img class="math" src="_images/math/826b3cc4d83fe14690eb9b4941cc8860d0f528fd.png" alt="\boldsymbol{Y}"/>
+therefore has elements <img class="math" src="_images/math/8fe329da89b6a71575a897d36049d68fcaed2038.png" alt="Y\left[n_1, \dots, n_D\right]"/> of the form</p>
 <div class="math">
-<p><span class="math">Y\left[n_1, \dots, n_D\right] = \sum_{m=1}^{M} \left\lbrace a_m
+<p><img src="_images/math/fec2ada75f3884620953f062e434d0a0caf8c1fd.png" alt="Y\left[n_1, \dots, n_D\right] = \sum_{m=1}^{M} \left\lbrace a_m
 \exp\left(\mathrm{i} \phi_m\right) \prod_{d=1}^{D} \exp\left[\left(2 \pi
 \mathrm{i} f_{d,m} - \eta_{d,m}\right) \tau_n^{(d)}\right]\right\rbrace
-+ W(n_1, \dots, n_D)</span></p>
++ W(n_1, \dots, n_D)"/></p>
 </div><p>Writing this in a more succinct notation:</p>
 <div class="math">
-<p><span class="math">\boldsymbol{Y} = \boldsymbol{X}\left(\boldsymbol{\theta}\right) +
-\boldsymbol{W}</span></p>
-</div><p>where the vector <span class="math">\boldsymbol{\theta} \in \mathbb{R}^{(2+2D)M}</span> cotains
+<p><img src="_images/math/04c1d1ff1c1cc183c7f63e6fd96e447304a564f5.png" alt="\boldsymbol{Y} = \boldsymbol{X}\left(\boldsymbol{\theta}\right) +
+\boldsymbol{W}"/></p>
+</div><p>where the vector <img class="math" src="_images/math/e9ecf5dd1f0c548155c4bbcbf5b027ab7afb32bf.png" alt="\boldsymbol{\theta} \in \mathbb{R}^{(2+2D)M}"/> cotains
 all the deterministic parameters which describe the signal</p>
 <div class="math">
-<p><span class="math">\boldsymbol{\theta} = \left[a_1, a_2, \dots, a_M, \phi_1, \dots, \phi_M,
+<p><img src="_images/math/a0fcb2f262870247fb718bc0332125e1abe2beef.png" alt="\boldsymbol{\theta} = \left[a_1, a_2, \dots, a_M, \phi_1, \dots, \phi_M,
 f_{1,1}, \dots, f_{1,M}, \dots, f_{D,1}, \dots, f_{D,M}, \eta_{1,1}, \dots
-\eta_{D,M}\right]^{\mathrm{T}}</span></p>
-</div><p>The goal of NMR-EsPy is to estimate <span class="math">\boldsymbol{\theta}</span> for a given
+\eta_{D,M}\right]^{\mathrm{T}}"/></p>
+</div><p>The goal of NMR-EsPy is to estimate <img class="math" src="_images/math/4000cacb39c16e78bcc5eb01e849b84be840bd11.png" alt="\boldsymbol{\theta}"/> for a given
 signal. This is rather challenging, especially for signals with many resonances,
 as one doesn’t even know how many oscilltors are contained within the signal in
-general (<span class="math">M</span>).</p>
-<p>To estimate <span class="math">\boldsymbol{\theta}</span>, we apply <cite>Newton’s Method</cite>, an
+general (<img class="math" src="_images/math/4abba779877abb276b98ccb2b4ba9bf2e41947ab.png" alt="M"/>).</p>
+<p>To estimate <img class="math" src="_images/math/4000cacb39c16e78bcc5eb01e849b84be840bd11.png" alt="\boldsymbol{\theta}"/>, we apply <cite>Newton’s Method</cite>, an
 iterative procedure which attempts to locate extrema of functions.
 In the case of NMR-EsPy, we wish to minimise the following:</p>
 <div class="math">
-<p><span class="math">\mathcal{F}(\boldsymbol{\theta}) = \lVert \tilde{\boldsymbol{Y}} -
-\boldsymbol{X}(\boldsymbol{\theta}) \rVert_2^2</span></p>
-</div><p>where <span class="math">\tilde{\boldsymbol{Y}} = \boldsymbol{Y} / \lVert \boldsymbol{Y}
-\rVert</span>. This is a very commonly encountered function in the context of
+<p><img src="_images/math/6da986874e85ca2d2ccbda34149c1c2a3689c74b.png" alt="\mathcal{F}(\boldsymbol{\theta}) = \lVert \tilde{\boldsymbol{Y}} -
+\boldsymbol{X}(\boldsymbol{\theta}) \rVert_2^2"/></p>
+</div><p>where <img class="math" src="_images/math/52be9d399781c51e2f7ded1f0bc67d4ac9e5600e.png" alt="\tilde{\boldsymbol{Y}} = \boldsymbol{Y} / \lVert \boldsymbol{Y}
+\rVert"/>. This is a very commonly encountered function in the context of
 optimisation, called the
 <a class="reference external" href="https://en.wikipedia.org/wiki/Residual_sum_of_squares">residual sum of squares</a>.
 There are numerous variants of Newton’s method, but the general idea
-is to approximate the neighbourhood of <span class="math">\mathcal{F}(\boldsymbol{\theta})</span>
-about the current value of <span class="math">\boldsymbol{\theta}</span> as quadratic, and to
+is to approximate the neighbourhood of <img class="math" src="_images/math/9f6fbaef6284e0c31dba6663837619a0ca531ad3.png" alt="\mathcal{F}(\boldsymbol{\theta})"/>
+about the current value of <img class="math" src="_images/math/4000cacb39c16e78bcc5eb01e849b84be840bd11.png" alt="\boldsymbol{\theta}"/> as quadratic, and to
 determine a step with a certain direction and size such that
-<span class="math">\mathcal{F}(\boldsymbol{\theta})</span> is reduced. This procedure is iterated
+<img class="math" src="_images/math/9f6fbaef6284e0c31dba6663837619a0ca531ad3.png" alt="\mathcal{F}(\boldsymbol{\theta})"/> is reduced. This procedure is iterated
 until the routine converges to a minimum in the function.</p>
 </section>
 

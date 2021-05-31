@@ -233,15 +233,15 @@ has been provided for simplicity</cite>.</p>
 <ul>
 <li><p><cite>’none’</cite>: Returns a single signal of the form:</p>
 <div class="math">
-<p><span class="math">y(t_1, t_2) = a \exp(\mathrm{i} \phi)
+<p><img src="../_images/math/fd0f3c10b44aee1e1931a8903dd440b83bd32ab1.png" alt="y(t_1, t_2) = a \exp(\mathrm{i} \phi)
 \exp \left[ \left( 2 \pi \mathrm{i} f_1 - \eta_1 \right)
 t_1 \right]
 \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-t_2 \right]</span></p>
+t_2 \right]"/></p>
 </div></li>
 <li><p><cite>’amp’</cite>: Returns an amplitude-modulated pair of signals of the form:</p>
 <div class="math">
-<p><span class="math">y_{\mathrm{cos}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
+<p><img src="../_images/math/e3987ab26f88f26a6e63caf86e0620268946e766.png" alt="y_{\mathrm{cos}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
 \cos \left( 2 \pi f_1 t_1 \right)
 \exp \left( - \eta_1 t_1 \right)
 \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
@@ -251,11 +251,11 @@ y_{\mathrm{sin}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
 \sin \left( 2 \pi f_1 t_1 \right)
 \exp \left( - \eta_1 t_1 \right)
 \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-t_2 \right]</span></p>
+t_2 \right]"/></p>
 </div></li>
 <li><p><cite>’phase’</cite>: Returns an phase-modulated pair of signals of the form:</p>
 <div class="math">
-<p><span class="math">y_{\mathrm{P}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
+<p><img src="../_images/math/fc3d6ca89dabff5f221b6dc13edaf5b5e8748e83.png" alt="y_{\mathrm{P}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
 \exp \left[ \left( 2 \pi \mathrm{i} f_1 - \eta_1 \right)
 t_1 \right]
 \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
@@ -265,7 +265,7 @@ y_{\mathrm{N}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
 \exp \left[ \left( - 2 \pi \mathrm{i} f_1 - \eta_1 \right)
 t_1 \right]
 \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-t_2 \right]</span></p>
+t_2 \right]"/></p>
 </div></li>
 </ul>
 </p></li>
@@ -290,13 +290,13 @@ indicated above (See <cite>modulation</cite>).</p></li>
 <p class="rubric">Notes</p>
 <p>The resulting <cite>fid</cite> is given by</p>
 <div class="math">
-<p><span class="math">y[n_1, \cdots, n_D] =
+<p><img src="../_images/math/4e5bd1d0beca5edc570f49d6aede0750af420493.png" alt="y[n_1, \cdots, n_D] =
 \sum_{m=1}^{M} a_m \exp\left(\mathrm{i} \phi_m\right)
 \prod_{d=1}^{D}
 \exp\left[\left(2 \pi \mathrm{i} f_m - \eta_m\right)
-n_d \Delta t_d\right]</span></p>
-</div><p>where <span class="math">d</span> is either 1 or 2, <span class="math">M</span> is the number of
-oscillators, and <span class="math">\Delta t_d = 1 / f_{\mathrm{sw}, d}</span>.</p>
+n_d \Delta t_d\right]"/></p>
+</div><p>where <img class="math" src="../_images/math/badad346f6fbe2e237af99bfbd9a93a4da53a3da.png" alt="d"/> is either 1 or 2, <img class="math" src="../_images/math/4abba779877abb276b98ccb2b4ba9bf2e41947ab.png" alt="M"/> is the number of
+oscillators, and <img class="math" src="../_images/math/26e40ce4917b76ee615591a5910da3c52f368b6d.png" alt="\Delta t_d = 1 / f_{\mathrm{sw}, d}"/>.</p>
 </dd></dl>
 
 <dl class="py function">

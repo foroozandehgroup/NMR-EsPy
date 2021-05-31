@@ -265,9 +265,9 @@ returned.</p></li>
 <span class="sig-prename descclassname"><span class="pre">nmrespy.freqfilter.</span></span><span class="sig-name descname"><span class="pre">super_gaussian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/nmrespy/freqfilter.html#super_gaussian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.freqfilter.super_gaussian" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generates a super-Gaussian for filtration of frequency-domian data.</p>
 <div class="math">
-<p><span class="math">g\left[n_1, \cdots, n_D\right] =
+<p><img src="../_images/math/740108d5da9524d4f02dcebd63d52af9bbb8029c.png" alt="g\left[n_1, \cdots, n_D\right] =
 \exp \left[ \sum\limits_{d=1}^D -2^{p+1}
-\left(\frac{n_d - c_d}{b_d}\right)^p\right]</span></p>
+\left(\frac{n_d - c_d}{b_d}\right)^p\right]"/></p>
 </div><dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -275,7 +275,7 @@ returned.</p></li>
 of 2 entries should exist, with the first element specifying the
 low boundary of the region, and the second element specifying the
 high boundary of the region (in array indices). Note that for a given
-dimension <span class="math">d</span>,</p></li>
+dimension <img class="math" src="../_images/math/badad346f6fbe2e237af99bfbd9a93a4da53a3da.png" alt="d"/>,</p></li>
 <li><p><strong>shape</strong> (<em>[</em><em>int</em><em>] or </em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em>) – The number of elements along each axis.</p></li>
 <li><p><strong>p</strong> (<em>float</em><em>, </em><em>default: 40.0</em>) – Power of the super-Gaussian. The greater the value, the more box-like
 the filter.</p></li>
