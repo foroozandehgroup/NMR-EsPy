@@ -4,7 +4,7 @@ Estimation Result
 Once the routine is complete, a new window will load with the following
 appearance:
 
-.. image:: ../../_static/gui/windows/result_window.png
+.. image:: ../../media/gui/windows/result_window.png
    :align: center
 
 Featured in the result plot are:
@@ -37,7 +37,7 @@ to achieve a minimisation of the cost function of interest.
 A window with the following appearance will appear after you click
 *Edit Parameter Estimate*:
 
-.. image:: ../../_static/gui/windows/edit_parameters_window_1.png
+.. image:: ../../media/gui/windows/edit_parameters_window_1.png
    :align: center
 
 Each oscillator is listed with its associated parameters. The numerical values
@@ -50,7 +50,7 @@ which closes the window.
 To select and oscillator, left-click the associated numerical label. This will
 highlight the oscillator. Here is an example after oscillator 3 is clicked:
 
-.. image:: ../../_static/gui/windows/edit_parameters_window_2.png
+.. image:: ../../media/gui/windows/edit_parameters_window_2.png
    :align: center
 
 To de-select the oscillator, simply left-click the numerical label again. Two
@@ -61,7 +61,7 @@ to create "child oscillators" with the same cumulative amplitude as the parent.
 To select multiple oscillators at a single time, left-click on each oscillator
 label whilst holding ``<Shift>``:
 
-.. image:: ../../_static/gui/windows/edit_parameters_window_3.png
+.. image:: ../../media/gui/windows/edit_parameters_window_3.png
    :align: center
 
 When more than one oscillator is selected, the *Merge* button is activated,
@@ -83,7 +83,7 @@ has failed to identify. Extensive use of this button is not advised.
 Clicking on the Add button when no oscillators are selected will load the
 following window:
 
-.. image:: ../../_static/gui/windows/add_window.png
+.. image:: ../../media/gui/windows/add_window.png
    :align: center
 
 You need to input the desired parameters that make up the oscillator to be
@@ -143,7 +143,7 @@ and in its place create a series of "child" oscillators.
 
 The following window loads when you click *Split*:
 
-.. image:: ../../_static/gui/windows/split_window.png
+.. image:: ../../media/gui/windows/split_window.png
    :align: center
 
 * The *Number of oscillators* box specifies how many child oscillators
@@ -187,7 +187,7 @@ Saving the result
 
 Clicking the *Save* button loads the following window:
 
-.. image:: ../../_static/gui/windows/save_window.png
+.. image:: ../../media/gui/windows/save_window.png
    :align: center
    :scale: 50%
 

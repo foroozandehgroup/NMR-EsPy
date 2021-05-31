@@ -165,7 +165,7 @@ I anticipate users will frequently want to carry out.
 
   The plot before and after shifting the label positions are as follows:
 
-  .. image:: ../_static/misc/displace.png
+  .. image:: ../media/misc/displace.png
      :align: center
      :scale: 30%
 
@@ -212,7 +212,7 @@ I anticipate users will frequently want to carry out.
 
   The resulting figure is as follows:
 
-  .. image:: ../_static/misc/subplot.png
+  .. image:: ../media/misc/subplot.png
      :align: center
      :scale: 30%
 

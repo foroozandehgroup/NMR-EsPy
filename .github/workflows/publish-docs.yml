@@ -2,6 +2,8 @@ name: publish-docs
 
 on:
   push:
+    branches:
+      -develop
 
 jobs:
   pubdocs:
@@ -42,5 +44,5 @@ jobs:
           git config --local user.name "GitHub Actions"
           git config --local user.email "<>"
           git add -A
-          git commit -m "Update documentation"
+          git commit -m "Update documentation" || true
           git push
