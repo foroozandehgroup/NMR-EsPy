@@ -101,8 +101,6 @@ html_static_path = ['_static']
 # -----------
 autosummary_generate = True
 
-latex_engine = 'xelatex'
-
 latex_elements = {
     'inputenc': '',
     'babel': '\\usepackage{polyglossia}',
