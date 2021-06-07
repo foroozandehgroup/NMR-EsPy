@@ -1,0 +1,27 @@
+##TITLE= Audit trail, TopSpin 4.0.8
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= simon
+$$ /home/simon/Documents/DPhil/data/200617_artemisinin_1mM/1/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2018-02-01 11:48:16.876 +0000>,<root>,<BladeEpu>,<go4>,<TopSpin 4.0.0.b.16>,
+      <created by zg
+	started at 2018-02-01 11:47:43.810 +0000,
+	POWCHK enabled, PULCHK disabled,
+       configuration hash MD5:
+       A0 13 F2 75 90 C1 7E 25 E7 E0 EE 07 E4 31 48 FF
+       double data hash MD5: 32K
+       E5 5D 20 05 B1 B3 49 20 C7 46 75 D2 E6 50 27 55>)
+(   2,<2020-06-17 16:58:35.558 +0100>,<simon>,<precision>,<proc1d>,<TopSpin 4.0.8>,
+      <Start of raw data processing
+       efp LB = -0.01 FT_mod = 6 PKNL = 1 PHC0 = 125.7836 PHC1 = 6.49535 SI = 256K 
+       data hash MD5: 256K
+       1B 60 D5 9A E9 96 91 EC C5 02 D6 2E 95 33 29 67>)
+(   3,<2020-06-17 16:58:35.598 +0100>,<simon>,<precision>,<proc1d>,<TopSpin 4.0.8>,
+      <abs n ABSG = 5 
+       data hash MD5: 256K
+       5A 44 DC 75 64 4A 84 DB A7 07 CB 11 0E 45 42 2D>)
+##END=
+
+$$ hash MD5
+$$ AA 10 92 32 16 BE D7 DF CA 7A 21 3A E1 05 6C 21

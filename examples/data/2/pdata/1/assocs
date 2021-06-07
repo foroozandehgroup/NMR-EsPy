@@ -1,0 +1,11 @@
+##TITLE= Parameter file, TopSpin 4.0.0.b.16
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 6	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= nmrsu
+$$ 2018-01-17 15:01:18.166 +0000  nmrsu@CZC6448LSD
+$$ /mnt/nmrdata/Methodology/MF/2017/data/JANUS/nmr/Artemisinin_1mM/1/pdata/1/assocs
+$$ process /opt/topspin/prog/mod/dataserver
+##$MULTDISP= </mnt/nmrdata/Methodology/MF/2017/data/JANUS/nmr/Artemisinin_1mM/4/pdata/1>
+##END=
