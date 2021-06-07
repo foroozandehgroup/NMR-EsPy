@@ -7,10 +7,10 @@
 # plt.style.use('./stylesheet')
 
 # SAVING FIGURES
-savefig.dpi: 600
+savefig.dpi: 72
 
 # FIGURE
-figure.dpi: 600
+figure.dpi: 72
 figure.frameon: True
 
 # AXES

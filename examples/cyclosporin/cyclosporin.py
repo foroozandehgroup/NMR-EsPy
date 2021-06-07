@@ -24,11 +24,7 @@ R = 0.98 # Rightmost position of axes
 L = 0.05 # Leftmost position of axes
 H_SEP = 0.01 # Horizontal separation of figs a) -> c) and d) -> f)
 INSET_RECT = [0.05, 0.5, 0.27, 0.4] # Location of inset axes in panels e) and f)
-dpi = plt.rcParams['figure.dpi']
-# pt as defined by LaTeX
-dpi = 72.269999
-pt = 1 / dpi
-FIGSIZE = (522 * pt, 400 * pt) # Figure size (pts)
+FIGSIZE = (7, 5) # Figure size
 # x-ticks of panels a) -> f)
 XTICKS = 3 * [[5.53 - i * (0.02) for i in range(6)]] + \
          3 * [[5.28 - i * (0.02) for i in range(5)]]
@@ -351,7 +347,10 @@ def plot():
             color='#808080', dash_capstyle='round', lw=0.6, zorder=0,
         )
 
-    fig.savefig(f"cyclosporin.png", transparent=False, facecolor='#ffffff')
+    fig.savefig(
+        f"cyclosporin.png", transparent=False, facecolor='#ffffff',
+        dpi=200,
+    )
 
 if __name__ == '__main__':
     if ESTIMATE:

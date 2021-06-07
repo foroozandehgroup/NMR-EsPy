@@ -1,0 +1,123 @@
+\documentclass[8pt]{article}
+\usepackage[a4paper,landscape,margin=1in]{geometry}
+\usepackage{cmbright}
+
+\usepackage{amsmath}
+\usepackage{nicefrac}
+\usepackage{siunitx}
+
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+
+\usepackage{xcolor}
+\definecolor{urlblue}{HTML}{0000ee}
+\usepackage{hyperref}
+\hypersetup{%
+colorlinks = true,%
+urlcolor   = urlblue,%
+}
+
+\usepackage{tcolorbox}
+\usepackage{varwidth}
+
+\setlength\parindent{0pt}
+\renewcommand{\ss}{\textsuperscript}
+
+\pagenumbering{gobble}
+
+\begin{document}
+\begin{figure}[!ht]
+% MF group logo
+\begin{minipage}[b][2.5cm][c]{.72\textwidth}
+\href{http://foroozandeh.chem.ox.ac.uk/home}%
+{\includegraphics[scale=1.8]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/mf_logo.png}}
+\end{minipage}
+% NMR-EsPy logo
+\begin{minipage}[b][2.5cm][c]{.27\textwidth}
+\href{https://foroozandehgroup.github.io/NMR-EsPy}%
+{\includegraphics[scale=0.5]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/nmrespy_full.png}}
+\end{minipage}
+\end{figure}
+
+\texttt{15:09:18\\02-06-2021}
+
+% user provided description
+\subsection*{Description}
+1mM artemisinin in DMSO-d6
+
+% experiment parameters
+\subsection*{Experiment Information}
+\hspace{-6pt}
+\begin{tabular}{ll}
+Sweep Width (Hz) & 10000 \\
+Sweep Width (ppm) & 19.9947 \\
+Transmitter Offset (Hz) & 2000.52 \\
+Transmitter Offset (ppm) & 3.99998 \\
+Transmitter Frequency (MHz) & 500.132 \\
+Basic Frequency (MHz) & 500.13 \\
+Nucleus & $^{1}$H \\
+Filter region (Hz): & 880.279 - 800.169 \\
+Filter region (ppm): & 1.76009 - 1.59992 \\
+
+\end{tabular}
+
+\subsection*{Result}
+\begin{longtable}[l]{cccccccc}
+\toprule
+$m$ & $a_m$ & $\phi_m\ (\text{rad})$ & $f_m\ (\text{Hz})$ & $f_m\ (\text{ppm})$ & $\eta_m\ (\text{s}^{-1})$ & $\int$ & $\nicefrac{\int}{\left\lVert\int\right\rVert}$ \\
+
+\midrule
+1 & 16.681 & 0.015795 & 807.82 & 1.6152 & 4.9977 & \num{3.3695e6} & 0.08782 \\
+ & $\pm$ 0.89579 & $\pm$ 0.019068 & $\pm$ 0.037212 & $\pm$ \num{7.4405e-5} & $\pm$ 0.32596 & - & - \\
+2 & 67.07 & 0.045449 & 811.03 & 1.6216 & 6.5735 & \num{1.3166e7} & 0.34313 \\
+ & $\pm$ 1.8474 & $\pm$ 0.019443 & $\pm$ \num{2.0545e-3} & $\pm$ \num{4.1079e-6} & $\pm$ 0.18459 & - & - \\
+3 & 76.414 & \num{-3.2041e-3} & 814.57 & 1.6287 & 7.5773 & \num{1.4774e7} & 0.38505 \\
+ & $\pm$ 1.6315 & $\pm$ 0.027053 & $\pm$ 0.028692 & $\pm$ \num{5.7369e-5} & $\pm$ 0.18694 & - & - \\
+4 & 11.563 & \num{3.7031e-3} & 818.05 & 1.6357 & 4.6372 & \num{2.3537e6} & 0.061346 \\
+ & $\pm$ 1.46 & $\pm$ 0.025076 & $\pm$ 0.043288 & $\pm$ \num{8.6553e-5} & $\pm$ 0.66778 & - & - \\
+5 & 14.441 & \num{5.7888e-3} & 820.95 & 1.6415 & 4.1168 & \num{2.9754e6} & 0.077549 \\
+ & $\pm$ 1.3459 & $\pm$ 0.023078 & $\pm$ 0.033833 & $\pm$ \num{6.7648e-5} & $\pm$ 0.38146 & - & - \\
+6 & 58.855 & \num{-5.6334e-3} & 824.28 & 1.6481 & 5.7486 & \num{1.1717e7} & 0.30539 \\
+ & $\pm$ 1.5407 & $\pm$ 0.031273 & $\pm$ 0.026023 & $\pm$ \num{5.2032e-5} & $\pm$ 0.16307 & - & - \\
+7 & 68.08 & -0.0393 & 827.82 & 1.6552 & 7.2221 & \num{1.3231e7} & 0.34483 \\
+ & $\pm$ 1.9824 & $\pm$ 0.017538 & $\pm$ 0.024295 & $\pm$ \num{4.8577e-5} & $\pm$ 0.20871 & - & - \\
+8 & 19.242 & -0.012505 & 831.12 & 1.6618 & 5.237 & \num{3.8681e6} & 0.10082 \\
+ & $\pm$ 1.1248 & $\pm$ 0.019087 & $\pm$ 0.040622 & $\pm$ \num{8.1223e-5} & $\pm$ 0.32316 & - & - \\
+9 & 20.86 & \num{7.7486e-3} & 849.94 & 1.6994 & 5.6121 & \num{4.1634e6} & 0.10851 \\
+ & $\pm$ 0.69477 & $\pm$ 0.021004 & $\pm$ 0.031513 & $\pm$ \num{6.301e-5} & $\pm$ 0.29827 & - & - \\
+10 & 67.232 & 0.032831 & 853.54 & 1.7066 & 6.7405 & \num{1.3162e7} & 0.34305 \\
+ & $\pm$ 2.0976 & $\pm$ 0.023844 & $\pm$ 0.015826 & $\pm$ \num{3.1643e-5} & $\pm$ 0.05897 & - & - \\
+11 & 72.527 & \num{8.0942e-3} & 857.18 & 1.7139 & 7.2384 & \num{1.4091e7} & 0.36727 \\
+ & $\pm$ 1.8987 & $\pm$ 0.08117 & $\pm$ 0.071891 & $\pm$ \num{1.4374e-4} & $\pm$ 0.071923 & - & - \\
+12 & 13.812 & \num{2.0583e-3} & 860.71 & 1.721 & 3.8949 & \num{2.8617e6} & 0.074584 \\
+ & $\pm$ 1.7062 & $\pm$ 0.031668 & $\pm$ 0.029039 & $\pm$ \num{5.8062e-5} & $\pm$ 0.13354 & - & - \\
+13 & 15.293 & -0.012568 & 863.04 & 1.7256 & 4.4165 & \num{3.1284e6} & 0.081537 \\
+ & $\pm$ 2.4569 & $\pm$ 0.017317 & $\pm$ 0.047125 & $\pm$ \num{9.4225e-5} & $\pm$ 0.2209 & - & - \\
+14 & 61.067 & \num{5.4806e-3} & 866.74 & 1.733 & 7.2271 & \num{1.1867e7} & 0.30928 \\
+ & $\pm$ 0.92816 & $\pm$ 0.10143 & $\pm$ 0.092213 & $\pm$ \num{1.8438e-4} & $\pm$ 0.20343 & - & - \\
+15 & 63.004 & -0.040324 & 870.56 & 1.7407 & 6.501 & \num{1.2382e7} & 0.32271 \\
+ & $\pm$ 1.7149 & $\pm$ 0.018116 & $\pm$ 0.018556 & $\pm$ \num{3.7102e-5} & $\pm$ 0.099121 & - & - \\
+16 & 26.396 & -0.0236 & 874.04 & 1.7476 & 7.3302 & \num{5.1215e6} & 0.13348 \\
+ & $\pm$ 1.364 & $\pm$ 0.016174 & $\pm$ 0.047288 & $\pm$ \num{9.4551e-5} & $\pm$ 0.4406 & - & - \\
+
+\bottomrule
+\end{longtable}
+
+
+% blurb
+\small
+\begin{tcolorbox}[hbox]
+\begin{varwidth}{\textwidth}
+Estimation performed using \textsc{NMR-EsPy}.\\
+Author: Simon Hulse\\
+For more information:\\[5pt]
+{\raisebox{-4pt}{\includegraphics[scale=0.029]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/book_icon.png}}}\hspace{1em}\href{https://foroozandehgroup.github.io/NMR-EsPy}{\texttt{https://foroozandehgroup.github.io/NMR-EsPy}}\\[5pt]
+{\raisebox{-4pt}{\includegraphics[scale=0.12]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/github.png}}}\hspace{1em}\href{https://github.com/foroozandehgroup/NMR-EsPy}{\texttt{https://github.com/foroozandehgroup/NMR-EsPy}}\\[5pt]
+{\raisebox{-3pt}{\includegraphics[scale=0.015]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/email_icon.png}}}\hspace{1em}\href{mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query}{\texttt{simon.hulse@chem.ox.ac.uk}}\\[5pt]
+If used in a publication, please cite:\\
+\textit{No references yet...}
+\end{varwidth}
+\end{tcolorbox}
+
+\end{document}
