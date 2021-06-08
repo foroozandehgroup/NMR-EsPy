@@ -1,5 +1,10 @@
-# Sphinx fucks up sectioning when it builds the LaTeX docs.
+# Sphinx fucks up sectioning in some places when it builds the LaTeX docs.
+# Also, idk how to implement certain things in LaTeX via rst files,
+# so this file takes the .tex file output by sphinx and manually
+# adjusts it to make any desired changes.
+
 # This file should be run directly after `sphinx-build -b latex . latex`
+# You should be in the `docs` drectory when this is run.
 
 with open('latex/nmr-espy.tex', 'r') as fh:
     text = fh.read()
@@ -24,10 +29,6 @@ with open('latex/nmr-espy.tex', 'r') as fh:
         'On this page, \\sphinxcode{\\sphinxupquote{<pyexe>}}',
         'In this section, \\sphinxcode{\\sphinxupquote{<pyexe>}}'
     )
-    # text = text.replace(
-    #     '\\noindent{\\hspace*{\\fill}\\sphinxincludegraphics[scale=0.7]{{setup_window_plain}.png}\\hspace*{\\fill}}',
-    #     ''
-    # )
     text = text.replace(
         '\\chapter{Contributors}\n'
         '\\label{\\detokenize{contributors:contributors}}'
