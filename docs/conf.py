@@ -110,4 +110,30 @@ latex_elements = {
     'babel': '\\usepackage{polyglossia}',
     'fontenc': '',
     'maxlistdepth' : '10',
+    'preamble' :
+r"""
+\usepackage[math-style=ISO,bold-style=ISO]{unicode-math}
+\usepackage{fontspec}
+\setmainfont{EBGaramond}[
+Path           = ../fonts/ebgaramond/,%
+Extension      = .otf,%
+UprightFont    = *-Regular,%
+BoldFont       = *-Bold,%
+ItalicFont     = *-Italic,%
+BoldItalicFont = *-BoldItalic,%
+]
+\setmathfont{Garamond-Math}[
+Extension    = .otf,%
+Path         = ../fonts/ebgaramond/,%
+StylisticSet = {1,8,5},%
+]
+\setmonofont{UbuntuMono}[
+Path           = ../fonts/ubuntumono/,%
+Extension      = .ttf,%
+UprightFont    = *-R,%
+BoldFont       = *-B,%
+ItalicFont     = *-RI,%
+BoldItalicFont = *-BI,%
+]
+"""
 }
