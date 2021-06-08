@@ -69,7 +69,7 @@ For more information:
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Contents:
 
    install
@@ -79,11 +79,3 @@ For more information:
    misc/index
    references/index
    contributors
-
-
-.. Indices and tables
-.. ==================
-..
-.. * :ref:`genindex`
-.. * :ref:`modindex`
-.. * :ref:`search`

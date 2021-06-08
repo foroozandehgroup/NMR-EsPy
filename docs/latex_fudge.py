@@ -5,10 +5,12 @@
 
 # This file should be run directly after `sphinx-build -b latex . latex`
 # You should be in the `docs` drectory when this is run.
+import re
 
 with open('latex/nmr-espy.tex', 'r') as fh:
     text = fh.read()
 
+    # Fix messed up titling with installation chapter
     text = text.replace(
         '\\sphinxAtStartPar\nNMR\\sphinxhyphen{}EsPy is available via the',
         '\\chapter{Installation}\n\n\\sphinxAtStartPar\nNMR\\sphinxhyphen{}EsPy is available via the',
@@ -19,16 +21,29 @@ with open('latex/nmr-espy.tex', 'r') as fh:
     )
     text = text.replace(
         '\\chapter{LaTeX}',
-        '\\section{\LaTeX}',
+        '\\section{LaTeX}',
     )
+    text = re.sub(
+        r' LaTeX\.',
+        r' \\LaTeX.',
+        text
+    )
+    text = re.sub(
+        r' LaTeX(\s?)',
+        r' \\LaTeX\ \1',
+        text
+    )
+    # Replace "follow this link" with "go to Chapter 4"
     text = text.replace(
         'follow this link',
         'go to Chapter 4'
     )
+    # Replace "On this page" with "In this section"
     text = text.replace(
         'On this page, \\sphinxcode{\\sphinxupquote{<pyexe>}}',
         'In this section, \\sphinxcode{\\sphinxupquote{<pyexe>}}'
     )
+    # Create nicely formatted tabular of contributors
     text = text.replace(
         '\\chapter{Contributors}\n'
         '\\label{\\detokenize{contributors:contributors}}'
@@ -49,6 +64,13 @@ with open('latex/nmr-espy.tex', 'r') as fh:
         'NMR-EsPy to support 2D data \\\\\n'
         '\\end{tabular}\n'
         '\\end{center}'
+    )
+    # Get rid of Python Module Index at end
+    text = re.sub(
+        r'\\renewcommand\{\\indexname\}\{Python\sModule\sIndex\}(.*)\\printindex',
+        '',
+        text,
+        flags=re.DOTALL
     )
 
 with open('latex/nmr-espy.tex', 'w') as fh:
