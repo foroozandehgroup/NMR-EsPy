@@ -11,9 +11,6 @@ version can be installed using:
 
 You need to be using Python 3.8 or above.
 
-Requirements
-^^^^^^^^^^^^
-
 Python Packages
 ---------------
 

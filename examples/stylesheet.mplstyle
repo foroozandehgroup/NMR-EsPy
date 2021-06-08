@@ -1,37 +1,14 @@
-# stylesheet.mplstyle
-#
-# Place me in /path/to/python3.x/site-packages/matplotlib/mpl-data/stylelib
-# Use me with the following lines at the beginning of your script:
-
-# import matplotlib.pyplot as plt
-# plt.style.use('./stylesheet')
-
-# SAVING FIGURES
 savefig.dpi: 72
-
-# FIGURE
 figure.dpi: 72
 figure.frameon: True
-
-# AXES
 axes.linewidth: 1.2
 axes.xmargin: .03
 axes.ymargin: .03
-
-# LINES
 lines.linewidth:  1.0
 lines.markersize: 4
-
-# COLOR
 axes.prop_cycle: cycler('color', ['E42A00', '0051FE', 'E6AC00', 'A01FDF', '28A428',  'FF7B00'])
-
-# TICKS
 xtick.labelsize: small
 ytick.labelsize: small
-
-# LEGEND
 legend.edgecolor: k
-legend.facecolor: ffffff 
-
-# PATCHES
-patch.linewidth: 1.2 # mainly to increase legend linewidth
+legend.facecolor: ffffff
+patch.linewidth: 1.2

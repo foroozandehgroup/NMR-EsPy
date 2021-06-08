@@ -76,9 +76,17 @@ An interactive plot of the data, in the frequency domain, can be seen using the
 
    >>> estimator.view_data()
 
-.. image:: media/walkthrough/figures/view_data.png
-   :align: center
-   :scale: 80%
+.. only:: html
+
+  .. image:: media/walkthrough/figures/view_data.png
+     :align: center
+     :scale: 80%
+
+.. only:: latex
+
+  .. image:: media/walkthrough/figures/view_data.png
+    :align: center
+    :width: 450
 
 
 Frequency Filtration
@@ -92,8 +100,16 @@ which has been generated via frequency-filtration.
 In this example, I am going to focus on the spectral region between
 5.54-5.42ppm. The region looks like this:
 
-.. image:: media/walkthrough/figures/spectral_region.png
-   :align: center
+.. only:: html
+
+  .. image:: media/walkthrough/figures/spectral_region.png
+     :align: center
+
+.. only:: latex
+
+  .. image:: media/walkthrough/figures/spectral_region.png
+    :align: center
+    :width: 450
 
 To generate a frequency-filtered signal from the imported data, the
 :py:meth:`~nmrespy.core.Estimator.frequency_filter` method is used. All well as
@@ -105,6 +121,12 @@ data's noise variance). In this example, I will set this region to be -0.15 to
 .. code:: python3
 
    >>> estimator.frequency_filter([[5.54, 5.42]], [[-0.15, -0.3]])
+
+.. note::
+
+  Be aware of the use of two sets of parentheses around the regions specified.
+  This may seem odd, but a nested list is required to ensure compatibility
+  with 2D data as well.
 
 Estimating the Signal Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -217,12 +239,14 @@ formats, using the :py:meth:`~nmrespy.core.Estimator.write_result` method.
   /<pwd>/example.tex
   Saved result to /<pwd>/example.csv
 
-The files generated are as follows:
+.. only:: html
 
-* :download:`example.txt <media/walkthrough/example.txt>`
-* :download:`example.tex <media/walkthrough/example.tex>`
-* :download:`example.pdf <media/walkthrough/example.pdf>`
-* :download:`example.csv <media/walkthrough/example.csv>`
+   The files generated are as follows:
+
+   * :download:`example.txt <media/walkthrough/example.txt>`
+   * :download:`example.tex <media/walkthrough/example.tex>`
+   * :download:`example.pdf <media/walkthrough/example.pdf>`
+   * :download:`example.csv <media/walkthrough/example.csv>`
 
 
 .. note::
@@ -246,12 +270,14 @@ See `Summary`_ below for an example of some basic plot customisation.
    >>> plot = estimator.plot_result()
    >>> plot.fig.savefig("plot_example.png")
 
-* :download:`example_plot.png <media/walkthrough/figures/plot_example.png>`
+.. only:: html
+
+   * :download:`example_plot.png <media/walkthrough/figures/plot_example.png>`
 
 Pickling Estimator Instances
 ----------------------------
 
-The estimator instance can be serialised, and saved to a binary file using
+The estimator instance can be serialised, and saved to a byte stream using
 Python's `pickle <https://docs.python.org/3/library/pickle.html>`_ module,
 with :py:meth:`~nmrespy.core.Estimator.to_pickle`:
 
@@ -280,7 +306,9 @@ A summary of the methods applied to the estimator can be saved using the
    >>> estimator.save_logfile(path="logfile_example")
    Log file successfully saved to /<pwd>/logfile_example.log
 
-* :download:`logfile_example.log <media/walkthrough/logfile_example.log>`
+.. only:: html
+
+   * :download:`logfile_example.log <media/walkthrough/logfile_example.log>`
 
 Summary
 ^^^^^^^
@@ -336,8 +364,11 @@ Note that further customisation has been applied to the plot to give it an
     # Save a logfile of method calls
     estimator.save_logfile(path="logfile_example")
 
-* :download:`nmrespy_example.py <media/walkthrough/nmrespy_example.py>`
-* :download:`plot_example_edited.png <media/walkthrough/figures/plot_example_edited.png>`
+.. only:: html
 
-More features are provided by :py:class:`~nmrespy.core.Estimator` beyond
-what is described on this page. Look at the class's docs for details.
+   * :download:`nmrespy_example.py <media/walkthrough/nmrespy_example.py>`
+   * :download:`plot_example_edited.png <media/walkthrough/figures/plot_example_edited.png>`
+
+More features are provided by the :py:class:`~nmrespy.core.Estimator` beyond
+what is described on this page, but this gives an overview of the primary
+functionality.

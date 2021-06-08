@@ -165,9 +165,17 @@ I anticipate users will frequently want to carry out.
 
   The plot before and after shifting the label positions are as follows:
 
-  .. image:: ../media/misc/displace.png
-     :align: center
-     :scale: 30%
+  .. only:: html
+
+    .. image:: ../media/misc/displace.png
+      :align: center
+      :scale: 30%
+
+  .. only:: latex
+
+    .. image:: ../media/misc/displace.png
+      :align: center
+      :scale: 70%
 
 * **Appending a result plot to a subplot**
   You may wish to set the result plot as a subplot amongst other plots that
@@ -212,9 +220,17 @@ I anticipate users will frequently want to carry out.
 
   The resulting figure is as follows:
 
-  .. image:: ../media/misc/subplot.png
-     :align: center
-     :scale: 30%
+  .. only:: html
+
+    .. image:: ../media/misc/subplot.png
+      :align: center
+      :scale: 30%
+
+  .. only:: latex
+
+    .. image:: ../media/misc/subplot.png
+      :align: center
+      :scale: 70%
 
 If there are other features that you would like to see added to the
 :py:meth:`~nmrespy.plot.NmrespyPlot` class to increase the ease

@@ -12,6 +12,8 @@ links:
    topspin_install
    usage/index
 
-.. image:: ../media/gui/windows/setup_window_plain.png
-   :scale: 70%
-   :align: center
+.. only:: html
+
+  .. image:: ../media/gui/windows/setup_window_plain.png
+    :scale: 70%
+    :align: center

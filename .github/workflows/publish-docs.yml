@@ -40,6 +40,7 @@ jobs:
           python -m pip install -r requirements.txt
           sphinx-build -b html . html
           sphinx-build -b latex . latex
+          python latex_fudge.py
 
       - name: complie with XeLaTeX
         run: |

@@ -3,24 +3,28 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. raw:: html
+.. only:: html
 
-  <p align="center">
-  <img width="300" src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png">
-  </p>
+  .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png
+    :align: center
+    :width: 350
 
-  <p align="center">
-  <b>Simon Hulse and Mohammadali Foroozandeh, University of Oxford</b>
-  </p>
+  .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/build/badge.svg
+    :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Abuild
 
-  <p align="center">
-  <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Abuild"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/build/badge.svg" alt="GitHub Actions Build Status"></a>
-  <a href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs"><img src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg" alt="GitHub Actions Documentation Status"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
-  </p>
+  .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg
+    :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs
 
-:Version: |version|
-:Date: Apr 14, 2021
+  .. image:: https://img.shields.io/badge/License-MIT-yellow.svg
+    :target: https://opensource.org/licenses/MIT
+
+.. only:: latex
+
+  .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png
+    :align: center
+    :width: 250
+
+**Simon Hulse and Mohammadali Foroozandeh, University of Oxford**
 
 NMR-EsPy (**N**\ uclear **M**\ agnetic **R**\ esonance **Es**\ timation in
 **Py**\ thon) is a Python package for the estimation of parameters that
@@ -35,11 +39,11 @@ within the group of Dr. Mohammadali Foroozandeh, in the University of
 Oxford's Chemistry Department. To find out more about the group, take a look
 at our `website. <http://foroozandeh.chem.ox.ac.uk/home>`_
 
-.. The following publications are directly linked to NMR-EsPy and provide
-.. an extensive background on the underlying theory and examples of results
-.. obtained by using it:
-..
-.. *No publications yet...*
+The following publications are directly linked to NMR-EsPy and provide
+an extensive background on the underlying theory and examples of results
+obtained by using it:
+
+*No publications yet...*
 
 For more information:
 
@@ -47,12 +51,22 @@ For more information:
 
 |email| `simon.hulse@chem.ox.ac.uk <mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy%20query>`_
 
-.. |github| image:: media/github.png
-            :scale: 15%
+.. only:: html
 
+   .. |github| image:: media/github.png
+              :scale: 15%
 
-.. |email| image:: media/email.png
-           :scale: 2%
+   .. |email| image:: media/email.png
+             :scale: 2%
+
+.. only:: latex
+
+   .. |github| image:: media/github.png
+             :scale: 8%
+
+   .. |email| image:: media/email.png
+            :scale: 1%
+
 
 .. toctree::
    :maxdepth: 1
@@ -67,9 +81,9 @@ For more information:
    contributors
 
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. Indices and tables
+.. ==================
+..
+.. * :ref:`genindex`
+.. * :ref:`modindex`
+.. * :ref:`search`

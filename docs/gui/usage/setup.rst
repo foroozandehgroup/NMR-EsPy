@@ -4,9 +4,17 @@ Estimation Set-up
 The following is a screenshot of the NMR-EsPy GUI calculation set-up window.
 Key features of the window are annotated:
 
-.. image:: ../../media/gui/windows/setup_window.png
-   :align: center
-   :scale: 60%
+.. only:: html
+
+  .. image:: ../../media/gui/windows/setup_window.png
+    :align: center
+    :scale: 60%
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/setup_window.png
+    :align: center
+    :scale: 45%
 
 Plot Navigation
 ^^^^^^^^^^^^^^^
@@ -55,9 +63,17 @@ Phase Correction
 The GUI has the following appearance when the `Phase Correction` tab is
 selected:
 
-.. image:: ../../media/gui/windows/setup_window_phase_tab.png
-   :align: center
-   :scale: 60%
+.. only:: html
+
+  .. image:: ../../media/gui/windows/setup_window_phase_tab.png
+    :align: center
+    :scale: 60%
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/setup_window_phase_tab.png
+    :align: center
+    :scale: 45%
 
 Phase correction can be carried out by editing the
 pivot (red line in the above figure), zero-order phase and first-order phase.
@@ -68,46 +84,72 @@ data.
 The values may be changed either by adjusting the scale widgets, or by manually
 inputting desired values into the adjacent entry boxes.
 
-.. note::
+.. only:: html
 
-   **Validating entry box inputs**
+  .. note::
 
-   For the majority of entry boxes in the GUI, you will notice that the box
-   turns red after you manually change its contents. This indicates
-   that the input adhere to certain criteria (i.e. it must be a number, a
-   valid path on your computer etc.), and it has not been validated. After you
-   have changed the value in an entry box, press ``<Return>``. The entry box
-   will then turn back to its original colour. If the value you
-   provided is valid for the given parameter, the value will be kept. If the
-   value provided is invalid, the entry box will revert back to the previous
-   valid value.
+     **Validating entry box inputs**
 
-   The video below illustrates this. Initially, I try to change the value
-   of the pivot to 7ppm. As soon as the entry box is changed, it goes red,
-   indicating that it needs validating. When ``<Return>`` is pressed, as 7 is
-   a valid value for the pivot (it is a number, and is within the spectrum's
-   sweep width), the pivot is changed accordingly. Note that it is changed to
-   the closest valid value to the nearest 4dp, which happens to be 6.9999ppm
-   in this case.
+     For the majority of entry boxes in the GUI, you will notice that the box
+     turns red after you manually change its contents. This indicates
+     that the input adhere to certain criteria (i.e. it must be a number, a
+     valid path on your computer etc.), and it has not been validated. After you
+     have changed the value in an entry box, press ``<Return>``. The entry box
+     will then turn back to its original colour. If the value you
+     provided is valid for the given parameter, the value will be kept. If the
+     value provided is invalid, the entry box will revert back to the previous
+     valid value.
 
-   After this, I try to change the pivot to the value ``invalid`` which of
-   course makes no sense in the context of a pivot. As it is invalid, when
-   ``<Return>`` is pressed, the pivot entry box reverts back to the last valid
-   value it had.
+     The video below illustrates this. Initially, I try to change the value
+     of the pivot to 7ppm. As soon as the entry box is changed, it goes red,
+     indicating that it needs validating. When ``<Return>`` is pressed, as 7 is
+     a valid value for the pivot (it is a number, and is within the spectrum's
+     sweep width), the pivot is changed accordingly. Note that it is changed to
+     the closest valid value to the nearest 4dp, which happens to be 6.9999ppm
+     in this case.
 
-   .. raw:: html
+     After this, I try to change the pivot to the value ``invalid`` which of
+     course makes no sense in the context of a pivot. As it is invalid, when
+     ``<Return>`` is pressed, the pivot entry box reverts back to the last valid
+     value it had.
 
-      <video width="640" height="640" style="display:block; margin: 0 auto;" controls autoplay>
-        <source src="../../media/gui/entry_widget_example.mp4" type="video/mp4">
-        Your browser doesn't support the video tag
-      </video>
+     .. raw:: html
+
+        <video width="640" height="640" style="display:block; margin: 0 auto;" controls autoplay>
+          <source src="../../media/gui/entry_widget_example.mp4" type="video/mp4">
+          Your browser doesn't support the video tag
+        </video>
+
+      Note that if you try to run the estimation routine while at least one entry
+      box has not be validated, you will be prevented from doing so:
+
+      .. image:: ../../media/gui/windows/unverified_parameter_window.png
+         :align: center
+         :scale: 80%
+
+.. only:: latex
+
+  .. note::
+
+    **Validating entry box inputs**
+
+    For the majority of entry boxes in the GUI, you will notice that the box
+    turns red after you manually change its contents. This indicates
+    that the input adhere to certain criteria (i.e. it must be a number, a
+    valid path on your computer etc.), and it has not been validated. After you
+    have changed the value in an entry box, press ``<Return>``. The entry box
+    will then turn back to its original colour. If the value you
+    provided is valid for the given parameter, the value will be kept. If the
+    value provided is invalid, the entry box will revert back to the previous
+    valid value.
 
     Note that if you try to run the estimation routine while at least one entry
     box has not be validated, you will be prevented from doing so:
 
     .. image:: ../../media/gui/windows/unverified_parameter_window.png
-       :align: center
-       :scale: 80%
+      :align: center
+      :scale: 70%
+
 
 Region Selection
 ^^^^^^^^^^^^^^^^
@@ -135,9 +177,17 @@ Advanced Estimation Settings
 Clicking the `Advanced Settings` button will load a window enabling various
 aspects of the estimation routine to be tweaked:
 
-.. image:: ../../media/gui/windows/advanced_settings_window.png
-   :align: center
-   :scale: 80%
+.. only:: html
+
+  .. image:: ../../media/gui/windows/advanced_settings_window.png
+    :align: center
+    :scale: 80%
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/advanced_settings_window.png
+    :align: center
+    :scale: 60%
 
 Below is a summary of the meaning of all of these parameters.
 
@@ -155,9 +205,17 @@ Signal Filter Options
   becomes redundant, and so it can be appropriate the "cut" off regions that are
   not of interest. The basic idea is illustrated in this figure:
 
-  .. image:: ../../media/gui/filter_cut/filter_cut.png
-     :align: center
-     :scale: 20%
+  .. only:: html
+
+    .. image:: ../../media/gui/filter_cut/filter_cut.png
+      :align: center
+      :scale: 20%
+
+  .. only:: latex
+
+    .. image:: ../../media/gui/filter_cut/filter_cut.png
+      :align: center
+      :scale: 80%
 
   + `Cut signal` - Specifies whether or not to perform cutting of the spectrum.
     By default, this is selected.

@@ -141,23 +141,25 @@ Now you need to open the newly created file:
   is set to ``None`` by default. To find this path, load a Python interpreter/
   write a Python script with the following lines:
 
-  + *Windows*
-
-    .. code:: python
-
-      >>> from subprocess import check_output as co
-      >>> exe = str(co("where pdflatex", shell=True), 'utf-8').rstrip().replace("\\", "\\\\")
-      >>> print(f"\"{exe}\"")
-      "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
-
   + *UNIX*
 
     .. code:: python
 
       >>> from subprocess import check_output as co
-      >>> exe = str(co("which pdflatex", shell=True), 'utf-8').rstrip()
+      >>> exe = check_output("which pdflatex", shell=True)
+      >>> exe = str(exe, 'utf-8').rstrip()
       >>> print(f"\"{exe}\"")
       "/usr/bin/pdflatex"
+
+  + *Windows*
+
+    .. code:: python
+
+      >>> from subprocess import check_output
+      >>> exe = check_output("where pdflatex", shell=True)
+      >>> exe = str(exe, 'utf-8').rstrip().replace("\\", "\\\\")
+      >>> print(f"\"{exe}\"")
+      "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
 
   You should set ``pdflatex_exe`` as the **EXACT** output you get from this:
 

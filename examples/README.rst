@@ -4,8 +4,8 @@ NMR-EsPy Examples
 This directory contains examples of NMR-EsPy's usage.
 Current examples present are:
 
-1. Estimation run on two separate regions of a cyclosporin 1D signal (data ``examples/data/1``)
-2. EStimation run on a very low SNR region of a artemisinin 1D signal (data in ``examples/data/2``)
+1. ``cyclosporin/``: Estimation run on two separate regions of a cyclosporin 1D signal (data in ``data/1``)
+2. ``artemisinin/``: Estimation run on a very low SNR region of a artemisinin 1D signal (data in ``data/2``)
 
 For each example, a script which goes through the estimation routine, and produces various result files and figures
 is provided. Note that for each of these, there is a variable called ``ESTIMATE``. This should be set to ``True``

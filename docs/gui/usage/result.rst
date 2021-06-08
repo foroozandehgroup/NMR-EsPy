@@ -4,8 +4,17 @@ Estimation Result
 Once the routine is complete, a new window will load with the following
 appearance:
 
-.. image:: ../../media/gui/windows/result_window.png
-   :align: center
+.. only:: html
+
+  .. image:: ../../media/gui/windows/result_window.png
+    :align: center
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/result_window.png
+    :align: center
+    :width: 400
+
 
 Featured in the result plot are:
 
@@ -37,8 +46,16 @@ to achieve a minimisation of the cost function of interest.
 A window with the following appearance will appear after you click
 *Edit Parameter Estimate*:
 
-.. image:: ../../media/gui/windows/edit_parameters_window_1.png
-   :align: center
+.. only:: html
+
+  .. image:: ../../media/gui/windows/edit_parameters_window_1.png
+    :align: center
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/edit_parameters_window_1.png
+    :align: center
+    :width: 350
 
 Each oscillator is listed with its associated parameters. The numerical values
 assigned to each oscillator match those in the result figure.
@@ -50,8 +67,16 @@ which closes the window.
 To select and oscillator, left-click the associated numerical label. This will
 highlight the oscillator. Here is an example after oscillator 3 is clicked:
 
-.. image:: ../../media/gui/windows/edit_parameters_window_2.png
-   :align: center
+.. only:: html
+
+  .. image:: ../../media/gui/windows/edit_parameters_window_2.png
+    :align: center
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/edit_parameters_window_2.png
+    :align: center
+    :width: 350
 
 To de-select the oscillator, simply left-click the numerical label again. Two
 new buttons are activated when one oscillator is selected: *Remove*, which will
@@ -61,8 +86,16 @@ to create "child oscillators" with the same cumulative amplitude as the parent.
 To select multiple oscillators at a single time, left-click on each oscillator
 label whilst holding ``<Shift>``:
 
-.. image:: ../../media/gui/windows/edit_parameters_window_3.png
-   :align: center
+.. only:: html
+
+  .. image:: ../../media/gui/windows/edit_parameters_window_3.png
+    :align: center
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/edit_parameters_window_3.png
+    :align: center
+    :width: 350
 
 When more than one oscillator is selected, the *Merge* button is activated,
 along with the Remove button.
@@ -83,8 +116,16 @@ has failed to identify. Extensive use of this button is not advised.
 Clicking on the Add button when no oscillators are selected will load the
 following window:
 
-.. image:: ../../media/gui/windows/add_window.png
-   :align: center
+.. only:: html
+
+  .. image:: ../../media/gui/windows/add_window.png
+    :align: center
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/add_window.png
+    :align: center
+    :width: 350
 
 You need to input the desired parameters that make up the oscillator to be
 added. Each entry box needs to be validated by pressing ``<Return>`` after
@@ -143,8 +184,16 @@ and in its place create a series of "child" oscillators.
 
 The following window loads when you click *Split*:
 
-.. image:: ../../media/gui/windows/split_window.png
-   :align: center
+.. only:: html
+
+  .. image:: ../../media/gui/windows/split_window.png
+    :align: center
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/split_window.png
+    :align: center
+    :width: 250
 
 * The *Number of oscillators* box specifies how many child oscillators
   to generate.
@@ -187,9 +236,17 @@ Saving the result
 
 Clicking the *Save* button loads the following window:
 
-.. image:: ../../media/gui/windows/save_window.png
-   :align: center
-   :scale: 50%
+.. only:: html
+
+  .. image:: ../../media/gui/windows/save_window.png
+    :align: center
+    :scale: 50%
+
+.. only:: latex
+
+  .. image:: ../../media/gui/windows/save_window.png
+    :align: center
+    :width: 200
 
 Result Figure
 -------------
