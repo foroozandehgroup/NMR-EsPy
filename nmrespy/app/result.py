@@ -72,6 +72,7 @@ class Result(MyToplevel):
         Restrictor(self.result_plot.ax, x=lambda x: x >= xlim[1])
 
     def update_plot(self):
+        self.master.estimator._saveable = True
         plot = self.master.estimator.plot_result()
         ax, lines, labels = plot.ax, plot.lines, plot.labels
 
