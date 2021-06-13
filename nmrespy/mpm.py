@@ -1,4 +1,4 @@
-# mpm.py
+N1# mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
@@ -9,6 +9,8 @@ import copy
 import numpy as np
 import numpy.linalg as nlinalg
 import scipy.linalg as slinalg
+from scipy import sparse
+import scipy.sparse.linalg as splinalg
 
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
@@ -158,15 +160,35 @@ class MatrixPencil(FrequencyConverter):
 
             result = copy.deepcopy(self.result)
 
+            # TODO definitely a cleaner method of doing this...
+
             # Get frequencies in Hz, and format to enable input into
             # the frequency converter.
             # Then convert values to ppm and reconvert back to NumPy array
-            ppm = np.array(
-                self.converter.convert(
-                    [list(result[:, 2])], conversion='hz->ppm',
+            if self.dim == 1:
+                ppm = np.array(
+                    self.converter.convert(
+                        [list(result[:, 2])], conversion='hz->ppm',
+                    )
                 )
-            )
-            result[:, 2] = ppm
+                result[:, 2] = ppm
+
+            elif self.dim == 2:
+                ppm1 = np.array(
+                    self.converter.convert(
+                        [list(result[:, 2])], conversion='hz->ppm',
+                    )
+                )
+
+                ppm2 = np.array(
+                    self.converter.convert(
+                        [list(result[:, 3])], conversion='hz->ppm',
+                    )
+                )
+
+                result[:, 2] = ppm1
+                result[:, 3] = ppm2
+                
             return result
 
         else:
@@ -191,9 +213,8 @@ class MatrixPencil(FrequencyConverter):
             print(f'--> Pencil Parameter: {L}')
 
         # Construct Hankel matrix
-        row = normed_data[:N - L]
-        column = normed_data[N - L - 1:]
-        Y = slinalg.hankel(row, column)
+        Y = slinalg.hankel(normed_data[:N - L], normed_data[N - L - 1:])
+
         if self.fprint:
             print("--> Hankel data matrix constructed:")
             print(f'\tSize:   {Y.shape[0]} x {Y.shape[1]}')
@@ -291,10 +312,106 @@ class MatrixPencil(FrequencyConverter):
 
     @timer
     def _mpm_2d(self):
-        """Performs 2-dimensional Modified Matrix Enhanced Pencil Method.
+        """Performs 2-dimensional Modified Matrix Enhanced Pencil Method."""
 
-        .. todo ::
-           To be written
-        """
+        # Normalise data
+        norm = nlinalg.norm(self.data)
+        normed_data = self.data / norm
 
-        raise errors.TwoDimUnsupportedError()
+        # Number of points
+        N1, N2 = self.n
+
+        # Pencil parameters
+        K, L = tuple([int((n + 1) / 2) for n in (N1, N2)])
+
+        # TODO: MDL for 2D
+        if self.M == 0:
+            raise ValueError(
+                f'{cols.R}Model order selection is not yet available for 2D '
+                f'data. Set `M` as greater than 0.{cols.END}'
+            )
+
+        # --- Enhanced Matrix ---
+        X = slinalg.hankel(normed_data[0, :L], normed_data[0, L-1:N2])
+        for n1 in range(1, N1):
+            X = np.hstack(
+                (X, slinalg.hankel(data[n1, :L],data[n1, L - 1:N2]))
+            )
+
+        # vertically stack rows of block matricies to get Xe
+        Xe = X[:, 0:(N1-K+1)*(N2-L+1)]
+
+        for k in range(1, K):
+            Xe = np.vstack(
+                (Xe, X[:, k * (N2 - L + 1):(k + N1 - K + 1) * (N2 - L + 1)])
+            )
+
+        # convert Xe to sparse matrix
+        sparse_Xe = sparse.csr_matrix(Xe)
+
+        U, *_ = splinalg.svds(Xe, M)
+        Xe = Xe.todense()
+
+        # --- Permutation matrix ---
+        # Create first row of matrix: [1, 0, 0, ..., 0]
+        fst_row = sparse.lil_matrix((1, K * L))
+        fst_row[0,0] = 1
+
+        # Seed the permutation matrix
+        P = copy.deepcopy(fst_row)
+
+        # First block of K rows of permutation matrix
+        for k in range(1, K):
+            row = sparse.hstack((fst_row[:, -(k * L):], fst_row[:, :-(k * L)]))
+            P = sparse.vstack((P, row))
+
+        # first K-sized block of matrix
+        fst_blk = copy.deepcopy(P).tolil()
+
+        # Stack K-sized blocks to form (K * L) row matrix
+        for el in range(1, L):
+            blk = sparse.hstack((fst_blk[:, -el:], fst_blk[:, :-el]))
+            P = sparse.vstack((P, blk))
+
+        P = P.todense()
+
+        # --- Signal Poles ---
+        # retain only M principle left s. vecs
+        Us = U[:, :self.M]
+        U1 = Us[:Us.shape[0] - L, :]  # last L rows deleted
+        U2 = Us[L:, :]                # first L rows deleted
+        eig_y, vec_y = nlinalg.eig(nlinalg.pinv(U1) @ U2)
+        Usp = P @ Us
+        U1p = Usp[:Usp.shape[0] - K, :] # last K rows deleted
+        U2p = Usp[K:, :]                # first K rows deleted
+        eig_z = np.diag(nlinalg.solve(vec_y, nlinalg.pinv(U1p)) @ U2p @ vec_y)
+        poles = np.hstack((eig_y, eig_z)).reshape((self.M, 2), order='F')
+
+        # --- Complex Amplitudes ---
+        ZL = np.power.outer(poles[:, 1], np.arange(L)).T
+        ZR = np.power.outer(poles[:, 1], np.arange(N2 - L + 1))
+        Yd = np.diag(poles[:, 0])
+
+        EL = copy.deepcopy(ZL)
+        for k in range(1, K):
+            EL = np.vstack((EL, ZL @ (Yd ** k)))
+
+        ER = copy.deepcopy(ZR)
+        for m in range(1, N1 - K + 1):
+            ER = np.hstack((ER, (Yd ** m) @ ZR))
+
+        alpha = np.diag(nlinalg.pinv(EL) @ Xe @ nlinalg.pinv(ER))
+
+        # --- Extract parameters ---
+        result = (np.vtack(
+            np.abs(alpha) * norm,  # amp
+            np.arctan2(np.imag(alpha), np.real(alpha)),  # phase
+            (self.sw[0] / (2 * np.pi)) * np.imag(np.log(poles[:, 0]))
+             + self.offset[0]),  # freq 1
+            (self.sw[1] / (2 * np.pi)) * np.imag(np.log(poles[:, 1]))
+             + self.offset[1]),  # freq 2
+            -self.sw[0] * np.real(np.log(poles[:, 0]))  # damp 1
+            -self.sw[1] * np.real(np.log(poles[:, 1]))  # damp 2
+        )).T
+
+        self.result = result[np.argsort(result[:, 2])]

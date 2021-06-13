@@ -9,3 +9,4 @@ build
 dist
 .pytest_cache
 nmrespy.egg-info/
+.ycm_extra_conf.py
