@@ -1,4 +1,4 @@
-N1# mpm.py
+# mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
@@ -188,7 +188,7 @@ class MatrixPencil(FrequencyConverter):
 
                 result[:, 2] = ppm1
                 result[:, 3] = ppm2
-                
+
             return result
 
         else:
@@ -332,14 +332,15 @@ class MatrixPencil(FrequencyConverter):
             )
 
         # --- Enhanced Matrix ---
-        X = slinalg.hankel(normed_data[0, :L], normed_data[0, L-1:N2])
+        X = slinalg.hankel(normed_data[0, :L], normed_data[0, L - 1:N2])
         for n1 in range(1, N1):
-            X = np.hstack(
-                (X, slinalg.hankel(data[n1, :L],data[n1, L - 1:N2]))
+            blk = slinalg.hankel(
+                normed_data[n1, :L], normed_data[n1, L - 1:N2]
             )
+            X = np.hstack((X, blk))
 
         # vertically stack rows of block matricies to get Xe
-        Xe = X[:, 0:(N1-K+1)*(N2-L+1)]
+        Xe = X[:, 0:(N1 - K + 1) * (N2 - L + 1)]
 
         for k in range(1, K):
             Xe = np.vstack(
@@ -349,13 +350,12 @@ class MatrixPencil(FrequencyConverter):
         # convert Xe to sparse matrix
         sparse_Xe = sparse.csr_matrix(Xe)
 
-        U, *_ = splinalg.svds(Xe, M)
-        Xe = Xe.todense()
+        U, *_ = splinalg.svds(sparse_Xe, self.M)
 
         # --- Permutation matrix ---
         # Create first row of matrix: [1, 0, 0, ..., 0]
         fst_row = sparse.lil_matrix((1, K * L))
-        fst_row[0,0] = 1
+        fst_row[0, 0] = 1
 
         # Seed the permutation matrix
         P = copy.deepcopy(fst_row)
@@ -382,8 +382,8 @@ class MatrixPencil(FrequencyConverter):
         U2 = Us[L:, :]                # first L rows deleted
         eig_y, vec_y = nlinalg.eig(nlinalg.pinv(U1) @ U2)
         Usp = P @ Us
-        U1p = Usp[:Usp.shape[0] - K, :] # last K rows deleted
-        U2p = Usp[K:, :]                # first K rows deleted
+        U1p = Usp[:Usp.shape[0] - K, :]  # last K rows deleted
+        U2p = Usp[K:, :]                 # first K rows deleted
         eig_z = np.diag(nlinalg.solve(vec_y, nlinalg.pinv(U1p)) @ U2p @ vec_y)
         poles = np.hstack((eig_y, eig_z)).reshape((self.M, 2), order='F')
 
@@ -403,15 +403,15 @@ class MatrixPencil(FrequencyConverter):
         alpha = np.diag(nlinalg.pinv(EL) @ Xe @ nlinalg.pinv(ER))
 
         # --- Extract parameters ---
-        result = (np.vtack(
+        result = (np.vstack((
             np.abs(alpha) * norm,  # amp
             np.arctan2(np.imag(alpha), np.real(alpha)),  # phase
-            (self.sw[0] / (2 * np.pi)) * np.imag(np.log(poles[:, 0]))
+            ((self.sw[0] / (2 * np.pi)) * np.imag(np.log(poles[:, 0]))
              + self.offset[0]),  # freq 1
-            (self.sw[1] / (2 * np.pi)) * np.imag(np.log(poles[:, 1]))
+            ((self.sw[1] / (2 * np.pi)) * np.imag(np.log(poles[:, 1]))
              + self.offset[1]),  # freq 2
-            -self.sw[0] * np.real(np.log(poles[:, 0]))  # damp 1
-            -self.sw[1] * np.real(np.log(poles[:, 1]))  # damp 2
-        )).T
+            -self.sw[0] * np.real(np.log(poles[:, 0])),  # damp 1
+            -self.sw[1] * np.real(np.log(poles[:, 1])),  # damp 2
+        ))).T
 
         self.result = result[np.argsort(result[:, 2])]

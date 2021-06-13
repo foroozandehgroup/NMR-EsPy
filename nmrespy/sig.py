@@ -199,7 +199,9 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
     if dim == 2:
         if modulation in ['none', 'amp']:
             Z1 = np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0])))
-            if modulation == 'amp':
+            if modulation == 'none':
+                Z1 = [Z1]
+            elif modulation == 'amp':
                 Z1 = [np.real(Z1), np.imag(Z1)]
         elif modulation == 'phase':
             Z1 = [

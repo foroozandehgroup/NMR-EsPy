@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from nmrespy.mpm import MatrixPencil
 from nmrespy.sig import make_fid
