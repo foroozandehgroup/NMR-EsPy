@@ -51,10 +51,6 @@ class MatrixPencil(FrequencyConverter):
         Flag specifiying whether to print infomation to the terminal as
         the method runs.
 
-    start_point : int, default: 0
-        The first timepoint sampled, in units of
-        :math:`\\Delta t = 1 / f_{\\mathrm{sw}}`
-
     References
     ----------
     .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
@@ -79,11 +75,7 @@ class MatrixPencil(FrequencyConverter):
        55.2 (2007), pp. 718–724.
     """
 
-    start_txt = 'MATRIX PENCIL METHOD STARTED'
-    end_txt = 'MATRIX PENCIL METHOD COMPLETE'
-
-    def __init__(self, data, sw, offset=None, sfo=None, M=0, fprint=True,
-                 start_point=0):
+    def __init__(self, data, sw, offset=None, sfo=None, M=0, fprint=True):
         """Checks validity of inputs, and if valid, calls :py:meth:`_mpm`"""
 
         try:
@@ -104,7 +96,6 @@ class MatrixPencil(FrequencyConverter):
             (offset, 'offset', 'float_list'),
             (M, 'M', 'positive_int_or_zero'),
             (fprint, 'fprint', 'bool'),
-            (start_point, 'start_point', 'positive_int_or_zero'),
         ]
 
         if sfo is not None:
@@ -119,7 +110,6 @@ class MatrixPencil(FrequencyConverter):
         self.sfo = sfo
         self.M = M
         self.fprint = fprint
-        self.start_point = start_point
 
         if sfo is not None:
             self.converter = FrequencyConverter(
@@ -195,7 +185,7 @@ class MatrixPencil(FrequencyConverter):
             raise errors.InvalidUnitError('hz', 'ppm')
 
     @timer
-    @start_end_wrapper(start_txt, end_txt)
+    @start_end_wrapper('MPM STARTED', 'MPM COMPLETE')
     def _mpm_1d(self):
         """Performs 1-dimensional Matrix Pencil Method"""
 
@@ -234,7 +224,7 @@ class MatrixPencil(FrequencyConverter):
 
         # Compute the MDL in order to estimate the number of oscillators
         if self.fprint:
-            print('--> Determining number of oscillators...')
+            print('--> Computing number of oscillators...')
 
         if self.M == 0:
             if self.fprint:
@@ -259,58 +249,31 @@ class MatrixPencil(FrequencyConverter):
 
         # Determine signal poles
         if self.fprint:
-            print('--> Determining signal poles...')
+            print('--> Computing signal poles...')
 
         Vm = V[:, :self.M]  # Retain M first right singular vectors
         V1 = Vm[:-1, :]  # Remove last column
         V2 = Vm[1:, :]  # Remove first column
 
         # Determine first M signal poles (others should be 0)
-        z = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][:self.M]
+        poles = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][:self.M]
 
         # Compute complex amplitudes
         if self.fprint:
-            print('--> Determining complex amplitudes...')
+            print('--> Computing complex amplitudes...')
 
         # Pseudoinverse of Vandermonde matrix of poles multiplied by
         # vector of complex amplitudes
         alpha = nlinalg.pinv(
-            np.power.outer(
-                z, np.arange(self.start_point, self.start_point + N)
-            )
+            np.power.outer(poles, np.arange(N))
         ).T @ normed_data
 
-        # Extract amplitudes, phases, frequencies and damping factors
-        amp = np.abs(alpha) * norm
-        phase = np.arctan2(np.imag(alpha), np.real(alpha))
-        freq = \
-            (self.sw[0] / (2 * np.pi)) * np.imag(np.log(z)) + self.offset[0]
-        damp = - self.sw[0] * np.real(np.log(z))
-
-        # Collate into (M x 4) array of parameters
-        self.result = (np.vstack((amp, phase, freq, damp))).T
-        # Order oscillators by frequency
-        self.result = self.result[np.argsort(self.result[:, 2])]
-
-        # Check for oscillators with negative damping
-        if self.fprint:
-            print('--> Checking for oscillators with negative damping...')
-
-        m_init = self.result.shape[0]
-        # Indices of oscillators with negative damping factors
-        neg_damp_idx = np.nonzero(self.result[:, 3] < 0.0)[0]
-        self.result = np.delete(self.result, neg_damp_idx, axis=0)
-        self.M = self.result.shape[0]
-
-        if self.M < m_init and self.fprint:
-            print(f'\t{cols.OR}WARNING: Oscillations with negative damping\n'
-                  f'\tfactors detected. These have been deleted.\n'
-                  f'\tCorrected number of oscillations: {self.M}{cols.END}')
-
-        elif self.fprint:
-            print('\tNone found')
+        params = self._generate_params(alpha, poles.reshape((1, self.M)))
+        params[:, 0] *= norm
+        self.result, self.M = self._remove_negative_damping(params)
 
     @timer
+    @start_end_wrapper('MMEMP STARTED', 'MMEMP COMPLETE')
     def _mpm_2d(self):
         """Performs 2-dimensional Modified Matrix Enhanced Pencil Method."""
 
@@ -323,6 +286,8 @@ class MatrixPencil(FrequencyConverter):
 
         # Pencil parameters
         K, L = tuple([int((n + 1) / 2) for n in (N1, N2)])
+        if self.fprint:
+            print(f'--> Pencil parameters: {K}, {L}')
 
         # TODO: MDL for 2D
         if self.M == 0:
@@ -347,12 +312,26 @@ class MatrixPencil(FrequencyConverter):
                 (Xe, X[:, k * (N2 - L + 1):(k + N1 - K + 1) * (N2 - L + 1)])
             )
 
+        if self.fprint:
+            print('--> Enhanced Block Hankel matrix constructed:')
+            print(f'\tSize: {Xe.shape[0]} x {Xe.shape[1]}')
+            gibibytes = Xe.nbytes / (2 ** 30)
+            if gibibytes >= 0.1:
+                print(f'\tMemory: {round(gibibytes, 4)}GiB')
+            else:
+                print(f'\tMemory: {round(gibibytes * (2**10), 4)}MiB')
+
         # convert Xe to sparse matrix
         sparse_Xe = sparse.csr_matrix(Xe)
 
+        if self.fprint:
+            print('--> Performing Singular Value Decomposition...')
         U, *_ = splinalg.svds(sparse_Xe, self.M)
 
         # --- Permutation matrix ---
+        if self.fprint:
+            print('--> Computing Permutation matrix...')
+
         # Create first row of matrix: [1, 0, 0, ..., 0]
         fst_row = sparse.lil_matrix((1, K * L))
         fst_row[0, 0] = 1
@@ -377,6 +356,9 @@ class MatrixPencil(FrequencyConverter):
 
         # --- Signal Poles ---
         # retain only M principle left s. vecs
+        if self.fprint:
+            print('--> Computing signal poles...')
+
         Us = U[:, :self.M]
         U1 = Us[:Us.shape[0] - L, :]  # last L rows deleted
         U2 = Us[L:, :]                # first L rows deleted
@@ -385,12 +367,15 @@ class MatrixPencil(FrequencyConverter):
         U1p = Usp[:Usp.shape[0] - K, :]  # last K rows deleted
         U2p = Usp[K:, :]                 # first K rows deleted
         eig_z = np.diag(nlinalg.solve(vec_y, nlinalg.pinv(U1p)) @ U2p @ vec_y)
-        poles = np.hstack((eig_y, eig_z)).reshape((self.M, 2), order='F')
+        poles = np.hstack((eig_y, eig_z)).reshape((2, self.M))
 
         # --- Complex Amplitudes ---
-        ZL = np.power.outer(poles[:, 1], np.arange(L)).T
-        ZR = np.power.outer(poles[:, 1], np.arange(N2 - L + 1))
-        Yd = np.diag(poles[:, 0])
+        if self.fprint:
+            print('--> Computing complex amplitudes...')
+
+        ZL = np.power.outer(poles[1], np.arange(L)).T
+        ZR = np.power.outer(poles[1], np.arange(N2 - L + 1))
+        Yd = np.diag(poles[0])
 
         EL = copy.deepcopy(ZL)
         for k in range(1, K):
@@ -402,16 +387,82 @@ class MatrixPencil(FrequencyConverter):
 
         alpha = np.diag(nlinalg.pinv(EL) @ Xe @ nlinalg.pinv(ER))
 
-        # --- Extract parameters ---
-        result = (np.vstack((
-            np.abs(alpha) * norm,  # amp
-            np.arctan2(np.imag(alpha), np.real(alpha)),  # phase
-            ((self.sw[0] / (2 * np.pi)) * np.imag(np.log(poles[:, 0]))
-             + self.offset[0]),  # freq 1
-            ((self.sw[1] / (2 * np.pi)) * np.imag(np.log(poles[:, 1]))
-             + self.offset[1]),  # freq 2
-            -self.sw[0] * np.real(np.log(poles[:, 0])),  # damp 1
-            -self.sw[1] * np.real(np.log(poles[:, 1])),  # damp 2
-        ))).T
+        params = self._generate_params(alpha, poles)
+        params[:, 0] *= norm
+        self.result, self.M = self._remove_negative_damping(params)
 
-        self.result = result[np.argsort(result[:, 2])]
+    def _generate_params(self, alpha, poles):
+        """Converts complex amplitude and signal pole arrays into a
+        parameter array.
+
+        Parameters
+        ----------
+        alpha : numpy.ndarray
+            Complex amplitude array, of shape``(self.M,)``
+
+
+        poles: numpy.ndarray
+            Signal pole array, of shape ``(self.dim, self.M)``
+
+        Returns
+        -------
+        result : numpy.ndarray
+            Parameter array, of shape ``(self.M, 2 * self.dim + 2)``
+        """
+
+        amp = np.abs(alpha)
+        phase = np.arctan2(np.imag(alpha), np.real(alpha))
+        freq = np.vstack(
+            tuple([(self.sw[i] / (2 * np.pi)) * np.imag(np.log(poles[i]))
+                  + self.offset[i] for i in range(self.dim)])
+        )
+        damp = np.vstack(
+            tuple([-self.sw[i] * np.real(np.log(poles[i]))
+                   for i in range(self.dim)])
+        )
+
+        result = np.vstack((amp, phase, freq, damp)).T
+        return result[np.argsort(result[:, 2])]
+
+    def _remove_negative_damping(self, params):
+        """Determines whether any oscillators possess negative amplitudes,
+        and remove these from the parameter array.
+
+        Parameters
+        ----------
+        params : numpy.ndarray
+            Parameter array, with shape ``(self.M, 2 * self.dim + 2)``
+
+        Returns
+        -------
+        ud_params : numpy.ndarray
+            Updated parameter array, with negative damping oscillators removed,
+            with shape ``(M_new, 2 * self.dim + 2)``, where
+            ``M_new <= self.M``.
+
+        M : int
+            Number of oscillators after removal of negative damping
+            oscillators.
+        """
+
+        if self.fprint:
+            print('--> Checking for oscillators with negative damping...')
+
+        M_init = params.shape[0]
+        # Indices of oscillators with negative damping factors
+        neg_dmp_idx = set()
+        for i in range(2 + self.dim, 2 * (self.dim + 1)):
+            neg_dmp_idx = neg_dmp_idx | set(np.nonzero(params[:, i] < 0.0)[0])
+
+        ud_params = np.delete(params, list(neg_dmp_idx), axis=0)
+        M = ud_params.shape[0]
+
+        if M < M_init and self.fprint:
+            print(f'\t{cols.OR}WARNING: Oscillations with negative damping\n'
+                  f'\tfactors detected. These have been deleted.\n'
+                  f'\tCorrected number of oscillations: {M}{cols.END}')
+
+        elif self.fprint:
+            print('\tNone found')
+
+        return ud_params, M
