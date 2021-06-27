@@ -268,8 +268,6 @@ class NonlinearProgramming(FrequencyConverter):
         #     raise PhaseVarianceAmbiguityError(mode)
 
         # --- Create attributes ------------------------------------------
-        # Reshape parameter array to vector:
-        # (M, 4) -> (4*M,) or (M, 6) -> (6*M,)
         self.theta0 = theta0
 
         self.sw = sw
@@ -320,19 +318,18 @@ class NonlinearProgramming(FrequencyConverter):
         self.norm = nlinalg.norm(self.data)
         self.normed_data = self.data / self.norm
 
-        # Vectorise the initial parameter array
+        # Reshape parameter array to vector:
+        # (M, 4) -> (4*M,) or (M, 6) -> (6*M,)
         x0 = self.theta0.flatten(order='F')
+
         # Perform some tweaks to regularise x0:
         # 1. Divide amplitudes by the norm of the data
         x0[:self.m] = x0[:self.m] / self.norm
         # 2. Shift oscillator frequencies to center about 0
         x0 = self._shift_offset(x0, 'center')
-        print(self.sw)
+
         # Time points in each dimension
-        self.tp = get_timepoints(
-            [n + self.start_point for n in self.n], self.sw,
-        )
-        self.tp = [t[self.start_point:] for t in self.tp]
+        self.tp = get_timepoints(self.n, self.sw)
 
         # Determine 'active' and 'passive' parameters based on self.mode
         # generates self.active_idx and self.passive_idx
@@ -478,7 +475,7 @@ class NonlinearProgramming(FrequencyConverter):
             raise InvalidUnitError('hz', 'ppm')
 
     def _shift_offset(self, params, direction):
-        """Shifts frequencies to centre to or displace from 0
+        """Shifts frequencies to center to or displace from 0
 
         Parameters
         ----------

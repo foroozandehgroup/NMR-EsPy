@@ -342,8 +342,8 @@ class FrequencyConverter:
 
         conversion : str
             A string denoting the coversion to be applied. The form of
-            `conversion` should be ``'from->to'``, where ``from`` and ``to``
-            are not matching, and are one of the following:
+            `conversion` should be ``'<from>-><to>'``, where ``<from>`` and
+            ``<to>`` are not matching, and are each one of the following:
 
             * `'idx'`: array index
             * `'hz'`: Hertz
@@ -395,7 +395,7 @@ class FrequencyConverter:
         return converted_lst
 
     def _check_valid_conversion(self, conversion):
-        """check that conversion is a valid value"""
+        """Check that conversion is a valid value"""
         units = ['idx', 'ppm', 'hz']
         for pair in itertools.permutations(units, r=2):
             pair = iter(pair)

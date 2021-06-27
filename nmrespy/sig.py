@@ -201,6 +201,7 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
             Z1 = np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0])))
             if modulation == 'none':
                 Z1 = [Z1]
+
             elif modulation == 'amp':
                 Z1 = [np.real(Z1), np.imag(Z1)]
         elif modulation == 'phase':
@@ -209,13 +210,20 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
                 np.exp(np.outer(tp[0], (-1j * 2 * np.pi * freq[0] - damp[0])))
             ]
 
-        Z2t = np.exp(np.outer((1j * 2 * np.pi * freq[1] - damp[1]), tp[1]))
+        Z2T = np.exp(np.outer((1j * 2 * np.pi * freq[1] - damp[1]), tp[1]))
+        # TODO: Support for constructing negative time signals
+        # rev_poles = np.outer(1j * 2 * np.pi * freq[1], -tp[1][::-1]) + \
+        #             np.outer(-damp[1], tp[1][::-1])
+        # Z2revT = np.exp(rev_poles)
+        # Z2fullT = np.hstack((Z2revT, Z2T))
+        # print(Z2fullT.shape)
         # Diagonal matrix of complex amplitudes
         A = np.diag(amp * np.exp(1j * phase))
 
         fid = []
         for z1 in Z1:
-            fid.append(z1 @ A @ Z2t)
+            fid.append(z1 @ A @ Z2T)
+            # fid.append(z1 @ A @ Z2fullT)
 
         if len(fid) == 1:
             fid = fid[0]
