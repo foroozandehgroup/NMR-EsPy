@@ -1,12 +1,12 @@
-##TITLE= Parameter file, TOPSPIN		Version 2.1.b.10
+##TITLE= Parameter file, TopSpin 4.0.8
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
-##NPOINTS= 1	$$ modification sequence number
+##NPOINTS= 2	$$ modification sequence number
 ##ORIGIN= Bruker BioSpin GmbH
 ##OWNER= Administrator
-$$ 2007-09-18 11:07:54.093 +0200  Administrator@APOLLON
-$$ C:\Bruker\ts21b10/data/Administrator/nmr/exam1d_1H/1/pdata/1/outd
-$$ process C:\Bruker\ts21b10\prog\mod\edparproc.exe
+$$ 2021-06-30 19:01:49.174 +0100  simon@precision
+$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests/data/1/pdata/1/outd
+$$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$CURPLOT= <PDF Complete>
 ##$CURPRIN= <$PDF Complete>
 ##$DFORMAT= <normdp>

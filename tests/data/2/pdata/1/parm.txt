@@ -1,0 +1,66 @@
+
+Current Data Parameters
+NAME          exam2d_HH              
+EXPNO                 1              
+PROCNO                1              
+
+F2 - Acquisition Parameters
+Date_          20070918              
+Time              10.22              
+INSTRUM           spect              
+PROBHD   5 mm PABBO BB-              
+PULPROG        cosygpqf              
+TD                 2048              
+SOLVENT            C6D6              
+NS                    1              
+DS                    8              
+SWH            5498.534 Hz           
+FIDRES         2.684831 Hz           
+AQ            0.1862315 sec          
+RG                   64              
+DW               90.933 usec         
+DE                 6.50 usec         
+TE                297.2 K            
+D0           0.00000300 sec          
+D1           1.48689198 sec          
+D13          0.00000400 sec          
+D16          0.00020000 sec          
+IN0          0.00018185 sec          
+
+======== CHANNEL f1 ========
+NUC1                 1H              
+P0                11.30 usec         
+P1                11.30 usec         
+PL1               -5.00 dB           
+PL1W        31.77312851 W            
+SFO1        500.1322496 MHz          
+
+====== GRADIENT CHANNEL =====
+GPNAM[1]       SINE.100              
+GPZ1              10.00 %            
+P16             1000.00 usec         
+
+F1 - Acquisition parameters
+TD                  128              
+SFO1           500.1322 MHz          
+FIDRES        85.914909 Hz           
+SW               10.994 ppm          
+FnMODE               QF              
+
+F2 - Processing parameters
+SI                 1024              
+SF          500.1300000 MHz          
+WDW                SINE              
+SSB                   0              
+LB                    0 Hz           
+GB                    0              
+PC                 1.40              
+
+F1 - Processing parameters
+SI                 1024              
+MC2                  QF              
+SF          500.1300000 MHz          
+WDW                SINE              
+SSB                   0              
+LB                    0 Hz           
+GB                    0              

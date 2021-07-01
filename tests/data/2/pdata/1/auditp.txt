@@ -1,0 +1,37 @@
+##TITLE= Audit trail, TopSpin 4.0.8
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= simon
+$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests/data/2/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2007-09-18 11:25:51.453 +0200>,<Administrator>,<APOLLON>,<go>,<TOPSPIN 2.1.b.10>,
+      <created by zg
+	started at 2007-09-18 11:21:55.671 +0200,
+	POWCHK enabled, PULCHK disabled,
+       configuration hash MD5:
+       83 02 B3 85 E9 E8 BF 76 C4 05 9F 99 79 2C 19 F3
+       data hash MD5: 2K * 128
+       C1 E1 8B FE 76 36 7C 9B D8 9E F3 56 5F B5 D1 06>)
+$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests/data/2/audita.txt
+(   2,<2021-06-30 19:04:25.759 +0100>,<simon>,<precision>,<proc2d>,<TopSpin 4.0.8>,
+      <convdta from
+       2 "data" "/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests" 
+       data hash MD5: 1912 * 128
+       81 3C AF CD C4 34 80 5F A5 AD 96 88 1F EC 18 6E>)
+(   3,<2021-06-30 19:04:41.990 +0100>,<simon>,<precision>,<proc2d>,<TopSpin 4.0.8>,
+      <Start of raw data processing
+       xfb F2: SI = 1K WDW = 3 SSB = 0 FT_mod = 6 PKNL = 0 F1: SI = 1K ME_mod = 2 NCOEF = 32 WDW = 3 SSB = 0 FT_mod = 6 FCOR = 0.5 PH_mod = 2
+       data hash MD5: 1K * 1K
+       CB 0B 7F 72 08 48 4E 46 F9 92 10 47 21 4E 43 62>)
+(   4,<2021-06-30 19:04:47.371 +0100>,<simon>,<precision>,<proc2d>,<TopSpin 4.0.8>,
+      <abs1 F1: ABSG = 5 ABSF1 = 9.995125 ABSF2 = -0.9991246
+       data hash MD5: 1K * 1K
+       0A FC D6 40 06 6A CA 8C 12 59 9E 98 BC D4 F7 0D>)
+(   5,<2021-06-30 19:04:47.468 +0100>,<simon>,<precision>,<proc2d>,<TopSpin 4.0.8>,
+      <abs2 F2: ABSG = 5 ABSF1 = 9.9951 ABSF2 = -0.9991041
+       data hash MD5: 1K * 1K
+       D1 E2 CF F5 2A ED 85 CC 84 34 4E 70 05 EC 4E C1>)
+##END=
+
+$$ hash MD5
+$$ 0B 8D DE F5 48 04 CF 9E 49 52 DF 2B BD 65 06 76

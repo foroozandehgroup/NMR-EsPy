@@ -529,7 +529,7 @@ def g_2d(active, *args):
         * **data:** `numpy.ndarray.` Array of the original FID data.
         * **tp:** `(numpy.ndarray, numpy.ndarray).` The time-points the signal
           was sampled, in both dimensions.
-        * **M:** `int.` Number of oscillators.
+        * **m:** `int.` Number of oscillators.
         * **passive:** `numpy.ndarray.` Passive parameters (not to be
           optimised).
         * **idx:** `list.` Indicates the types of parameters that are
