@@ -20,6 +20,42 @@ import nmrespy._errors as errors
 from nmrespy._misc import get_yes_no
 
 
+def get_params_from_jcampdx(names, path):
+    """Retrieve parameters from files written in JCAMP-DX format.
+
+    Parameters
+    ----------
+    names: [str]
+        The names of the parameters.
+
+    path: pathlib.Path
+        The path to the parameter file.
+
+    Returns
+    -------
+    params: [str]
+        The values of the desired parameters as a string.
+    """
+    with open(path, 'r') as fh:
+        txt = fh.read()
+
+    params = []
+    for name in names:
+        pattern = r'##\$' + name + r'= (\(\d+\.\.\d+\)\n)?(.+?)#'
+        try:
+            params.append(
+                re.search(pattern, txt, re.DOTALL)
+                    .groups()[-1]
+                    .replace('\n', ' ')
+                    .rstrip()
+            )
+
+        except AttributeError:
+            # re.search returned None
+            raise errors.ParameterNotFoundError(name, path)
+
+    return params
+
 def get_binary_format(info):
     """Determine the formatting of the binary files.
 
@@ -35,38 +71,14 @@ def get_binary_format(info):
 
     """
     if info['dtype'] == 'pdata':
-        unit, endian, file = 'DTYPP', 'BYTORDP', info['param']['procs']
+        names, file = ['DTYPP', 'BYTORDP'], info['param']['procs']
     else:
-        unit, endian, file = 'DTYPA', 'BYTORDA', info['param']['acqus']
-    print('<' if int(get_param(endian, file)) == 0 else '>' +
-            'i4' if int(get_param(unit, file)) == 0 else 'f8')
-    return (('<' if int(get_param(endian, file)) == 0 else '>') +
-            ('i4' if int(get_param(unit, file)) == 0 else 'f8'))
+        names, file = ['DTYPA', 'BYTORDA'], info['param']['acqus']
 
+    encoding, endian = [int(p) for p in get_params_from_jcampdx(names, file)]
 
-def get_quantities(info):
-    """Retrieve various experiment parameters required by NMR-EsPy"""
-    nuc, sw, off, sfo, shape = [[] for _ in range(5)]
-    for d in ['', '2', '3'][:info['dim']]:
-        acqusfile = info['param'][f'acqu{d}s']
-        # Nucleus is indicated by <1H>, <13C>, etc.
-        nuc.append(re.search('<(.+?)>', get_param('NUC1', acqusfile)).group(1))
-        sw.append(float(get_param('SW_h', acqusfile)))
-        off.append(float(get_param('O1', acqusfile)))
-        sfo.append(float(get_param('SFO1', acqusfile)))
-
-        # `shapefile` will be an acqus file or procs file depending on the
-        # data type.
-        shapeparam, shapefile = (
-            ('TD', acqusfile) if info['dtype'] == 'fid'
-            else ('SI', info['param'][f'proc{d}s'])
-        )
-        shape.append(int(get_param(shapeparam, shapefile)))
-
-    if shapeparam == 'TD':
-        shape[0] = int(shape[0] / 2)
-
-    return shape, nuc, sw, off, sfo
+    return (('<' if endian == 0 else '>') +
+            ('i4' if encoding == 0 else 'f8'))
 
 
 def determine_bruker_data_type(directory):
@@ -113,7 +125,7 @@ def check_for_bruker_files(info):
 
     Parameters
     ----------
-    options : info
+    info : dict
         See :py:func:`determine_bruker_data_type` for a description of items.
 
     Returns
@@ -228,6 +240,96 @@ def compile_bruker_path_options(directory):
             'dtype': 'pdata',
         },
     ]
+
+
+def get_parameters(info):
+    """Retrieve various experiment parameters required by NMR-EsPy"""
+
+    shape, nuc, sw, off, sfo, fnmode = [[] for _ in range(6)]
+    sizeparam = 'TD' if info['dtype'] == 'fid' else 'SI'
+
+    for d in ['', '2', '3'][:info['dim']]:
+        acqusfile = info['param'][f'acqu{d}s']
+        if info['dtype'] == 'fid':
+            sizefile = acqusfile
+        else:
+            sizefile = info['param'][f'proc{d}s']
+
+        names = ['NUC1', 'SW_h', 'O1', 'SFO1', 'FnMODE']
+        p = get_params_from_jcampdx(names, acqusfile)
+        p += get_params_from_jcampdx([sizeparam], sizefile)
+        p = iter(p)
+
+        for lst, typ in zip((nuc, sw, off, sfo, fnmode, shape),
+                            (str, float, float, float, int, int)):
+            lst.append(typ(next(p)))
+
+    nuc = [re.search('<(.+?)>', n).group(1) for n in nuc]
+    if sizeparam == 'TD':
+        shape[0] //= 2
+    print(shape)
+
+    return {
+        'shape' : shape,
+        'nuc' : nuc,
+        'sw' : sw,
+        'off' : off,
+        'sfo' : sfo,
+        'fnmode' : fnmode,
+    }
+
+
+def import_data(paths, binfmt):
+    return [np.fromfile(file, dtype=binfmt) for file in paths]
+
+
+def reshape_multidim_data(data, shape):
+    """
+    Parameters
+    ----------
+    data : [numpy.ndarray]
+        List of data arrays (initially all flat).
+
+    shape : list
+        Size of each dimension in the data array.
+
+    Returns
+    -------
+    shaped_data : [numpy.ndarray]
+        List of reshaped datasets.
+    """
+    return [d.reshape(*reversed(shape)) for d in data]
+
+
+def complexify(data):
+    """Convert flattened array comprising elements of the form
+    [Re, Im, Re, Im, ...] to a complex array"""
+    return [d[::2] + 1j * d[1::2] for d in data]
+
+
+def remove_zeros(data):
+    """
+    Applying convdta on a 2D signal leads to a block of zeros at
+    the end of the data, i.e.
+
+                      ************0000
+                      ************0000
+                      ************0000
+                      ************0000
+
+    This needs to be removed!
+    """
+
+    sliceshape = data[0].shape
+    directsize = sliceshape[-1]
+    for i in range(directsize - 1, -1, -1):
+        if not np.array_equal(
+            data[0][:, i],
+            np.zeros(sliceshape, dtype='complex')
+        ):
+            break
+
+    return [d[..., :i] for d in data]
 
 
 def load_bruker(directory, ask_convdta=True):
@@ -347,7 +449,7 @@ def load_bruker(directory, ask_convdta=True):
     """
 
     # Warning text checking that the data being imported has had
-    # |convdta| applied to it.
+    # `convdta` applied to it.
     if ask_convdta:
         convdta_prompt = (
             f'{cols.OR}WARNING: It is necessary that the FID you import has '
@@ -357,17 +459,12 @@ def load_bruker(directory, ask_convdta=True):
             f'{cols.END} '
         )
 
-    # pathlib.Path instance of directory
     d = Path(directory)
-
-    # Check that the directory actually exists...
     if not d.is_dir():
         raise IOError(f'\n{cols.R}Directory {directory} doesn\'t exist!'
                       f'{cols.END}')
 
     info = determine_bruker_data_type(d)
-
-    # Required files not present in specified dictionary
     if info is None:
         raise errors.InvalidDirectoryError(directory)
 
@@ -376,199 +473,109 @@ def load_bruker(directory, ask_convdta=True):
     if info['dtype'] == 'fid' and ask_convdta:
         get_yes_no(convdta_prompt)
 
-    # # TODO: 3D data not spported currently. Expect to allow Pseudo-2D data
-    # # in the future
-    if (d / 'acqu3s').is_file():
+    # TODO: 3D data not spported currently. Expect to allow Pseudo-2D data
+    # in the future
+    if info['dim'] > 2:
         raise errors.MoreThanTwoDimError()
 
-    # Formatting of binary files: one of {'>i4', '<i4', '>f8', '<f8'}
-    binary_format = get_binary_format(info)
-    n, nuc, sw, off, sfo = get_quantities(info)
+    p = get_parameters(info)
+    for k, v in zip(p.keys(), p.values()):
+        info[k] = v
+    info['binfmt'] = get_binary_format(info)
 
-    # --- Import and format binary file data -----------------------------
-    data = [np.fromfile(f, dtype=binary_format) for f in info['bin'].values()]
-    # `fid` and `ser` files store real and imaginary points consectively
-    # i.e. re - im - re - im - etc.
-    # Convert the data from a length 2N array -> length N array of
-    # complex numbers.
-    if info['dtype'] == 'fid':
-        data = [(d[::2] + 1j * d[1::2]) for d in data]
+    data = import_data(paths=info['bin'].values(), binfmt=info['binfmt'])
 
-    # Reshape data if it is >1D.
-    if info['dim'] > 1:
-        total_size = data[0].size
-        direct_size = int(total_size / functools.reduce(operator.mul, n[1:]))
-        data = [d.reshape(*n[1:], direct_size) for d in data]
+    if info['dtype'] == 'fid' and info['dim'] > 1:
+        data = \
+            remove_zeros(
+                reshape_multidim_data(
+                    complexify(data), info['shape']
+                )
+            )
 
-        # Applying convdta on a 2D signal leads to a block of zeros at
-        # the end of the data, i.e.
-        #
-        #                   ************0000
-        #                   ************0000
-        #                   ************0000
-        #                   ************0000
-        #
-        # This needs to be removed!
-        if info['dtype'] == 'fid':
-            for i in range(direct_size - 1, -1, -1):
-                if not np.array_equal(
-                    data[0][:, i],
-                    np.zeros(tuple(n[1:]), dtype='complex')
-                ):
-                    break
+    elif info['dtype'] == 'fid':
+        data = complexify(data)
 
-            data[0] = data[0][:, :i]
+    elif info['dim'] > 1:
+        reshape_multidim_data(data, info['shape'])
+    print(data[0].shape)
+    info['data'] = data
+    info['path'] = d
+    del info['bin']
+    del info['param']
 
-        # =================================================
-        # TODO Correctly handle different detection methods
-        #
-        # The crucial value in the parameters files is
-        # FnMODE, which is an integer value
-        #
-        # The folowing schemes are possible:
-        #
-        # 0 -> undefined
-        #
-        # 1 -> QF
-        # Successive fids are acquired with incrementing
-        # time interval without changing the receiver phase.
-        #
-        # 2 -> QSEQ
-        # Successive fids will be acquired with incrementing
-        # time interval and receiver phases 0 and 90 degrees.
-        #
-        # 3 -> TPPI
-        # Successive fids will be acquired with incrementing
-        # time interval and receiver phases 0, 90, 180 and
-        # 270 degrees.
-        #
-        # 4 -> States
-        # Successive fids will be acquired incrementing the
-        # time interval after every second fid and receiver
-        # phases 0 and 90 degrees.
-        #
-        # 5 -> States-TPPI
-        # Successive fids will be acquired incrementing the
-        # time interval after every second fid and receiver
-        # phases 0,90,180 and 270 degrees.cd
-        #
-        # 6 -> Echo-Antiecho
-        # Special phase handling for gradient controlled
-        # experiments.
-        #
-        # See: http://triton.iqfr.csic.es/guide/man/acqref/fnmode.htm
-        #
-        # We will need to figure out how to preprocess each
-        # of these in order to generate correctly formed
-        # time-domain data.
-        # =================================================
-        fnmode = get_param('FnMODE', info['param']['acqu2s'])
-
-    else:
-        fnmode = None
-
-    # # Dealing with processed data.
-    # else:
-    #     if info['dim'] == 1:
-    #         # Does the following things:
-    #         # 1. Flips the spectrum (order frequency bins from low to high
-    #         # going left to right)
-    #         # 2. Performs inverse Fourier Transform
-    #         # 3. Retrieves the first half of the signal, which is a conjugate
-    #         # symmetric virtual echo
-    #         # 4. Doubles to reflect loss of imaginary data
-    #         # 5. Zero fills back to original signal size
-    #         # 6. Halves the first point to ensure no baseline shift takes
-    #         # place
-    #         data = 2 * np.hstack(
-    #             (
-    #                 ifft(ifftshift(data[::-1]))[:int(data.size // 2)],
-    #                 np.zeros(int(data.size // 2), dtype='complex'),
-    #             )
-    #         )
-    #         data[0] /= 2
-    #
-    #     else:
-    #         # Reshape data, and flip in both dimensions
-    #         data = data.reshape(
-    #             n_indirect, int(data.size / n_indirect),
-    #         )[::-1, ::-1]
-    #         # Inverse Fourier Tranform in both dimensions
-    #         for axis in range(2):
-    #             data = ifft(ifftshift(data, axes=axis), axis=axis)
-    #         # Slice signal in half in both dimensions
-    #         data = 4 * data[:int(data.shape[0] // 2), :int(data.shape[1] // 2)]
-
-    # Compile a dictionary of parameters
-    result = {
-        'origin': f"bruker_{info['dtype']}",
-        'data': data,
-        'path': d,
-        'sw': sw,
-        'off': off,
-        'sfo': sfo,
-        'nuc': nuc,
-        'binary_format': binary_format,
-        'fnmode' : fnmode
-    }
-
-    return result
+    return info
 
 
-def get_param(name, path):
-    """Retrieve parameter from Bruker acqus or procs file.
+# =================================================
+# TODO Correctly handle different detection methods
+#
+# The crucial value in the parameters files is
+# FnMODE, which is an integer value
+#
+# The folowing schemes are possible:
+#
+# 0 -> undefined
+#
+# 1 -> QF
+# Successive fids are acquired with incrementing
+# time interval without changing the receiver phase.
+#
+# 2 -> QSEQ
+# Successive fids will be acquired with incrementing
+# time interval and receiver phases 0 and 90 degrees.
+#
+# 3 -> TPPI
+# Successive fids will be acquired with incrementing
+# time interval and receiver phases 0, 90, 180 and
+# 270 degrees.
+#
+# 4 -> States
+# Successive fids will be acquired incrementing the
+# time interval after every second fid and receiver
+# phases 0 and 90 degrees.
+#
+# 5 -> States-TPPI
+# Successive fids will be acquired incrementing the
+# time interval after every second fid and receiver
+# phases 0,90,180 and 270 degrees.cd
+#
+# 6 -> Echo-Antiecho
+# Special phase handling for gradient controlled
+# experiments.
+#
+# See: http://triton.iqfr.csic.es/guide/man/acqref/fnmode.htm
+# =================================================
 
-    Parameters
-    ----------
-    name: str
-        The name of the parameter.
 
-    path: pathlib.Path
-        The path to the parameter file.
-
-    Returns
-    -------
-    param: str
-        The value of the desired parameter as a string.
-
-    Notes
-    -----
-    .. warning::
-       This will not work on every parameter found in acqus/procs.
-       Any parameters that are defined over multiple lines will not
-       be correctly returned. There is no need for this in nmrespy (yet),
-       so including this functionality has been neglected.
-    """
-    # Open the parameter file and read in lines
-    try:
-        with open(path, 'r') as fh:
-            lines = fh.readlines()
-
-    except Exception as e:
-        raise e
-
-    # Lines are of the format:
-    # '##$name= param\n'
-    # Search each line for ##$name
-    motif = f'##${name}'
-    for line in lines:
-        if motif in line:
-
-            def _cat_list(list):
-                """Concatenates elements of a list to a string"""
-                for string in list:
-                    try:
-                        result += string
-                    except NameError:
-                        result = string
-
-                return result
-
-            # Split line at whitespace and discard first component:
-            # '##$name= param\n' -> 'param\n'
-            # Remove trailing newline character:
-            # 'param\n' -> 'param'
-            return re.sub('\n', '', _cat_list(line.split(' ')[1:]))
-
-    # '##$name' was not found in the file
-    raise errors.ParameterNotFoundError(name, path)
+# # Dealing with processed data.
+# else:
+#     if info['dim'] == 1:
+#         # Does the following things:
+#         # 1. Flips the spectrum (order frequency bins from low to high
+#         # going left to right)
+#         # 2. Performs inverse Fourier Transform
+#         # 3. Retrieves the first half of the signal, which is a conjugate
+#         # symmetric virtual echo
+#         # 4. Doubles to reflect loss of imaginary data
+#         # 5. Zero fills back to original signal size
+#         # 6. Halves the first point to ensure no baseline shift takes
+#         # place
+#         data = 2 * np.hstack(
+#             (
+#                 ifft(ifftshift(data[::-1]))[:int(data.size // 2)],
+#                 np.zeros(int(data.size // 2), dtype='complex'),
+#             )
+#         )
+#         data[0] /= 2
+#
+#     else:
+#         # Reshape data, and flip in both dimensions
+#         data = data.reshape(
+#             n_indirect, int(data.size / n_indirect),
+#         )[::-1, ::-1]
+#         # Inverse Fourier Tranform in both dimensions
+#         for axis in range(2):
+#             data = ifft(ifftshift(data, axes=axis), axis=axis)
+#         # Slice signal in half in both dimensions
+#         data = 4 * data[:int(data.shape[0] // 2), :int(data.shape[1] // 2)]

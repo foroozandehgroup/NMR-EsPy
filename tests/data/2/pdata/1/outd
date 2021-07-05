@@ -1,14 +1,12 @@
-##TITLE= Parameter file, TopSpin 4.0.8
+##TITLE= Parameter file, TOPSPIN		Version 1.2.b.16
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
-##NPOINTS= 2	$$ modification sequence number
-##ORIGIN= Bruker BioSpin GmbH
-##OWNER= Administrator
-$$ 2021-06-30 19:04:41.895 +0100  simon@precision
-$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests/data/2/pdata/1/outd
-$$ process /opt/topspin4.0.8/prog/mod/dataserver
-##$CURPLOT= <HP LaserJet 5000 Series PCL>
-##$CURPRIN= <$HP LaserJet 5000 Series PCL>
+##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
+##OWNER= root
+$$ 2004-03-31 15:29:24.468 +0200  nmrsu@KASTOR
+$$ D:/Bruker/ts12b16/exp/stan/nmr/par/HCCOSW///outd
+##$CURPLOT= <hp LaserJet 1300 PS>
+##$CURPRIN= <$hp LaserJet 1300 PS>
 ##$DFORMAT= <normdp>
 ##$LAYOUT= <+/2D_hom.xwp>
 ##$LFORMAT= <normlp>

@@ -1,15 +1,15 @@
 ##TITLE= Parameter file, TopSpin 4.0.8
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
-##NPOINTS= 24	$$ modification sequence number
-##ORIGIN= Bruker BioSpin GmbH
-##OWNER= Administrator
-$$ 2021-07-01 01:27:39.944 +0100  simon@precision
-$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests/data/2/pdata/1/procs
-$$ process /opt/topspin4.0.8/prog/mod/dataserver
-##$ABSF1= 9.9951
-##$ABSF2= -0.9991041
-##$ABSG= 5
+##NPOINTS= 2	$$ modification sequence number
+##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
+##OWNER= root
+$$ 2021-02-04 14:48:52.913 +0000  sgh@spectre
+$$ /opt/topspin4.0.8/examdata/exam2d_CH/1/pdata/1/procs
+$$ process /opt/topspin4.0.8/prog/mod/proc2d
+##$ABSF1= 0
+##$ABSF2= 0
+##$ABSG= 0
 ##$ABSL= 0
 ##$ALPHA= 0
 ##$AQORDER= 0
@@ -17,10 +17,10 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$ASSFACI= 0
 ##$ASSFACX= 0
 ##$ASSWID= 0
-##$AUNMP= <proc_2dsym>
+##$AUNMP= <proc_2dpl>
 ##$AXLEFT= 0
 ##$AXNAME= <F2>
-##$AXNUC= <1H>
+##$AXNUC= <13C>
 ##$AXRIGHT= 0
 ##$AXTYPE= 0
 ##$AXUNIT= <>
@@ -36,10 +36,10 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$DFILT= <>
 ##$DTYPP= 0
 ##$ERETIC= no
-##$F1P= 9.99510478973389
-##$F2P= -0.999104164618362
-##$FCOR= 0.5
-##$FTSIZE= 1024
+##$F1P= 0
+##$F2P= 0
+##$FCOR= 1
+##$FTSIZE= 2048
 ##$FT_mod= 6
 ##$GAMMA= 0
 ##$GB= 0
@@ -47,7 +47,7 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$INTSCL= 1
 ##$ISEN= 128
 ##$LB= 0
-##$LEV0= 35
+##$LEV0= 6.182085
 ##$LPBIN= 0
 ##$MAXI= 10000
 ##$MC2= 0
@@ -78,19 +78,19 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$Mdd_LrZF= 0
 ##$Mdd_mod= 0
 ##$NCOEF= 0
-##$NC_proc= -5
+##$NC_proc= -2
 ##$NLEV= 6
 ##$NOISF1= 0
 ##$NOISF2= 0
 ##$NSP= 0
 ##$NTH_PI= 0
 ##$NZP= 0
-##$OFFSET= 9.995105
+##$OFFSET= 154.2435
 ##$PC= 1.4
 ##$PHC0= 0
 ##$PHC1= 0
 ##$PH_mod= 0
-##$PKNL= no
+##$PKNL= yes
 ##$PPARMOD= 1
 ##$PPDIAG= 0
 ##$PPIPTYP= 0
@@ -105,22 +105,22 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$RDINT= 0
 ##$RDPOS= 0
 ##$REVERSE= no
-##$SF= 500.13
-##$SI= 1024
-##$SIGF1= 9.9951
-##$SIGF2= -0.9991041
+##$SF= 125.757789
+##$SI= 2048
+##$SIGF1= 0
+##$SIGF2= 0
 ##$SINO= 16
 ##$SIOLD= 1024
-##$SPECTYP= <COSY>
+##$SPECTYP= <HETCOR>
 ##$SREF_mod= 1
-##$SREGLST= <1H.MeOD>
-##$SSB= 0
-##$STSI= 1024
+##$SREGLST= <RRRRRRRRRRRRRRR>
+##$SSB= 2
+##$STSI= 2048
 ##$STSR= 0
-##$SW_p= 5498.53372434019
+##$SW_p= 20491.8032786885
 ##$SYMM= 0
-##$S_DEV= 5354
-##$TDeff= 1912
+##$S_DEV= 3694953
+##$TDeff= 4096
 ##$TDoff= 0
 ##$TI= <>
 ##$TILT= no
@@ -132,8 +132,8 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$USERP3= <user>
 ##$USERP4= <user>
 ##$USERP5= <user>
-##$WDW= 3
-##$XDIM= 1024
-##$YMAX_p= 437321229
+##$WDW= 4
+##$XDIM= 2048
+##$YMAX_p= 121492087
 ##$YMIN_p= 0
 ##END=
