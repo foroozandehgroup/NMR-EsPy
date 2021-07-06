@@ -12,8 +12,8 @@ from nmrespy.core import Estimator
 from nmrespy import sig
 
 # Set this to True if you want to check interactive and visual things.
-MANUAL_TEST = True
-RUN_PDFLATEX = True
+MANUAL_TEST = False
+RUN_PDFLATEX = False
 
 
 def test_estimator():
