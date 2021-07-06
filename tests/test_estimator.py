@@ -12,8 +12,8 @@ from nmrespy.core import Estimator
 from nmrespy import sig
 
 # Set this to True if you want to check interactive and visual things.
-MANUAL_TEST = False
-RUN_PDFLATEX = False
+MANUAL_TEST = True
+RUN_PDFLATEX = True
 
 
 def test_estimator():
@@ -178,9 +178,9 @@ def test_estimator():
 
     # Ensure that two signals are identical, given some margin of error
     # for noise. Have found that it is incredibly rare for the difference
-    # between two points to exceed 200
+    # between two points to exceed 1000
     assert np.allclose(
-        hz_filter.get_fid(), ppm_filter.get_fid(), rtol=0, atol=200,
+        hz_filter.get_fid(), ppm_filter.get_fid(), rtol=0, atol=1000,
     )
 
     # --- Phase data -----------------------------------------------------

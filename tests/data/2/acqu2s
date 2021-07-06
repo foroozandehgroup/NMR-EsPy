@@ -1,10 +1,13 @@
-##TITLE= Parameter file, TOPSPIN		Version 1.2.b.15
+##TITLE= Parameter file, TopSpin 4.0.8
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
 ##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
 ##OWNER= root
-$$ 2004-03-30 15:56:30.343 +0200  nmrsu@KASTOR
-$$ d:/data/nmrsu/nmr/exam2d_CH/1/acqu2s
+$$ 2021-07-06 11:34:20.890 +0100  sgh@spectre
+$$ /home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests/data/2/acqu2s
+$$ process /opt/topspin4.0.8/prog/mod/proc2d
+##$ACQT0= 0
 ##$AMP= (0..31)
 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 
 100 100 100 100 100 100 100 100 100 100 100 100 100 100
@@ -118,6 +121,7 @@ $$ d:/data/nmrsu/nmr/exam2d_CH/1/acqu2s
 83 83 83 83 83 83 83 83
 ##$FTLPGN= 0
 ##$FW= 4562.044
+##$FnILOOP= 0
 ##$FnMODE= 1
 ##$GP031= 0
 ##$GPNAM0= <sine.100>
@@ -207,6 +211,9 @@ $$ d:/data/nmrsu/nmr/exam2d_CH/1/acqu2s
 ##$NUC8= <off>
 ##$NUCLEI= 0
 ##$NUCLEUS= <off>
+##$NusJSP= 0
+##$NusT2= 0
+##$NusTD= 0
 ##$O1= 2288.13329761124
 ##$O2= 0
 ##$O3= 0
@@ -243,6 +250,7 @@ $$ d:/data/nmrsu/nmr/exam2d_CH/1/acqu2s
 ##$PROSOL= no
 ##$PULPROG= <hxco>
 ##$PW= 5
+##$ProjAngle= 0
 ##$QNP= 1
 ##$QS= (0..7)83 83 83 83 83 83 83 83
 ##$QSB= (0..7)83 83 83 83 83 83 83 83

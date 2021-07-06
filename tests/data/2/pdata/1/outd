@@ -1,10 +1,12 @@
-##TITLE= Parameter file, TOPSPIN		Version 1.2.b.16
+##TITLE= Parameter file, TopSpin 4.0.8
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
 ##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
 ##OWNER= root
-$$ 2004-03-31 15:29:24.468 +0200  nmrsu@KASTOR
-$$ D:/Bruker/ts12b16/exp/stan/nmr/par/HCCOSW///outd
+$$ 2021-07-06 11:58:08.713 +0100  sgh@spectre
+$$ /home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests/data/2/pdata/1/outd
+$$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$CURPLOT= <hp LaserJet 1300 PS>
 ##$CURPRIN= <$hp LaserJet 1300 PS>
 ##$DFORMAT= <normdp>

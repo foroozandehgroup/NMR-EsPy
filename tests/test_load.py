@@ -1,9 +1,13 @@
 from pathlib import Path
+
 import numpy as np
+import pytest
+
+import nmrespy._errors as err
 from nmrespy.load import bruker as bload
 from nmrespy.load import load_bruker
-import nmrespy._errors as err
-import pytest
+from nmrespy.sig import make_fid
+
 
 FIDPATHS = [Path(f'data/{i}').resolve() for i in range(1, 3)]
 PDATAPATHS = [Path(f'data/{i}/pdata/1').resolve() for i in range(1, 3)]
@@ -26,7 +30,7 @@ def test_determine_bruker_data_type():
             [f'acqu{j}s' for j in ['', '2', '3'][:i]]
             if i < 3
             else [f'{t}{j}s' for t in ['acqu', 'proc']
-                             for j in ['', '2', '3'][:i - 2]]
+                  for j in ['', '2', '3'][:i - 2]]
         )
         if i == 1:
             assert list(info['bin'].values())[0].name == 'fid'
@@ -40,43 +44,41 @@ def test_determine_bruker_data_type():
 def test_get_params_from_jcampdx():
     path = FIDPATHS[0] / 'acqus'
     params = {
-        'BF1' : '500.13',
-        'FnMODE' : '0',
-        'NUC1' : '<1H>',
-        'O1' : '2249.20599998768',
-        'SFO1' : '500.132249206',
-        'SW_h' : '5494.50549450549',
+        'BF1': '500.13',
+        'FnMODE': '0',
+        'NUC1': '<1H>',
+        'O1': '2249.20599998768',
+        'SFO1': '500.132249206',
+        'SW_h': '5494.50549450549',
         # Example of a multiline arrayed parameter
-        'GPNAM' : ' '.join(32 * ['<sine.100>'])
+        'GPNAM': ' '.join(32 * ['<sine.100>'])
     }
 
     assert bload.get_params_from_jcampdx(list(params.keys()), path) == \
         list(params.values())
+
     with pytest.raises(err.ParameterNotFoundError):
         bload.get_params_from_jcampdx(['IDONTEXIST'], path)
     with pytest.raises(FileNotFoundError):
         bload.get_params_from_jcampdx(['BF1'], FIDPATHS[0] / 'idontexist')
 
 
+def test_remove_zeros():
+    params = np.array([[1, 0, 2, 3, 0.1, 0.1]])
+    n = [4, 16]
+    sw = [10., 10.]
+    fid = make_fid(params, n, sw)[0].flatten()
+    for zeropad in range(8):
+        shape = [n[0], n[1] - zeropad]
+        for t in range(n[0]):
+            fid[t * n[1] - zeropad: t * n[1]] = 0
+        assert np.any(fid == 0) if zeropad != 0 else True
+        assert fid.size == n[0] * n[1]
+        slyce = bload.remove_zeros([fid], shape)[0]
+        assert slyce.size == n[0] * (n[1] - zeropad)
+        assert np.all(slice != 0)
+
+
 def test_load_bruker():
-    info = load_bruker(ALLPATHS[1], ask_convdta=False)
-    # for path in ALLPATHS:
-    #     info = load_bruker(path, ask_convdta=False)
-
-# # Plots a 3-dimensional wireframe of the data. Used for testing
-# # purposes. Should see a plane of 0's right at the end of the
-# # direct dimension
-# import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# x, y = tuple(np.arange(s) for s in data.shape)
-# xx, yy = tuple(arr.T for arr in np.meshgrid(x, y))
-# ax.plot_wireframe(xx, yy, data)
-
-# # Continuation of testing with plot
-# x, y = tuple(np.arange(s) for s in data.shape)
-# xx, yy = tuple(arr.T for arr in np.meshgrid(x, y))
-# ax.plot_wireframe(xx, yy, data, color='k')
-# print('bye')
-# plt.show()
+    for i, path in enumerate(ALLPATHS):
+        load_bruker(path, ask_convdta=False)

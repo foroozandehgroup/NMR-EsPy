@@ -1,11 +1,11 @@
 ##TITLE= Parameter file, TopSpin 4.0.8
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
-##NPOINTS= 2	$$ modification sequence number
+##NPOINTS= 3	$$ modification sequence number
 ##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
 ##OWNER= root
-$$ 2021-02-04 14:48:52.913 +0000  sgh@spectre
-$$ /opt/topspin4.0.8/examdata/exam2d_CH/1/pdata/1/procs
+$$ 2021-07-06 11:57:57.770 +0100  sgh@spectre
+$$ /home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/tests/data/2/pdata/1/procs
 $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$ABSF1= 0
 ##$ABSF2= 0
@@ -38,7 +38,7 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$ERETIC= no
 ##$F1P= 0
 ##$F2P= 0
-##$FCOR= 1
+##$FCOR= 0.5
 ##$FTSIZE= 2048
 ##$FT_mod= 6
 ##$GAMMA= 0
@@ -90,7 +90,7 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$PHC0= 0
 ##$PHC1= 0
 ##$PH_mod= 0
-##$PKNL= yes
+##$PKNL= no
 ##$PPARMOD= 1
 ##$PPDIAG= 0
 ##$PPIPTYP= 0
@@ -119,8 +119,8 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$STSR= 0
 ##$SW_p= 20491.8032786885
 ##$SYMM= 0
-##$S_DEV= 3694953
-##$TDeff= 4096
+##$S_DEV= 3692394
+##$TDeff= 3990
 ##$TDoff= 0
 ##$TI= <>
 ##$TILT= no
@@ -134,6 +134,6 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$USERP5= <user>
 ##$WDW= 4
 ##$XDIM= 2048
-##$YMAX_p= 121492087
+##$YMAX_p= 121471838
 ##$YMIN_p= 0
 ##END=
