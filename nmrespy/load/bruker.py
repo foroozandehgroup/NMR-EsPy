@@ -4,13 +4,10 @@
 
 """Provides functionality for importing NMR data."""
 
-import functools
-import operator
 from pathlib import Path
 import re
 
 import numpy as np
-from numpy.fft import ifft, ifftshift
 
 import nmrespy._cols as cols
 if cols.USE_COLORAMA:
@@ -45,16 +42,16 @@ def get_params_from_jcampdx(names, path):
         try:
             params.append(
                 re.search(pattern, txt, re.DOTALL)
-                    .groups()[-1]
-                    .replace('\n', ' ')
-                    .rstrip()
+                  .groups()[-1]
+                  .replace('\n', ' ')
+                  .rstrip()
             )
-
         except AttributeError:
             # re.search returned None
             raise errors.ParameterNotFoundError(name, path)
 
     return params
+
 
 def get_binary_format(info):
     """Determine the formatting of the binary files.
@@ -164,7 +161,7 @@ def compile_bruker_path_options(directory):
         # 1D FID
         {
             'bin': {
-                'fid' : directory / 'fid',
+                'fid': directory / 'fid',
             },
             'param': {
                 'acqus': directory / 'acqus',
@@ -175,7 +172,7 @@ def compile_bruker_path_options(directory):
         # 2D FID
         {
             'bin': {
-                'ser' : directory / 'ser',
+                'ser': directory / 'ser',
             },
             'param': {
                 'acqus': directory / 'acqus',
@@ -187,7 +184,7 @@ def compile_bruker_path_options(directory):
         # 3D FID
         {
             'bin': {
-                'ser' : directory / 'ser',
+                'ser': directory / 'ser',
             },
             'param': {
                 'acqus': directory / 'acqus',
@@ -200,7 +197,7 @@ def compile_bruker_path_options(directory):
         # 1D Processed data
         {
             'bin': {
-                '1r' : directory / '1r',
+                '1r': directory / '1r',
             },
             'param': {
                 'acqus': oneback / 'acqus',
@@ -212,7 +209,7 @@ def compile_bruker_path_options(directory):
         # 2D Processed data
         {
             'bin': {
-                '2rr' : directory / '2rr',
+                '2rr': directory / '2rr',
             },
             'param': {
                 'acqus': oneback / 'acqus',
@@ -226,7 +223,7 @@ def compile_bruker_path_options(directory):
         # 3D Processed data
         {
             'bin': {
-                '3rrr' : directory / '3rrr',
+                '3rrr': directory / '3rrr',
             },
             'param': {
                 'acqus': oneback / 'acqus',
@@ -248,7 +245,7 @@ def get_parameters(info):
     shape, nuc, sw, off, sfo, fnmode = [[] for _ in range(6)]
     sizeparam = 'TD' if info['dtype'] == 'fid' else 'SI'
 
-    for d in ['', '2', '3'][:info['dim']]:
+    for d in reversed(['', '2', '3'][:info['dim']]):
         acqusfile = info['param'][f'acqu{d}s']
         if info['dtype'] == 'fid':
             sizefile = acqusfile
@@ -266,16 +263,15 @@ def get_parameters(info):
 
     nuc = [re.search('<(.+?)>', n).group(1) for n in nuc]
     if sizeparam == 'TD':
-        shape[0] //= 2
-    print(shape)
+        shape[-1] //= 2
 
     return {
-        'shape' : shape,
-        'nuc' : nuc,
-        'sw' : sw,
-        'off' : off,
-        'sfo' : sfo,
-        'fnmode' : fnmode,
+        'shape': shape,
+        'nuc': nuc,
+        'sw': sw,
+        'off': off,
+        'sfo': sfo,
+        'fnmode': fnmode,
     }
 
 
@@ -298,7 +294,7 @@ def reshape_multidim_data(data, shape):
     shaped_data : [numpy.ndarray]
         List of reshaped datasets.
     """
-    return [d.reshape(*reversed(shape)) for d in data]
+    return [d.reshape(shape) for d in data]
 
 
 def complexify(data):
@@ -307,29 +303,31 @@ def complexify(data):
     return [d[::2] + 1j * d[1::2] for d in data]
 
 
-def remove_zeros(data):
+def remove_zeros(data, shape):
     """
-    Applying convdta on a 2D signal leads to a block of zeros at
-    the end of the data, i.e.
+    Signals with a TD1 that is not a multiple of 256 are padded with zeros
+    to ensure each FID take up a multiple of 1024 bytes space.
 
-                      ************0000
-                      ************0000
-                      ************0000
-                      ************0000
+    .. code::
 
-    This needs to be removed!
+            *******00 *******00 *******00 *******00 *******00
+              FID 1  |  FID 2  |  FID 3  |  FID 4  |  FID 5
+
+    These zeros need to be removed!
     """
-
-    sliceshape = data[0].shape
-    directsize = sliceshape[-1]
-    for i in range(directsize - 1, -1, -1):
-        if not np.array_equal(
-            data[0][:, i],
-            np.zeros(sliceshape, dtype='complex')
-        ):
-            break
-
-    return [d[..., :i] for d in data]
+    # Toal number of datapoints
+    size = data[0].size
+    # Number of FIDs
+    fid_no = np.prod(np.array(shape[:-1]))
+    # Number of points assinged to each FID (inc. zero padding)
+    blocksize = size // fid_no
+    # Number of points in each FID to slice (i.e. the number of zeros)
+    slicesize = blocksize - shape[-1]
+    # Create mask to remove zeros
+    mask = np.ones(size).astype(bool)
+    for n in range(1, fid_no + 1):
+        mask[n * blocksize - slicesize: n * blocksize] = False
+    return [d[mask] for d in data]
 
 
 def load_bruker(directory, ask_convdta=True):
@@ -487,20 +485,24 @@ def load_bruker(directory, ask_convdta=True):
 
     if info['dtype'] == 'fid' and info['dim'] > 1:
         data = \
-            remove_zeros(
-                reshape_multidim_data(
+            reshape_multidim_data(
+                remove_zeros(
                     complexify(data), info['shape']
-                )
+                ), info['shape']
             )
 
     elif info['dtype'] == 'fid':
         data = complexify(data)
 
     elif info['dim'] > 1:
-        reshape_multidim_data(data, info['shape'])
-    print(data[0].shape)
+        data = reshape_multidim_data(
+            remove_zeros(data, info['shape']),
+            info['shape']
+        )
+
     info['data'] = data
     info['path'] = d
+    info['source'] = 'bruker'
     del info['bin']
     del info['param']
 

@@ -37,12 +37,8 @@ class Estimator:
 
     Parameters
     ----------
-    source : {'bruker_fid', 'bruker_pdata', 'synthetic'}
-        The type of data imported. `'bruker_fid'` indicates the data is
-        derived from a FID file (`fid` for 1D data, `ser` for 2D data).
-        `'bruker_pdata'` indicates the data is derived from files found
-        in a `pdata` directory (`1r` for 1D data; `2rr` for 2D data).
-        `'synthetic'` indicates that the data is synthetic.
+    source : {'bruker', 'synthetic'}
+        The type of data imported.
 
     data : numpy.ndarray
         The data associated with the binary file in `path`.
@@ -192,11 +188,26 @@ class Estimator:
 
         origin = {'method': 'new_bruker', 'args': locals()}
         info = load_bruker(dir, ask_convdta=ask_convdta)
+        data = info['data'][0]
+
+        if info['dtype'] == 'pdata':
+            # TODO: believe this should be fine for 1D. Need to check for
+            # multidim spectra.
+            data = 2 * info['dim'] * sig.ift(data, flip=True)
+            for d in range(info['dim']):
+                data = data[:int(data.shape[d] // 2)]
+            data[0] /= (2 * info['dim'])
 
         return cls(
-            info['source'], info['data'], info['directory'],
-            info['sweep_width'], info['offset'], info['transmitter_frequency'],
-            info['nuclei'], info['binary_format'], _origin=origin
+            source=info['source'],
+            data=data,
+            path=info['path'],
+            sw=info['sw'],
+            off=info['off'],
+            sfo=info['sfo'],
+            nuc=info['nuc'],
+            fmt=info['binfmt'],
+            _origin=origin
         )
 
     @classmethod

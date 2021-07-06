@@ -1,35 +1,32 @@
 import os
 from pathlib import Path
-import subprocess
 
 import numpy as np
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.transforms as transforms
-plt.style.use('./../stylesheet.mplstyle')
 
 from nmrespy.core import Estimator
 
-# ------------------------------------------------------------------------
+plt.style.use('./../stylesheet.mplstyle')
+
 # Parameters to customise features of the result plot.
 # Set to True to carry out estimation.
 # Set to False to reload already obtained results and simply plot figure
 ESTIMATE = False
 
-B = 0.05 # Bottom of lowest axes
-T = 0.98 # Top of highest axes
-R = 0.98 # Rightmost position of axes
-L = 0.05 # Leftmost position of axes
-H_SEP = 0.01 # Horizontal separation of figs a) -> c) and d) -> f)
-INSET_RECT = [0.05, 0.5, 0.27, 0.4] # Location of inset axes in panels e) and f)
-FIGSIZE = (7, 5) # Figure size
+B = 0.05  # Bottom of lowest axes
+T = 0.98  # Top of highest axes
+R = 0.98  # Rightmost position of axes
+L = 0.05  # Leftmost position of axes
+H_SEP = 0.01  # Horizontal separation of figs a) -> c) & d) -> f)
+INSET_RECT = [0.05, 0.5, 0.27, 0.4]  # Location of inset axes in e) & f)
+FIGSIZE = (7, 5)  # Figure size
 # x-ticks of panels a) -> f)
 XTICKS = 3 * [[5.53 - i * (0.02) for i in range(6)]] + \
-         3 * [[5.28 - i * (0.02) for i in range(5)]]
-YTICKS = [[0, 2.5E7], [0, 2.8E7]] # y-ticks of panels a) and d)
-YLIMS = [ # y-limits of panels a) -> f)
+    3 * [[5.28 - i * (0.02) for i in range(5)]]
+YLIMS = [  # y-limits of panels a) -> f)
     (-1E6, 2.9E7),
     (-5E6, 3E7),
     (-5E6, 3E7),
@@ -37,70 +34,78 @@ YLIMS = [ # y-limits of panels a) -> f)
     (-5E6, 3.3E7),
     (-5E6, 3.3E7),
 ]
-INSET_XLIM = (5.27, 5.23) # x-limits of inset axes in panels e) & f)
-INSET_YLIM = (-5.5E5, 1.2E6) # y-limits of inset axes in panels e) & f)
-LW = 1 # linewidths
-COLORS = plt.rcParams['axes.prop_cycle'].by_key()['color'] # Need at least 5 colors
-DISPS = [ # Oscillator label displacements
-    # b)
-    iter([(-0.004, -1.4E6), # 1
-    (-0.002, 1E5), # 2
-    (0.001, 4E5), # 3
-    (0.001, 4E5), # 4
-    (0.004, 1E5), # 5
-    (-0.005, -3.5E6), # 6
-    (-0.002, 1E5), # 7
-    (-0.002, 1E5), # 8
-    (0.0035, 1E5), # 9
-    (0.0055, 1E5), # 10
-    (-0.0015, 1E5), # 11
-    (-0.001, -2E5)]), # 12
-
+INSET_XLIM = (5.27, 5.23)  # x-limits of inset axes in panels e) & f)
+INSET_YLIM = (-5.5E5, 1.2E6)  # y-limits of inset axes in panels e) & f)
+LW = 1  # linewidths
+COLORS = plt.rcParams['axes.prop_cycle'].by_key()['color']
+DISPS = [
     # c)
-    iter([(-0.002, 1E5), # 1
-    (0.001, 4E5), # 2
-    (0.001, 4E5), # 3
-    (0.004, 1E5), # 4
-    (-0.002, 1E5), # 5
-    (-0.002, 1E5), # 6
-    (0.0035, 1E5), # 7
-    (0.00355, 1E5), # 8
-    (0, 3E5)]), # 9
+    iter([
+        (-0.004, -1.4E6),        # 1
+        (-0.002, 1E5),           # 2
+        (0.001, 4E5),            # 3
+        (0.001, 4E5),            # 4
+        (0.004, 1E5),            # 5
+        (-0.005, -3.5E6),        # 6
+        (-0.002, 1E5),           # 7
+        (-0.002, 1E5),           # 8
+        (0.0035, 1E5),           # 9
+        (0.0055, 1E5),           # 10
+        (-0.0015, 1E5),          # 11
+        (-0.001, -2E5)           # 12
+    ]),
+
+    # d)
+    iter([
+        (-0.002, 1E5),           # 1
+        (0.001, 4E5),            # 2
+        (0.001, 4E5),            # 3
+        (0.004, 1E5),            # 4
+        (-0.002, 1E5),           # 5
+        (-0.002, 1E5),           # 6
+        (0.0035, 1E5),           # 7
+        (0.00355, 1E5),          # 8
+        (0, 3E5)]),              # 9
 
     # e)
-    iter([(-0.006, -1.8E6), # 1
-    (-0.0015, 1E5), # 2
-    (-0.0015, 1E5), # 3
-    (0.001, 8E5), # 4
-    (0.001, 8E5), # 5
-    (0.0035, -1E5), # 6
-    (-0.002, 1E5), # 8
-    (-0.002, 5E5), # 10
-    (0.003, 5E5)]), # 11
+    iter([
+        (-0.006, -1.8E6),        # 1
+        (-0.0015, 1E5),          # 2
+        (-0.0015, 1E5),          # 3
+        (0.001, 8E5),            # 4
+        (0.001, 8E5),            # 5
+        (0.0035, -1E5),          # 6
+        (-0.002, 1E5),           # 8
+        (-0.002, 5E5),           # 10
+        (0.003, 5E5)]),          # 11
 
     # f)
-    iter([(-0.0015, 1E5), # 1
-    (-0.0015, 1E5), # 2
-    (0.001, 8E5), # 3
-    (0.001, 8E5), # 4
-    (0.0035, -1E5), # 5
-    (-0.002, 0), # 7
-    (-0.003, 1000)]), # 9
+    iter([
+        (-0.0015, 1E5),          # 1
+        (-0.0015, 1E5),          # 2
+        (0.001, 8E5),            # 3
+        (0.001, 8E5),            # 4
+        (0.0035, -1E5),          # 5
+        (-0.002, 0),             # 7
+        (-0.003, 1000)]),        # 9
 
     # e) (inset)
-    iter([(0.002, 0), # 7
-    (-0.002, -1E5)]), # 9
+    iter([
+        (0.002, 0),              # 7
+        (-0.002, -1E5)]),        # 9
 
     # f) (inset)
-    iter([(-0.0015, 0), # 6
-    (-0.001, 0)]), # 8
+    iter([
+        (-0.0015, 0),            # 6
+        (-0.001, 0)]),           # 8
 ]
 
-LABEL_FS = 7 # Fontsize of oscillator labels
-MODEL_SHIFTS = iter(2 * [1E6] + 2 * [1E6]) # Upward displacement of model plots (+ve)
-RESID_SHIFTS = iter(2 * [3E6] + 2 * [3E6]) # Downward displacement of residual plots (+ve)
-DOT_LS = (2.5, (3, 2)) # Linestyle of dashed lines
+LABEL_FS = 7  # Fontsize of oscillator labels
+MODEL_SHIFTS = iter(2 * [1E6] + 2 * [1E6])  # Upward displacement of model
+RESID_SHIFTS = iter(2 * [3E6] + 2 * [3E6])  # Downward displacement of residual
+DOT_LS = (2.5, (3, 2))  # Linestyle of dashed lines
 # ------------------------------------------------------------------------
+
 
 def estimate():
     """Performs estimation routine on two different spectral regions
@@ -123,7 +128,9 @@ def estimate():
         estimator.frequency_filter(region, noise_region=[[6.48, 6.38]])
         estimator.matrix_pencil()
         estimator.to_pickle(path=f"results/{i}/mpm", force_overwrite=True)
-        estimator.nonlinear_programming(phase_variance=True, max_iterations=500)
+        estimator.nonlinear_programming(
+            phase_variance=True, max_iterations=500
+        )
         estimator.to_pickle(path=f"results/{i}/nlp", force_overwrite=True)
 
         desc = f"50mM cyclosporin in Benzene-d6 (Example {i})"
@@ -133,8 +140,8 @@ def estimate():
                 desc.replace("d6", "d\\textsubscript{6}")
 
             estimator.write_result(
-                path=f"results/{i}/cyclosporin_result", fmt=fmt, description=desc,
-                force_overwrite=True,
+                path=f"results/{i}/cyclosporin_result", fmt=fmt,
+                description=desc, force_overwrite=True,
             )
 
         np.savetxt(f'results/{i}/errors.txt', estimator.get_errors())
@@ -153,15 +160,15 @@ def plot():
             Estimator.from_pickle(path="results/2/nlp"),
         ]
 
-    except:
+    except Exception:
         raise IOError("Couldn't find pickled estimator files")
 
     # Colors of each oscillator
     col_indices = [
-        [4, 0, 0, 0, 0, 4, 1, 1, 1, 1, 2, 4], # b)
-        [0, 0, 0, 0, 1, 1, 1, 1, 2], # c)
-        [4, 0, 0, 1, 0, 1, 2, 1, 2, 3, 4], # e)
-        [0, 0, 1, 0, 1, 2, 1, 2, 3], # f)
+        [4, 0, 0, 0, 0, 4, 1, 1, 1, 1, 2, 4],  # b)
+        [0, 0, 0, 0, 1, 1, 1, 1, 2],  # c)
+        [4, 0, 0, 1, 0, 1, 2, 1, 2, 3, 4],  # e)
+        [0, 0, 1, 0, 1, 2, 1, 2, 3],  # f)
     ]
     # List of plots
     # Info will be extracted from these to construct customised plots
@@ -171,7 +178,6 @@ def plot():
         # Prevent error for estimators which have only had MPM run
         est._saveable = True
         plots.append(est.plot_result(data_color='k', oscillator_colors=cols))
-
 
     # Duplicate the last two plots (panels e) and f)):
     # One set for the main axes, one set for inset axes
@@ -185,7 +191,7 @@ def plot():
     fig = plt.figure(figsize=FIGSIZE)
 
     xlims = 3 * [(shifts[0][0], shifts[0][-1])] + \
-            3 * [(shifts[1][0], shifts[1][-1])]
+        3 * [(shifts[1][0], shifts[1][-1])]
 
     # Determine axes geometries
     lefts = 3 * [L] + 3 * [L + H_SEP + (R - L) / 2]
@@ -193,10 +199,12 @@ def plot():
     heights = []
     bottoms = []
     for start in (0, 3):
-        spans = [abs(YLIMS[i][1] - YLIMS[i][0]) for i in range(start, start+3)]
+        spans = [abs(YLIMS[i][1] - YLIMS[i][0]) for i in
+                 range(start, start + 3)]
         heights += [s / sum(spans) * (T - B) for s in spans]
         bottoms += [B + sum(heights[-3:][i:]) for i in range(1, 4)]
-    dims = [[l, b, w, h] for l, b, w, h in zip(lefts, bottoms, widths, heights)]
+    dims = [[lft, bot, wth, hgt] for lft, bot, wth, hgt in
+            zip(lefts, bottoms, widths, heights)]
 
     # Create main axes ( a) -> f) )
     axs = []
@@ -246,18 +254,19 @@ def plot():
 
     # Indices of labels to show for each panel
     show_labs = [
-        range(len(labels[0])), # b) (show all labels)
-        range(len(labels[1])), # c) (show all labels)
-        [0, 1, 2, 3, 4, 5, 7, 9, 10], # e)
-        [0, 1, 2, 3, 4, 6, 8], # f)
-        [6, 8], # e) (inset)
-        [5, 7], # f) (inset)
+        range(len(labels[0])),  # b) (show all labels)
+        range(len(labels[1])),  # c) (show all labels)
+        [0, 1, 2, 3, 4, 5, 7, 9, 10],  # e)
+        [0, 1, 2, 3, 4, 6, 8],  # f)
+        [6, 8],  # e) (inset)
+        [5, 7],  # f) (inset)
     ]
 
     # Loop over b), c), e), f), e) (inset), and f) (inset)
     # These axes will show individual oscillators
-    osc_axes = [axs[i] for i in (1,2,4,5)] + axins
-    for i, (ax, lns, lbs, sl, dsps) in enumerate(zip(osc_axes, lines, labels, show_labs, DISPS)):
+    osc_axes = [axs[i] for i in (1, 2, 4, 5)] + axins
+    iterable = (osc_axes, lines, labels, show_labs, DISPS)
+    for i, (ax, lns, lbs, sl, dsps) in enumerate(zip(*iterable)):
         if i < 4:
             # Panels b), c), e), f)
             # Will plot the sum of oscillators (model), and residual in
@@ -303,7 +312,9 @@ def plot():
         # Get figure -> data transformation matrix
         figure_to_data = fig.transFigure + ax.transData.inverted()
         # Get points (in figure coords) of inset axis vertices
-        pts = ax.__dict__['child_axes'][0].__dict__['_position'].__dict__['_points']
+        pts = ax.__dict__['child_axes'][0] \
+                .__dict__['_position'] \
+                .__dict__['_points']
         # Transform inset axis vertices to data coords
         inset_vertices = [list(figure_to_data.transform(pt)) for pt in pts]
 
@@ -313,27 +324,28 @@ def plot():
         # 1. Thinner dotted black line
         # 2. Thicker white line below the black dotted line to provide
         # some padding from the rest of the figure.
-        for i, (col, lw, ls) in enumerate(zip(('w', 'k'), (2.4 * LW, LW), ('-', DOT_LS))):
-            # Zorder used ensures white line is above rest of plot, but below
+        iterable = (('w', 'k'), (2.4 * LW, LW), ('-', DOT_LS))
+        for i, (col, lw, ls) in enumerate(zip(*iterable)):
+            # Zorder ensures white line is above rest of plot, but below
             # black dotted line
             ax.add_patch(
                 Rectangle(
                     (xlim[0], ylim[0]), xlim[1] - xlim[0], ylim[1] - ylim[0],
                     linewidth=lw, edgecolor=col, facecolor='none',
-                    zorder=100+i*10,
+                    zorder=100 + i * 10,
                 )
             )
             # Lines linking region of interest and insert axes
             ax.plot(
-                [xlim[0], inset_vertices[0][0]], [ylim[0],
-                inset_vertices[0][1]], solid_capstyle='round', linewidth=lw,
-                color=col, zorder=100+i*10, linestyle=ls,
+                [xlim[0], inset_vertices[0][0]],
+                [ylim[0], inset_vertices[0][1]], solid_capstyle='round',
+                linewidth=lw, color=col, zorder=100 + i * 10, linestyle=ls,
                 dash_capstyle='round',
             )
             ax.plot(
-                [xlim[1], inset_vertices[1][0]], [ylim[1],
-                inset_vertices[1][1]], solid_capstyle='round', linewidth=lw,
-                color=col, zorder=100+i*10, linestyle=ls,
+                [xlim[1], inset_vertices[1][0]],
+                [ylim[1], inset_vertices[1][1]], solid_capstyle='round',
+                linewidth=lw, color=col, zorder=100 + i * 10, linestyle=ls,
                 dash_capstyle='round',
             )
 
@@ -348,9 +360,10 @@ def plot():
         )
 
     fig.savefig(
-        f"cyclosporin.png", transparent=False, facecolor='#ffffff',
+        "cyclosporin.png", transparent=False, facecolor='#ffffff',
         dpi=200,
     )
+
 
 if __name__ == '__main__':
     if ESTIMATE:

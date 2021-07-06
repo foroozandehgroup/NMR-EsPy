@@ -20,6 +20,7 @@ from nmrespy import *
 from nmrespy._errors import *
 from nmrespy._misc import ArgumentChecker, PathManager, significant_figures
 
+print(GITHUBLINK)
 
 def write_result(
     parameters, errors=None, path='./nmrespy_result', sfo=None, integrals=None,
@@ -319,7 +320,7 @@ def _write_txt(
             "<no papers yet...>\n"
             "For more information, visit the GitHub repo:\n")
 
-    msg += f'{GITHUBLINK}'
+    msg += GITHUBLINK
     # Save message to textfile
     with open(path, 'w', encoding='utf-8') as file:
         file.write(msg)
