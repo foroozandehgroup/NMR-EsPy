@@ -137,7 +137,6 @@ def estimate(info):
         else:
             estimator.matrix_pencil()
 
-
         estimator.nonlinear_programming(phase_variance=True)
         # old_result = estimator.get_result()
 
