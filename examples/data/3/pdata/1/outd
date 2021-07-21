@@ -1,0 +1,15 @@
+##TITLE= Parameter file, TOPSPIN		Version 1.3
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
+##OWNER= root
+$$ 2015-09-07 17:01:35.750 +0100  Administrator@B500B07
+$$ F:/Research/2015/MF/data/PSYCHE_CPMG/nmr/Cyclosporin/2/pdata/1/outd
+##$CURPLOT= <HP LJ P3005>
+##$CURPRIN= <$HP LJ P3005>
+##$DFORMAT= <normdp>
+##$LAYOUT= <+/1D_H.xwp>
+##$LFORMAT= <normlp>
+##$PFORMAT= <normpl>
+##$SURQMSG= 1
+##END=

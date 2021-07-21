@@ -20,6 +20,13 @@ def test_mpm_1d():
     result = mpm.get_result()
     assert np.allclose(result, params, rtol=0, atol=1E-8)
 
+    # test with FID not starting at t=0
+    mpm = MatrixPencil(
+        fid[20:], sw, offset=offset, sfo=sfo, M=4, start_point=[20],
+    )
+    result = mpm.get_result()
+    assert np.allclose(result, params, rtol=0, atol=1E-8)
+
 
 def test_mpm_2d():
     params = np.array([

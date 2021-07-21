@@ -201,7 +201,7 @@ class NonlinearProgramming(FrequencyConverter):
     end_txt = 'NONLINEAR PROGRAMMING COMPLETE'
 
     def __init__(
-        self, data, theta0, sw, sfo=None, offset=None, start_point=0,
+        self, data, theta0, sw, sfo=None, offset=None, start_point=None,
         phase_variance=True, method='trust_region', bound=False,
         max_iterations=None, amp_thold=None, freq_thold=None,
         negative_amps='remove', fprint=True, mode='apfd',
@@ -216,10 +216,8 @@ class NonlinearProgramming(FrequencyConverter):
                 f'{cols.R}data should be a numpy ndarray{cols.END}'
             )
 
-        self.data = data
-
         # Determine data dimension. If greater than 2, return error.
-        self.dim = self.data.ndim
+        self.dim = data.ndim
         if self.dim >= 3:
             raise MoreThanTwoDimError()
 
@@ -234,13 +232,16 @@ class NonlinearProgramming(FrequencyConverter):
         if max_iterations is None:
             max_iterations = 100
 
+        if start_point is None:
+            start_point = [0] * self.dim
+
         # Determine validity of other args using ArgumentChecker
         components = [
             (theta0, 'theta0', 'parameter'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
-            (start_point, 'start_point', 'positive_int_or_zero'),
             (phase_variance, 'phase_variance', 'bool'),
+            (start_point, 'start_point', 'int_list'),
             (max_iterations, 'max_iterations', 'positive_int'),
             (mode, 'mode', 'optimiser_mode'),  # TODO
             (negative_amps, 'negative_amps', 'negative_amplidue'),
@@ -258,6 +259,8 @@ class NonlinearProgramming(FrequencyConverter):
             components.append((freq_thold, 'freq_thold', 'positive_float'))
 
         # Check arguments are valid!
+        for c in components:
+            print(c[1])
         ArgumentChecker(components, self.dim)
 
         # TODO
@@ -268,21 +271,7 @@ class NonlinearProgramming(FrequencyConverter):
         #     raise PhaseVarianceAmbiguityError(mode)
 
         # --- Create attributes ------------------------------------------
-        self.theta0 = theta0
-
-        self.sw = sw
-        self.offset = offset
-        self.sfo = sfo
-        self.start_point = start_point
-        self.method = method
-        self.phase_variance = phase_variance
-        self.mode = mode  # TODO
-        self.bound = bound
-        self.max_iterations = max_iterations
-        self.amp_thold = amp_thold
-        self.freq_thold = freq_thold
-        self.negative_amps = negative_amps
-        self.fprint = fprint
+        self.__dict__.update(locals())
 
         # Number of oscillators
         self.m = int(self.theta0.size / self.p)
@@ -296,7 +285,7 @@ class NonlinearProgramming(FrequencyConverter):
                 self.n, self.sw, self.offset, self.sfo
             )
 
-        if self.max_iterations is None:
+        if max_iterations is None:
             # If max_iterations is set to None, set it to default value
             # If 'trust_region', set as 100. Need to explicitely compute
             # the Hessian for this alg., so each iteration is typically
@@ -329,7 +318,11 @@ class NonlinearProgramming(FrequencyConverter):
         x0 = self._shift_offset(x0, 'center')
 
         # Time points in each dimension
-        self.tp = get_timepoints(self.n, self.sw)
+        self.tp = get_timepoints(
+            [n + sp for n, sp in zip(self.n, self.start_point)],
+            self.sw
+        )
+        self.tp = [tp[sp:] for tp, sp in zip(self.tp, self.start_point)]
 
         # Determine 'active' and 'passive' parameters based on self.mode
         # generates self.active_idx and self.passive_idx
@@ -373,12 +366,15 @@ class NonlinearProgramming(FrequencyConverter):
         # Remove any oscillators with negligible amplitudes
         self._negligible_amplitudes()
 
-        # Rescale and correct for offset
+        # Rescale
         self.result[:self.m] *= self.norm
+        # Correct for offset
         self.result = self._shift_offset(self.result, 'displace')
+        # Wrap phases
+        self.result[self.m: 2 * self.m] = \
+            ((self.result[self.m: 2 * self.m] + np.pi) % (2 * np.pi)) - np.pi
         # Get estimate errors (self.errors)
         self._get_errors()
-
         # Reshape result array back to (M x 4) or (M x 6)
         self.result = np.reshape(self.result, (self.m, self.p), order='F')
         # Order oscillators by frequency
@@ -775,7 +771,7 @@ class NonlinearProgramming(FrequencyConverter):
 
     @staticmethod
     def _pi_flip(arr):
-        """flip array of phases by π raidnas, ensuring the phases remain in
+        """flip array of phases by π radians, ensuring the phases remain in
         the range (-π, π]"""
         return (arr + 2 * np.pi) % (2 * np.pi) - np.pi
 

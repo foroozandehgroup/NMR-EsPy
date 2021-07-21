@@ -1,0 +1,104 @@
+\documentclass[8pt]{article}
+\usepackage[a4paper,landscape,margin=1in]{geometry}
+\usepackage{cmbright}
+
+\usepackage{amsmath}
+\usepackage{nicefrac}
+\usepackage{siunitx}
+
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+
+\usepackage{xcolor}
+\definecolor{urlblue}{HTML}{0000ee}
+\usepackage{hyperref}
+\hypersetup{%
+colorlinks = true,%
+urlcolor   = urlblue,%
+}
+
+\usepackage{tcolorbox}
+\usepackage{varwidth}
+
+\setlength\parindent{0pt}
+\renewcommand{\ss}{\textsuperscript}
+
+\pagenumbering{gobble}
+
+\begin{document}
+\begin{figure}[!ht]
+% MF group logo
+\begin{minipage}[b][2.5cm][c]{.72\textwidth}
+\href{http://foroozandeh.chem.ox.ac.uk/home}%
+{\includegraphics[scale=1.8]{/home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/mf_logo.png}}
+\end{minipage}
+% NMR-EsPy logo
+\begin{minipage}[b][2.5cm][c]{.27\textwidth}
+\href{https://foroozandehgroup.github.io/NMR-EsPy}%
+{\includegraphics[scale=0.5]{/home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/nmrespy_full.png}}
+\end{minipage}
+\end{figure}
+
+\texttt{15:43:38\\09-07-2021}
+
+% user provided description
+\subsection*{Description}
+Cyclosporin CPMG experiment.
+Iteration 3 (vc = 8)
+
+% experiment parameters
+\subsection*{Experiment Information}
+\hspace{-6pt}
+\begin{tabular}{ll}
+Sweep Width (Hz) & 5000 \\
+Sweep Width (ppm) & 9.99736 \\
+Transmitter Offset (Hz) & 2250.59 \\
+Transmitter Offset (ppm) & 4.49998 \\
+Transmitter Frequency (MHz) & 500.132 \\
+Basic Frequency (MHz) & 500.13 \\
+Nucleus & $^{1}$H \\
+Filter region (Hz): & 3831.03 - 3751.07 \\
+Filter region (ppm): & 7.66004 - 7.50016 \\
+
+\end{tabular}
+
+\subsection*{Result}
+\begin{longtable}[l]{cccccccc}
+\toprule
+$m$ & $a_m$ & $\phi_m\ (\text{rad})$ & $f_m\ (\text{Hz})$ & $f_m\ (\text{ppm})$ & $\eta_m\ (\text{s}^{-1})$ & $\int$ & $\nicefrac{\int}{\left\lVert\int\right\rVert}$ \\
+
+\midrule
+1 & \num{2.6251e3} & 1.561 & \num{3.7523e3} & 7.5027 & 17.886 & \num{1.0578e8} & 0.10093 \\
+ & $\pm$ 57.414 & $\pm$ 0.015607 & $\pm$ 0.037763 & $\pm$ \num{7.5507e-5} & $\pm$ 0.31379 & - & - \\
+2 & \num{1.1794e4} & 0.80788 & \num{3.7605e3} & 7.5191 & 119.84 & \num{3.6166e8} & 0.34511 \\
+ & $\pm$ 146.72 & $\pm$ 0.011418 & $\pm$ 0.314 & $\pm$ \num{6.2783e-4} & $\pm$ 2.0057 & - & - \\
+3 & \num{1.503e4} & -1.4466 & \num{3.7858e3} & 7.5696 & 10.201 & \num{6.492e8} & 0.61948 \\
+ & $\pm$ 25.074 & $\pm$ \num{1.5409e-3} & $\pm$ \num{2.5114e-3} & $\pm$ \num{5.0215e-6} & $\pm$ 0.016387 & - & - \\
+4 & \num{1.3389e4} & 1.1977 & \num{3.7947e3} & 7.5873 & 10.402 & \num{5.7699e8} & 0.55058 \\
+ & $\pm$ 26.199 & $\pm$ \num{1.806e-3} & $\pm$ \num{2.9494e-3} & $\pm$ \num{5.8973e-6} & $\pm$ 0.019347 & - & - \\
+5 & \num{1.4105e4} & -0.39366 & \num{3.8157e3} & 7.6293 & 125.58 & \num{4.293e8} & 0.40965 \\
+ & $\pm$ 142.74 & $\pm$ 0.013845 & $\pm$ 0.33645 & $\pm$ \num{6.7272e-4} & $\pm$ 1.4576 & - & - \\
+6 & \num{3.3591e3} & -1.4421 & \num{3.8298e3} & 7.6576 & 20.981 & \num{1.3259e8} & 0.12652 \\
+ & $\pm$ 60.237 & $\pm$ 0.01178 & $\pm$ 0.035522 & $\pm$ \num{7.1026e-5} & $\pm$ 0.31703 & - & - \\
+
+\bottomrule
+\end{longtable}
+
+
+% blurb
+\small
+\begin{tcolorbox}[hbox]
+\begin{varwidth}{\textwidth}
+Estimation performed using \textsc{NMR-EsPy}.\\
+Author: Simon Hulse\\
+For more information:\\[5pt]
+{\raisebox{-4pt}{\includegraphics[scale=0.029]{/home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/book_icon.png}}}\hspace{1em}\href{https://foroozandehgroup.github.io/NMR-EsPy}{\texttt{https://foroozandehgroup.github.io/NMR-EsPy}}\\[5pt]
+{\raisebox{-4pt}{\includegraphics[scale=0.12]{/home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/github.png}}}\hspace{1em}\href{https://github.com/foroozandehgroup/NMR-EsPy}{\texttt{https://github.com/foroozandehgroup/NMR-EsPy}}\\[5pt]
+{\raisebox{-3pt}{\includegraphics[scale=0.015]{/home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/venv/lib/python3.9/site-packages/nmrespy/images/email_icon.png}}}\hspace{1em}\href{mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query}{\texttt{simon.hulse@chem.ox.ac.uk}}\\[5pt]
+If used in a publication, please cite:\\
+\textit{No references yet...}
+\end{varwidth}
+\end{tcolorbox}
+
+\end{document}

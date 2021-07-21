@@ -1,0 +1,31 @@
+15:44:12
+09-07-2021
+
+Description:
+Cyclosporin CPMG experiment.
+Iteration 8 (vc = 48)
+
+Experiment Information:
+Sweep Width (Hz)            5000
+Sweep Width (ppm)           9.99736
+Transmitter Offset (Hz)     2250.59
+Transmitter Offset (ppm)    4.49998
+Transmitter Frequency (MHz) 500.132
+Basic Frequency (MHz)       500.13
+Nucleus                     1H
+Filter region (Hz):         3831.03 - 3751.07
+Filter region (ppm):        7.66004 - 7.50016
+
+Osc. │Amp.     │Phase (rad) │Freq. (Hz) │Freq. (ppm) │Damp. (s⁻¹) │Integ.   │Norm. Integ.
+─────┼─────────┼────────────┼───────────┼────────────┼────────────┼─────────┼─────────────
+1    │3.0825e3 │-1.3318     │3.7815e3   │7.5609      │37.15       │1.1265e8 │0.45928
+     │±223.56  │±0.069353   │±0.43191   │±8.6359e-4  │±2.8829     │-        │-
+2    │6.6817e3 │6.6952      │3.8046e3   │7.6072      │80.985      │2.1788e8 │0.88829
+     │±197.68  │±0.045239   │±0.6352    │±1.2701e-3  │±2.9649     │-        │-
+
+Estimation performed using NMR-EsPy
+Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk
+If used in any publications, please cite:
+<no papers yet...>
+For more information, visit the GitHub repo:
+https://github.com/foroozandehgroup/NMR-EsPy

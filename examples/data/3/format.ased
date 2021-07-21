@@ -1,0 +1,127 @@
+EDIT_PAR COMMAND FILE
+
+DI_MODE         LONG
+ED_ENTRY        ACQU
+ORDER           FILE
+
+
+HEADER		"F2 - Acquisition Parameters"
+NAME		PULPROG
+		EXTFUNCT "lists/pp"
+END
+NAME		TD
+END
+NAME		NS
+END
+NAME		DS
+END
+T_NAME		SWH
+		TYPE	R32
+		CLASS	ACQU
+		SUBRANGE 0.0 1e38
+		REL	"SWH=SW*SFO1"
+		INV_REL "SW=SWH/SFO1"
+		UNIT	"Hz"
+		FORMAT	"%14.2f Hz"
+		TEXT	"sweep width in Hz"
+END
+T_NAME          AQ
+		TYPE	R32
+		CLASS	ACQU
+		SUBRANGE 0.0 1e38
+		REL	"AQ=aqcalc(SW,SFO1,TD,DIGTYP)"
+		INV_REL	"TD=tdcalc(SW,SFO1,1.0e6*AQ,DIGTYP)"
+		UNIT	"sec"
+		FORMAT	"%14.7f sec"
+                TEXT	"acquisition time"
+END
+NAME		RG
+END
+T_NAME          DW
+		TYPE	R32
+		CLASS	ACQU
+		SUBRANGE 0.0 1e38
+		REL	"DW=1/(2*SW*SFO1)"
+		INV_REL	"SW=1000000/(2*(0.005+DW)*SFO1)"
+		UNIT	"usec"
+		FORMAT	"%14.3f usec"
+		TEXT	"dwell time "
+END
+NAME		DE
+		FORMAT	"%14.2f usec"
+END
+T_NAME		D1
+		TYPE	R32
+		CLASS	ACQU
+		SUBRANGE 0.0 1e38
+		REL	"D1=D[1]"
+		INV_REL	"D[1]=D1"
+		UNIT	"sec"
+		FORMAT	"%14.8f sec"
+TEXT		"relaxation delay; 1-5 * T1"
+END
+T_NAME		d11
+		TYPE	R32
+		SUBRANGE 0.0 1e8
+		CLASS	ACQU
+		REL	"d11=30m"
+		INV_REL	"D[0]=d11"
+		UNIT	"sec"
+		TEXT	"d11=30m"
+		FORMAT	"%14.8f sec"
+		NONEDIT
+END
+T_NAME		D20
+		TYPE	R32
+		CLASS	ACQU
+		SUBRANGE 0.0 1e38
+		REL	"D20=D[20]"
+		INV_REL	"D[20]=D20"
+		UNIT	"sec"
+		FORMAT	"%14.8f sec"
+TEXT		"fixed echo time to allow elimination of diffusion"
+END
+NAME		VCLIST
+		TEXT	"variable counter list"
+		EXTFUNCT "lists/vc"
+END
+HEADER		"======== CHANNEL f1 ========"
+NAME		NUC1
+		NONEDIT
+		TEXT	"nucleus for channel 1"
+END
+T_NAME		P1
+		TYPE	R32
+		CLASS	ACQU
+		SUBRANGE 0.0 1.0e10
+		REL	"P1=P[1]"
+		INV_REL	"P[1]=P1"
+		UNIT	"usec"
+		FORMAT	"%14.2f usec"
+TEXT		"f1 channel -  90 degree high power pulse"
+END
+T_NAME		p2
+		TYPE	R32
+		SUBRANGE -1e38 1e38
+		CLASS	ACQU
+		REL	"p2=p1*2"
+		INV_REL	"D[0]=p2"
+		UNIT	"usec"
+		TEXT	"p2=p1*2"
+		FORMAT	"%14.2f usec"
+		NONEDIT
+END
+T_NAME		PL1
+		TYPE	R32
+		CLASS	ACQU
+		SUBRANGE -6.0 1e38
+		REL	"PL1=PL[1]"
+		INV_REL	"PL[1]=PL1"
+		UNIT	"dB"
+		FORMAT	"%14.2f dB"
+TEXT		"f1 channel - power level for pulse (default)"
+END
+NAME		SFO1
+		FORMAT	"%14.7f MHz"
+		TEXT	"frequency of observe channel"
+END

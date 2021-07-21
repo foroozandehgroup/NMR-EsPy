@@ -1077,7 +1077,7 @@ class Estimator:
         data = data[trim]
 
         mpm_info = MatrixPencil(
-            data, sw, offset, self.sfo, M, fprint
+            data, sw, offset=offset, sfo=self.sfo, M=M, fprint=fprint
         )
 
         self.result = mpm_info.get_result()

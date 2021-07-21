@@ -27,6 +27,14 @@ def test_nlp_1d():
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1E-4)
 
+    # test with FID not starting at t=0
+    nlp = NonlinearProgramming(
+        fid[20:], x0, sw, offset=offset, phase_variance=False,
+        start_point=[20],
+    )
+    result = nlp.get_result()
+    assert np.allclose(result, params, rtol=0, atol=1E-4)
+
 
 def test_nlp_2d():
     params = np.array([
@@ -52,3 +60,10 @@ def test_nlp_2d():
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1E-4)
+
+    # nlp = NonlinearProgramming(
+    #     fid[10:, 5:], x0, sw, offset=offset, phase_variance=False,
+    #     start_point=[10, 5],
+    # )
+    # result = nlp.get_result()
+    # assert np.allclose(result, params, rtol=0, atol=1E-4)

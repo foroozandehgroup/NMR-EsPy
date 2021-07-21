@@ -20,7 +20,6 @@ from nmrespy import *
 from nmrespy._errors import *
 from nmrespy._misc import ArgumentChecker, PathManager, significant_figures
 
-print(GITHUBLINK)
 
 def write_result(
     parameters, errors=None, path='./nmrespy_result', sfo=None, integrals=None,

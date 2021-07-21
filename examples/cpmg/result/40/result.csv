@@ -1,0 +1,22 @@
+15:44:11 09-07-2021
+
+Description:,"Cyclosporin CPMG experiment.
+Iteration 7 (vc = 40)"
+
+Experiment Info:
+Sweep Width (Hz),5000
+Sweep Width (ppm),9.99736
+Transmitter Offset (Hz),2250.59
+Transmitter Offset (ppm),4.49998
+Transmitter Frequency (MHz),500.132
+Basic Frequency (MHz),500.13
+Nucleus,1H
+Filter region (Hz):,3831.03 - 3751.07
+Filter region (ppm):,7.66004 - 7.50016
+
+Result:
+Osc.,Amp.,Phase (rad),Freq. (Hz),Freq. (ppm),Damp. (s⁻¹),Integ.,Norm. Integ.
+1,3744.4,-1.0704,3778.2,7.5545,38.374,136220000,0.48493
+,±282.05,±0.10273,±0.85198,±0.0017035,±3.8257,-,-
+2,7424.9,6.6632,3808.1,7.6143,73.595,245670000,0.87455
+,±344.86,±0.050049,±0.72869,±0.001457,±3.7054,-,-

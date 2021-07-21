@@ -1,0 +1,15 @@
+##TITLE= Audit trail, TopSpin 4.0.8
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= sgh
+$$ /home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/~TEMP/1/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2021-07-09 16:27:25.700 +0100>,<sgh>,<spectre>,<mvrow>,<TopSpin 4.0.8>,
+      <rsr 2 from
+       1 3 "data" "/home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples"
+       data hash MD5: 32K
+       72 CA CA 50 44 D3 45 D4 88 C5 3E 97 CB EB 23 57>)
+##END=
+
+$$ hash MD5
+$$ 8E 69 2A 97 3E F4 A4 C4 14 50 E9 56 C4 7D 6C 8D

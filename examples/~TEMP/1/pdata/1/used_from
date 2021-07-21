@@ -1,0 +1,16 @@
+##TITLE= Parameter file, TopSpin 4.0.8
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 2	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= sgh
+$$ 2021-07-09 16:27:25.700 +0100  sgh@spectre
+$$ /home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/~TEMP/1/pdata/1/used_from
+$$ process /opt/topspin4.0.8/prog/mod/mvrow
+##$CUREXP= <row>
+##$DATPATH= </home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples>
+##$EXPNO= 3
+##$NAME= <data>
+##$PROCNO= 1
+##$PROCNO2= 2
+##END=

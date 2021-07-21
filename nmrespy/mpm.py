@@ -75,7 +75,8 @@ class MatrixPencil(FrequencyConverter):
        55.2 (2007), pp. 718–724.
     """
 
-    def __init__(self, data, sw, offset=None, sfo=None, M=0, fprint=True):
+    def __init__(self, data, sw, offset=None, sfo=None, M=0,
+                 start_point=None, fprint=True):
         """Checks validity of inputs, and if valid, calls :py:meth:`_mpm`"""
 
         try:
@@ -90,10 +91,14 @@ class MatrixPencil(FrequencyConverter):
         if offset is None:
             offset = [0.0] * self.dim
 
+        if start_point is None:
+            start_point = [0] * self.dim
+
         components = [
             (data, 'data', 'ndarray'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
+            (start_point, 'start_point', 'int_list'),
             (M, 'M', 'positive_int_or_zero'),
             (fprint, 'fprint', 'bool'),
         ]
@@ -103,13 +108,8 @@ class MatrixPencil(FrequencyConverter):
 
         ArgumentChecker(components, dim=self.dim)
 
-        self.data = data
+        self.__dict__.update(locals())
         self.n = list(self.data.shape)
-        self.sw = sw
-        self.offset = offset
-        self.sfo = sfo
-        self.M = M
-        self.fprint = fprint
 
         if sfo is not None:
             self.converter = FrequencyConverter(
@@ -264,8 +264,9 @@ class MatrixPencil(FrequencyConverter):
 
         # Pseudoinverse of Vandermonde matrix of poles multiplied by
         # vector of complex amplitudes
+        sp = self.start_point[0]
         alpha = nlinalg.pinv(
-            np.power.outer(poles, np.arange(N))
+            np.power.outer(poles, np.arange(sp, N + sp))
         ).T @ normed_data
 
         params = self._generate_params(alpha, poles.reshape((1, self.M)))
