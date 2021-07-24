@@ -32,7 +32,6 @@ def test_get_timepoints():
     n = [10, 15]
     sw = [500., 1000.]
     test = [np.arange(n_) / sw_ for n_, sw_ in zip(n, sw)]
-    tp = sig.get_timepoints(n, sw)
 
     # start at t = 0
     assert all([np.array_equal(np.round(a, 3), np.round(b, 3))

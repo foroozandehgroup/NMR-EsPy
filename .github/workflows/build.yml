@@ -31,8 +31,10 @@ jobs:
 
       - name: lint with flake8
         run: |
-          # Ignore star imports (F403/5) and indents before/after binary operators (W503/4)
-          flake8 develop/examples/**/*.py develop/nmrespy/**/*.py develop/tests/*.py develop/setup.py --ignore F403,F405,W503,W504 --per-file-ignores="develop/nmrespy/__init__.py:F401,develop/nmrespy/load/__init__.py:F401,develop/setup.py:F821"
+          # Ignore star imports (F403/5),
+          # indents before/after binary operators (W503/4),
+          # invalid escape charaters (W605).
+          flake8 develop/examples/**/*.py develop/nmrespy/**/*.py develop/tests/*.py develop/setup.py --ignore F403,F405,W503,W504,W605 --per-file-ignores="develop/nmrespy/__init__.py:F401,develop/nmrespy/load/__init__.py:F401,develop/setup.py:F821"
 
       - name: test with pytest
         run: |
