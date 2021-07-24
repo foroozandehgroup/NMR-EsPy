@@ -5,6 +5,7 @@
 """Constructing and processing NMR signals"""
 
 import copy
+import re
 import tkinter as tk
 
 import numpy as np
@@ -351,7 +352,7 @@ def make_virtual_echo(data, modulation='amp'):
         return tmp1 + tmp2 + tmp3 + tmp4
 
 
-def get_timepoints(n, sw):
+def get_timepoints(n, sw, start_time=None, meshgrid_2d=False):
     """Generates the timepoints at which an FID is sampled at, given
     its sweep-width, and the number of points.
 
@@ -361,12 +362,32 @@ def get_timepoints(n, sw):
         The number of points in each dimension.
 
     sw : [float] or [float, float]
-        THe sweep width in each dimension (Hz).
+        The sweep width in each dimension (Hz).
+
+    start_time : [Union[float, str]] or None, default: None
+        The start time in each dimension. If set to `None`, the initial
+        point in each dimension with be ``0.0``. To set non-zero start times,
+        a list of floats or string can be used. If floats is used, they
+        specify the first value in each dimension in seconds. Alternatively,
+        starings of the form ``'<N>dt'``, where ``<N>`` is an integer, may be
+        used, which indicates a cetain multiple of the difference in time
+        between two adjacent points.
+
+    meshgrid_2d : bool, default: False
+        If time-points are being derived for a two-dimensional signal, setting
+        this argument to ``True`` will return two two-dimensional arrays
+        corresponding to all pairs of x and y values to construct a 3D
+        plot/contour plot.
 
     Returns
     -------
     tp : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
-        The time points sampled in each dimension
+        The time points sampled in each dimension.
+
+    Notes
+    -----
+    If strings are used in the ``start_time`` argument, they must match the
+    following regular expression: ``r'^-?\d+dt$'``
     """
 
     try:
@@ -374,9 +395,30 @@ def get_timepoints(n, sw):
     except Exception:
         raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
-    ArgumentChecker([(n, 'n', 'int_list'), (sw, 'sw', 'float_list')], dim)
+    if start_time is None:
+        start_time = [0.] * dim
 
-    return [np.linspace(0, float(n_ - 1) / sw_, n_) for n_, sw_ in zip(n, sw)]
+    ArgumentChecker(
+        [
+            (n, 'n', 'int_list'),
+            (sw, 'sw', 'float_list'),
+            (start_time, 'start_time', 'start_time'),
+            (meshgrid_2d, 'meshgrid_2d', 'bool'),
+        ],
+        dim,
+    )
+
+    for i, (st, sw_) in enumerate(zip(start_time, sw)):
+        if isinstance(st, str):
+            start_time[i] = float(re.match(r'^(-?\d+)dt$', st).group(1)) / sw_
+
+    tp = [np.linspace(0, float(n_ - 1) / sw_, n_) + st
+          for n_, sw_, st in zip(n, sw, start_time)]
+
+    if (dim == 2 and meshgrid_2d):
+        tp = list(np.meshgrid(*tp, indexing='ij'))
+
+    return tp
 
 
 def get_shifts(n, sw, offset=None, flip=True):

@@ -59,6 +59,7 @@ class ArgumentChecker:
               + `'mpl_color'`
               + `'osc_cols'`
               + `'displacement'`
+              + `'start_time'`
 
     dim : 1, 2 or None, default: None
         Dimension of the data. Only needs to be specified as `1` or `2`
@@ -128,6 +129,8 @@ class ArgumentChecker:
                 test = self.check_displacement(obj)
             elif typ == 'modulation':
                 test = obj in ['none', 'amp', 'phase']
+            elif typ == 'start_time':
+                test = self.check_start_time(obj)
 
             # Error message to be shown if invalid arguments are found
             if test is False:
@@ -286,6 +289,25 @@ class ArgumentChecker:
                     return False
             return True
         return False
+
+    @check_dim
+    def check_start_time(self, obj):
+
+        if not isinstance(obj, list) or len(obj) != self.dim:
+            return False
+
+        for item in obj:
+            if isinstance(item, float):
+                pass
+            elif isinstance(item, str):
+                if re.match(r'^-?\d+dt$', item):
+                    pass
+                else:
+                    return False
+            else:
+                return False
+
+        return True
 
 
 class FrequencyConverter:
