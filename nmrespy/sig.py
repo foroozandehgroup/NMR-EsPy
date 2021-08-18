@@ -469,8 +469,7 @@ def get_shifts(n, sw, offset=None, flip=True):
             np.linspace((-sw_ / 2) + off, (sw_ / 2) + off, n_)
         )
 
-    return np.flip(shifts) if flip else shifts
-
+    return [np.flip(s) for s in shifts] if flip else shifts
 
 def ft(fid, flip=True):
     """Performs Fourier transformation and (optionally) flips the resulting
@@ -733,9 +732,14 @@ class PhaseApp(tk.Tk):
 
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
+
         self.fig = Figure(figsize=(6, 4), dpi=160)
         # Set colour of figure frame
-        color = self.cget('bg')
+        r, g, b = [x >> 8 for x in self.winfo_rgb(self.cget('bg'))]
+        color = f'#{r:02x}{g:02x}{b:02x}'
+        if not re.match(r'^#[0-9a-f]{6}$', color):
+            color = '#d9d9d9'
+
         self.fig.patch.set_facecolor(color)
         self.ax = self.fig.add_axes([0.03, 0.1, 0.94, 0.87])
         self.ax.set_yticks([])
@@ -763,6 +767,7 @@ class PhaseApp(tk.Tk):
             self.canvas, self, pack_toolbar=False,
         )
         self.toolbar.grid(row=1, column=0, pady=(0, 10), sticky='w')
+
         self.scale_frame = tk.Frame(self)
         self.scale_frame.grid(
             row=2, column=0, padx=10, pady=(0, 10), sticky='nsew',

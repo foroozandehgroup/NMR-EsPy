@@ -22,7 +22,7 @@ from nmrespy._misc import (ArgumentChecker, FrequencyConverter,
 from ._timing import timer
 
 
-class MatrixPencil(FrequencyConverter):
+class MatrixPencil:
     """Class for performing the Matrix Pencil Method with the option of model
     order selection using the Minimum Description Length (MDL) [#]_. Supports
     analysis of one-dimensional [#]_ [#]_ or two-dimensional data [#]_ [#]_
