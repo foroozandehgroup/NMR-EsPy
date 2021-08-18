@@ -53,7 +53,7 @@ class FilterInfo:
     @property
     def cut_shape(self):
         """Shape of :py:meth:`cut_spectrum`."""
-        return [r[1] - r[0] + 1 for r in self._cut_region]
+        return [r[1] - r[0] + 1 for r in self.get_cut_region()]
 
     @property
     def filtered_spectrum(self):
@@ -236,9 +236,11 @@ class FilterInfo:
         cut_region : Union[[float], [int]]
         """
         if self._cut_region:
-            return self._converter.convert(self._cut_region, f'idx->{unit}')
+            cut_region = self._cut_region
         else:
-            return None
+            cut_region = self._region
+
+        return self._converter.convert(cut_region, f'idx->{unit}')
 
     @check_unit(['hz', 'ppm'])
     def get_cut_sw(self, unit='hz'):

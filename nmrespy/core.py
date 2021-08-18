@@ -15,7 +15,7 @@ if cols.USE_COLORAMA:
 import nmrespy._errors as errors
 from nmrespy._misc import *
 from nmrespy.load import load_bruker
-from nmrespy.freqfilter import FrequencyFilter
+from nmrespy.freqfilter import filter_spectrum
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp.nlp import NonlinearProgramming
 from nmrespy.plot import plot_result
@@ -933,10 +933,12 @@ class Estimator:
         :py:class:`nmrespy.freqfilter.FrequencyFilter`. To obtain information
         on the filtration, use :py:meth:`get_filter_info`.
         """
+        ve = sig.make_virtual_echo([self.get_data()])
+        spectrum = sig.ft(ve) + ve[0]
 
-        self.filter_info = FrequencyFilter(
-            self.get_data(), region, noise_region, region_unit=region_unit,
-            sw=self.get_sw(), offset=self.get_offset(),
+        self.filter_info = filter_spectrum(
+            spectrum, region, noise_region, self.get_sw(),
+            self.get_offset(), region_unit=region_unit,
             sfo=self.get_sfo(kill=True), cut=cut, cut_ratio=cut_ratio,
         )
 
@@ -951,13 +953,13 @@ class Estimator:
 
         Returns
         -------
-        filter_info : nmrespy.freqfilter.FrequencyFilter
+        filter_info : nmrespy.freqfilter.FilterInfo
 
         Notes
         -----
         There are numerous methods associated with `filter_info` for
         obtaining relavent infomation about the filtration. See
-        :py:class:`nmrespy.freqfilter.FrequencyFilter` for details.
+        :py:class:`nmrespy.freqfilter.FilterInfo` for details.
         """
 
         return self._check_if_none(
@@ -983,11 +985,11 @@ class Estimator:
         * If `self.filter_info` is equal to `None`, `self.data` will be
           analysed
         * If `self.filter_info` is an instance of
-          :py:class:`nmrespy.freqfilter.FrequencyFilter`,
-          `self.filter_info.filtered_signal` will be analysed.
+          :py:class:`nmrespy.freqfilter.FilterInfo`,
+          `self.filter_info.cut_fid` will be analysed.
         """
         if self.filter_info is not None:
-            data = self.filter_info.get_fid()
+            data = self.filter_info.cut_fid
             sw = self.filter_info.get_sw()
             offset = self.filter_info.get_offset()
 
