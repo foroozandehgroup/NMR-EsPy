@@ -419,7 +419,7 @@ class FrequencyConverter:
     def _check_valid_conversion(self, conversion):
         """Check that conversion is a valid value"""
         units = ['idx', 'ppm', 'hz']
-        for pair in itertools.permutations(units, r=2):
+        for pair in itertools.product(units, repeat=2):
             pair = iter(pair)
             if f'{next(pair)}->{next(pair)}' == conversion:
                 return True
@@ -459,6 +459,10 @@ class FrequencyConverter:
 
         elif conversion == 'hz->ppm':
             return value / sfo
+
+        else:
+            # conversion will be one of 'hz->hz', 'ppm->ppm', 'idx->idx'
+            return value
 
 
 class PathManager:
