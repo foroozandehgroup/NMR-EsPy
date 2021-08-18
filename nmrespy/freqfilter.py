@@ -19,6 +19,7 @@ if cols.USE_COLORAMA:
 import nmrespy._errors as errors
 from nmrespy import sig
 
+
 @dataclass
 class FilterInfo:
     _spectrum: np.ndarray
@@ -26,7 +27,7 @@ class FilterInfo:
     _sg_noise: np.ndarray
     _region: list[int]
     _noise_region: list[int]
-    _cut_region : Union[list[int], None]
+    _cut_region: Union[list[int], None]
     _converter: FrequencyConverter
 
     @property
@@ -118,8 +119,8 @@ class FilterInfo:
                     return f(*args, **kwargs)
                 else:
                     raise ValueError(
-                        f'{cols.R}`unit` should be one of: {{' \
-                        + ', '.join(['\'' + v + '\'' for v in valid_units]) \
+                        f'{cols.R}`unit` should be one of: {{'
+                        + ', '.join(['\'' + v + '\'' for v in valid_units])
                         + f'}}{cols.END}'
                     )
             return checker
@@ -410,7 +411,9 @@ def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
 
     # --- Check validity of parameters -------------------------------
     if not isinstance(spectrum, np.ndarray):
-        raise TypeError(f'{cols.R}`spectrum` should be a numpy array{cols.END}')
+        raise TypeError(
+            f'{cols.R}`spectrum` should be a numpy array{cols.END}'
+        )
 
     # Determine data dimension. If greater than 2, return error.
     dim = spectrum.ndim

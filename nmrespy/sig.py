@@ -471,6 +471,7 @@ def get_shifts(n, sw, offset=None, flip=True):
 
     return [np.flip(s) for s in shifts] if flip else shifts
 
+
 def ft(fid, flip=True):
     """Performs Fourier transformation and (optionally) flips the resulting
     spectrum to satisfy NMR convention.
