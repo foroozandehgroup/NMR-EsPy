@@ -53,7 +53,7 @@ class FilterInfo:
     @property
     def cut_shape(self):
         """Shape of :py:meth:`cut_spectrum`."""
-        return [r[1] - r[0] + 1 for r in self.get_cut_region()]
+        return [r[1] - r[0] + 1 for r in self.get_cut_region(unit='idx')]
 
     @property
     def filtered_spectrum(self):
@@ -238,7 +238,7 @@ class FilterInfo:
         if self._cut_region:
             cut_region = self._cut_region
         else:
-            cut_region = self._region
+            cut_region = [[0, s - 1] for s in self.shape]
 
         return self._converter.convert(cut_region, f'idx->{unit}')
 
