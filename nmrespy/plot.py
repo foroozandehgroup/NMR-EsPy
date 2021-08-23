@@ -4,7 +4,9 @@
 
 """Support for plotting estimation results"""
 
+from collections.abc import Iterable
 import os
+from pathlib import Path
 import re
 import tempfile
 
@@ -25,12 +27,193 @@ from nmrespy._misc import *
 from nmrespy import sig
 
 
+def _to_hex(color):
+    """Attempts to convert color into a hex. If an invalid RGBA argument is
+    given, None is returned, rather then an error call"""
+    try:
+        return mcolors.to_hex(color)
+    except ValueError:
+        return None
+
+
+def _configure_oscillator_colors(oscillator_colors, m):
+    # Determine oscillator colours to use
+    if oscillator_colors is None:
+        return ['#1063e0', '#eb9310','#2bb539', '#d4200c']
+
+    if oscillator_colors in plt.colormaps():
+        return [_to_hex(c) for c in
+                cm.get_cmap(oscillator_colors)(np.linspace(0, 1, m))]
+
+    if isinstance(oscillator_colors, str):
+        oscillator_colors = [oscillator_colors]
+
+    osc_cols = [_to_hex(c) for c in oscillator_colors]
+    nones = [i for i, c in enumerate(osc_cols) if c is None]
+    if nones:
+        msg = (f'{cols.R}The following entries in `oscillator_colors` could '
+               f'not be recognised as valid colours in matplotlib:\n'
+               + '\n'.join([f'--> {repr(oscillator_colors[i])}' for i in nones])
+               + cols.END)
+        raise ValueError(msg)
+
+    return osc_cols
+
+
+def _get_rc_from_file(path):
+    try:
+        rc = str(mpl.rc_params_from_file(
+            path, fail_on_error=True, use_default_template=False
+        ))
+        # If the file exists, but no lines can be parsed, an empty
+        # string is returned.
+        return rc if rc else None
+
+    except FileNotFoundError:
+        return None
+
+
+def _extract_rc(stylesheet):
+    # Default style sheet if one isn't explicitly given
+    if stylesheet is None:
+        stylesheet = NMRESPYPATH / 'config/nmrespy_custom.mplstyle'
+
+    # Check two possible paths.
+    # First one is simply the user input:
+    # This will be valid if a full path to a stylesheet has been given.
+    # Second one is to check whether the user has given a name for one of
+    # the provided stylesheets that ship with matplotlib.
+    paths = [
+        stylesheet,
+        (Path(mpl.__file__).resolve().parent / "mpl-data/stylelib" /
+         f"{stylesheet}.mplstyle")
+    ]
+
+    for path in paths:
+        rc = _get_rc_from_file(path)
+        if rc:
+            return rc
+
+    raise ValueError(
+        f'{cols.R}Error in loading the stylesheet. Check you gave '
+         'a valid path or name for the stylesheet, and that the '
+        f'stylesheet is formatted correctly.{cols.END}'
+    )
+
+
+def _create_rc(stylesheet, oscillator_colors, m):
+    rc = _extract_rc(stylesheet)
+    osc_cols = _configure_oscillator_colors(oscillator_colors, m)
+    col_txt = ', '.join([f'\'{c.lower()}\'' for c in osc_cols])
+    # Overwrite the line containing axes.prop_cycle
+    rc = '\n'.join(
+        filter(lambda ln: 'axes.prop_cycle' not in ln, rc.split('\n'))
+    ) + f'\naxes.prop_cycle: cycler(\'color\', [{col_txt}])\n'
+    # Seem to be getting bugs when using stylesheet with any hex colours
+    # that have a # in front. Remove these.
+    rc = re.sub(r'#([0-9a-fA-F]{6})', r'\1', rc)
+    return rc
+
+
+def _create_stylesheet(rc):
+    # Temporary path to save stylesheet to
+    tmp_path = Path(tempfile.gettempdir()).resolve() / 'stylesheet.mplstyle'
+    with open(tmp_path, 'w') as fh:
+        fh.write(rc)
+    return tmp_path
+
+
+def _configure_shifts_unit(shifts_unit, sfo):
+    if shifts_unit not in ['hz', 'ppm']:
+        raise errors.InvalidUnitError('hz', 'ppm')
+    if shifts_unit == 'ppm' and sfo is None:
+        shifts_unit = 'hz'
+        print(
+            f'{cols.OR}You need to specify `sfo` if you want chemical'
+            f' shifts in ppm! Falling back to Hz...{cols.END}'
+        )
+    return shifts_unit
+
+
+def _get_region_slice(shifts_unit, region, n, sw, offset, sfo):
+    if region is None:
+        return tuple(slice(0, n_, None) for n_ in n)
+
+    limits = []
+    if isinstance(sfo, Iterable):
+        for (bounds, n_, sw_, offset_, sfo_) in zip(region, n, sw, offset, sfo):
+            converter = FrequencyConverter([n_], [sw_], [offset_], sfo=[sfo_])
+            bounds = converter.convert([bounds], f'{shifts_unit}->idx')[0]
+            limits.append([min(bounds), max(bounds)])
+
+    else:
+        for (bounds, n_, sw_, offset_) in zip(region, n, sw, offset):
+            converter = FrequencyConverter([n_], [sw_], [offset_])
+            bounds = converter.convert([bounds], f'{shifts_unit}->idx')[0]
+            limits.append([min(bounds), max(bounds)])
+
+    return tuple(slice(x[0], x[1] + 1, None) for x in limits)
+
+
+def _generate_peaks(result, n, sw, offset, region_slice):
+    return [np.real(sig.ft(sig.make_fid(
+                np.expand_dims(oscillator, axis=0), n, sw, offset=offset
+            )[0]))[region_slice]
+            for oscillator in result]
+
+
+def _generate_model_and_residual(peaks, spectrum):
+    model = sum(peaks)
+    return model, spectrum - model
+
+
+def _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels):
+    label_alpha = int(show_labels)
+    for m, peak in enumerate(peaks, start=1):
+        _plot_spectrum(lines, m, ax, shifts, peak)
+        idx = np.argmax(np.absolute(peak))
+        x, y = shifts[idx], peak[idx]
+        labels[m] = ax.text(x, y, str(m), fontsize=8, alpha=label_alpha)
+
+
+def _plot_spectrum(lines, name, ax, shifts, spectrum, color=None, show=True):
+    lines[name] = ax.plot(shifts, spectrum, color=color, alpha=int(show))[0]
+
+
+def _process_yshift(data, yshift, scale):
+    if yshift:
+        return yshift
+    else:
+        return scale * np.max(np.absolute(data))
+
+
+def _set_axis_limits(ax, lines):
+    # Flip the x-axis
+    ax.set_xlim(reversed(ax.get_xlim()))
+    # y-limits
+    ydatas = [l.get_ydata() for l in lines.values() if l.get_alpha() != 0]
+    maxi = max([np.amax(ydata) for ydata in ydatas])
+    mini = min([np.amin(ydata) for ydata in ydatas])
+    vertical_span = maxi - mini
+    bottom = mini - (0.03 * vertical_span)
+    top = maxi + (0.03 * vertical_span)
+    ax.set_ylim(bottom, top)
+
+
+def _set_xaxis_label(ax, nucleus, shifts_unit):
+    # TODO Only works for 1D data ATM
+    # Produces a label of form ¹H (Hz) or ¹³C (ppm) etc.
+    nuc = latex_nucleus(nucleus[0]) if nucleus else 'chemical shift'
+    unit = '(Hz)' if shifts_unit == 'hz' else '(ppm)'
+    ax.set_xlabel(f'{nuc} {unit}')
+
+
 def plot_result(
     data, result, sw, offset, plot_residual=True, plot_model=False,
     residual_shift=None, model_shift=None, sfo=None, shifts_unit='ppm',
     nucleus=None, region=None, data_color='#000000', residual_color='#808080',
     model_color='#808080', oscillator_colors=None,
-    labels=True, stylesheet=None,
+    show_labels=True, stylesheet=None,
 ):
     """
     Produces a figure of an estimation result.
@@ -79,13 +262,18 @@ def plot_result(
         chemical shift axis in ppm. If `None`, chemical shifts will be plotted
         in Hz.
 
+    shifts_unit : {'ppm', 'hz'}, default: 'ppm'
+        Units to display chemical shifts in. If this is set to `'ppm'` but
+        `sfo` is not specified, it will revert to `'hz'`.
+
     nucleus : [str], [str, str] or None, default: None
         The nucleus in each dimension.
 
     region : [[int, int]], [[float, float]], [[int, int], [int, int]] or \
     [[float, float], [float, float]]
         Boundaries specifying the region to show. See also
-        :py:class:`nmrespy.freqfilter.FrequencyFilter`.
+        :py:class:`nmrespy.freqfilter.FrequencyFilter`. **N.B. the units
+        `region` is given in should match `shifts_unit`.**
 
     plot_residual : bool, default: True
         If `True`, plot a difference between the FT of `data` and the FT of
@@ -151,9 +339,9 @@ def plot_result(
             - :oscgreen:`#2BB539`
             - :oscred:`#D4200C`
 
-    labels : Bool, default: True
+    show_labels : Bool, default: True
         If `True`, each oscillator will be given a numerical label
-        in the plot, if `False`, no labels will be produced.
+        in the plot, if `False`, the labels will be hidden.
 
     stylesheet : str or None, default: None
         The name of/path to a matplotlib stylesheet for further
@@ -195,15 +383,14 @@ def plot_result(
     try:
         dim = data.ndim
     except Exception:
-        raise TypeError(f'{cols.R}data should be a NumPy array.{cols.END}')
-
+        raise TypeError(f'{cols.R}`data` should be a NumPy array.{cols.END}')
     if dim == 2:
         raise TwoDimUnsupportedError()
-
-    if dim >= 3:
+    elif dim >= 3:
         raise MoreThanTwoDimError()
 
-    components = [
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
         (data, 'data', 'ndarray'),
         (result, 'result', 'parameter'),
         (sw, 'sw', 'float_list'),
@@ -211,216 +398,59 @@ def plot_result(
         (data_color, 'data_color', 'mpl_color'),
         (residual_color, 'residual_color', 'mpl_color'),
         (model_color, 'model_color', 'mpl_color'),
-        (labels, 'labels', 'bool'),
+        (show_labels, 'labels', 'bool'),
         (plot_residual, 'plot_residual', 'bool'),
         (plot_model, 'plot_model', 'bool'),
-    ]
+        (sfo, 'sfo', 'float_list', True),
+        (nucleus, 'nucleus', 'str_list', True),
+        (region, 'region', 'region_float', True),
+        (residual_shift, 'residual_shift', 'float', True),
+        (model_shift, 'model_shift', 'float', True),
+        (oscillator_colors, 'oscillator_colors', 'osc_cols', True),
+        (stylesheet, 'stylesheet', 'str', True)
+    )
+    checker.check()
 
-    if sfo is not None:
-        components.append((sfo, 'sfo', 'float_list'))
-    if nucleus is not None:
-        components.append((nucleus, 'nucleus', 'str_list'))
-    if region is not None:
-        components.append((region, 'region', 'region_float'))
-    if residual_shift is not None:
-        components.append((residual_shift, 'residual_shift', 'float'))
-    if model_shift is not None:
-        components.append((model_shift, 'model_shift', 'float'))
-    if oscillator_colors is not None:
-        components.append((oscillator_colors, 'oscillator_colors', 'osc_cols'))
-    if stylesheet is not None:
-        components.append((stylesheet, 'stylesheet', 'str'))
+    # Setup the stylesheet
+    rc = _create_rc(stylesheet, oscillator_colors, result.shape[0])
+    plt.style.use(_create_stylesheet(rc))
 
-    ArgumentChecker(components, dim=dim)
-
-    # Number of oscillators
-    m = result.shape[0]
-
-    # Default style sheet if one isn't explicitly given
-    if stylesheet is None:
-        stylesheet = NMRESPYPATH / 'config/nmrespy_custom.mplstyle'
-    # Load text from style sheet
-    try:
-        rc = str(mpl.rc_params_from_file(
-            stylesheet, fail_on_error=True, use_default_template=False,
-        ))
-    except Exception:
-        raise ValueError(
-            f'{cols.R}Error in loading the stylesheet. Check you gave'
-            ' a valid path, and that the stylesheet is formatted'
-            f' correctly{cols.END}'
-        )
-
-    # Seem to be getting bugs when using stylesheet with any hex colours
-    # that have a # in front. Remove these.
-    rc = re.sub(r'#([0-9a-fA-F]{6})', r'\1', rc)
-
-    # Determine oscillator colours to use
-    if oscillator_colors is None:
-        # Check if axes.prop_cycle is in the stylesheet.
-        # If not, add the default colour cycle to it
-        if 'axes.prop_cycle' not in rc:
-            rc += (
-                '\naxes.prop_cycle: cycler(\'color\', [\'1063e0\', \'eb9310\','
-                ' \'2bb539\', \'d4200c\'])'
-            )
-
-    else:
-        # --- Get colors in list form ------------------------------------
-        # Check for single mpl colour
-        try:
-            oscillator_colors = [mcolors.to_hex(oscillator_colors)]
-        except ValueError:
-            pass
-        # Check for colormap, and construct linearly sampled array
-        # of colors from it
-        if oscillator_colors in plt.colormaps():
-            oscillator_colors = \
-                cm.get_cmap(oscillator_colors)(np.linspace(0, 1, m))
-        # Covers both a colormap specification or a list/numpy array input
-        oscillator_colors = [mcolors.to_hex(col) for col in oscillator_colors]
-
-        # Remove the line containing axes.prop_cycle (if it exists),
-        # as it is going to be overwritten by the custom colorcycle
-        rc = '\n'.join(
-            filter(lambda ln: 'axes.prop_cycle' not in ln, rc.split('\n'))
-        )
-        # Append the custom colorcycle to the rc text
-        col_txt = \
-            ', '.join([f'\'{c[1:].lower()}\'' for c in oscillator_colors])
-        rc += f'\naxes.prop_cycle: cycler(\'color\', [{col_txt}])\n'
-
-    # Temporary path to save stylesheet to
-    tmp_path = Path(tempfile.gettempdir()) / 'stylesheet.mplstyle'
-    with open(tmp_path, 'w') as fh:
-        fh.write(rc)
-    # Invoke the stylesheet
-    plt.style.use(tmp_path)
-    # Delete the stylesheet
-    os.remove(tmp_path)
-
-    if shifts_unit not in ['hz', 'ppm']:
-        raise errors.InvalidUnitError('hz', 'ppm')
-    if shifts_unit == 'ppm' and sfo is None:
-        shifts_unit = 'hz'
-        print(
-            f'{cols.OR}You need to specify `sfo` if you want chemical'
-            f' shifts in ppm! Falling back to Hz...{cols.END}'
-        )
-
-    # Change x-axis limits if a specific region was studied
     n = list(data.shape)
-    if region is not None:
-        # Determine highest/lowest values points in region,
-        # and set ylims to accommodate these.
-        converter = FrequencyConverter(n, sw, offset, sfo=sfo)
-        region = converter.convert(region, f'{shifts_unit}->idx')
-        left, right = min(region[0]), max(region[0]) + 1
-
-    else:
-        left, right = 0, shifts.size
-
-    # Generate data: chemical shifts, data spectrum, oscillator spectra
-    shifts = sig.get_shifts(n, sw, offset)[0][left:right]
-    shifts = shifts / sfo[0] if shifts_unit == 'ppm' else shifts
-
-    spectrum = np.real(sig.ft(data))[left:right]
-
-    peaks = []
-    for osc in result:
-        peaks.append(
-            np.real(
-                sig.ft(
-                    sig.make_fid(
-                        np.expand_dims(osc, axis=0), n, sw, offset=offset,
-                    )[0]
-                )
-            )[left:right]
-        )
-
-    model = np.zeros(spectrum.size)
-    for peak in peaks:
-        model += peak
-    residual = spectrum - model
+    shifts_unit = _configure_shifts_unit(shifts_unit, sfo)
+    region_slice = _get_region_slice(shifts_unit, region, n, sw, offset, sfo)
+    # Generate data: chemical shifts, data spectrum, oscillator peaks
+    shifts = [shifts[slice_] for shifts, slice_ in
+              zip(sig.get_shifts(n, sw, offset, sfo=sfo, unit=shifts_unit),
+                  region_slice)][0]
+    # TODO should replicate that way the spectrum was created (ve for example)
+    spectrum = np.real(sig.ft(data))[region_slice]
+    peaks = _generate_peaks(result, n, sw, offset, region_slice)
+    model, residual = _generate_model_and_residual(peaks, spectrum)
 
     # Generate figure and axis
     fig = plt.figure()
     ax = fig.add_axes([0.02, 0.15, 0.96, 0.83])
-
-    # To store each plotline (mpl.lines.Line2D objects)
-    lines = {}
-    # To store each oscillator label (mpl.text.Text objects)
-    labs = {}
-
-    # Plot original data (Given the key 0)
-    lines['data'] = ax.plot(shifts, spectrum, color=data_color)[0]
-
-    # Plot oscillators and label
-    for m, peak in enumerate(peaks, start=1):
-        lines[m] = ax.plot(shifts, peak)[0]
-        # Give oscillators numerical labels
-        # x-value of peak maximum (in ppm)
-        x = shifts[np.argmax(peak)]
-        # y-value of peak maximum
-        y = peak[np.argmax(np.absolute(peak))]
-        alpha = 1 if labels else 0
-        labs[m] = ax.text(x, y, str(m), fontsize=8, alpha=alpha)
-
-    # Plot residual
-    if plot_residual:
-        if residual_shift is None:
-            # Calculate default residual shift
-            # Ensures the residual lies below the data amd model
-            #
-            # Determine highest positive residual value
-            maxi = np.max(residual)
-            # Set shift
-            residual_shift = - 1.5 * maxi
-
-        lines['residual'] = ax.plot(
-            shifts, residual + residual_shift, color=residual_color,
-        )[0]
-
+    lines, labels = {}, {}
+    # Plot oscillator peaks
+    _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels)
+    # Plot data
+    _plot_spectrum(lines, 'data', ax, shifts, spectrum, color=data_color)
     # Plot model
-    if plot_model:
-        if model_shift is None:
-            # Calculate default model shift
-            # Ensures the model lies above the data amd model
-            #
-            # Determine highest positive residual value
-            maxi = np.max(model)
-            # Set shift
-            model_shift = 0.2 * maxi
+    model += _process_yshift(model, model_shift, 0.1)
+    _plot_spectrum(
+        lines, 'model', ax, shifts, model, color=model_color, show=plot_model
+    )
+    # Plot residual
+    residual += _process_yshift(residual, residual_shift, -1.5)
+    _plot_spectrum(
+        lines, 'residual', ax, shifts, residual, color=residual_color,
+        show=plot_residual
+    )
 
-        lines['model'] = ax.plot(
-            shifts, model + model_shift, color=model_color,
-        )[0]
+    _set_axis_limits(ax, lines)
+    _set_xaxis_label(ax, nucleus, shifts_unit)
 
-        # Initialise maxi and mini to be values that are certain to be
-        # overwritten
-        maxi = -np.inf
-        mini = np.inf
-        # For each plot, get max and min values
-        for line in list(lines.values()):
-            # Flip the data and extract right section
-            data = line.get_ydata()
-            line_max = np.amax(data)
-            line_min = np.amin(data)
-            # Check if plot's max value is larger than current max
-            maxi = line_max if line_max > maxi else maxi
-            # Check if plot's min value is smaller than current min
-            mini = line_min if line_min < mini else mini
-        height = maxi - mini
-        bottom, top = mini - (0.03 * height), maxi + (0.05 * height)
-        ax.set_ylim(bottom, top)
-
-    ax.set_xlim(ax.get_xlim()[1], ax.get_xlim()[0])
-    # x-axis label, of form ¹H or ¹³C etc.
-    xlab = 'chemical shifts' if nucleus is None else latex_nucleus(nucleus[0])
-    xlab += ' (Hz)' if shifts_unit == 'hz' else ' (ppm)'
-    ax.set_xlabel(xlab)
-
-    return NmrespyPlot(fig, ax, lines, labs)
+    return NmrespyPlot(fig, ax, lines, labels)
 
 
 # TODO: Grow this class: provide functionality for easy tweaking
