@@ -2,41 +2,44 @@ import pytest
 
 import numpy as np
 
+import nmrespy._cols as cols
 from nmrespy._misc import FrequencyConverter, ArgumentChecker
 
 
 def test_argchecker():
-    with pytest.raises(TypeError):
-        ArgumentChecker(
-            [
-                # should be a valid parameter array
-                (np.array([[1, 2, 3, 4]]), 'theta0', 'parameter'),
-                # should be an invalid sw
-                ([10], 'sw', 'float_list'),
-                # should be an invalid boolean
-                ('thisisastring', 'fprint', 'bool'),
-            ],
-            # dimension
-            1
+    with pytest.raises(TypeError) as exc_info:
+        checker = ArgumentChecker(dim=1)
+        checker.stage(
+            # should be a valid parameter array
+            (np.array([[1, 2, 3, 4]]), 'theta0', 'parameter'),
+            # should be an invalid sw
+            ([10], 'sw', 'float_list'),
+            # should be an invalid boolean
+            ('thisisastring', 'fprint', 'bool'),
         )
+        checker.check()
 
-    ArgumentChecker(
-        [
-            (np.arange(12).reshape(2, 6), 'parameter', 'parameter'),
-            ([10, 43], 'int_list', 'int_list'),
-            ([10.21, 43.74], 'float_list', 'float_list'),
-            (True, 'bool', 'bool'),
-            (-10, 'int', 'int'),
-            (-10.563, 'float', 'float'),
-            (10, 'positive_int', 'positive_int'),
-            (10.563, 'positive_float', 'positive_float'),
-            ('afd', 'optimiser_mode', 'optimiser_mode'),
-            (0.53425, 'zero_to_one', 'zero_to_one'),
-            ('remove', 'negative_amplitude', 'negative_amplitude')
-        ],
-        # dimension
-        2
+    assert str(exc_info.value) == \
+        (f'{cols.R}The following arguments are invalid:\n'
+          '--> sw\n--> fprint\n'
+         f'Have a look at the documentation for more info.{cols.END}')
+
+
+    checker = ArgumentChecker(dim=2)
+    checker.stage(
+        (np.arange(12).reshape(2, 6), 'a', 'parameter'),
+        (None, 'b', 'int_list', True),
+        ([10.21, 43.74], 'c', 'float_list'),
+        (True, 'd', 'bool'),
+        (-10, 'e', 'int'),
+        (-10.563, 'f', 'float'),
+        (None, 'g', 'positive_int', True),
+        (10.563, 'h', 'positive_float'),
+        ('afd', 'i', 'optimiser_mode'),
+        (0.53425, 'j', 'zero_to_one'),
+        ('remove', 'k', 'negative_amplitude')
     )
+    checker.check()
 
 
 def test_converter():
