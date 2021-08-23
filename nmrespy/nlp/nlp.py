@@ -228,15 +228,13 @@ class NonlinearProgramming(FrequencyConverter):
         # If offset is None, set it to zero in each dimension
         if offset is None:
             offset = [0.0] * self.dim
-
         if max_iterations is None:
             max_iterations = 100
-
         if start_point is None:
             start_point = [0] * self.dim
 
-        # Determine validity of other args using ArgumentChecker
-        components = [
+        checker = ArgumentChecker(dim=self.dim)
+        checker.stage(
             (theta0, 'theta0', 'parameter'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
@@ -246,22 +244,11 @@ class NonlinearProgramming(FrequencyConverter):
             (mode, 'mode', 'optimiser_mode'),  # TODO
             (negative_amps, 'negative_amps', 'negative_amplidue'),
             (fprint, 'fprint', 'bool'),
-        ]
-
-        # Certain arguments should be checked only if they are not None...
-        if sfo is not None:
-            components.append((sfo, 'sfo', 'float_list'))
-
-        if amp_thold is not None:
-            components.append((amp_thold, 'amp_thold', 'zero_to_one'))
-
-        if freq_thold is not None:
-            components.append((freq_thold, 'freq_thold', 'positive_float'))
-
-        # Check arguments are valid!
-        for c in components:
-            print(c[1])
-        ArgumentChecker(components, self.dim)
+            (sfo, 'sfo', 'float_list', True),
+            (amp_thold, 'amp_thold', 'zero_to_one', True),
+            (freq_thold, 'freq_thold', 'positive_float', True)
+        )
+        checker.check()
 
         # TODO
         # # Gets upset when phase variance is switched on, but phases

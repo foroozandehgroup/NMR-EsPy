@@ -164,19 +164,17 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
     if offset is None:
         offset = [0.0] * dim
 
-    components = [
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
         (parameters, 'parameters', 'parameter'),
         (n, 'n', 'int_list'),
         (sw, 'sw', 'float_list'),
         (offset, 'offset', 'float_list'),
         (decibels, 'decibels', 'bool'),
         (modulation, 'modulation', 'modulation'),
-    ]
-
-    if snr is not None:
-        components.append((snr, 'snr', 'float'))
-
-    ArgumentChecker(components, dim)
+        (snr, 'snr', 'float', True)
+    )
+    checker.check()
 
     # --- Extract amplitudes, phases, frequencies and damping ------------
     amp = parameters[:, 0]
@@ -283,11 +281,12 @@ def make_virtual_echo(data, modulation='amp'):
     if dim > 2:
         raise errors.MoreThanTwoDimError()
 
-    ArgumentChecker(
-        [(data, 'data', 'array_list'),
-         (modulation, 'modulation', 'modulation')],
-        dim,
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
+        (data, 'data', 'array_list'),
+         (modulation, 'modulation', 'modulation')
     )
+    checker.check()
 
     if dim == 1:
         data = data[0]
@@ -398,15 +397,14 @@ def get_timepoints(n, sw, start_time=None, meshgrid_2d=False):
     if start_time is None:
         start_time = [0.] * dim
 
-    ArgumentChecker(
-        [
-            (n, 'n', 'int_list'),
-            (sw, 'sw', 'float_list'),
-            (start_time, 'start_time', 'start_time'),
-            (meshgrid_2d, 'meshgrid_2d', 'bool'),
-        ],
-        dim,
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
+        (n, 'n', 'int_list'),
+        (sw, 'sw', 'float_list'),
+        (start_time, 'start_time', 'start_time'),
+        (meshgrid_2d, 'meshgrid_2d', 'bool'),
     )
+    checker.check()
 
     for i, (st, sw_) in enumerate(zip(start_time, sw)):
         if isinstance(st, str):
@@ -421,7 +419,7 @@ def get_timepoints(n, sw, start_time=None, meshgrid_2d=False):
     return tp
 
 
-def get_shifts(n, sw, offset=None, flip=True):
+def get_shifts(n, sw, offset=None, sfo=None, unit='hz', flip=True):
     """Generates the frequencies that the FT of the FID is sampled at, given
     its sweep-width, the transmitter offset, and the number of points.
 
@@ -436,6 +434,14 @@ def get_shifts(n, sw, offset=None, flip=True):
     offset : [float], [float, float], or None, default: None
         The transmitter offset in each dimension. If `None`, the
         offset will be set to zero in each dimension.
+
+    sfo : [float], [float, float], or None, default: None
+        The transmitter frequency in each dimension in MHz. If `None`, it will
+        only be possible to get shifts in Hz.
+
+    unit : {'hz', 'ppm'}, default: 'hz'
+        The unit of the chemical shifts. In order to get shifts in ppm, `sfo`
+        need to be specified (i.e. it cannot be `None`).
 
     flip : bool, default: True
         If `True`, the shifts will be returned in descending order, as is
@@ -454,20 +460,31 @@ def get_shifts(n, sw, offset=None, flip=True):
     if offset is None:
         offset = dim * [0.]
 
-    ArgumentChecker(
-        [
-            (n, 'n', 'int_list'),
-            (sw, 'sw', 'float_list'),
-            (offset, 'offset', 'float_list'),
-        ],
-        dim=dim
-    )
+    if unit not in ['hz', 'ppm']:
+        raise ValueError(f'{cols.R}`unit` should be either \'hz\' or '
+                         f'\'ppm\'.{cols.END}')
 
-    shifts = []
-    for n_, sw_, off in zip(n, sw, offset):
-        shifts.append(
-            np.linspace((-sw_ / 2) + off, (sw_ / 2) + off, n_)
+    if sfo is None and unit == 'ppm':
+        print(
+            f'{cols.OR}You need to specify `sfo` if you want chemical'
+            f' shifts in ppm! Falling back to Hz...{cols.END}'
         )
+        unit = 'hz'
+
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
+        (n, 'n', 'int_list'),
+        (sw, 'sw', 'float_list'),
+        (offset, 'offset', 'float_list'),
+        (flip, 'flip', 'bool'),
+        (sfo, 'sfo', 'float_list', True)
+    )
+    checker.check()
+
+    shifts = [np.linspace((-sw_ / 2) + offset_, (sw_ / 2) + offset_, n_)
+              for n_, sw_, offset_ in zip(n, sw, offset)]
+    if unit == 'ppm':
+        shifts = [s / sfo_ for s, sfo_ in zip(shifts, sfo)]
 
     return [np.flip(s) for s in shifts] if flip else shifts
 
@@ -644,14 +661,14 @@ def phase(data, p0, p1, pivot=None):
     if pivot is None:
         pivot = [0] * dim
 
-    components = [
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
         (data, 'data', 'ndarray'),
         (p0, 'p0', 'float_list'),
         (p1, 'p1', 'float_list'),
         (pivot, 'pivot', 'int_list')
-    ]
-
-    ArgumentChecker(components, dim)
+    )
+    checker.check()
 
     # Indices for einsum
     # For 1D: 'i'
@@ -888,13 +905,13 @@ def make_noise(fid, snr, decibels=True):
     noise : numpy.ndarray
     """
 
-    components = [
+    checker = ArgumentChecker()
+    checker.stage(
         (fid, 'fid', 'ndarray'),
         (snr, 'snr', 'float'),
-        (decibels, 'decibels', 'bool'),
-    ]
-
-    ArgumentChecker(components)
+        (decibels, 'decibels', 'bool')
+    )
+    checker.check()
 
     size = fid.size
     shape = fid.shape
@@ -963,16 +980,13 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     if offset is None:
         offset = [0.0] * dim
 
-    components = [
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
         (m, 'm', 'positive_int'),
         (n, 'n', 'int_list'),
         (sw, 'sw', 'float_list'),
-    ]
-
-    if snr is not None:
-        components.append((snr, 'snr', 'positive_float'))
-
-    ArgumentChecker(components, dim)
+        (snr, 'snr', 'positive_float', True)
+    )
 
     # low: 0.0, high: 1.0
     # amplitdues

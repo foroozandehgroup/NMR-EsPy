@@ -428,14 +428,12 @@ def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
         (sg_power, 'sg_power', 'float'),
         (cut, 'cut', 'bool'),
         (cut_ratio, 'cut_ratio', 'greater_than_one'),
+        (sfo, 'sfo', 'float_list', True)
     ]
-
-    if sfo:
-        components.append((sfo, 'sfo', 'float_list'))
 
     if (region_unit == 'ppm') and (sfo is None):
         raise ValueError(
-            f'{cols.R}`sfo` needs cannot be None when `region_unit` is set '
+            f'{cols.R}`sfo` cannot be None when `region_unit` is set '
             f'to \'ppm\'{cols.END}'
         )
     elif region_unit in ['hz', 'ppm']:
@@ -450,7 +448,9 @@ def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
             f'\'idx\' and \'ppm\'}}{cols.END}'
         )
 
-    ArgumentChecker(components, dim)
+    checker = ArgumentChecker(dim=1)
+    checker.stage(*components)
+    checker.check()
 
     shape = list(spectrum.shape)
     # Convert region from hz or ppm to array indices

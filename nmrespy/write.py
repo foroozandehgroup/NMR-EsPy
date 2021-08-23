@@ -39,7 +39,7 @@ def write_result(
         of `errors` should match that of `parameters`.
 
     path : str, default: './nmrespy_result'
-        The path to save the file to. DO NOT INCLUDE A FILE EXTENSION.
+        The path to save the file to. **DO NOT INCLUDE A FILE EXTENSION**.
         This will be added based on the value of `fmt`. For example, if you
         set `path` to `.../result.txt` and `fmt` is `'txt'`, the resulting
         file will be `.../result.txt.txt`
@@ -164,38 +164,29 @@ def write_result(
             f'{cols.R}parameters should be a numoy array{cols.END}'
         )
 
-    components = [
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
         (parameters, 'parameters', 'parameter'),
         (path, 'path', 'str'),
         (fmt, 'fmt', 'file_fmt'),
         (force_overwrite, 'force_overwrite', 'bool'),
         (fprint, 'fprint', 'bool'),
-    ]
+        (errors, 'errors', 'parameter', True),
+        (sfo, 'sfo', 'float_list', True),
+        (description, 'description', 'str', True),
+        (info_headings, 'info_headings', 'list', True),
+        (info, 'info', 'list', True),
+        (sig_figs, 'sig_figs', 'positive_int', True),
+        (sci_lims, 'sci_lims', 'pos_neg_tuple', True),
+        (integrals, 'integrals', 'list', True)
+    )
+    checker.check()
 
-    if errors is not None:
-        components.append((errors, 'errors', 'parameter'))
-    if sfo is not None:
-        components.append((sfo, 'sfo', 'float_list'))
-    if description is not None:
-        components.append((description, 'description', 'str'))
-    if info_headings is not None and info is not None:
-        components.append((info_headings, 'info_headings', 'list'))
-        components.append((info, 'info', 'list'))
-    elif info_headings is None and info is None:
-        pass
-    else:
+    if len(list(filter(lambda x: x is None, [info_headings, info]))) == 1:
         raise ValueError(
-            f'{cols.R}info and info_headings should either both be lists'
+            f'{cols.R}`info` and `info_headings` should either both be lists'
             f' of the same length, or both be None.{cols.END}'
         )
-    if sig_figs is not None:
-        components.append((sig_figs, 'sig_figs', 'positive_int'))
-    if sci_lims is not None:
-        components.append((sci_lims, 'sci_lims', 'pos_neg_tuple'))
-    if integrals is not None:
-        components.append((integrals, 'integrals', 'list'))
-
-    ArgumentChecker(components, dim)
     # Should be same number of integrals as number of oscillators
     if isinstance(integrals, list) and len(integrals) != parameters.shape[0]:
         raise ValueError(

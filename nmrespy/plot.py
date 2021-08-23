@@ -491,12 +491,12 @@ class NmrespyPlot:
             Both values provided should be less than `1.0`.
         """
 
-        components = [
+        checker = ArgumentChecker()
+        checker.stage(
             (values, 'values', 'generic_int_list'),
-            (displacement, 'displacement', 'displacement'),
-        ]
-
-        ArgumentChecker(components)
+            (displacement, 'displacement', 'displacement')
+        )
+        checker.check()
 
         # Check that all values given are between 1 and number of oscillators
         max_value = max(self.labels.keys())

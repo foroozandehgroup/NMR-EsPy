@@ -37,9 +37,6 @@ class Estimator:
 
     Parameters
     ----------
-    source : {'bruker', 'synthetic'}
-        The type of data imported.
-
     data : numpy.ndarray
         The data associated with the binary file in `path`.
 

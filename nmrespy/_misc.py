@@ -67,12 +67,18 @@ class ArgumentChecker:
         depends on the data dimension.
     """
 
-    def __init__(self, components, dim=None, n=None):
+    def __init__(self, dim=None):
 
         self.dim = dim
 
-        for obj, name, typ in components:
-            if typ == 'ndarray':
+    def check(self):
+
+        assert self.components
+
+        for (obj, name, typ, none_allowed) in self.components:
+            if none_allowed and obj is None:
+                test = True
+            elif typ == 'ndarray':
                 test = isinstance(obj, np.ndarray)
             elif typ == 'parameter':
                 test = self.check_parameter_array(obj)
@@ -157,6 +163,15 @@ class ArgumentChecker:
         except NameError:
             # errmsg doesn't exist, implying no failed tests occurred.
             pass
+
+
+    def stage(self, *args):
+        self.components = []
+        for arg in args:
+            if len(arg) == 3:
+                self.components.append(tuple(a for a in arg) + (False,))
+            elif len(arg) == 4:
+                self.components.append((arg))
 
     def check_dim(f):
         def wrapper(*args, **kwargs):
@@ -335,21 +350,16 @@ class FrequencyConverter:
         except Exception:
             raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
 
-        components = [
+        checker = ArgumentChecker(dim=dim)
+        checker.stage(
             (n, 'n', 'int_list'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
-        ]
+            (sfo, 'sfo', 'float_list', True)
+        )
+        checker.check()
 
-        if sfo is not None:
-            components.append((sfo, 'sfo', 'float_list'))
-
-        ArgumentChecker(components, dim)
-
-        self.n = n
-        self.sw = sw
-        self.offset = offset
-        self.sfo = sfo
+        self.__dict__.update(locals())
 
     def __len__(self):
         return len(self.n)

@@ -90,23 +90,20 @@ class MatrixPencil:
 
         if offset is None:
             offset = [0.0] * self.dim
-
         if start_point is None:
             start_point = [0] * self.dim
 
-        components = [
+        checker = ArgumentChecker(dim=self.dim)
+        checker.stage(
             (data, 'data', 'ndarray'),
             (sw, 'sw', 'float_list'),
             (offset, 'offset', 'float_list'),
             (start_point, 'start_point', 'int_list'),
             (M, 'M', 'positive_int_or_zero'),
             (fprint, 'fprint', 'bool'),
-        ]
-
-        if sfo is not None:
-            components.append((sfo, 'sfo', 'float_list'))
-
-        ArgumentChecker(components, dim=self.dim)
+            (sfo, 'sfo', 'float_list', True)
+        )
+        checker.check()
 
         self.__dict__.update(locals())
         self.n = list(self.data.shape)
