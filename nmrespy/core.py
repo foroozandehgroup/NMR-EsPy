@@ -291,13 +291,13 @@ class Estimator:
         :py:func:`~nmrespy.load.pickle_load`.
         """
 
-        ArgumentChecker(
-            [
-                (path, 'path', 'str'),
-                (force_overwrite, 'force_overwrite', 'bool'),
-                (fprint, 'fprint', 'bool'),
-            ]
+        checker = ArgumentChecker()
+        checker.stage(
+            (path, 'path', 'str'),
+            (force_overwrite, 'force_overwrite', 'bool'),
+            (fprint, 'fprint', 'bool')
         )
+        checker.check()
 
         # Get full path
         path = Path(path).resolve()
@@ -826,17 +826,15 @@ class Estimator:
 
         if oscillators is None:
             oscillators = list(range(result.shape[0]))
-
         if n is None:
             n = self.get_n()
 
-        ArgumentChecker(
-            [
-                (n, 'n', 'int_list'),
-                (oscillators, 'oscillators', 'int_list'),
-            ],
-            dim=self.get_dim(),
+        checker = ArgumentChecker(dim=self.get_dim())
+        checker.stage(
+            (n, 'n', 'int_list'),
+            (oscillators, 'oscillators', 'int_list')
         )
+        checker.check()
 
         return sig.make_fid(result[[oscillators]], n, self.get_sw(),
                             offset=self.get_offset())
@@ -1069,7 +1067,9 @@ class Estimator:
         if trim is None:
             trim = [s for s in data.shape]
 
-        ArgumentChecker([(trim, 'trim', 'int_list')], dim=self.dim)
+        checker = ArgumentChecker(dim=self.get_dim())
+        checker.stage((trim, 'trim', 'int_list'))
+        checker.check()
 
         trim = tuple(np.s_[0:t] for t in trim)
         # Slice data
@@ -1150,7 +1150,9 @@ class Estimator:
         if trim is None:
             trim = list(data.shape)
 
-        ArgumentChecker([(trim, 'trim', 'int_list')], dim=self.dim)
+        checker = ArgumentChecker(dim=self.dim)
+        checker.stage((trim, 'trim', 'int_list'))
+        checker.check()
 
         # Slice data
         data = data[tuple(np.s_[0:t] for t in trim)]
@@ -1398,9 +1400,9 @@ class Estimator:
                ... ) # 2D
         """
 
-        ArgumentChecker(
-            [(oscillators, 'oscillators', 'parameter')], self.get_dim(),
-        )
+        checker = ArgumentChecker(dim=self.get_dim())
+        checker.stage((oscillators, 'oscillators', 'parameter'))
+        checker.check()
 
         result = self.get_result()
         new_result = np.vstack((result, oscillators))
@@ -1425,7 +1427,9 @@ class Estimator:
             current estimation result.
         """
 
-        ArgumentChecker([(indices, 'indices', 'list')])
+        checker = ArgumentChecker()
+        checker.stage((indices, 'indices', 'list'))
+        checker.check()
 
         result = self.get_result()
         for i in indices:
@@ -1470,7 +1474,9 @@ class Estimator:
               \\eta_{m_i}`
         """
 
-        ArgumentChecker([(indices, 'indices', 'list')])
+        checker = ArgumentChecker()
+        checker.stage((indices, 'indices', 'list'))
+        checker.check()
 
         result = self.get_result()
 
@@ -1630,12 +1636,12 @@ class Estimator:
               overwritten without prompt.
         """
 
-        ArgumentChecker(
-            [
-                (path, 'path', 'str'),
-                (force_overwrite, 'force_overwrite', 'bool'),
-            ]
+        checker = ArgumentChecker()
+        checker.stage(
+            (path, 'path', 'str'),
+            (force_overwrite, 'force_overwrite', 'bool')
         )
+        checker.check()
 
         # Get full path and extend .log extension
         path = Path(path).resolve().with_suffix('.log')
