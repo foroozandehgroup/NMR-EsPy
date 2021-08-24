@@ -53,7 +53,7 @@ def _configure_oscillator_colors(oscillator_colors, m):
         msg = (
             f'{cols.R}The following entries in `oscillator_colors` could '
             f'not be recognised as valid colours in matplotlib:\n'
-            + '\n'.join([f'--> repr({oscillator_colors[i]})' for i in nones])
+            + '\n'.join([f'--> {repr(oscillator_colors[i])}' for i in nones])
             + cols.END
         )
         raise ValueError(msg)
