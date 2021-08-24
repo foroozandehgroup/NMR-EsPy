@@ -39,4 +39,10 @@ jobs:
       - name: test with pytest
         run: |
           cd develop/tests/
+          sed -i 's/VIEW_PEAKS = True/VIEW_PEAKS = False/g' test_plot.py
+          sed -i 's/VIEW_RESULT_PLOTS = True/VIEW_RESULT_PLOTS = False/g' test_plot.py
+          sed -i 's/VIEW_DATA = True/VIEW_DATA = False/g' test_estimator.py
+          sed -i 's/VIEW_RESULT_FILES = True/VIEW_RESULT_FILES = False/g' test_estimator.py
+          sed -i 's/VIEW_RESULT_FIGURES = True/VIEW_RESULT_FIGURES = False/g' test_estimator.py
+          sed -i 's/RUN_PDFLATEX = True/RUN_PDFLATEX = False/g'
           python -m pytest
