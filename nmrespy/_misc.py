@@ -164,7 +164,6 @@ class ArgumentChecker:
             # errmsg doesn't exist, implying no failed tests occurred.
             pass
 
-
     def stage(self, *args):
         self.components = []
         for arg in args:

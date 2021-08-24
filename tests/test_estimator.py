@@ -12,14 +12,14 @@ from nmrespy.core import Estimator
 from nmrespy import sig
 import nmrespy._cols as cols
 import nmrespy._errors as errors
-from nmrespy.freqfilter import filter_spectrum
 
-# Set this to True if you want to check interactive and visual things.
-VIEW_DATA = False
+
+# Set these to True if you want to check interactive and visual things.
+VIEW_DATA = True
 VIEW_RESULT_FILES = True
-VIEW_RESULT_FIGURES = False
+VIEW_RESULT_FIGURES = True
 RUN_PDFLATEX = True
-MANUAL_PHASE = False
+MANUAL_PHASE = True
 
 
 def test_synthetic_estimator():
@@ -412,8 +412,8 @@ def test_bruker_estimator():
     assert np.allclose(res, params, rtol=0, atol=2E-2)
 
     for method, word in zip(
-                (estimator.plot_result, estimator.write_result),
-                ('plotting', 'saving')
+        (estimator.plot_result, estimator.write_result),
+        ('plotting', 'saving')
     ):
         with pytest.raises(ValueError) as exc_info:
             method()

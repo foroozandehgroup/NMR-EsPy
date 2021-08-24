@@ -296,7 +296,6 @@ class Estimator:
             _origin=origin
         )
 
-
     @classmethod
     def from_pickle(cls, path):
         """Loads an intance of :py:class:`Estimator`, which was saved

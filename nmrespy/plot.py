@@ -5,7 +5,6 @@
 """Support for plotting estimation results"""
 
 from collections.abc import Iterable
-import os
 from pathlib import Path
 import re
 import tempfile
@@ -39,7 +38,7 @@ def _to_hex(color):
 def _configure_oscillator_colors(oscillator_colors, m):
     # Determine oscillator colours to use
     if oscillator_colors is None:
-        return ['#1063e0', '#eb9310','#2bb539', '#d4200c']
+        return ['#1063e0', '#eb9310', '#2bb539', '#d4200c']
 
     if oscillator_colors in plt.colormaps():
         return [_to_hex(c) for c in
@@ -53,7 +52,7 @@ def _configure_oscillator_colors(oscillator_colors, m):
     if nones:
         msg = (f'{cols.R}The following entries in `oscillator_colors` could '
                f'not be recognised as valid colours in matplotlib:\n'
-               + '\n'.join([f'--> {repr(oscillator_colors[i])}' for i in nones])
+               + '\n'.join([f'--> \'{oscillator_colors[i]}\'' for i in nones])
                + cols.END)
         raise ValueError(msg)
 
@@ -96,7 +95,7 @@ def _extract_rc(stylesheet):
 
     raise ValueError(
         f'{cols.R}Error in loading the stylesheet. Check you gave '
-         'a valid path or name for the stylesheet, and that the '
+        'a valid path or name for the stylesheet, and that the '
         f'stylesheet is formatted correctly.{cols.END}'
     )
 
@@ -141,10 +140,10 @@ def _get_region_slice(shifts_unit, region, n, sw, offset, sfo):
 
     limits = []
     if isinstance(sfo, Iterable):
-        for (bounds, n_, sw_, offset_, sfo_) in zip(region, n, sw, offset, sfo):
+        for (bound, n_, sw_, offset_, sfo_) in zip(region, n, sw, offset, sfo):
             converter = FrequencyConverter([n_], [sw_], [offset_], sfo=[sfo_])
-            bounds = converter.convert([bounds], f'{shifts_unit}->idx')[0]
-            limits.append([min(bounds), max(bounds)])
+            bound = converter.convert([bound], f'{shifts_unit}->idx')[0]
+            limits.append([min(bound), max(bound)])
 
     else:
         for (bounds, n_, sw_, offset_) in zip(region, n, sw, offset):
@@ -157,7 +156,7 @@ def _get_region_slice(shifts_unit, region, n, sw, offset, sfo):
 
 def _generate_peaks(result, n, sw, offset, region_slice):
     return [np.real(sig.ft(sig.make_fid(
-                np.expand_dims(oscillator, axis=0), n, sw, offset=offset
+            np.expand_dims(oscillator, axis=0), n, sw, offset=offset
             )[0]))[region_slice]
             for oscillator in result]
 
@@ -191,7 +190,7 @@ def _set_axis_limits(ax, lines):
     # Flip the x-axis
     ax.set_xlim(reversed(ax.get_xlim()))
     # y-limits
-    ydatas = [l.get_ydata() for l in lines.values() if l.get_alpha() != 0]
+    ydatas = [ln.get_ydata() for ln in lines.values() if ln.get_alpha() != 0]
     maxi = max([np.amax(ydata) for ydata in ydatas])
     mini = min([np.amin(ydata) for ydata in ydatas])
     vertical_span = maxi - mini

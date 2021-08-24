@@ -284,7 +284,7 @@ def make_virtual_echo(data, modulation='amp'):
     checker = ArgumentChecker(dim=dim)
     checker.stage(
         (data, 'data', 'array_list'),
-         (modulation, 'modulation', 'modulation')
+        (modulation, 'modulation', 'modulation')
     )
     checker.check()
 

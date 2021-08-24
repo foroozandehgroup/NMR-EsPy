@@ -5,7 +5,6 @@ import re
 import subprocess
 
 import matplotlib as mpl
-import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -15,6 +14,7 @@ from nmrespy import _cols as cols, plot as nplot, sig
 
 VIEW_PEAKS = True
 VIEW_RESULT_PLOTS = True
+
 
 def make_stylesheet(path):
     # Ensure entries are alphatically in order, except for axes.prop_cycle
@@ -31,14 +31,15 @@ def make_stylesheet(path):
            'ytick.minor.size: 0.0\n'
            '# Tableau colorblind 10 palette\n'
            'axes.prop_cycle: cycler(\'color\', [\'006BA4\', '
-                 '\'FF800E\', \'ABABAB\', \'595959\', \'5F9ED1\', '
-                 '\'C85200\', \'898989\', \'A2C8EC\', \'FFBC79\', '
-                 '\'CFCFCF\'])')
+           '\'FF800E\', \'ABABAB\', \'595959\', \'5F9ED1\', '
+           '\'C85200\', \'898989\', \'A2C8EC\', \'FFBC79\', '
+           '\'CFCFCF\'])')
 
     with open(path, 'w') as fh:
         fh.write(txt)
 
     return txt
+
 
 def test_extract_rc():
     styledir = Path(mpl.__file__).resolve().parent / "mpl-data/stylelib"
@@ -110,7 +111,7 @@ def test_configure_oscillator_colors():
     ]
 
     results = [
-        ['#1063e0', '#eb9310','#2bb539', '#d4200c'],
+        ['#1063e0', '#eb9310', '#2bb539', '#d4200c'],
         ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
         ['#000004', '#bc3754', '#fcffa4'],
         ['#ff6347'],
@@ -127,7 +128,7 @@ def test_configure_oscillator_colors():
 
     assert str(exc_info.value) == \
         (f'{cols.R}The following entries in `oscillator_colors` could '
-          'not be recognised as valid colours in matplotlib:\n'
+         'not be recognised as valid colours in matplotlib:\n'
          f'--> \'blah\'\n--> (1.2, 0.6, 0.4){cols.END}')
 
 
@@ -210,9 +211,9 @@ def test_generate_peaks():
     if VIEW_PEAKS:
         shifts = sig.get_shifts(n, sw, offset=offset)[0][slice_]
         fig, ax = plt.subplots()
-        lines = [ax.plot(shifts, peak) for peak in peaks]
+        _ = [ax.plot(shifts, peak) for peak in peaks]
         ax.set_xlim(reversed(ax.get_xlim()))
-        ax.set_xlabel('$\omega$ (Hz)')
+        ax.set_xlabel(r'$\omega$ (Hz)')
         ax.set_title('Should have a qunitet with peaks at ' +
                      ', '.join([str(i) for i in range(1000, 1250, 50)]))
         plt.show()
