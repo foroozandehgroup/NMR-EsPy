@@ -50,10 +50,12 @@ def _configure_oscillator_colors(oscillator_colors, m):
     osc_cols = [_to_hex(c) for c in oscillator_colors]
     nones = [i for i, c in enumerate(osc_cols) if c is None]
     if nones:
-        msg = (f'{cols.R}The following entries in `oscillator_colors` could '
-               f'not be recognised as valid colours in matplotlib:\n'
-               + '\n'.join([f'--> \'{oscillator_colors[i]}\'' for i in nones])
-               + cols.END)
+        msg = (
+            f'{cols.R}The following entries in `oscillator_colors` could '
+            f'not be recognised as valid colours in matplotlib:\n'
+            + '\n'.join([f'--> repr({oscillator_colors[i]})' for i in nones])
+            + cols.END
+        )
         raise ValueError(msg)
 
     return osc_cols
