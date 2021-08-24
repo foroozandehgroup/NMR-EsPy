@@ -13,7 +13,7 @@ from nmrespy._misc import FrequencyConverter
 from nmrespy import _cols as cols, plot as nplot, sig
 
 
-VIEW_PEAKS = False
+VIEW_PEAKS = True
 VIEW_RESULT_PLOTS = True
 
 def make_stylesheet(path):

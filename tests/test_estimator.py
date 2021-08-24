@@ -6,17 +6,208 @@ import subprocess
 import pytest
 
 import numpy as np
+from numpy import random as nrandom
 
-import nmrespy._errors as errors
 from nmrespy.core import Estimator
 from nmrespy import sig
+import nmrespy._cols as cols
+import nmrespy._errors as errors
+from nmrespy.freqfilter import filter_spectrum
 
 # Set this to True if you want to check interactive and visual things.
-MANUAL_TEST = False
-RUN_PDFLATEX = False
+VIEW_DATA = False
+VIEW_RESULT_FILES = True
+VIEW_RESULT_FIGURES = False
+RUN_PDFLATEX = True
+MANUAL_PHASE = False
 
 
-def test_estimator():
+def test_synthetic_estimator():
+    params = np.array([
+        [1, 0, 3000, 10],
+        [3, 0, 3050, 10],
+        [3, 0, 3100, 10],
+        [1, 0, 3150, 10],
+        [2, 0, 150, 10],
+        [4, 0, 100, 10],
+        [2, 0, 50, 10],
+    ])
+    n = [4096]
+    sw = [5000.]
+    offset = [2000.]
+    sfo = [500.]
+    estimator = Estimator.new_synthetic_from_parameters(
+        params, n, sw, offset, sfo
+    )
+
+    # --- Data path (doesn't exist for synthetic data) ---------------
+    assert estimator.get_datapath(kill=False) is None
+    with pytest.raises(errors.AttributeIsNoneError):
+        estimator.get_datapath()
+
+    # --- Data dimension ---------------------------------------------
+    assert estimator.get_dim() == 1
+
+    # --- Sweep width ------------------------------------------------
+    assert round(estimator.get_sw()[0], 3) == round(sw[0], 3)
+    assert round(estimator.get_sw(unit='hz')[0], 3) == round(sw[0], 3)
+    assert round(estimator.get_sw(unit='ppm')[0], 3) == \
+           round(sw[0] / sfo[0], 3)
+
+    with pytest.raises(errors.InvalidUnitError):
+        estimator.get_sw(unit='invalid')
+
+    # --- Offset -----------------------------------------------------
+    assert round(estimator.get_offset()[0], 3) == round(offset[0], 3)
+    assert round(estimator.get_offset(unit='hz')[0], 3) == round(offset[0], 3)
+    assert round(estimator.get_offset(unit='ppm')[0], 3) == \
+           round(offset[0] / sfo[0], 3)
+
+    # --- Transmitter and basic frequency ----------------------------
+    assert round(estimator.get_sfo()[0], 3) == round(sfo[0], 3)
+    assert round(estimator.get_bf()[0], 3) == \
+           round(sfo[0] - (offset[0] / 1E6), 3)
+
+    # --- Nucleus (doesn't exist for synthetic data) -----------------
+    assert estimator.get_nucleus(kill=False) is None
+    with pytest.raises(errors.AttributeIsNoneError):
+        estimator.get_nucleus()
+
+    # --- Chemical shifts --------------------------------------------
+    shifts = np.linspace(
+        (sw[0] / 2) + offset[0], (-sw[0] / 2) + offset[0], n[0],
+    )
+
+    assert np.array_equal(
+        np.round(estimator.get_shifts()[0], decimals=4),
+        np.round(shifts, decimals=4),
+    )
+    assert np.array_equal(
+        np.round(estimator.get_shifts(unit='ppm')[0], decimals=4),
+        np.round(shifts / sfo[0], decimals=4),
+    )
+
+    # --- Time-points ------------------------------------------------
+    tp = np.linspace(0., (n[0] - 1) / sw[0], n[0])
+
+    assert np.array_equal(
+        np.round(estimator.get_timepoints()[0], decimals=4),
+        np.round(tp, decimals=4)
+    )
+
+    # --- View data ------------------------------------------------------
+    if VIEW_DATA:
+        # Spectrum, real, ppm
+        estimator.view_data(domain='frequency')
+        # Spectrum, real, Hz
+        estimator.view_data(domain='frequency', freq_xunit='hz')
+        # Spectrum, imaginary, ppm
+        estimator.view_data(domain='frequency', component='imag')
+        # Spectrum, imaginary and real, ppm
+        estimator.view_data(domain='frequency', component='both')
+        # FID, real
+        estimator.view_data(domain='time')
+        # FID, imaginary
+        estimator.view_data(domain='time', component='imag')
+        # FID, real and imaginary
+        estimator.view_data(domain='time', component='both')
+
+    # --- Frequency filter -------------------------------------------
+    # Apply same filter to same region, using both hz and ppm for regions.
+    # Ensure all attributes are matching
+    assert estimator.get_filter_info(kill=False) is None
+    with pytest.raises(errors.AttributeIsNoneError):
+        estimator.get_filter_info(kill=True)
+
+    region_hz = [[3350., 2800.]]
+    noise_region_hz = [[2000., 1500.]]
+    region_ppm = [[3350. / sfo[0], 2800. / sfo[0]]]
+    noise_region_ppm = [[2000. / sfo[0], 1500. / sfo[0]]]
+
+    # ppm
+    estimator.frequency_filter(region_ppm, noise_region_ppm)
+    ppm_filter = estimator.get_filter_info()
+
+    # Hz
+    estimator.frequency_filter(
+        region_hz, noise_region_hz, region_unit='hz'
+    )
+    hz_filter = estimator.get_filter_info()
+
+    assert hz_filter.get_sw() == ppm_filter.get_sw()
+    assert hz_filter.get_offset() == ppm_filter.get_offset()
+    assert hz_filter.get_region() == ppm_filter.get_region()
+    assert hz_filter.get_noise_region() == ppm_filter.get_noise_region()
+
+    # Ensure that two signals are identical, given some margin of error
+    # for noise. Have found that it is incredibly rare for the difference
+    # between two points to exceed 0.1
+    assert np.allclose(
+        hz_filter.cut_fid, ppm_filter.cut_fid, rtol=0, atol=0.1,
+    )
+
+    # Ensure filtred signal estmation gives good result
+    expected = params[:4]
+
+    # 1. Cut signal. Should give slightly less accurate estimation
+    estimator.matrix_pencil()
+    estimator.nonlinear_programming(phase_variance=False)
+    result = estimator.get_result()
+    assert np.allclose(result, expected, atol=0.2, rtol=0)
+
+    # 2. Uncut signal. Should give more accurate estimation
+    estimator.frequency_filter(region_ppm, noise_region_ppm, cut=False)
+    estimator.matrix_pencil()
+    estimator.nonlinear_programming(phase_variance=False)
+    result = estimator.get_result()
+    assert np.allclose(result, expected, atol=0.1, rtol=0)
+
+    # --- Writing result files ---------------------------------------
+    for fmt in ['txt', 'pdf', 'csv']:
+        if (fmt in ['txt', 'csv']) or (fmt == 'pdf' and RUN_PDFLATEX):
+            estimator.write_result(
+                path='./test', description='Testing', fmt=fmt,
+                force_overwrite=True, sig_figs=7, sci_lims=(-3, 4),
+                fprint=False
+            )
+        # View output files
+        if VIEW_RESULT_FILES:
+            if fmt == 'txt':
+                subprocess.run(['gedit', 'test.txt'])
+                os.remove('test.txt')
+            elif fmt == 'pdf' and RUN_PDFLATEX:
+                subprocess.run(['evince', 'test.pdf'])
+                os.remove('test.pdf')
+                os.remove('test.tex')
+            elif fmt == 'csv':
+                subprocess.run(['libreoffice', 'test.csv'])
+                os.remove('test.csv')
+
+        try:
+            os.remove(f'test.{fmt}')
+            if fmt == 'pdf':
+                os.remove('test.tex')
+        except Exception:
+            pass
+
+    # --- Result plotting --------------------------------------------
+    plot = estimator.plot_result()
+    plot.fig.savefig('test_default.pdf', dpi=300)
+    plot = estimator.plot_result(
+        shifts_unit='hz', plot_residual=False, plot_model=True,
+        model_shift=100., data_color='#0000ff', oscillator_colors='inferno',
+        model_color='#ff0000', show_labels=False,
+    )
+    plot.fig.savefig('test_custom.pdf', dpi=300)
+    if VIEW_RESULT_FIGURES:
+        subprocess.run(['evince', 'test_default.pdf'])
+        subprocess.run(['evince', 'test_custom.pdf'])
+
+    os.remove('test_default.pdf')
+    os.remove('test_custom.pdf')
+
+
+def test_bruker_estimator():
     # --- Create Estimator instance from Bruker path -----------------
     path = Path().cwd() / 'data/1/pdata/1'
     estimator = Estimator.new_bruker(path)
@@ -33,14 +224,6 @@ def test_estimator():
     # --- Data path --------------------------------------------------
     assert estimator.get_datapath() == path
     assert estimator.get_datapath(type_='str') == str(path)
-
-    estimator.path = None
-    with pytest.raises(errors.AttributeIsNoneError):
-        estimator.get_datapath()
-
-    assert estimator.get_datapath(kill=False) is None
-
-    estimator.path = path
 
     # --- Data dimension ---------------------------------------------
     assert estimator.get_dim() == 1
@@ -138,7 +321,7 @@ def test_estimator():
     )
 
     # --- View data ------------------------------------------------------
-    if MANUAL_TEST:
+    if VIEW_DATA:
         # Spectrum, real, ppm
         estimator.view_data(domain='frequency')
         # Spectrum, real, Hz
@@ -180,7 +363,7 @@ def test_estimator():
     # for noise. Have found that it is incredibly rare for the difference
     # between two points to exceed 1000
     assert np.allclose(
-        hz_filter.get_fid(), ppm_filter.get_fid(), rtol=0, atol=1000,
+        hz_filter.cut_fid, ppm_filter.cut_fid, rtol=0, atol=1000,
     )
 
     # --- Phase data -----------------------------------------------------
@@ -194,48 +377,60 @@ def test_estimator():
     after = estimator.get_data()
     assert np.array_equal(np.round(before, 4), np.round(after, 4))
 
-    if MANUAL_TEST:
+    if MANUAL_PHASE:
         estimator.manual_phase_data()
 
-    f_n = list(estimator.get_filter_info().get_fid().shape)
-    f_sw = estimator.get_filter_info().get_sw()
-    f_off = estimator.get_filter_info().get_offset()
+    # --- Replace data with simple synthetic signal to test estimation ---
+    n = [4096]
+    sw = [5000.]
+    offset = [1000.]
+    sfo = [500.]
 
     params = np.array([
-        [1, 0, f_off[0], 1],
-        [2, 0, f_off[0] + (f_sw[0] / 4), 1],
-        [2, 0, f_off[0] - (f_sw[0] / 4), 1],
-        [1, 0, f_off[0] + (f_sw[0] / 8), 1],
+        [1, 0, offset[0] - (sw[0] / 8), 1],
+        [3, 0, offset[0] - (sw[0] / 16), 1],
+        [6, 0, offset[0], 1],
+        [3, 0, offset[0] + (sw[0] / 16), 1],
+        [1, 0, offset[0] + (sw[0] / 8), 1],
     ])
 
     params = params[np.argsort(params[:, 2])]
-    fid = sig.make_fid(params, f_n, f_sw, offset=f_off)[0]
-    estimator.filter_info.fid['cut'] = fid
+    fid = sig.make_fid(params, n, sw, offset=offset, snr=30.)[0]
+    estimator.data = fid
+    estimator.sw = sw
+    estimator.offset = offset
+    estimator.sfo = sfo
+    estimator.frequency_filter(
+        region=[[200., 1800.]], noise_region=[[-1000., -500.]],
+        region_unit='hz',
+    )
 
     # --- Matrix Pencil ----------------------------------------------
     # With specified number of params
-    estimator.matrix_pencil(M=4, fprint=False)
+    estimator.matrix_pencil(M=5, fprint=False)
     res = estimator.get_result()
-    assert np.allclose(res, params)
+    assert np.allclose(res, params, rtol=0, atol=2E-2)
 
-    with pytest.raises(ValueError):
-        estimator.plot_result()
+    for method, word in zip(
+                (estimator.plot_result, estimator.write_result),
+                ('plotting', 'saving')
+    ):
+        with pytest.raises(ValueError) as exc_info:
+            method()
 
-    with pytest.raises(ValueError):
-        estimator.write_result()
+        assert str(exc_info.value) == \
+            (f'{cols.OR}The last action to be applied to the estimation '
+             f'result was not `nonlinear_programming`. You should ensure '
+             f'this is so before {word} the result.{cols.END}')
 
     # --- NonlinearProgramming ---------------------------------------
-    estimator.result = np.array([
-        [1 + 0.1, 0.01, f_off[0] + 2, 1 + 0.2],
-        [2 - 0.1, 0.02, f_off[0] + (f_sw[0] / 4) - 4, 1 - 0.2],
-        [2 + 0.2, -0.05, f_off[0] - (f_sw[0] / 4) + 3, 1 + 0.2],
-        [1 - 0.05, -0.03, f_off[0] + (f_sw[0] / 8) - 1, 1 - 0.1],
-    ])
-
-    estimator.nonlinear_programming(phase_variance=False, max_iterations=1000,
-                                    fprint=False)
+    # create initial guess
+    estimator.result += 0.4 * nrandom.random_sample(size=(5, 4)) - 0.2
+    estimator.nonlinear_programming(
+        phase_variance=False, max_iterations=1000, fprint=False,
+    )
     res = estimator.get_result()
-    assert np.allclose(res, params, rtol=0, atol=1E-6)
+    assert np.allclose(res, params, rtol=0, atol=2E-2)
 
     # --- Writing result files ---------------------------------------
     for fmt in ['txt', 'pdf', 'csv']:
@@ -246,24 +441,19 @@ def test_estimator():
                 fprint=False
             )
         # View output files
-        if MANUAL_TEST:
+        if VIEW_RESULT_FILES:
             if fmt == 'txt':
-                subprocess.run(['vi', 'test.txt'])
+                subprocess.run(['gedit', 'test.txt'])
+                os.remove('test.txt')
             elif fmt == 'pdf' and RUN_PDFLATEX:
                 subprocess.run(['evince', 'test.pdf'])
+                os.remove('test.pdf')
+                os.remove('test.tex')
             elif fmt == 'csv':
                 subprocess.run(['libreoffice', 'test.csv'])
-
-        try:
-            os.remove(f'test.{fmt}')
-            if fmt == 'pdf':
-                os.remove('test.tex')
-        except Exception:
-            pass
+                os.remove('test.csv')
 
     # --- Check result array-amending methods-------------------------
-    # After manually changing the result, it should not be possible to
-    # save the result.
     estimator.result = np.array([[1., 0., -4., 3.], [2., 1., 2., 3.]])
     estimator.add_oscillators(np.array([[1., 0., 0., 1.]]))
     assert np.array_equal(
@@ -309,8 +499,8 @@ def test_estimator():
 
     # --- Saving logfile ---------------------------------------------
     estimator.save_logfile('test', force_overwrite=True)
-    if MANUAL_TEST:
-        subprocess.run(['vi', 'test.log'])
+    if VIEW_RESULT_FILES:
+        subprocess.run(['gedit', 'test.log'])
     os.remove('test.log')
 
     # --- Pickling ---------------------------------------------------

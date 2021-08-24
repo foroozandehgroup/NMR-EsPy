@@ -71,9 +71,8 @@ class Estimator:
     """
 
     def __init__(
-        self, source, data, path, sw, off, sfo, nuc, fmt, _origin=None
+        self, data, path, sw, off, sfo, nuc, fmt, _origin=None
     ):
-        self.source = source
         self.data = data
         self.dim = self.data.ndim
         self.n = [int(n) for n in self.data.shape]
@@ -119,7 +118,6 @@ class Estimator:
     def __repr__(self):
         msg = (
             f'nmrespy.core.Estimator('
-            f'{self.source}, '
             f'{self.data}, '
             f'{self.path}, '
             f'{self.sw}, '
@@ -196,7 +194,6 @@ class Estimator:
             data[0] /= (2 * info['dim'])
 
         return cls(
-            source=info['source'],
             data=data,
             path=info['path'],
             sw=info['sw'],
@@ -206,6 +203,99 @@ class Estimator:
             fmt=info['binfmt'],
             _origin=origin
         )
+
+    @classmethod
+    def new_synthetic_from_parameters(
+        cls, parameters, n, sw, offset, sfo, snr=30.,
+    ):
+        """Generate an instance of :py:class:`Estimator` from a
+        list of oscillator parameters.
+
+        Parameters
+        ----------
+        parameters : numpy.ndarray
+            Parameter array with the following structure:
+
+            * **1-dimensional data:**
+
+              .. code:: python
+
+                 parameters = numpy.array([
+                    [a_1, φ_1, f_1, η_1],
+                    [a_2, φ_2, f_2, η_2],
+                    ...,
+                    [a_m, φ_m, f_m, η_m],
+                 ])
+
+            * **2-dimensional data:**
+
+              .. code:: python
+
+                 parameters = numpy.array([
+                    [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
+                    [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
+                    ...,
+                    [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
+                 ])
+
+        n : [int], [int, int]
+            Number of points to construct signal from in each dimension.
+
+        sw : [float], [float, float]
+            Sweep width in each dimension, in Hz.
+
+        offset : [float], [float, float]
+            Transmitter offset frequency in each dimension, in Hz.
+
+        sfo : [float], [float, float]
+            Transmitter frequency in each dimension, in MHz.
+
+        snr : float or None, default: None
+            The signal-to-noise ratio. If `None` then no noise will be added
+            to the FID.
+
+        Returns
+        -------
+        estimator : :py:class:`Estimator`"""
+
+        try:
+            p = parameters.shape[1]
+            if p in [4, 6]:
+                dim = int((p - 2) / 2)
+            else:
+                raise ValueError(
+                    f'{cols.R}`parameters` should have a size of 4 or 6 in '
+                    f'axis 1.{cols.END}'
+                )
+
+        except AttributeError:
+            raise ValueError(f'{cols.R}`parameters` should be a numpy array.')
+
+        checker = ArgumentChecker(dim=dim)
+        checker.stage(
+            (parameters, 'parameters', 'parameter'),
+            (n, 'n', 'int_list'),
+            (sw, 'sw', 'float_list'),
+            (offset, 'offset', 'float_list'),
+            (sfo, 'sfo', 'float_list', True),
+            (snr, 'snr', 'float', True)
+        )
+        checker.check()
+
+        data = sig.make_fid(parameters, n, sw, offset=offset, snr=snr)[0]
+        origin = {'method': 'new_synthetic_from_parameters', 'args': locals()}
+
+        return cls(
+            data=data,
+            path=None,
+            sw=sw,
+            off=offset,
+            sfo=sfo,
+            nuc=None,
+            fmt=None,
+            _origin=origin
+        )
+
 
     @classmethod
     def from_pickle(cls, path):
@@ -566,7 +656,7 @@ class Estimator:
         if unit not in ['ppm', 'hz']:
             raise errors.InvalidUnitError('ppm', 'hz')
 
-        if unit == 'ppm' and kill is False:
+        if unit == 'ppm':
             if self._check_if_none('sfo', kill) is None:
                 return None
 
@@ -929,7 +1019,7 @@ class Estimator:
         on the filtration, use :py:meth:`get_filter_info`.
         """
         ve = sig.make_virtual_echo([self.get_data()])
-        spectrum = sig.ft(ve) + ve[0]
+        spectrum = sig.ft(ve)
 
         self.filter_info = filter_spectrum(
             spectrum, region, noise_region, self.get_sw(),
@@ -985,8 +1075,8 @@ class Estimator:
         """
         if self.filter_info is not None:
             data = self.filter_info.cut_fid
-            sw = self.filter_info.get_sw()
-            offset = self.filter_info.get_offset()
+            sw = self.filter_info.get_cut_sw()
+            offset = self.filter_info.get_cut_offset()
 
         else:
             data = self.get_data()
@@ -1162,7 +1252,6 @@ class Estimator:
         kwargs['sfo'] = self.get_sfo()
         kwargs['offset'] = offset
 
-        # nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
         nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
 
         self.result = nlp_info.get_result()
