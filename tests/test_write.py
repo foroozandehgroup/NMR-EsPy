@@ -8,6 +8,7 @@ from nmrespy import _cols as cols
 USER_INPUT = True
 FILE = Path(__file__).resolve().parent / 'file.pdf'
 
+
 def test_configure_save_path():
     assert nwrite._configure_save_path('file', 'pdf', True) == (True, FILE)
 

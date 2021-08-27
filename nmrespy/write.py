@@ -18,8 +18,7 @@ import scipy.linalg as slinalg
 
 from nmrespy import *
 from nmrespy._errors import *
-from nmrespy._misc import (ArgumentChecker, PathManager, significant_figures,
-                           get_yes_no)
+from nmrespy._misc import ArgumentChecker, significant_figures, get_yes_no
 
 
 def raise_error(exception, msg, kill_on_error):
@@ -464,6 +463,10 @@ def _write_pdf(
         '\\includegraphics{<FIGURE_PATH>}\n\\end{center}\n',
         '',
     )
+
+    # TODO
+    # Put all LatEx compilation stuff in separate function
+    # compile_status = _compile_latex_pdf()
 
     # --- Generate PDF using pdflatex ------------------------------------
     # Create required file paths:
