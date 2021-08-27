@@ -18,14 +18,54 @@ import scipy.linalg as slinalg
 
 from nmrespy import *
 from nmrespy._errors import *
-from nmrespy._misc import ArgumentChecker, PathManager, significant_figures
+from nmrespy._misc import (ArgumentChecker, PathManager, significant_figures,
+                           get_yes_no)
+
+
+def raise_error(exception, msg, kill_on_error):
+    if kill_on_error:
+        raise exception(msg)
+    else:
+        return None
+
+
+def _configure_save_path(path, fmt, force_overwrite):
+    path = Path(path).resolve()
+    if not path.suffix == f'.{fmt}':
+        path = path.with_suffix(f'.{fmt}')
+
+    if path.is_file():
+        response = _ask_overwrite(path, force_overwrite)
+        if not response:
+            msg = (f'{cols.R}Overwrite of file {path} denied. Result file '
+                   f'will not be written.{cols.END}')
+            return False, msg
+        return True, path
+
+    if not path.parent.is_dir():
+        msg = (f'{cols.R}The directory specified by `path` does not '
+               f'exist:\n{path.parent}{cols.END}')
+        return False, msg
+
+    return True, path
+
+
+def _ask_overwrite(path, force):
+    if force:
+        return True
+
+    prompt = (
+        f'{cols.OR}The file {str(path)} already exists. Overwrite?\n'
+        f'Enter [y] or [n]:{cols.END}'
+    )
+    return get_yes_no(prompt)
 
 
 def write_result(
     parameters, errors=None, path='./nmrespy_result', sfo=None, integrals=None,
     description=None, info_headings=None, info=None, sig_figs=5,
     sci_lims=(-2, 3), fmt='txt', force_overwrite=False, pdflatex_exe=None,
-    fprint=True,
+    fprint=True, kill_on_error=False
 ):
     """Writes an estimation result to a .txt, .pdf or .csv file.
 
@@ -99,6 +139,13 @@ def write_result(
     fprint : bool, default: True
         Specifies whether or not to print information to the terminal.
 
+    kill_on_error : bool, default: False
+        Specifies whether to raise an error if a fault is determined.
+
+    Returns
+    -------
+    None
+
     Raises
     ------
     LaTeXFailedError
@@ -160,9 +207,8 @@ def write_result(
     try:
         dim = int(parameters.shape[1] / 2) - 1
     except Exception:
-        raise TypeError(
-            f'{cols.R}parameters should be a numoy array{cols.END}'
-        )
+        msg = f'{cols.R}`parameters` should be a numpy array{cols.END}'
+        return raise_error(TypeError, msg, kill_on_error)
 
     checker = ArgumentChecker(dim=dim)
     checker.stage(
@@ -206,26 +252,10 @@ def write_result(
             f' shape{cols.END}'
         )
 
-    # Get full path
-    path = Path(path).resolve()
-    # Append extension to file path
-    path = path.parent / (path.name + f'.{fmt}')
-    # Check path is valid (check directory exists, ask user if they are happy
-    # overwriting if file already exists).
-    pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
-    # Valid path, we are good to proceed
-    if pathres == 0:
-        pass
-    # Overwrite denied by the user. Exit the program
-    elif pathres == 1:
-        exit()
-    # pathres == 2: Directory specified doesn't exist
-    else:
-        raise ValueError(
-            f'{cols.R}The directory implied by path does not exist{cols.END}'
-        )
-
-    # Checking complete...
+    pathinfo = _configure_save_path(path, fmt, force_overwrite)
+    if not pathinfo[0]:
+        return raise_error(ValueError, pathinfo[1], kill_on_error)
+    path = pathinfo[1]
 
     # --- Construct nested list of components for parameter table --------
     param_titles, param_table = \
@@ -367,6 +397,7 @@ def _write_pdf(
         '<GITHUBLOGOPATH>',
         '<MAILTOLINK>',
         '<EMAILICONPATH>',
+        '<TIMESTAMP>'
     )
 
     paths = (
