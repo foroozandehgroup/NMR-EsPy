@@ -8,9 +8,9 @@ import pytest
 import numpy as np
 from numpy import random as nrandom
 
+from nmrespy import *
 from nmrespy.core import Estimator
 from nmrespy import sig
-import nmrespy._cols as cols
 import nmrespy._errors as errors
 
 
@@ -419,9 +419,9 @@ def test_bruker_estimator():
             method()
 
         assert str(exc_info.value) == \
-            (f'{cols.OR}The last action to be applied to the estimation '
+            (f'{ORA}The last action to be applied to the estimation '
              f'result was not `nonlinear_programming`. You should ensure '
-             f'this is so before {word} the result.{cols.END}')
+             f'this is so before {word} the result.{END}')
 
     # --- NonlinearProgramming ---------------------------------------
     # create initial guess

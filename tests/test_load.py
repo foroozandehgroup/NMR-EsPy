@@ -117,3 +117,7 @@ def test_expinfo():
     assert check_expinfo_correct(expinfo, (5000., 5000.), (2000., 2000.),
                                  (500., 500.), ('13C', '13C'), 2,
                                  {'array': [1, 2, 3, 4]})
+
+    assert expinfo.unpack('sw') == (5000., 5000.)
+    assert expinfo.unpack('sw', 'offset', 'sfo') == \
+        ((5000., 5000.), (2000., 2000.), (500., 500.))

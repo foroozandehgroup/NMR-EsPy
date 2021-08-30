@@ -4,19 +4,21 @@
 
 """Nonlinear programming for generating NMR parameter estiamtes"""
 
+from collections.abc import Iterable
 import copy
 import functools
 import operator
+from typing import Literal, Pattern, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
 import scipy.optimize as optimize
 
 from nmrespy import *
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+if USE_COLORAMA:
     import colorama
     colorama.init()
+from nmrespy.load import ExpInfo
 from nmrespy._errors import *
 from nmrespy._misc import start_end_wrapper, ArgumentChecker, \
     FrequencyConverter
@@ -48,10 +50,10 @@ class NonlinearProgramming(FrequencyConverter):
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data
         Signal to be considered (unnormalised).
 
-    theta0 : numpy.ndarray
+    theta0
         Initial parameter guess in the following form:
 
         * **1-dimensional data:**
@@ -76,23 +78,16 @@ class NonlinearProgramming(FrequencyConverter):
                  [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
              ])
 
-    sw : [float] or [float, float]
-        The experiment sweep width in each dimension in Hz.
+    expinfo
+        Information on the experiment. This class uses `expinfo` to determine
+        the sweep width, transmitter offset and (optionally) the
+        transmitter freqency.
 
-    offset : [float] or [float, float] or None, default: None
-        The experiment transmitter offset frequency in Hz. If `None`,
-        `offset` will be set as ``data.ndim * [0.0]``.
-
-    sfo : [float], [float, float] or None, default: None
-        The experiment transmitter frequency in each dimension in MHz.
-        This is not necessary, however if it set it to `None`, no conversion
-        of frequencies from Hz to ppm will be possible!
-
-    start_point : int, default: 0
-        The first timepoint sampled, in units of
+    start_point
+        The first timepoint sampled in each dimnesion, in units of
         :math:`\\Delta t = 1 / f_{\\mathrm{sw}}`
 
-    phase_variance : bool, default: True
+    phase_variance
         Specifies whether or not to include the variance of oscillator
         phases into the NLP routine. The fiedlity (cost function) is
         given by:
@@ -112,7 +107,7 @@ class NonlinearProgramming(FrequencyConverter):
              \\left\\lVert \\boldsymbol{Y} - \\boldsymbol{X} \\right
              \\rVert_2^2 + \\mathrm{Var}\\left(\\boldsymbol{\\phi}\\right)
 
-    method : 'trust_region' or 'lbfgs', default: 'trust_region'
+    method
         Optimisation algorithm to use. These utilise
         `scipy.optimise.minimise <https://docs.scipy.org/doc/scipy/\
         reference/generated/scipy.optimize.minimize.html>`_, with
@@ -122,7 +117,7 @@ class NonlinearProgramming(FrequencyConverter):
         `L-BFGS-B <https://docs.scipy.org/doc/scipy/reference/\
         optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
-    bound : bool, default: False
+    bound
         Specifies whether or not to bound the parameters during optimisation.
         Bounds are given by:
 
@@ -134,13 +129,13 @@ class NonlinearProgramming(FrequencyConverter):
 
         :math:`(\\forall m \\in \\{1, \\cdots, M\\})`
 
-    max_iterations : int or None, default: None
+    max_iterations
         A value specifiying the number of iterations the routine may run
         through before it is terminated. If `None`, the default number
         of maximum iterations is set (`100` if `method` is `'trust_region'`,
         and `500` if `method` is `'lbfgs'`).
 
-    amp_thold : float or None, default: None
+    amp_thold
         A value that imposes a threshold for deleting oscillators of
         negligible ampltiude. If `None`, does nothing. If a float, oscillators
         with amplitudes satisfying :math:`a_m < a_{\\mathrm{thold}}
@@ -150,7 +145,7 @@ class NonlinearProgramming(FrequencyConverter):
         It is advised to set `amp_thold` at least a couple of orders of
         magnitude below 1.
 
-    freq_thold : float or None
+    freq_thold
         If `None`, does nothing. If a float, oscillator pairs with
         frequencies satisfying
         :math:`\\lvert f_m - f_p \\rvert < f_{\\mathrm{thold}}` will be
@@ -166,7 +161,7 @@ class NonlinearProgramming(FrequencyConverter):
 
            NOT IMPLEMENTED YET
 
-    negative_amps : 'remove' or 'flip_phase', default: 'remove'
+    negative_amps
         Indicates how to treat oscillators which have gained negative
         amplitudes during the optimisation.
 
@@ -177,7 +172,7 @@ class NonlinearProgramming(FrequencyConverter):
           but the the amplitudes will be multiplied by -1, and a π radians
           phase shift will be applied to these oscillators.
 
-    fprint : bool, default: True
+    fprint
         If `True`, the method provides information on progress to
         the terminal as it runs. If `False`, the method will run silently.
 
@@ -201,11 +196,17 @@ class NonlinearProgramming(FrequencyConverter):
     end_txt = 'NONLINEAR PROGRAMMING COMPLETE'
 
     def __init__(
-        self, data, theta0, sw, sfo=None, offset=None, start_point=None,
-        phase_variance=True, method='trust_region', bound=False,
-        max_iterations=None, amp_thold=None, freq_thold=None,
-        negative_amps='remove', fprint=True, mode='apfd',
-    ):
+        self, data: np.ndarray, theta0: np.ndarray, expinfo: ExpInfo, *,
+        start_point: Union[Iterable[int], None] = None,
+        phase_variance: bool = True,
+        method: Literal['trust_region', 'lbfgs'] = 'trust_region',
+        bound: bool = False, max_iterations: Union[int, None] = None,
+        amp_thold: Union[float, None] = None,
+        freq_thold: Union[float, None] = None,
+        negative_amps: Literal['remove', 'flip_phase'] = 'flip_phase',
+        fprint: bool = True,
+        # mode: Pattern["^(?!.*(.).*\1)[apfd]+$"] = 'apfd'
+    ) -> None:
         """Initialise the class instance. Checks that all arguments are
         valid"""
 
@@ -213,7 +214,7 @@ class NonlinearProgramming(FrequencyConverter):
         # Data should be a NumPy array.
         if not isinstance(data, np.ndarray):
             raise TypeError(
-                f'{cols.R}data should be a numpy ndarray{cols.END}'
+                f'{RED}data should be a numpy ndarray{END}'
             )
 
         # Determine data dimension. If greater than 2, return error.
@@ -225,26 +226,26 @@ class NonlinearProgramming(FrequencyConverter):
         # This will be 4 if the signal is 1D, and 6 if 2D.
         self.p = 2 * self.dim + 2
 
-        # If offset is None, set it to zero in each dimension
-        if offset is None:
-            offset = [0.0] * self.dim
+        sw, offset, sfo = expinfo.unpack('sw', 'offset', 'sfo')
+
         if max_iterations is None:
             max_iterations = 100
         if start_point is None:
             start_point = [0] * self.dim
+        mode = 'apfd'
 
         checker = ArgumentChecker(dim=self.dim)
         checker.stage(
             (theta0, 'theta0', 'parameter'),
-            (sw, 'sw', 'float_list'),
-            (offset, 'offset', 'float_list'),
+            (sw, 'sw', 'float_iter'),
+            (offset, 'offset', 'float_iter'),
+            (sfo, 'sfo', 'float_iter', True),
             (phase_variance, 'phase_variance', 'bool'),
-            (start_point, 'start_point', 'int_list'),
+            (start_point, 'start_point', 'int_iter'),
             (max_iterations, 'max_iterations', 'positive_int'),
             (mode, 'mode', 'optimiser_mode'),  # TODO
             (negative_amps, 'negative_amps', 'negative_amplidue'),
             (fprint, 'fprint', 'bool'),
-            (sfo, 'sfo', 'float_list', True),
             (amp_thold, 'amp_thold', 'zero_to_one', True),
             (freq_thold, 'freq_thold', 'positive_float', True)
         )
@@ -436,9 +437,9 @@ class NonlinearProgramming(FrequencyConverter):
             # class
             if 'converter' not in self.__dict__.keys():
                 raise ValueError(
-                    f'{cols.R}Insufficient information to determine'
+                    f'{RED}Insufficient information to determine'
                     f' frequencies in ppm. Did you perhaps forget to specify'
-                    f' sfo?{cols.END}'
+                    f' sfo?{END}'
                 )
 
             result = copy.deepcopy(self.__dict__[name])
@@ -729,9 +730,9 @@ class NonlinearProgramming(FrequencyConverter):
 
                 if self.fprint:
                     print(
-                        f'{cols.OR}Negative amplitudes detected. These'
+                        f'{ORA}Negative amplitudes detected. These'
                         f' oscillators will be removed\n'
-                        f'Updated number of oscillators: {self.m}{cols.END}'
+                        f'Updated number of oscillators: {self.m}{END}'
                     )
                 # Returning False means the optimisiser will be re-run
                 return False
@@ -800,6 +801,6 @@ class NonlinearProgramming(FrequencyConverter):
 
         if negligible_idx:
             print(
-                f'{cols.OR}Oscillations with negligible amplitude removed.'
-                f' \nUpdated number of oscillators: {self.m}{cols.END}'
+                f'{ORA}Oscillations with negligible amplitude removed.'
+                f' \nUpdated number of oscillators: {self.m}{END}'
             )

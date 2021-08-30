@@ -17,17 +17,18 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+from nmrespy import *
+if USE_COLORAMA:
     import colorama
     colorama.init()
 import nmrespy._errors as errors
 from nmrespy._misc import ArgumentChecker
+from nmrespy.load import ExpInfo
 
 """Provides functionality for constructing synthetic FIDs"""
 
 
-def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
+def make_fid(parameters: np.ndarray, n: , exp_info:, snr=None, decibels=True,
              modulation='none'):
     """Constructs a discrete time-domain signal (FID), as a summation of
     exponentially damped complex sinusoids.
@@ -159,7 +160,7 @@ def make_fid(parameters, n, sw, offset=None, snr=None, decibels=True,
     try:
         dim = len(n)
     except Exception:
-        raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
+        raise TypeError(f'{RED}n should be iterable.{END}')
 
     if offset is None:
         offset = [0.0] * dim
@@ -276,7 +277,7 @@ def make_virtual_echo(data, modulation='amp'):
     try:
         dim = len(data)
     except Exception:
-        raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
+        raise TypeError(f'{RED}n should be iterable.{END}')
 
     if dim > 2:
         raise errors.MoreThanTwoDimError()
@@ -392,7 +393,7 @@ def get_timepoints(n, sw, start_time=None, meshgrid_2d=False):
     try:
         dim = len(n)
     except Exception:
-        raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
+        raise TypeError(f'{RED}n should be iterable.{END}')
 
     if start_time is None:
         start_time = [0.] * dim
@@ -455,19 +456,19 @@ def get_shifts(n, sw, offset=None, sfo=None, unit='hz', flip=True):
     try:
         dim = len(n)
     except Exception:
-        raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
+        raise TypeError(f'{RED}n should be iterable.{END}')
 
     if offset is None:
         offset = dim * [0.]
 
     if unit not in ['hz', 'ppm']:
-        raise ValueError(f'{cols.R}`unit` should be either \'hz\' or '
-                         f'\'ppm\'.{cols.END}')
+        raise ValueError(f'{RED}`unit` should be either \'hz\' or '
+                         f'\'ppm\'.{END}')
 
     if sfo is None and unit == 'ppm':
         print(
-            f'{cols.OR}You need to specify `sfo` if you want chemical'
-            f' shifts in ppm! Falling back to Hz...{cols.END}'
+            f'{ORA}You need to specify `sfo` if you want chemical'
+            f' shifts in ppm! Falling back to Hz...{END}'
         )
         unit = 'hz'
 
@@ -656,7 +657,7 @@ def phase(data, p0, p1, pivot=None):
     try:
         dim = len(p0)
     except Exception:
-        raise TypeError(f'{cols.R}p0 should be iterable.{cols.END}')
+        raise TypeError(f'{RED}p0 should be iterable.{END}')
 
     if pivot is None:
         pivot = [0] * dim
@@ -716,7 +717,7 @@ def manual_phase_spectrum(spectrum, max_p1=None):
     try:
         dim = spectrum.ndim
     except Exception:
-        raise TypeError(f'{cols.R}soectrum should be a numpy array{cols.END}')
+        raise TypeError(f'{RED}soectrum should be a numpy array{END}')
 
     # Only valid for 1D so far
     if dim != 1:
@@ -975,7 +976,7 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     try:
         dim = len(n)
     except Exception:
-        raise TypeError(f'{cols.R}n should be an iterable{cols.END}')
+        raise TypeError(f'{RED}n should be an iterable{END}')
 
     if offset is None:
         offset = [0.0] * dim

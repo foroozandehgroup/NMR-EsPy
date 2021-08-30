@@ -2,7 +2,7 @@ import pytest
 
 import numpy as np
 
-import nmrespy._cols as cols
+from nmrespy import *
 from nmrespy._misc import FrequencyConverter, ArgumentChecker
 
 
@@ -20,9 +20,9 @@ def test_argchecker():
         checker.check()
 
     assert str(exc_info.value) == \
-        (f'{cols.R}The following arguments are invalid:\n'
+        (f'{RED}The following arguments are invalid:\n'
          '--> sw\n--> fprint\n'
-         f'Have a look at the documentation for more info.{cols.END}')
+         f'Have a look at the documentation for more info.{END}')
 
     checker = ArgumentChecker(dim=2)
     checker.stage(

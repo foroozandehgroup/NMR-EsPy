@@ -17,6 +17,9 @@ import numpy as np
 import scipy.linalg as slinalg
 
 from nmrespy import *
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
 from nmrespy._errors import *
 from nmrespy._misc import ArgumentChecker, significant_figures, get_yes_no
 

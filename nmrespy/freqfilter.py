@@ -11,11 +11,11 @@ from typing import Union
 import numpy as np
 import numpy.random as nrandom
 
-from nmrespy._misc import ArgumentChecker, FrequencyConverter
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+from nmrespy import *
+if USE_COLORAMA:
     import colorama
     colorama.init()
+from nmrespy._misc import ArgumentChecker, FrequencyConverter
 import nmrespy._errors as errors
 from nmrespy import sig
 
@@ -119,9 +119,9 @@ class FilterInfo:
                     return f(*args, **kwargs)
                 else:
                     raise ValueError(
-                        f'{cols.R}`unit` should be one of: {{'
+                        f'{RED}`unit` should be one of: {{'
                         + ', '.join(['\'' + v + '\'' for v in valid_units])
-                        + f'}}{cols.END}'
+                        + f'}}{END}'
                     )
             return checker
         return decorator
@@ -414,7 +414,7 @@ def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
     # --- Check validity of parameters -------------------------------
     if not isinstance(spectrum, np.ndarray):
         raise TypeError(
-            f'{cols.R}`spectrum` should be a numpy array{cols.END}'
+            f'{RED}`spectrum` should be a numpy array{END}'
         )
 
     # Determine data dimension. If greater than 2, return error.
@@ -433,8 +433,8 @@ def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
 
     if (region_unit == 'ppm') and (sfo is None):
         raise ValueError(
-            f'{cols.R}`sfo` cannot be None when `region_unit` is set '
-            f'to \'ppm\'{cols.END}'
+            f'{RED}`sfo` cannot be None when `region_unit` is set '
+            f'to \'ppm\'{END}'
         )
     elif region_unit in ['hz', 'ppm']:
         components.append((region, 'region', 'region_float'))
@@ -444,8 +444,8 @@ def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
         components.append((noise_region, 'noise_region', 'region_int'))
     else:
         raise ValueError(
-            f'{cols.R}`region_unit` is invalid. Should be one of {{\'hz\', '
-            f'\'idx\' and \'ppm\'}}{cols.END}'
+            f'{RED}`region_unit` is invalid. Should be one of {{\'hz\', '
+            f'\'idx\' and \'ppm\'}}{END}'
         )
 
     checker = ArgumentChecker(dim=1)

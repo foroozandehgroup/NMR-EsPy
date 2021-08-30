@@ -9,8 +9,8 @@ import re
 
 import numpy as np
 
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+from nmrspy import *
+if USE_COLORAMA:
     import colorama
     colorama.init()
 import nmrespy._errors as errors
@@ -450,17 +450,17 @@ def load_bruker(directory, ask_convdta=True):
     # `convdta` applied to it.
     if ask_convdta:
         convdta_prompt = (
-            f'{cols.OR}WARNING: It is necessary that the FID you import has '
+            f'{ORA}WARNING: It is necessary that the FID you import has '
             'been digitally filtered, using the <convdta> command in TopSpin. '
             'If you have not done this, please do so before proceeding\nIf '
             'you wish to proceed, enter [y]\nIf you wish to quit, enter [n]: '
-            f'{cols.END} '
+            f'{END} '
         )
 
     d = Path(directory)
     if not d.is_dir():
-        raise IOError(f'\n{cols.R}Directory {directory} doesn\'t exist!'
-                      f'{cols.END}')
+        raise IOError(f'\n{RED}Directory {directory} doesn\'t exist!'
+                      f'{END}')
 
     info = determine_bruker_data_type(d)
     if info is None:

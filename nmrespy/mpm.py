@@ -12,8 +12,8 @@ import scipy.linalg as slinalg
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+from nmrespy import *
+if USE_COLORAMA:
     import colorama
     colorama.init()
 import nmrespy._errors as errors
@@ -85,7 +85,7 @@ class MatrixPencil:
                 raise errors.MoreThanTwoDimError()
         except Exception:
             raise TypeError(
-                f'{cols.R}data should be a numpy ndarray{cols.END}'
+                f'{RED}data should be a numpy ndarray{END}'
             )
 
         if offset is None:
@@ -140,9 +140,9 @@ class MatrixPencil:
             # class
             if 'converter' not in self.__dict__.keys():
                 raise ValueError(
-                    f'{cols.R}Insufficient information to determine'
+                    f'{RED}Insufficient information to determine'
                     f' frequencies in ppm. Did you perhaps forget to specify'
-                    f' sfo?{cols.END}'
+                    f' sfo?{END}'
                 )
 
             result = copy.deepcopy(self.result)
@@ -290,8 +290,8 @@ class MatrixPencil:
         # TODO: MDL for 2D
         if self.M == 0:
             raise ValueError(
-                f'{cols.R}Model order selection is not yet available for 2D '
-                f'data. Set `M` as greater than 0.{cols.END}'
+                f'{RED}Model order selection is not yet available for 2D '
+                f'data. Set `M` as greater than 0.{END}'
             )
 
         # --- Enhanced Matrix ---
@@ -456,9 +456,9 @@ class MatrixPencil:
         M = ud_params.shape[0]
 
         if M < M_init and self.fprint:
-            print(f'\t{cols.OR}WARNING: Oscillations with negative damping\n'
+            print(f'\t{ORA}WARNING: Oscillations with negative damping\n'
                   f'\tfactors detected. These have been deleted.\n'
-                  f'\tCorrected number of oscillations: {M}{cols.END}')
+                  f'\tCorrected number of oscillations: {M}{END}')
 
         elif self.fprint:
             print('\tNone found')

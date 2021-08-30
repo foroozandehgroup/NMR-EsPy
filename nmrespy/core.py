@@ -8,8 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from nmrespy import *
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+if USE_COLORAMA:
     import colorama
     colorama.init()
 import nmrespy._errors as errors
@@ -134,13 +133,13 @@ class Estimator:
         """A formatted list of class attributes"""
 
         msg = (
-            f"{cols.MA}<{__class__.__module__}.{__class__.__qualname__} at "
-            f"{hex(id(self))}>{cols.END}\n"
+            f"{MAG}<{__class__.__module__}.{__class__.__qualname__} at "
+            f"{hex(id(self))}>{END}\n"
         )
 
         dic = self.__dict__
         keys, vals = dic.keys(), dic.values()
-        items = [f'{cols.MA}{k}{cols.END} : {v}'
+        items = [f'{MAG}{k}{END} : {v}'
                  for k, v in zip(keys, vals) if k[0] != '_']
         msg += '\n'.join(items)
 
@@ -264,12 +263,12 @@ class Estimator:
                 dim = int((p - 2) / 2)
             else:
                 raise ValueError(
-                    f'{cols.R}`parameters` should have a size of 4 or 6 in '
-                    f'axis 1.{cols.END}'
+                    f'{RED}`parameters` should have a size of 4 or 6 in '
+                    f'axis 1.{END}'
                 )
 
         except AttributeError:
-            raise ValueError(f'{cols.R}`parameters` should be a numpy array.')
+            raise ValueError(f'{RED}`parameters` should be a numpy array.')
 
         checker = ArgumentChecker(dim=dim)
         checker.stage(
@@ -337,15 +336,15 @@ class Estimator:
                 return obj
             else:
                 raise TypeError(
-                    f'{cols.R}It is expected that the object opened by'
+                    f'{RED}It is expected that the object opened by'
                     ' `from_pickle` is an instance of'
                     f' {__class__.__module__}.{__class__.__qualname__}.'
-                    f' What was loaded didn\'t satisfy this!{cols.END}'
+                    f' What was loaded didn\'t satisfy this!{END}'
                 )
 
         else:
             raise ValueError(
-                f'{cols.R}Invalid path specified.{cols.END}'
+                f'{RED}Invalid path specified.{END}'
             )
 
     @logger
@@ -406,15 +405,15 @@ class Estimator:
         # pathres == 2: Directory specified doesn't exist
         else:
             raise ValueError(
-                f'{cols.R}The directory implied by path does not'
-                f'exist{cols.END}'
+                f'{RED}The directory implied by path does not'
+                f'exist{END}'
             )
 
         with open(path, 'wb') as fh:
             pickle.dump(self, fh, pickle.HIGHEST_PROTOCOL)
 
         if fprint:
-            print(f'{cols.G}Saved instance of Estimator to {path}{cols.END}')
+            print(f'{GRE}Saved instance of Estimator to {path}{END}')
 
     def get_datapath(self, type_='Path', kill=True):
         """Return path of the data directory.
@@ -756,9 +755,9 @@ class Estimator:
 
             except Exception:
                 raise TypeError(
-                    f'{cols.R}Error in trying to convert frequencies to '
+                    f'{RED}Error in trying to convert frequencies to '
                     f'ppm. Perhaps you didn\'t specify sfo when you made '
-                    f'the Estimator instance?{cols.END}'
+                    f'the Estimator instance?{END}'
                 )
 
         else:
@@ -1297,9 +1296,9 @@ class Estimator:
 
         if not self._saveable:
             raise ValueError(
-                f'{cols.OR}The last action to be applied to the estimation '
+                f'{ORA}The last action to be applied to the estimation '
                 f'result was not `nonlinear_programming`. You should ensure '
-                f'this is so before saving the result.{cols.END}'
+                f'this is so before saving the result.{END}'
             )
 
         # Remove any invalid arguments from kwargs (avoid repetition
@@ -1436,9 +1435,9 @@ class Estimator:
 
         if not self._saveable:
             raise ValueError(
-                f'{cols.OR}The last action to be applied to the estimation '
+                f'{ORA}The last action to be applied to the estimation '
                 f'result was not `nonlinear_programming`. You should ensure '
-                f'this is so before plotting the result.{cols.END}'
+                f'this is so before plotting the result.{END}'
             )
 
         dim = self.get_dim()
@@ -1523,7 +1522,7 @@ class Estimator:
         for i in indices:
             if i not in list(range(result.shape[0])):
                 raise ValueError(
-                    f'{cols.R}Invalid index in `indices`{cols.END}'
+                    f'{RED}Invalid index in `indices`{END}'
                 )
 
         self.result = np.delete(result, indices, axis=0)
@@ -1570,15 +1569,15 @@ class Estimator:
 
         if len(indices) < 2:
             print(
-                f'\n{cols.OR}`indices` should contain at least two elements.'
-                f'No merging will happen.{cols.END}'
+                f'\n{ORA}`indices` should contain at least two elements.'
+                f'No merging will happen.{END}'
             )
             return
 
         for i in indices:
             if i not in list(range(result.shape[0])):
                 raise ValueError(
-                    f'{cols.R}Invalid index in `indices`{cols.END}'
+                    f'{RED}Invalid index in `indices`{END}'
                 )
 
         to_merge = result[indices]
@@ -1649,8 +1648,8 @@ class Estimator:
             osc = result[index]
         except Exception:
             raise ValueError(
-                f'{cols.R}index should be an int in range('
-                f'{result.shape[0]}){cols.END}'
+                f'{RED}index should be an int in range('
+                f'{result.shape[0]}){END}'
             )
 
         # --- Determine frequencies --------------------------------------
@@ -1671,13 +1670,13 @@ class Estimator:
 
         if not isinstance(amp_ratio, list):
             raise TypeError(
-                f'{cols.R}`amp_ratio` should be None or a list{cols.END}'
+                f'{RED}`amp_ratio` should be None or a list{END}'
             )
 
         if len(amp_ratio) != split_number:
             raise ValueError(
-                f'{cols.R}The length of `amp_ratio` should equal'
-                f' `split_number`{cols.END}'
+                f'{RED}The length of `amp_ratio` should equal'
+                f' `split_number`{END}'
             )
 
         # Scale amplitude ratio values such that their sum is 1
@@ -1747,16 +1746,16 @@ class Estimator:
         # pathres == 2: Directory specified doesn't exist
         else:
             raise ValueError(
-                f'{cols.R}The directory implied by path does not'
-                f' exist{cols.END}'
+                f'{RED}The directory implied by path does not'
+                f' exist{END}'
             )
 
         try:
             with open(path, "w") as fh:
                 fh.write(self._log)
             print(
-                f'{cols.G}Log file succesfully saved to'
-                f' {str(path)}{cols.END}'
+                f'{GRE}Log file succesfully saved to'
+                f' {str(path)}{END}'
             )
 
         # trouble writing to file...

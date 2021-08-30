@@ -8,14 +8,15 @@ import functools
 import itertools
 from pathlib import Path
 import re
+from typing import Iterable
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
 import numpy as np
 
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+from nmrespy import *
+if USE_COLORAMA:
     import colorama
     colorama.init()
 
@@ -35,10 +36,10 @@ class ArgumentChecker:
 
               + `'ndarray'`
               + `'parameter'`
-              + `'int_list'`
-              + `'float_list'`
-              + `'str_list'`
-              + `'array_list'`
+              + `'int_iter'`
+              + `'float_iter'`
+              + `'str_iter'`
+              + `'array_iter'`
               + `'region_int'`
               + `'region_float'`
               + `'bool'`
@@ -76,20 +77,21 @@ class ArgumentChecker:
         assert self.components
 
         for (obj, name, typ, none_allowed) in self.components:
+            print(name, typ)
             if none_allowed and obj is None:
                 test = True
             elif typ == 'ndarray':
                 test = isinstance(obj, np.ndarray)
             elif typ == 'parameter':
                 test = self.check_parameter_array(obj)
-            elif typ == 'int_list':
-                test = self.check_list(obj, int)
-            elif typ == 'float_list':
-                test = self.check_list(obj, float)
-            elif typ == 'str_list':
-                test = self.check_list(obj, str)
-            elif typ == 'array_list':
-                test = self.check_list(obj, np.ndarray)
+            elif typ == 'int_iter':
+                test = self.check_iter(obj, int)
+            elif typ == 'float_iter':
+                test = self.check_iter(obj, float)
+            elif typ == 'str_iter':
+                test = self.check_iter(obj, str)
+            elif typ == 'array_iter':
+                test = self.check_iter(obj, np.ndarray)
             elif typ == 'region_int':
                 test = self.check_region(obj, int)
             elif typ == 'region_float':
@@ -128,7 +130,7 @@ class ArgumentChecker:
                 test = self.check_mpl_color(obj)
             elif typ == 'osc_cols':
                 test = self.check_oscillator_colors(obj)
-            elif typ == 'generic_int_list':
+            elif typ == 'generic_int_iter':
                 test = (isinstance(obj, list) and
                         all(isinstance(item, int) for item in obj))
             elif typ == 'displacement':
@@ -147,7 +149,7 @@ class ArgumentChecker:
                 except NameError:
                     # First fail: errmsg doesn't exist yet, so initialise
                     errmsg = (
-                        f'{cols.R}The following arguments are invalid:\n'
+                        f'{RED}The following arguments are invalid:\n'
                         f'--> {name}\n'
                     )
 
@@ -156,7 +158,7 @@ class ArgumentChecker:
             # Add a final remark to the message and raise a TypeError.
             errmsg += (
                 f'Have a look at the documentation for more info.'
-                f'{cols.END}'
+                f'{END}'
             )
             raise TypeError(errmsg)
 
@@ -176,7 +178,7 @@ class ArgumentChecker:
         def wrapper(*args, **kwargs):
             if args[0].dim is None:
                 raise ValueError(
-                    f'{cols.R}---BUG--- dim needs to be specified{cols.END}'
+                    f'{RED}---BUG--- dim needs to be specified{END}'
                 )
             return f(*args, **kwargs)
         return wrapper
@@ -196,17 +198,17 @@ class ArgumentChecker:
         return False
 
     @check_dim
-    def check_list(self, obj, typ):
-        """Checks for `[int]`, `[int, int]`, `[float]`, `[float, float]`"""
-        # Check for a list of the correct shape
-        if not isinstance(obj, list) or len(obj) != self.dim:
+    def check_iter(self, obj, typ):
+        try:
+            # Check the object is iterable
+            check_iter = iter(obj)
+            # Check length is known and = dim
+            assert len(obj) == self.dim
+            # Check all elements match the desired type
+            assert all([isinstance(elem, typ) for elem in obj])
+            return True
+        except:
             return False
-        # Check that every element in the list is of the correct type
-        for element in obj:
-            if not isinstance(element, typ):
-                return False
-
-        return True
 
     @check_dim
     def check_region(self, obj, typ):
@@ -347,14 +349,14 @@ class FrequencyConverter:
         try:
             dim = len(n)
         except Exception:
-            raise TypeError(f'{cols.R}n should be iterable.{cols.END}')
+            raise TypeError(f'{RED}n should be iterable.{END}')
 
         checker = ArgumentChecker(dim=dim)
         checker.stage(
-            (n, 'n', 'int_list'),
-            (sw, 'sw', 'float_list'),
-            (offset, 'offset', 'float_list'),
-            (sfo, 'sfo', 'float_list', True)
+            (n, 'n', 'int_iter'),
+            (sw, 'sw', 'float_iter'),
+            (offset, 'offset', 'float_iter'),
+            (sfo, 'sfo', 'float_iter', True)
         )
         checker.check()
 
@@ -387,11 +389,11 @@ class FrequencyConverter:
         """
 
         if not self._check_valid_conversion(conversion):
-            raise ValueError(f'{cols.R}convert is not valid.{cols.END}')
+            raise ValueError(f'{RED}convert is not valid.{END}')
 
         if len(self) != len(lst):
             raise ValueError(
-                f'{cols.R}lst should be of length {len(self)}.{cols.END}'
+                f'{RED}lst should be of length {len(self)}.{END}'
             )
 
         # List for storing final converted contents
@@ -443,8 +445,8 @@ class FrequencyConverter:
         else:
             if 'ppm' in conversion:
                 raise ValueError(
-                    f'{cols.R}WARNING tried to convert to/from ppm, when sfo'
-                    f' has not been specified!{cols.END}'
+                    f'{RED}WARNING tried to convert to/from ppm, when sfo'
+                    f' has not been specified!{END}'
                 )
 
         if conversion == 'idx->hz':
@@ -524,7 +526,7 @@ class PathManager:
         if self.path.is_file() and not force_overwrite:
             overwrite = self.ask_overwrite()
             if not overwrite:
-                print(f'{cols.OR}Overwrite denied{cols.END}')
+                print(f'{ORA}Overwrite denied{END}')
                 return 1
 
         return 0
@@ -534,8 +536,8 @@ class PathManager:
         by the path `self.path`"""
 
         prompt = (
-            f'{cols.OR}The file {str(self.path)} already exists. Overwrite?\n'
-            f'Enter [y] or [n]:{cols.END}'
+            f'{ORA}The file {str(self.path)} already exists. Overwrite?\n'
+            f'Enter [y] or [n]:{END}'
         )
 
         return get_yes_no(prompt)
@@ -553,7 +555,7 @@ def get_yes_no(prompt):
         elif response == 'n':
             return False
         else:
-            print(f'{cols.R}Invalid input. Please enter [y] or [n]:{cols.END}')
+            print(f'{RED}Invalid input. Please enter [y] or [n]:{END}')
             response = input().lower()
 
 
@@ -571,15 +573,15 @@ def start_end_wrapper(start_text, end_text):
             if inst.fprint is False:
                 return f(*args, **kwargs)
 
-            print(f"{cols.G}{len(start_text) * '='}\n"
+            print(f"{GRE}{len(start_text) * '='}\n"
                   f"{start_text}\n"
-                  f"{len(start_text) * '='}{cols.END}")
+                  f"{len(start_text) * '='}{END}")
 
             result = f(*args, **kwargs)
 
-            print(f"{cols.G}{len(end_text) * '='}\n"
+            print(f"{GRE}{len(end_text) * '='}\n"
                   f"{end_text}\n"
-                  f"{len(end_text) * '='}{cols.END}")
+                  f"{len(end_text) * '='}{END}")
 
             return result
 
@@ -616,8 +618,8 @@ def latex_nucleus(nucleus):
 
     else:
         raise ValueError(
-            f'{cols.R}`nucleus` is invalid. Should match the regex'
-            f' \\d+[a-zA-Z]+{cols.END}'
+            f'{RED}`nucleus` is invalid. Should match the regex'
+            f' \\d+[a-zA-Z]+{END}'
         )
 
 

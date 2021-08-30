@@ -17,8 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from nmrespy import *
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+if USE_COLORAMA:
     import colorama
     colorama.init()
 import nmrespy._errors as errors
@@ -51,10 +50,10 @@ def _configure_oscillator_colors(oscillator_colors, m):
     nones = [i for i, c in enumerate(osc_cols) if c is None]
     if nones:
         msg = (
-            f'{cols.R}The following entries in `oscillator_colors` could '
+            f'{RED}The following entries in `oscillator_colors` could '
             f'not be recognised as valid colours in matplotlib:\n'
             + '\n'.join([f'--> {repr(oscillator_colors[i])}' for i in nones])
-            + cols.END
+            + END
         )
         raise ValueError(msg)
 
@@ -96,9 +95,9 @@ def _extract_rc(stylesheet):
             return rc
 
     raise ValueError(
-        f'{cols.R}Error in loading the stylesheet. Check you gave '
+        f'{RED}Error in loading the stylesheet. Check you gave '
         'a valid path or name for the stylesheet, and that the '
-        f'stylesheet is formatted correctly.{cols.END}'
+        f'stylesheet is formatted correctly.{END}'
     )
 
 
@@ -130,8 +129,8 @@ def _configure_shifts_unit(shifts_unit, sfo):
     if shifts_unit == 'ppm' and sfo is None:
         shifts_unit = 'hz'
         print(
-            f'{cols.OR}You need to specify `sfo` if you want chemical'
-            f' shifts in ppm! Falling back to Hz...{cols.END}'
+            f'{ORA}You need to specify `sfo` if you want chemical'
+            f' shifts in ppm! Falling back to Hz...{END}'
         )
     return shifts_unit
 
@@ -384,7 +383,7 @@ def plot_result(
     try:
         dim = data.ndim
     except Exception:
-        raise TypeError(f'{cols.R}`data` should be a NumPy array.{cols.END}')
+        raise TypeError(f'{RED}`data` should be a NumPy array.{END}')
     if dim == 2:
         raise TwoDimUnsupportedError()
     elif dim >= 3:
@@ -532,9 +531,9 @@ class NmrespyPlot:
         # Check that all values given are between 1 and number of oscillators
         max_value = max(self.labels.keys())
         if not all(0 < value <= max_value for value in values):
-            raise ValueError(f'{cols.R}At least one element in `values` is '
+            raise ValueError(f'{RED}At least one element in `values` is '
                              'invalid. Ensure that all elements are ints '
-                             f'between 1 and {max_value}.{cols.END}')
+                             f'between 1 and {max_value}.{END}')
 
         for value in values:
             # Get initial position (this is in data coordinates)
@@ -552,10 +551,10 @@ class NmrespyPlot:
             )
             if not all(0. <= coord <= 1. for coord in new_pos):
                 raise ValueError(
-                    f'{cols.R}The specified displacement for label {value} '
+                    f'{RED}The specified displacement for label {value} '
                     'places it outside the axes! You may want to reduce the '
                     'magnitude of displacement in one or both dimesions to '
-                    f'ensure this does not occur.{cols.END}'
+                    f'ensure this does not occur.{END}'
                 )
 
             # Transform new position to data coordinates
@@ -583,8 +582,8 @@ class NmrespyPlot:
         try:
             ax.clear()
         except AttributeError:
-            raise ValueError(f"{cols.R}`ax` is not a valid matplotlib axes "
-                             f"object, and instead is:\n{type(ax)}.{cols.END}")
+            raise ValueError(f"{RED}`ax` is not a valid matplotlib axes "
+                             f"object, and instead is:\n{type(ax)}.{END}")
 
         # Transfer line objects
         for line in self.ax.__dict__['lines']:

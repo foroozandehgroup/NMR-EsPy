@@ -1,9 +1,10 @@
 import argparse
 import pathlib
 
+import nmrespy import *
 from nmrespy._install_to_topspin import main as install_to_topspin
-import nmrespy._cols as cols
-if cols.USE_COLORAMA:
+
+if USE_COLORAMA:
     import colorama
     colorama.init()
 from .app import NMREsPyApp
@@ -56,8 +57,8 @@ if __name__ == '__main__':
         path = pathlib.Path(args.estimate).resolve()
         if not path.is_dir():
             raise ValueError(
-                f"{cols.R}\nThe path you have specified doesn't exist:\n{path}"
-                f"{cols.END}"
+                f"{RED}\nThe path you have specified doesn't exist:\n{path}"
+                f"{END}"
             )
         res = False
 
@@ -65,8 +66,8 @@ if __name__ == '__main__':
         path = pathlib.Path(args.result).resolve()
         if not path.is_file():
             raise ValueError(
-                f"{cols.R}\nThe path you have specified doesn't exist:\n{path}"
-                f"{cols.END}"
+                f"{RED}\nThe path you have specified doesn't exist:\n{path}"
+                f"{END}"
             )
         res = True
 
