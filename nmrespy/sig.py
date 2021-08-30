@@ -4,9 +4,11 @@
 
 """Constructing and processing NMR signals"""
 
+from collections.abc import Iterable
 import copy
 import re
 import tkinter as tk
+from typing import Literal, Tuple, Union
 
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
@@ -23,19 +25,23 @@ if USE_COLORAMA:
     colorama.init()
 import nmrespy._errors as errors
 from nmrespy._misc import ArgumentChecker
-from nmrespy.load import ExpInfo
 
 """Provides functionality for constructing synthetic FIDs"""
 
 
-def make_fid(parameters: np.ndarray, n: , exp_info:, snr=None, decibels=True,
-             modulation='none'):
+return_type = Tuple[Union[np.ndarray, Tuple[np.ndarray, np.ndarray]],
+                    Union[Tuple[np.ndarray], Tuple[np.ndarray, np.ndarray]]]
+def make_fid(
+    parameters: np.ndarray, exp_info: ExpInfo, *,
+    snr: Union[float, None] = None, decibels: bool = True,
+    modulation: Literal['none', 'amp', 'phase'] = 'none'
+) -> return_type:
     """Constructs a discrete time-domain signal (FID), as a summation of
     exponentially damped complex sinusoids.
 
     Parameters
     ----------
-    parameters : numpy.ndarray
+    parameters
         Parameter array with the following structure:
 
         * **1-dimensional data:**
@@ -60,26 +66,20 @@ def make_fid(parameters: np.ndarray, n: , exp_info:, snr=None, decibels=True,
                 [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
              ])
 
-    n : [int], [int, int]
-        Number of points to construct signal from in each dimension.
+    expinfo
+        Information on the experiment. Used to determine the number of points,
+        sweep width and transmitter offset.
 
-    sw : [float], [float, float]
-        Sweep width in each dimension, in Hz.
-
-    offset : [float], [float, float], or None, default: None
-        Transmitter offset frequency in each dimension, in Hz. If set to
-        `None`, the offset frequency will be set to 0Hz in each dimension.
-
-    snr : float or None, default: None
+    snr
         The signal-to-noise ratio. If `None` then no noise will be added
         to the FID.
 
-    decibels : bool, default: True
+    decibels
         If `True`, the snr is taken to be in units of decibels. If `False`,
         it is taken to be simply the ratio of the singal power over the
         noise power.
 
-    modulation : {'none', 'amp', 'phase'}, default: 'none'
+    modulation
         The type of modulation present in the indirect dimension, if the data
         is 2D. `In the expressions below, a it is assumed a single oscillator
         has been provided for simplicity`.
@@ -128,7 +128,7 @@ def make_fid(parameters: np.ndarray, n: , exp_info:, snr=None, decibels=True,
 
     Returns
     -------
-    fid : numpy.ndarray, [numpy.ndarray, numpy.ndarray]
+    fid
         The synthetic signal generated.
 
         + If the data to be constructed is 1D or 2D with `modulation` set to
@@ -137,7 +137,7 @@ def make_fid(parameters: np.ndarray, n: , exp_info:, snr=None, decibels=True,
           the result will be a length-2 list with signals of the forms
           indicated above (See `modulation`).
 
-    tp : [numpy.ndarray], [numpy.ndarray, numpy.ndarray]
+    tp
         The time points the FID is sampled at in each dimension.
 
     Notes
@@ -162,15 +162,14 @@ def make_fid(parameters: np.ndarray, n: , exp_info:, snr=None, decibels=True,
     except Exception:
         raise TypeError(f'{RED}n should be iterable.{END}')
 
-    if offset is None:
-        offset = [0.0] * dim
+    pts, sw, offset = expinfo.unpack('pts', 'sw', 'offset')
 
     checker = ArgumentChecker(dim=dim)
     checker.stage(
         (parameters, 'parameters', 'parameter'),
-        (n, 'n', 'int_list'),
-        (sw, 'sw', 'float_list'),
-        (offset, 'offset', 'float_list'),
+        (pts, 'pts', 'int_iter'),
+        (sw, 'sw', 'float_iter'),
+        (offset, 'offset', 'float_iter'),
         (decibels, 'decibels', 'bool'),
         (modulation, 'modulation', 'modulation'),
         (snr, 'snr', 'float', True)
@@ -240,19 +239,21 @@ def make_fid(parameters: np.ndarray, n: , exp_info:, snr=None, decibels=True,
             return fid, tp
 
 
-def make_virtual_echo(data, modulation='amp'):
+def make_virtual_echo(
+    data: Iterable[np.ndarray], modulation: Literal['amp', 'phase'] = 'amp'
+) -> np.ndarray:
     """Given the time-domain signal `data`, generates the corresponding
     virtual echo [#]_, a signal with a purely real Fourier-Tranform and
     absorption mode line shape if the data is phased.
 
     Parameters
     ----------
-    data : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
+    data
         The data to construct the virtual echo from. This should be a list of
         NumPy arrays, with ``len(data) == d`` where ``d`` is the dimension
         of the signal.
 
-    modulation : {'amp' or 'phase'}, default: 'amp'
+    modulation
         If the data is 2D, this parameter specifies the type of modulation
         present in the indirect dimension of the dataset.
 
@@ -265,7 +266,7 @@ def make_virtual_echo(data, modulation='amp'):
 
     Returns
     -------
-    virtual_echo : numpy.ndarray
+    virtual_echo
         The virtual echo signal assocaited with `data`.
 
     References
@@ -284,7 +285,7 @@ def make_virtual_echo(data, modulation='amp'):
 
     checker = ArgumentChecker(dim=dim)
     checker.stage(
-        (data, 'data', 'array_list'),
+        (data, 'data', 'array_iter'),
         (modulation, 'modulation', 'modulation')
     )
     checker.check()
@@ -352,28 +353,30 @@ def make_virtual_echo(data, modulation='amp'):
         return tmp1 + tmp2 + tmp3 + tmp4
 
 
-def get_timepoints(n, sw, start_time=None, meshgrid_2d=False):
+def get_timepoints(
+    expinfo: ExpInfo, *,
+    start_time: Union[list[Union[float, str]], None] = None,
+    meshgrid_2d: bool = False
+) -> Iterable[np.ndarray]:
     """Generates the timepoints at which an FID is sampled at, given
     its sweep-width, and the number of points.
 
     Parameters
     ----------
-    n : [int] or [int, int]
-        The number of points in each dimension.
+    expinfo
+        Information on the experiment. Used to determine the number of points,
+        and sweep width.
 
-    sw : [float] or [float, float]
-        The sweep width in each dimension (Hz).
-
-    start_time : [Union[float, str]] or None, default: None
+    start_time
         The start time in each dimension. If set to `None`, the initial
         point in each dimension with be ``0.0``. To set non-zero start times,
-        a list of floats or string can be used. If floats is used, they
+        a list of floats or strings can be used. If floats are used, they
         specify the first value in each dimension in seconds. Alternatively,
-        starings of the form ``'<N>dt'``, where ``<N>`` is an integer, may be
+        strings of the form ``f'{N}dt'``, where ``N`` is an integer, may be
         used, which indicates a cetain multiple of the difference in time
         between two adjacent points.
 
-    meshgrid_2d : bool, default: False
+    meshgrid_2d
         If time-points are being derived for a two-dimensional signal, setting
         this argument to ``True`` will return two two-dimensional arrays
         corresponding to all pairs of x and y values to construct a 3D
@@ -381,7 +384,7 @@ def get_timepoints(n, sw, start_time=None, meshgrid_2d=False):
 
     Returns
     -------
-    tp : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
+    tp
         The time points sampled in each dimension.
 
     Notes
@@ -390,18 +393,21 @@ def get_timepoints(n, sw, start_time=None, meshgrid_2d=False):
     following regular expression: ``r'^-?\d+dt$'``
     """
 
+
+
     try:
-        dim = len(n)
+        dim, pts, sw = expinfo.unpack('dim', 'pts', 'sw')
     except Exception:
-        raise TypeError(f'{RED}n should be iterable.{END}')
+        raise TypeError(f'{RED}Check `expinfo` is an instance of '
+                        f'nmrespy.ExpInfo{END}')
 
     if start_time is None:
         start_time = [0.] * dim
 
     checker = ArgumentChecker(dim=dim)
     checker.stage(
-        (n, 'n', 'int_list'),
-        (sw, 'sw', 'float_list'),
+        (pts, 'pts', 'int_iter'),
+        (sw, 'sw', 'float_iter'),
         (start_time, 'start_time', 'start_time'),
         (meshgrid_2d, 'meshgrid_2d', 'bool'),
     )
@@ -411,46 +417,37 @@ def get_timepoints(n, sw, start_time=None, meshgrid_2d=False):
         if isinstance(st, str):
             start_time[i] = float(re.match(r'^(-?\d+)dt$', st).group(1)) / sw_
 
-    tp = [np.linspace(0, float(n_ - 1) / sw_, n_) + st
-          for n_, sw_, st in zip(n, sw, start_time)]
+    tp = tuple([np.linspace(0, float(pts_ - 1) / sw_, pts_) + st
+                for pts_, sw_, st in zip(pts, sw, start_time)])
 
     if (dim == 2 and meshgrid_2d):
-        tp = list(np.meshgrid(*tp, indexing='ij'))
+        tp = tuple(np.meshgrid(*tp, indexing='ij'))
 
     return tp
 
 
-def get_shifts(n, sw, offset=None, sfo=None, unit='hz', flip=True):
+def get_shifts(expinfo: ExpInfo, *, unit: Literal['hz', 'ppm'] = 'hz',
+               flip: bool = True) -> Iterable[np.ndarray]:
     """Generates the frequencies that the FT of the FID is sampled at, given
     its sweep-width, the transmitter offset, and the number of points.
 
     Parameters
     ----------
-    n : [int] or [int, int]
-        The number of points in each dimension.
+    expinfo
+        Information on the experiment. Used to determine the number of points,
+        sweep width, offset, and transmitter frequency. Note that if
+        ``expinfo.sfo`` is ``None``, shifts can only be obtained in Hz.
 
-    sw : [float] or [float, float]
-        The sweep width in each dimension.
+    unit
+        The unit of the chemical shifts.
 
-    offset : [float], [float, float], or None, default: None
-        The transmitter offset in each dimension. If `None`, the
-        offset will be set to zero in each dimension.
-
-    sfo : [float], [float, float], or None, default: None
-        The transmitter frequency in each dimension in MHz. If `None`, it will
-        only be possible to get shifts in Hz.
-
-    unit : {'hz', 'ppm'}, default: 'hz'
-        The unit of the chemical shifts. In order to get shifts in ppm, `sfo`
-        need to be specified (i.e. it cannot be `None`).
-
-    flip : bool, default: True
+    flip
         If `True`, the shifts will be returned in descending order, as is
         conventional in NMR. If `False`, the shifts will be in ascending order.
 
     Returns
     -------
-    shifts : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
+    shifts
         The chemical shift values sampled in each dimension."""
 
     try:
@@ -458,8 +455,7 @@ def get_shifts(n, sw, offset=None, sfo=None, unit='hz', flip=True):
     except Exception:
         raise TypeError(f'{RED}n should be iterable.{END}')
 
-    if offset is None:
-        offset = dim * [0.]
+    n, sw, offset, sfo = expinfo.unpack('n', 'sw', 'offset', 'sfo')
 
     if unit not in ['hz', 'ppm']:
         raise ValueError(f'{RED}`unit` should be either \'hz\' or '
@@ -474,11 +470,11 @@ def get_shifts(n, sw, offset=None, sfo=None, unit='hz', flip=True):
 
     checker = ArgumentChecker(dim=dim)
     checker.stage(
-        (n, 'n', 'int_list'),
-        (sw, 'sw', 'float_list'),
-        (offset, 'offset', 'float_list'),
+        (n, 'n', 'int_iter'),
+        (sw, 'sw', 'float_iter'),
+        (offset, 'offset', 'float_iter'),
+        (sfo, 'sfo', 'float_iter', True),
         (flip, 'flip', 'bool'),
-        (sfo, 'sfo', 'float_list', True)
     )
     checker.check()
 
@@ -487,112 +483,41 @@ def get_shifts(n, sw, offset=None, sfo=None, unit='hz', flip=True):
     if unit == 'ppm':
         shifts = [s / sfo_ for s, sfo_ in zip(shifts, sfo)]
 
-    return [np.flip(s) for s in shifts] if flip else shifts
+    return tuple([np.flip(s) for s in shifts]) if flip else shifts
 
 
-def ft(fid, flip=True):
+def ft(fid: np.ndarray, *, flip: bool = True) -> np.ndarray:
     """Performs Fourier transformation and (optionally) flips the resulting
     spectrum to satisfy NMR convention.
 
     Parameters
     ----------
-    fid : numpy.ndarray
+    fid
         Time-domain data.
 
-    flip : bool, default: True
+    flip
         Whether or not to flip the Fourier Trnasform of `fid` in each
         dimension.
 
     Returns
     -------
-    spectrum : numpy.ndarray
-        Fourier transform of the data, flipped in each dimension.
+    spectrum
+        Fourier transform of the data, (optionally) flipped in each
+        dimension.
     """
 
-    ArgumentChecker([(fid, 'fid', 'ndarray'), (flip, 'flip', 'bool')])
+    checker = ArgumentChecker()
+    checker.stage(
+        (fid, 'fid', 'ndarray'),
+        (flip, 'flip', 'bool'),
+    )
+    checker.check()
 
-    spectrum = fft(fid, axis=0)
-
-    for axis in range(1, fid.ndim):
+    spectrum = copy.deepcopy(fid)
+    for axis in range(fid.ndim):
         spectrum = fft(spectrum, axis=axis)
 
     return np.flip(fftshift(spectrum)) if flip else fftshift(spectrum)
-
-
-def proc_amp_modulated(data):
-    """Takes a pair of 2D amplitude-modulated signals, and generates the
-    frequency-discriminated spectrum.
-
-    Parameters
-    ----------
-    data : [numpy.ndarray, numpy.ndarray]
-        cos-modulated signal and sin-modulated signal
-
-    Returns
-    -------
-    spectrum : dict
-        Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``."""
-
-    ArgumentChecker([(data, 'data', 'array_list')], dim=2)
-
-    c = data[0]
-    s = data[1]
-
-    c_t1_f2 = fftshift(fft(c, axis=1), axes=1)
-    s_t1_f2 = fftshift(fft(s, axis=1), axes=1)
-
-    return fftshift(
-        fft(np.real(c_t1_f2) + 1j * np.real(s_t1_f2), axis=0), axes=0
-    )
-
-
-def proc_phase_modulated(data):
-    """Takes a pair of 2D phase-modulated signals, and generates the
-    set of spectra corresponding to the processing protocol outlined in [#]_.
-
-    Parameters
-    ----------
-    data : [numpy.ndarray, numpy.ndarray]
-        P-type signal and N-type signal
-
-    Returns
-    -------
-    spectra : dict
-        Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``.
-
-    References
-    ----------
-    .. [#] A. L. Davis, J. Keeler, E. D. Laue, and D. Moskau, “Experiments for
-           recording pure-absorption heteronuclear correlation spectra using
-           pulsed field gradients,” Journal of Magnetic Resonance (1969),
-           vol. 98, no. 1, pp. 207–216, 1992."""
-
-    ArgumentChecker([(data, 'data', 'array_list')], dim=2)
-
-    p = data[0]
-    n = data[1]
-
-    p_t1_f2 = fftshift(fft(p, axis=1), axes=1)  # Sₚ(t₁,f₂)
-    n_t1_f2 = fftshift(fft(n, axis=1), axes=1)  # Sₙ(t₁,f₂)
-
-    # Generating rr and ir
-    plus_t1_f2 = 0.5 * (p_t1_f2 + n_t1_f2.conj())           # S⁺(t₁,f₂)
-    plus_f1_f2 = fftshift(fft(plus_t1_f2, axis=0), axes=0)  # S⁺(f₁,f₂)
-    rr = np.real(plus_f1_f2)  # A₁A₂
-    ir = np.imag(plus_f1_f2)  # D₁A₂
-
-    # Generating ri and ii
-    minus_t1_f2 = - 0.5 * 1j * (p_t1_f2 - n_t1_f2.conj())     # S⁻(t₁,f₂)
-    minus_f1_f2 = fftshift(fft(minus_t1_f2, axis=0), axes=0)  # S⁻(f₁,f₂)
-    ri = np.real(minus_f1_f2)  # A₁D₂
-    ii = np.imag(minus_f1_f2)  # D₁D₂
-
-    return {
-        'rr': rr,
-        'ri': ri,
-        'ir': ir,
-        'ii': ii,
-    }
 
 
 def ift(spectrum, flip=True):
@@ -631,21 +556,102 @@ def ift(spectrum, flip=True):
     return fid
 
 
-def phase(data, p0, p1, pivot=None):
+def proc_amp_modulated(data: Tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+    """Takes a pair of 2D amplitude-modulated signals, and generates the
+    frequency-discriminated spectrum.
+
+    Parameters
+    ----------
+    data
+        cos-modulated signal and sin-modulated signal
+
+    Returns
+    -------
+    spectrum
+        Frequency-dsicrimiated spectrum."""
+
+    checker = ArgumentChecker(dim=2)
+    checker.stage((data, 'data', 'array_iter'))
+    checker.check()
+
+    c = data[0]
+    s = data[1]
+
+    c_t1_f2 = fftshift(fft(c, axis=1), axes=1)
+    s_t1_f2 = fftshift(fft(s, axis=1), axes=1)
+
+    return fftshift(
+        fft(np.real(c_t1_f2) + 1j * np.real(s_t1_f2), axis=0), axes=0
+    )
+
+
+def proc_phase_modulated(data: Tuple[np.ndarray, np.ndarray]) -> dict:
+    """Takes a pair of 2D phase-modulated signals, and generates the
+    set of spectra corresponding to the processing protocol outlined in [#]_.
+
+    Parameters
+    ----------
+    data
+        P-type signal and N-type signal
+
+    Returns
+    -------
+    spectra
+        Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``.
+
+    References
+    ----------
+    .. [#] A. L. Davis, J. Keeler, E. D. Laue, and D. Moskau, “Experiments for
+           recording pure-absorption heteronuclear correlation spectra using
+           pulsed field gradients,” Journal of Magnetic Resonance (1969),
+           vol. 98, no. 1, pp. 207–216, 1992."""
+
+    checker = ArgumentChecker(dim=2)
+    checker.stage((data, 'data', 'array_iter'))
+    checker.check()
+
+    p = data[0]
+    n = data[1]
+
+    p_t1_f2 = fftshift(fft(p, axis=1), axes=1)  # Sₚ(t₁,f₂)
+    n_t1_f2 = fftshift(fft(n, axis=1), axes=1)  # Sₙ(t₁,f₂)
+
+    # Generating rr and ir
+    plus_t1_f2 = 0.5 * (p_t1_f2 + n_t1_f2.conj())           # S⁺(t₁,f₂)
+    plus_f1_f2 = fftshift(fft(plus_t1_f2, axis=0), axes=0)  # S⁺(f₁,f₂)
+    rr = np.real(plus_f1_f2)  # A₁A₂
+    ir = np.imag(plus_f1_f2)  # D₁A₂
+
+    # Generating ri and ii
+    minus_t1_f2 = - 0.5 * 1j * (p_t1_f2 - n_t1_f2.conj())     # S⁻(t₁,f₂)
+    minus_f1_f2 = fftshift(fft(minus_t1_f2, axis=0), axes=0)  # S⁻(f₁,f₂)
+    ri = np.real(minus_f1_f2)  # A₁D₂
+    ii = np.imag(minus_f1_f2)  # D₁D₂
+
+    return {
+        'rr': rr,
+        'ri': ri,
+        'ir': ir,
+        'ii': ii,
+    }
+
+
+def phase(data: np.ndarray, p0: Iterable[float], p1: Iterable[float],
+          pivot: Union[Iterable[float], None] = None) -> np.ndarray:
     """Applies a linear phase correction to `data`.
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data
         Data to be phased.
 
-    p0 : [float] or [float, float]
+    p0
         Zero-order phase correction in each dimension, in radians.
 
-    p1 : [float] or [float, float]
+    p1
         First-order phase correction in each dimension, in radians.
 
-    pivot : [int], [int, int] or None
+    pivot
         Index of the pivot in each dimension. If None, the pivot will be `0`
         in each dimension.
 
@@ -665,9 +671,9 @@ def phase(data, p0, p1, pivot=None):
     checker = ArgumentChecker(dim=dim)
     checker.stage(
         (data, 'data', 'ndarray'),
-        (p0, 'p0', 'float_list'),
-        (p1, 'p1', 'float_list'),
-        (pivot, 'pivot', 'int_list')
+        (p0, 'p0', 'float_iter'),
+        (p1, 'p1', 'float_iter'),
+        (pivot, 'pivot', 'int_iter')
     )
     checker.check()
 
@@ -686,7 +692,9 @@ def phase(data, p0, p1, pivot=None):
     return phased_data
 
 
-def manual_phase_spectrum(spectrum, max_p1=None):
+def manual_phase_spectrum(
+    spectrum: np.ndarray, *, max_p1: float = 10 * np.pi
+) -> Tuple[Union[float, None], Union[float, None]]:
     """Generates a GUI, enabling manual phase correction, with the zero- and
     first-order phases returned.
 
@@ -695,22 +703,20 @@ def manual_phase_spectrum(spectrum, max_p1=None):
 
     Parameters
     ----------
-    spectrum : numpy.ndarray
+    spectrum
         Spectral data of interest.
 
-    max_p1 : float or None, default: None
-        Specifies the range of first-order phases permitted. For each
-        dimension, the user will be allowed to choose a value of `p1`
-        within [`-max_p1`, `max_p1`]. By default, `max_p1` will be
-        ``10 * numpy.pi``.
+    max_p1
+        Specifies the range of first-order phases permitted.
+        Bounds are set as ``[-max_p1, max_p1]``.
 
     Returns
     -------
-    p0 : [float] or None
+    p0
         Zero-order phase correction in each dimension, in radians. If the
         user chooses to cancel rather than save, this is set to `None`.
 
-    p1 : [float] or None
+    p1
         First-order phase correction in each dimension, in radians. If the
         user chooses to cancel rather than save, this is set to `None`.
     """
@@ -725,8 +731,6 @@ def manual_phase_spectrum(spectrum, max_p1=None):
 
     init_spectrum = copy.deepcopy(spectrum)
 
-    if max_p1 is None:
-        max_p1 = 10 * np.pi
     app = PhaseApp(init_spectrum, max_p1)
     app.mainloop()
 
@@ -883,27 +887,29 @@ class PhaseApp(tk.Tk):
         self.p1 = None
 
 
-def make_noise(fid, snr, decibels=True):
+def make_noise(
+    fid: np.ndarray, snr: float, *, decibels: bool = True
+) -> np.ndarray:
     """Given a synthetic FID, generate an array of normally distributed
     complex noise with zero mean and a variance that abides by the desired
     SNR.
 
     Parameters
     ----------
-    fid : numpy.ndarray
+    fid
         Noiseless FID.
 
-    snr : float
+    snr
         The signal-to-noise ratio.
 
-    decibels : bool, default: True
+    decibels
         If `True`, the snr is taken to be in units of decibels. If `False`,
         it is taken to be simply the ratio of the singal power and noise
         power.
 
     Returns
-    _______
-    noise : numpy.ndarray
+    -------
+    noise
     """
 
     checker = ArgumentChecker()
@@ -942,34 +948,33 @@ def make_noise(fid, snr, decibels=True):
     return instances[first] + 1j * instances[second]
 
 
-def generate_random_signal(m, n, sw, offset=None, snr=None):
+def generate_random_signal(
+    m: int, expinfo: ExpInfo, *, snr: Union[float, None] = None
+) -> Tuple[np.ndarray, Iterable[np.ndarray], np.ndarray]:
     """A convienince function to generate a synthetic FID with random
     parameters for testing purposes.
 
     Parameters
     ----------
-    m : int
+    m
         Number of oscillators
 
-    n : [int] or [int, int]
-        Number of points in each dimension
+    expinfo
+        Information on the experiment. Used to determine the number of points,
+        sweep width, and transmitter offset.
 
-    sw : [float] or [float, float]
-        Sweep width in each dimension
-
-    offset : [float], [float, float] or None, deafult: None
-        Transmitter offset in each dimension
-
-    snr : float or None, default: None
+    snr
         Signal-to-noise ratio (dB)
 
-    fid : numpy.ndarray
+    Returns
+    -------
+    fid
         The synthetic FID.
 
-    tp : [numpy.ndarray], [numpy.ndarray, numpy.ndarray]
+    tp
         The time points the FID is sampled at in each dimension.
 
-    parameters : numpy.ndarray
+    parameters
         Parameters used to construct the signal
     """
 
@@ -978,14 +983,14 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     except Exception:
         raise TypeError(f'{RED}n should be an iterable{END}')
 
-    if offset is None:
-        offset = [0.0] * dim
+    pts, sw, offset = expinfo.unpack('pts', 'sw', 'offset')
 
     checker = ArgumentChecker(dim=dim)
     checker.stage(
         (m, 'm', 'positive_int'),
-        (n, 'n', 'int_list'),
-        (sw, 'sw', 'float_list'),
+        (pts, 'pts', 'int_iter'),
+        (offset, 'offset', 'float_iter'),
+        (sw, 'sw', 'float_iter'),
         (snr, 'snr', 'positive_float', True)
     )
 
@@ -1006,13 +1011,13 @@ def generate_random_signal(m, n, sw, offset=None, snr=None):
     return *make_fid(para, n, sw, offset, snr), para
 
 
-def oscillator_integral(parameters, n, sw, offset=None):
+def oscillator_integral(params: np.ndarray, expinfo: ExpInfo) -> float:
     """Determines the (absolute) integral of the Fourier transform of
     an oscillator.
 
     Parameters
     ----------
-    parameters : numpy.ndarray
+    params
         Oscillator parameters of the following form:
 
         * **1-dimensional data:**
@@ -1027,19 +1032,13 @@ def oscillator_integral(parameters, n, sw, offset=None):
 
              parameters = numpy.array([a, φ, f1, f2, η1, η2])
 
-    n : [int], [int, int]
-        Number of points to construct signal from in each dimension.
-
-    sw : [float], [float, float]
-        Sweep width in each dimension, in Hz.
-
-    offset : [float], [float, float], or None, default: None
-        Transmitter offset frequency in each dimension, in Hz. If set to
-        `None`, the offset frequency will be set to 0Hz in each dimension.
+    expinfo
+        Information on the experiment. Used to determine the number of points,
+        sweep width, and transmitter offset.
 
     Returns
     -------
-    integral :
+    integral
 
     Notes
     -----
@@ -1050,7 +1049,7 @@ def oscillator_integral(parameters, n, sw, offset=None):
     Spacing of points along the frequency axes is set a `1` (i.e. `dx = 1`).
     """
 
-    fid, _ = make_fid(np.expand_dims(parameters, axis=0), n, sw, offset)
+    fid, _ = make_fid(np.expand_dims(params, axis=0), expinfo)
     spectrum = np.absolute(ft(fid))
 
     for axis in range(spectrum.ndim):
