@@ -5,7 +5,7 @@ import pytest
 
 import nmrespy._errors as err
 from nmrespy.load import bruker as bload
-from nmrespy.load import load_bruker
+from nmrespy.load import *
 from nmrespy.sig import make_fid
 
 
@@ -82,3 +82,38 @@ def test_remove_zeros():
 def test_load_bruker():
     for i, path in enumerate(ALLPATHS):
         load_bruker(path, ask_convdta=False)
+
+
+def check_expinfo_correct(expinfo, sw, offset, sfo, nuclei, dim, kwargs=None):
+    checks = [
+        expinfo.sw == sw,
+        expinfo.offset == offset,
+        expinfo.sfo == sfo,
+        expinfo.nuclei == nuclei,
+        expinfo.dim == dim,
+    ]
+
+    if kwargs is not None:
+        checks.append(expinfo.kwargs == kwargs)
+
+    return all(checks)
+
+
+def test_expinfo():
+    sw = 5000
+    offset = [2000.]
+    sfo = 500
+    nuclei = '13C'
+    expinfo = ExpInfo(sw, offset, sfo=sfo, nuclei=nuclei)
+    assert check_expinfo_correct(expinfo, (5000.,), (2000.,), (500.,),
+                                 ('13C',), 1)
+
+    expinfo = ExpInfo(sw, offset, sfo=sfo, nuclei=nuclei, dim=2)
+    assert check_expinfo_correct(expinfo, (5000., 5000.), (2000., 2000.),
+                                 (500., 500.), ('13C', '13C'), 2)
+
+    expinfo = ExpInfo(sw, offset, sfo=sfo, nuclei=nuclei, dim=2,
+                      array=[1, 2, 3, 4])
+    assert check_expinfo_correct(expinfo, (5000., 5000.), (2000., 2000.),
+                                 (500., 500.), ('13C', '13C'), 2,
+                                 {'array': [1, 2, 3, 4]})

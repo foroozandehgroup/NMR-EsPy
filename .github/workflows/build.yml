@@ -46,4 +46,5 @@ jobs:
           sed -i 's/VIEW_RESULT_FIGURES = True/VIEW_RESULT_FIGURES = False/g' test_estimator.py
           sed -i 's/RUN_PDFLATEX = True/RUN_PDFLATEX = False/g' test_estimator.py
           sed -i 's/MANUAL_PHASE = True/MANUAL_PHASE = False/g' test_estimator.py
+          sed -i 's/USER_INPUT = True/USER_INPUT = False/g' test_write.py
           python -m pytest

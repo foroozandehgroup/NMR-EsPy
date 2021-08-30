@@ -109,3 +109,21 @@ def test_filter_performance():
     # give cut signal a larger tolerance due to greater uncertainty generated
     # by cutting
     assert np.allclose(p[0], cut_result, rtol=0, atol=1e-1)
+
+
+# def test_iterative_filtering():
+#     sw = [5000.]
+#     offset = [2000.]
+#     n = [4096]
+#     oscs = 20
+#     freqs = np.linspace(-sw[0] / 3 + offset[0], sw[0] / 3 + offset[0], oscs)
+#     params = np.zeros((oscs, 4))
+#     params[:, 0] = 1.
+#     params[:, 2] = freqs
+#     params[:, 3] = 10.
+#     fid = sig.make_fid(params, n, sw, offset, snr=40.)[0]
+#     ve = sig.make_virtual_echo([fid])
+#     spectrum = sig.ft(ve)
+#
+#     region_number = [10]
+#     ff.iterative_filtering(spectrum, region_number)
