@@ -6,9 +6,9 @@ from .bruker import load_bruker
 
 
 class ExpInfo:
-    """Stores general information about experiments.
-    """
-    def __init__(self,
+    """Stores general information about experiments."""
+    def __init__(
+        self,
         sw: Union[int, float, Iterable[Union[int, float]]],
         offset: Union[int, float, Iterable[Union[int, float]], None] = None,
         sfo: Union[int, float, Iterable[Union[int, float]], None] = None,
