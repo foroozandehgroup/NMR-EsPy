@@ -39,14 +39,14 @@ def _configure_save_path(path, fmt, force_overwrite):
     if path.is_file():
         response = _ask_overwrite(path, force_overwrite)
         if not response:
-            msg = (f'{cols.R}Overwrite of file {path} denied. Result file '
-                   f'will not be written.{cols.END}')
+            msg = (f'{RED}Overwrite of file {path} denied. Result file '
+                   f'will not be written.{END}')
             return False, msg
         return True, path
 
     if not path.parent.is_dir():
-        msg = (f'{cols.R}The directory specified by `path` does not '
-               f'exist:\n{path.parent}{cols.END}')
+        msg = (f'{RED}The directory specified by `path` does not '
+               f'exist:\n{path.parent}{END}')
         return False, msg
 
     return True, path
@@ -57,8 +57,8 @@ def _ask_overwrite(path, force):
         return True
 
     prompt = (
-        f'{cols.OR}The file {str(path)} already exists. Overwrite?\n'
-        f'Enter [y] or [n]:{cols.END}'
+        f'{ORA}The file {str(path)} already exists. Overwrite?\n'
+        f'Enter [y] or [n]:{END}'
     )
     return get_yes_no(prompt)
 
@@ -209,7 +209,7 @@ def write_result(
     try:
         dim = int(parameters.shape[1] / 2) - 1
     except Exception:
-        msg = f'{cols.R}`parameters` should be a numpy array{cols.END}'
+        msg = f'{RED}`parameters` should be a numpy array{END}'
         return raise_error(TypeError, msg, kill_on_error)
 
     checker = ArgumentChecker(dim=dim)
@@ -232,26 +232,26 @@ def write_result(
 
     if len(list(filter(lambda x: x is None, [info_headings, info]))) == 1:
         raise ValueError(
-            f'{cols.R}`info` and `info_headings` should either both be lists'
-            f' of the same length, or both be None.{cols.END}'
+            f'{RED}`info` and `info_headings` should either both be lists'
+            f' of the same length, or both be None.{END}'
         )
     # Should be same number of integrals as number of oscillators
     if isinstance(integrals, list) and len(integrals) != parameters.shape[0]:
         raise ValueError(
-            f'{cols.R}integrals should have the same number of elements as'
-            f' parameters.shape[0]{cols.END}'
+            f'{RED}integrals should have the same number of elements as'
+            f' parameters.shape[0]{END}'
         )
     # info and info_headings should be the same length if lists
     if isinstance(info, list) and len(info) != len(info_headings):
         raise ValueError(
-            f'{cols.R}info and info_headings should be the same'
-            f' length{cols.END}'
+            f'{RED}info and info_headings should be the same'
+            f' length{END}'
         )
     # parameters and errors should be the same shape, if errors is not None
     if isinstance(errors, np.ndarray) and errors.shape != parameters.shape:
         raise ValueError(
-            f'{cols.R}`parameters` and `errors` should be the same'
-            f' shape{cols.END}'
+            f'{RED}`parameters` and `errors` should be the same'
+            f' shape{END}'
         )
 
     pathinfo = _configure_save_path(path, fmt, force_overwrite)
@@ -348,7 +348,7 @@ def _write_txt(
         file.write(msg)
 
     if fprint:
-        print(f'{cols.G}Saved result to {path}{cols.END}')
+        print(f'{GRE}Saved result to {path}{END}')
 
 
 def _write_pdf(
@@ -526,11 +526,11 @@ def _write_pdf(
 
     # Print success message
     if fprint:
-        print(f'{cols.G}Result successfuly output to:\n'
+        print(f'{GRE}Result successfuly output to:\n'
               f'{pdf_final_path}\n'
               'If you wish to customise the document, the TeX file can'
               ' be found at:\n'
-              f'{tex_final_path}{cols.END}')
+              f'{tex_final_path}{END}')
 
 
 def _write_csv(
@@ -585,7 +585,7 @@ def _write_csv(
             writer.writerow(row)
 
     if fprint:
-        print(f'{cols.G}Saved result to {path}{cols.END}')
+        print(f'{GRE}Saved result to {path}{END}')
 
 
 def _map_to_latex_titles(titles):
