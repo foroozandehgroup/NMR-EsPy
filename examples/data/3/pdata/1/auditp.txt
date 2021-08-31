@@ -1,8 +1,8 @@
-##TITLE= Audit trail, TOPSPIN		Version 1.3
+##TITLE= Audit trail, TopSpin 4.0.8
 ##JCAMPDX= 5.01
 ##ORIGIN= Bruker BioSpin GmbH
-##OWNER= Administrator
-$$ F:/Research/2015/MF/data/PSYCHE_CPMG/nmr/Cyclosporin/2/pdata/1/auditp.txt
+##OWNER= simon
+$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/data/3333/pdata/1/auditp.txt
 ##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, VERSION, WHAT)
 (   1,<2015-09-06 14:22:52.921 +0100>,<Administrator>,<B500B07>,<TOPSPIN 1.3>,
       <created by zg, POWCHK disabled, PULCHK disabled
@@ -10,25 +10,17 @@ $$ F:/Research/2015/MF/data/PSYCHE_CPMG/nmr/Cyclosporin/2/pdata/1/auditp.txt
        B7 2E 9C 6C C3 57 4A 23 71 F8 B3 A3 7E 61 FD D0
        data hash MD5: 16K * 10
        72 48 6B AD D6 9B F0 62 1C C5 CE 28 C5 27 0D 80>)
-(   2,<2015-09-06 14:24:56.265 +0100>,<Administrator>,<B500B07>,<TOPSPIN 1.3>,
+(   2,<2021-08-27 16:28:51.100 +0100>,<simon>,<precision>,<proc2d>,<TopSpin 4.0.8>,
+      <convdta from
+       3 "data" "/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples" 
+       data hash MD5: 16240 * 10
+       4E DD 18 58 9D AA 1D 19 53 2E F3 59 34 DA 67 07>)
+(   3,<2021-08-27 16:28:51.280 +0100>,<simon>,<precision>,<proc2d>,<TopSpin 4.0.8>,
       <Start of raw data processing
-       xf2 F2: SI = 32K WDW = 1 LB = 0.3 FT_mod = 6 PKNL = 1 PHC0 = 0 PHC1 = 0 F1: SI = 16
+       xf2 F2: SI = 32K WDW = 1 LB = 0.3 FT_mod = 6 PKNL = 0 PHC0 = 175.7798 PHC1 = -8 F1: SI = 16
        data hash MD5: 32K * 16
-       AF EC 66 44 49 79 37 CB 3F 87 02 10 01 F1 F2 42>)
-(   3,<2015-09-06 14:25:26.796 +0100>,<Administrator>,<B500B07>,<TOPSPIN 1.3>,
-      <pk2 fgphup F2: PHC0 = 175.7798 PHC1 = -8
-       data hash MD5: 32K * 16
-       E5 8A 37 E3 10 13 A4 52 96 14 9B 10 BD B2 DC 7E>)
-$$ /home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/data/3/pdata/1/auditp.txt
-(   4,<2021-07-09 16:15:34.380 +0100>,<sgh>,<spectre>,<proc2d>,<TopSpin 4.0.8>,
-      <abs2 F2: ABSG = 5 ABSF1 = 9.4987 ABSF2 = -0.4987005
-       data hash MD5: 32K * 16
-       08 E5 00 B1 EA 80 B6 72 21 B6 65 D5 43 45 6F 69>)
-(   5,<2021-07-09 16:23:49.175 +0100>,<sgh>,<spectre>,<proc2d>,<TopSpin 4.0.8>,
-      <abs2 F2: ABSG = 5 ABSF1 = 9.4987 ABSF2 = -0.4987005
-       data hash MD5: 32K * 16
-       62 BB 29 C9 49 1F F9 89 BA F9 8D 6E 8C E6 CF 84>)
+       EB E9 B3 A1 4B 21 23 5B 3A B7 ED 28 CF 37 D8 B0>)
 ##END=
 
 $$ hash MD5
-$$ 9E 63 63 C9 49 E7 87 4E BC 4C 15 AD B3 0F E9 D8
+$$ 24 D8 E2 1A E5 BB 81 06 B8 37 CD 81 86 DE C5 C2

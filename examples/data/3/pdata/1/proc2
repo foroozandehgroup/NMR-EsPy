@@ -1,12 +1,12 @@
 ##TITLE= Parameter file, TopSpin 4.0.8
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
-##NPOINTS= 2	$$ modification sequence number
-##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
-##OWNER= root
-$$ 2021-07-07 14:24:19.049 +0100  sgh@spectre
-$$ /home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/data/3/pdata/1/proc2
-$$ process /opt/topspin4.0.8/prog/mod/dataserver
+##NPOINTS= 1	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= simon
+$$ 2021-08-27 16:28:51.119 +0100  simon@precision
+$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/data/3333/pdata/1/proc2
+$$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$ABSF1= 1000
 ##$ABSF2= -1000
 ##$ABSG= 5
@@ -19,6 +19,8 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$ASSWID= 0
 ##$AUNMP= <        >
 ##$AXLEFT= 0
+##$AXNAME= <>
+##$AXNUC= <off>
 ##$AXRIGHT= 0
 ##$AXTYPE= 0
 ##$AXUNIT= <>
@@ -33,6 +35,7 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$DC= 1
 ##$DFILT= <        >
 ##$DTYPP= 0
+##$ERETIC= no
 ##$F1P= 0
 ##$F2P= 0.00799999999999999
 ##$FCOR= 0.5
@@ -51,13 +54,35 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$MEAN= 0
 ##$ME_mod= 0
 ##$MI= 1
+##$MddCEXP= no
+##$MddCT_SP= no
+##$MddF180= no
+##$MddLAMBDA= 0
+##$MddMEMORY= 0
+##$MddMERGE= 0
+##$MddNCOMP= 0
+##$MddNITER= 0
+##$MddNOISE= 0
+##$MddPHASE= 0
+##$MddSEED= 0
+##$MddSRSIZE= 0
+##$Mdd_CsALG= 0
+##$Mdd_CsLAMBDA= 0
+##$Mdd_CsNITER= 0
+##$Mdd_CsNORM= 0
+##$Mdd_CsVE= no
+##$Mdd_CsZF= 0
+##$Mdd_LrLAMBDA= 0
+##$Mdd_LrNITER= 0
+##$Mdd_LrRANK= 0
+##$Mdd_LrZF= 0
+##$Mdd_mod= 0
 ##$NCOEF= 0
 ##$NC_proc= 0
 ##$NLEV= 6
 ##$NOISF1= 0
 ##$NOISF2= 0
 ##$NSP= 1
-##$NTH_PF= 0
 ##$NTH_PI= 0
 ##$NZP= 1
 ##$OFFSET= 4.667201
@@ -73,6 +98,12 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$PPRESOL= 1
 ##$PSCAL= 1
 ##$PSIGN= 0
+##$PYNMP= <proc.py>
+##$RDF1= 0
+##$RDF2= 0
+##$RDFWHM= 0
+##$RDINT= 0
+##$RDPOS= 0
 ##$REVERSE= no
 ##$SF= 500.13
 ##$SI= 16
@@ -80,6 +111,8 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$SIGF2= 0
 ##$SINO= 16
 ##$SIOLD= 16
+##$SPECTYP= <>
+##$SREF_mod= 1
 ##$SREGLST= <1H.MeOD>
 ##$SSB= 0
 ##$STSI= 0
@@ -87,7 +120,6 @@ $$ process /opt/topspin4.0.8/prog/mod/dataserver
 ##$SW_p= 8.91639538993527
 ##$SYMM= 0
 ##$S_DEV= 0
-##$T1D= 5
 ##$TDeff= 0
 ##$TDoff= 0
 ##$TI= <        >

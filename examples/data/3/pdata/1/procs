@@ -1,15 +1,15 @@
 ##TITLE= Parameter file, TopSpin 4.0.8
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
-##NPOINTS= 4	$$ modification sequence number
-##ORIGIN= UXNMR, Bruker Analytische Messtechnik GmbH
-##OWNER= root
-$$ 2021-07-09 16:23:49.167 +0100  sgh@spectre
-$$ /home/sgh/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/data/3/pdata/1/procs
+##NPOINTS= 3	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= simon
+$$ 2021-08-27 16:28:51.269 +0100  simon@precision
+$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/data/3333/pdata/1/procs
 $$ process /opt/topspin4.0.8/prog/mod/proc2d
-##$ABSF1= 9.4987
-##$ABSF2= -0.4987005
-##$ABSG= 5
+##$ABSF1= 0
+##$ABSF2= 0
+##$ABSG= 0
 ##$ABSL= 0
 ##$ALPHA= 0
 ##$AQORDER= 0
@@ -19,8 +19,8 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$ASSWID= 0
 ##$AUNMP= <proc_1d>
 ##$AXLEFT= 0
-##$AXNAME= <>
-##$AXNUC= <off>
+##$AXNAME= <F2>
+##$AXNUC= <1H>
 ##$AXRIGHT= 0
 ##$AXTYPE= 0
 ##$AXUNIT= <>
@@ -59,15 +59,15 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$MddF180= no
 ##$MddLAMBDA= 0
 ##$MddMEMORY= 0
-##$MddMERGE= 23
+##$MddMERGE= 0
 ##$MddNCOMP= 0
 ##$MddNITER= 0
-##$MddNOISE= 0.8
+##$MddNOISE= 0
 ##$MddPHASE= 0
 ##$MddSEED= 0
 ##$MddSRSIZE= 0
 ##$Mdd_CsALG= 0
-##$Mdd_CsLAMBDA= 1
+##$Mdd_CsLAMBDA= 0
 ##$Mdd_CsNITER= 0
 ##$Mdd_CsNORM= 0
 ##$Mdd_CsVE= yes
@@ -83,7 +83,6 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$NOISF1= 0
 ##$NOISF2= 0
 ##$NSP= 0
-##$NTH_PF= 0
 ##$NTH_PI= 0
 ##$NZP= 0
 ##$OFFSET= 9.4987
@@ -91,7 +90,7 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$PHC0= 175.7798
 ##$PHC1= -8
 ##$PH_mod= 1
-##$PKNL= yes
+##$PKNL= no
 ##$PPARMOD= 1
 ##$PPDIAG= 0
 ##$PPIPTYP= 0
@@ -108,11 +107,11 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$REVERSE= no
 ##$SF= 500.13
 ##$SI= 32768
-##$SIGF1= 9.4987
-##$SIGF2= -0.4987005
+##$SIGF1= 0
+##$SIGF2= 0
 ##$SINO= 400
 ##$SIOLD= 16384
-##$SPECTYP= <>
+##$SPECTYP= <CPMG>
 ##$SREF_mod= 1
 ##$SREGLST= <1H.CDCl3>
 ##$SSB= 0
@@ -120,9 +119,8 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$STSR= 0
 ##$SW_p= 5000
 ##$SYMM= 0
-##$S_DEV= 138103
-##$T1D= 5
-##$TDeff= 16384
+##$S_DEV= 504293
+##$TDeff= 16240
 ##$TDoff= 0
 ##$TI= <>
 ##$TILT= no
@@ -136,6 +134,6 @@ $$ process /opt/topspin4.0.8/prog/mod/proc2d
 ##$USERP5= <user>
 ##$WDW= 1
 ##$XDIM= 8192
-##$YMAX_p= 282367220
-##$YMIN_p= -46005301
+##$YMAX_p= 280716628
+##$YMIN_p= -46487435
 ##END=
