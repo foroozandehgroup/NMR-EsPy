@@ -4,3 +4,4 @@ scipy>=1.6
 Sphinx>=4
 pytest>=6.2
 flake8>=3.9
+pydocstyle>=6.1
