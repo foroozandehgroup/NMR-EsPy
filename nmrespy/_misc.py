@@ -8,7 +8,6 @@ import functools
 import itertools
 from pathlib import Path
 import re
-from typing import Iterable
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -77,7 +76,6 @@ class ArgumentChecker:
         assert self.components
 
         for (obj, name, typ, none_allowed) in self.components:
-            print(name, typ)
             if none_allowed and obj is None:
                 test = True
             elif typ == 'ndarray':
@@ -201,13 +199,13 @@ class ArgumentChecker:
     def check_iter(self, obj, typ):
         try:
             # Check the object is iterable
-            check_iter = iter(obj)
+            iter(obj)
             # Check length is known and = dim
             assert len(obj) == self.dim
             # Check all elements match the desired type
             assert all([isinstance(elem, typ) for elem in obj])
             return True
-        except:
+        except Exception:
             return False
 
     @check_dim

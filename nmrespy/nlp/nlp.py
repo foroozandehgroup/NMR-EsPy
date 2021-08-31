@@ -8,23 +8,23 @@ from collections.abc import Iterable
 import copy
 import functools
 import operator
-from typing import Literal, Pattern, Union
+from typing import Literal, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
 import scipy.optimize as optimize
 
 from nmrespy import *
-if USE_COLORAMA:
-    import colorama
-    colorama.init()
-from nmrespy.load import ExpInfo
 from nmrespy._errors import *
 from nmrespy._misc import start_end_wrapper, ArgumentChecker, \
     FrequencyConverter
 from nmrespy._timing import timer
 import nmrespy.nlp._funcs as funcs
 from nmrespy.sig import get_timepoints
+
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
 
 # TODO in a later version
 # Add support for mode

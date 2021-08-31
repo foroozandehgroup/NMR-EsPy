@@ -1,7 +1,7 @@
 import argparse
 import pathlib
 
-import nmrespy import *
+from nmrespy import *
 from nmrespy._install_to_topspin import main as install_to_topspin
 
 if USE_COLORAMA:

@@ -1,6 +1,13 @@
+from collections.abc import Iterable
+import importlib
+from numbers import Number
 from pathlib import Path
+import platform
+from typing import Union
 from ._version import __version__
 
+
+# Paths and links
 NMRESPYPATH = Path(__file__).parent
 IMAGESPATH = NMRESPYPATH / 'images'
 MFLOGOPATH = IMAGESPATH / 'mf_logo.png'
@@ -8,25 +15,19 @@ NMRESPYLOGOPATH = IMAGESPATH / 'nmrespy_full.png'
 BOOKICONPATH = IMAGESPATH / 'book_icon.png'
 GITHUBLOGOPATH = IMAGESPATH / 'github.png'
 EMAILICONPATH = IMAGESPATH / 'email_icon.png'
-
-# To assist users with manual install of TopSpin GUI loader
 TOPSPINPATH = NMRESPYPATH / 'app/_topspin.py'
-
 GITHUBLINK = 'https://github.com/foroozandehgroup/NMR-EsPy'
 MFGROUPLINK = 'http://foroozandeh.chem.ox.ac.uk/home'
 DOCSLINK = 'https://foroozandehgroup.github.io/NMR-EsPy'
 MAILTOLINK = r'mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query'
 
 # Coloured terminal output
-import importlib
-import platform
-
 END = '\033[0m'  # end editing
 RED = '\033[31m'  # red
 GRE = '\033[32m'  # green
 ORA = '\033[33m'  # orange
 BLU = '\033[34m'  # blue
-MAG = '\033[35m'  # magenta (M is reserved for no. of oscillators)
+MAG = '\033[35m'  # magenta
 CYA = '\033[96m'  # cyan
 
 USE_COLORAMA = False
@@ -54,6 +55,9 @@ class ExpInfo:
 
     Parameters
     ----------
+    pts
+        The number of points the signal is composed of.
+
     sw
         The sweep width (spectral window) (Hz).
 
@@ -95,6 +99,7 @@ class ExpInfo:
     """
     def __init__(
         self,
+        pts: Union[int, Iterable[int]],
         sw: Union[int, float, Iterable[Union[int, float]]],
         offset: Union[int, float, Iterable[Union[int, float]], None] = None,
         sfo: Union[int, float, Iterable[Union[int, float]], None] = None,
@@ -111,8 +116,8 @@ class ExpInfo:
         # duplicate values to match correct dim.
 
         self.__dict__.update(locals())
-        names = ['sw']
-        instances = [Number]
+        names = ['pts', 'sw']
+        instances = [int, Number]
         for name, inst in zip(('offset', 'sfo', 'nuclei'),
                               (Number, Number, str)):
             if self.__dict__[name] is not None:
@@ -130,7 +135,7 @@ class ExpInfo:
                     # Convert numerical value to float
                     self.__dict__[name] = [float(value)]
                 else:
-                    # Case for nuclei, which should be a string
+                    # Case for pts and nuclei
                     self.__dict__[name] = [value]
 
             elif isinstance(value, Iterable):
