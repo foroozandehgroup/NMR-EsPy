@@ -1,7 +1,19 @@
+"""Run when the user calls the nmrespy module from a command line.
+
+Provides access to the following functionality:
+
+* Load the NMR-EsPy GUI to run an estimation
+  (``python -m nmrespy -e <DATAPATH>``)
+* Load the NMR-EsPy GUI to inspect an estimation result
+  (``python -m nmrespy -r <RESULTPATH>``)
+* Install to NMR-EsPy GUI loader into TopSpin
+  (``python -i nmrespy -r <RESULTPATH>``)
+"""
+
 import argparse
 import pathlib
 
-from nmrespy import *
+from nmrespy import RED, END, USE_COLORAMA
 from nmrespy._install_to_topspin import main as install_to_topspin
 
 if USE_COLORAMA:

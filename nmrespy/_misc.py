@@ -4,17 +4,18 @@
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
+from collections.abc import Callable
 import functools
-import itertools
 from pathlib import Path
 import re
+from typing import Any, Iterable, Literal, Union
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
 import numpy as np
 
-from nmrespy import *
+from nmrespy import RED, ORA, GRE, END, USE_COLORAMA, ExpInfo
 if USE_COLORAMA:
     import colorama
     colorama.init()
@@ -67,12 +68,12 @@ class ArgumentChecker:
         depends on the data dimension.
     """
 
-    def __init__(self, dim=None):
-
+    def __init__(self, dim: int = None) -> None:
+        """Create an ArgumentChecker instance."""
         self.dim = dim
 
-    def check(self):
-
+    def check(self) -> None:
+        """Check that each object satisfies its criterion."""
         assert self.components
 
         for (obj, name, typ, none_allowed) in self.components:
@@ -164,7 +165,11 @@ class ArgumentChecker:
             # errmsg doesn't exist, implying no failed tests occurred.
             pass
 
-    def stage(self, *args):
+    def stage(self, *args: tuple) -> None:
+        """Add tuples of components for processing prior to testing.
+
+        Each argument should be a tuple, with as a minimum
+        """
         self.components = []
         for arg in args:
             if len(arg) == 3:
@@ -172,19 +177,19 @@ class ArgumentChecker:
             elif len(arg) == 4:
                 self.components.append((arg))
 
-    def check_dim(f):
+    def check_dim(f: Callable) -> Callable:
+        """Check that the `dim` attribute is an `int`."""
         def wrapper(*args, **kwargs):
-            if args[0].dim is None:
+            if not isinstance(args[0].dim, int):
                 raise ValueError(
-                    f'{RED}---BUG--- dim needs to be specified{END}'
+                    f'{RED}---BUG---{END} dim needs to be specified.'
                 )
             return f(*args, **kwargs)
         return wrapper
 
     @check_dim
-    def check_parameter_array(self, obj):
-        """Checks for numpy array of shape (M, 4) or (M, 6)"""
-
+    def check_parameter_array(self, obj: Any) -> bool:
+        """Check for numpy array of shape ``(M, 4)`` or ``(M, 6)``."""
         if not isinstance(obj, np.ndarray):
             return False
 
@@ -196,7 +201,8 @@ class ArgumentChecker:
         return False
 
     @check_dim
-    def check_iter(self, obj, typ):
+    def check_iter(self, obj: Any, typ: Any) -> bool:
+        """Check object is an iterable of the correct length."""
         try:
             # Check the object is iterable
             iter(obj)
@@ -209,15 +215,20 @@ class ArgumentChecker:
             return False
 
     @check_dim
-    def check_region(self, obj, typ):
-        """Checks for `[[int, int]]`, `[[int, int], [int, int]]`,
-        `[[float, float]]`, and `[[float, float], [float, float]]`"""
+    def check_region(self, obj: Any, typ: Union[int, float]) -> bool:
+        """Check for a valid region specifier.
+
+        Should be one of the following:
+
+        * ``Tuple[Tuple[typ, typ]]``
+        * ``Tuple[Tuple[typ, typ], Tuple[typ, typ]]``
+        """
         # Check for a list of the correct shape
-        if not isinstance(obj, list) or len(obj) != self.dim:
+        if not isinstance(obj, (list, tuple)) or len(obj) != self.dim:
             return False
         # Check that every element in the list is a list of length 2
         for sublist in obj:
-            if not isinstance(sublist, list) and len(sublist) == 2:
+            if not isinstance(sublist, (list, tuple)) and len(sublist) == 2:
                 return False
             # Check that each bound is of the correct type
             for element in sublist:
@@ -226,10 +237,11 @@ class ArgumentChecker:
         return True
 
     @staticmethod
-    def check_optimiser_mode(obj):
-        """Ensures that the optimisation mode is valid. This should be a
-        string containing only the characters 'a', 'p', 'f', and 'd', without
-        any repetition.
+    def check_optimiser_mode(obj: Any) -> bool:
+        """Ensure that the optimisation mode is valid.
+
+        This should be a string containing only the characters ``'a'``,
+        ``'p'``, ``'f'``, and ``'d'``, without any repetition.
         """
         if not isinstance(obj, str):
             return False
@@ -246,23 +258,17 @@ class ArgumentChecker:
             else:
                 count[c] = 1
 
-        for key in count:
-            if count[key] > 1:
-                return False
-
-        return True
+        return all(map(lambda x: x == 1, count.values()))
 
     @staticmethod
-    def check_pos_neg_tuple(obj):
-        """Check for object of the form ``(-x, y)`` where `x` and `y` are
-        positive ints.
-        """
+    def check_pos_neg_tuple(obj: Any) -> bool:
+        """Check for tuple with one negative and one positive int."""
         return (isinstance(obj, tuple) and len(obj) == 2
                 and isinstance(obj[0], int) and obj[0] < 0
                 and isinstance(obj[1], int) and obj[1] > 1)
 
     @staticmethod
-    def check_mpl_color(obj):
+    def check_mpl_color(obj: Any) -> bool:
         """Check for a valid matplotlib color."""
         try:
             mcolors.to_hex(obj)
@@ -270,8 +276,8 @@ class ArgumentChecker:
         except ValueError:
             return False
 
-    def check_oscillator_colors(self, obj):
-        """Check for valid oscillator colorcycle"""
+    def check_oscillator_colors(self, obj: Any) -> bool:
+        """Check for valid oscillator colorcycle."""
         # Check for single matplotlib color
         if self.check_mpl_color(obj):
             return True
@@ -293,88 +299,80 @@ class ArgumentChecker:
         return False
 
     @staticmethod
-    def check_displacement(obj):
+    def check_displacement(obj: Any) -> bool:
         """Check for a valid mpl label displacement tuple."""
         if isinstance(obj, tuple) and len(obj) == 2:
-            for element in obj:
-                if isinstance(element, float) and abs(element) < 1.:
-                    pass
-                else:
-                    return False
-            return True
+            return all(isinstance(x, float) and abs(x) < 1. for x in obj)
         return False
 
     @check_dim
-    def check_start_time(self, obj):
-
-        if not isinstance(obj, list) or len(obj) != self.dim:
-            return False
-
-        for item in obj:
-            if isinstance(item, float):
-                pass
-            elif isinstance(item, str):
-                if re.match(r'^-?\d+dt$', item):
-                    pass
-                else:
-                    return False
-            else:
-                return False
-
-        return True
+    def check_start_time(self, obj: Any) -> bool:
+        """Check whether object is a valid start time specifier for signal."""
+        if isinstance(obj, (list, tuple)) and (len(obj) == self.dim):
+            print(all(
+                isinstance(item, float) or re.match(r'^-?\d+dt$', item)
+                for item in obj
+            ))
+            return all(
+                isinstance(item, float) or re.match(r'^-?\d+dt$', item)
+                for item in obj
+            )
+        return False
 
 
 class FrequencyConverter:
-    """Handles converting objects with frequency values between units
+    """Handle frequency unit conversion."""
 
-    Parameters
-    ----------
-    n : [int] or [int, int]
-        Number of points in each dimension.
+    def __init__(self, expinfo: ExpInfo) -> None:
+        """Initialise the converter.
 
-    sw : [float] or [float, float]
-        Experiment sweep width in each dimension (Hz)
+        Parameters
+        ----------
+        expinfo
+            Information on experiemnt parameters. From this, the number of
+            experiment points, sweep width, transmitter offset, and
+            transmitter offset frequency (optional) are obtained.
 
-    offset : [float] or [float, float]
-        Transmitter offset in each dimension (Hz)
-
-    sfo : [float] or [float, float] or None, default: None
-        Transmitter frequency in each dimension (MHz). If set to `None`, only
-        conversion between Hz and array indices will be possible.
-    """
-    def __init__(self, n, sw, offset, sfo=None):
-
+        Notes
+        -----
+        It is necessary for `expinfo` to have `sfo` not set to `None` if
+        conversion from/tp ppm is desired.
+        """
         try:
-            dim = len(n)
+            pts, sw, offset, sfo, dim = \
+                expinfo.unpack('pts', 'sw', 'offset', 'sfo', 'dim')
         except Exception:
-            raise TypeError(f'{RED}n should be iterable.{END}')
+            raise TypeError(f'{RED}Check `expinfo` is valid.{END}')
 
         checker = ArgumentChecker(dim=dim)
         checker.stage(
-            (n, 'n', 'int_iter'),
+            (pts, 'pts', 'int_iter'),
             (sw, 'sw', 'float_iter'),
             (offset, 'offset', 'float_iter'),
             (sfo, 'sfo', 'float_iter', True)
         )
         checker.check()
-
         self.__dict__.update(locals())
 
     def __len__(self):
-        return len(self.n)
+        """Return number of experiment dimensions."""
+        return self.dim
 
-    def convert(self, lst, conversion):
-        """Convert quantities contained within a list
+    def convert(
+        self, lst: Iterable[Union[int, float]], conversion: str
+    ) -> Iterable[Union[int, float]]:
+        """Convert quantities contained within an iterable.
 
         Parameters
         ----------
-        lst : list
-            A list of numerical values, with the same length as ``len(self)``.
+        lst
+            An iterable of numerical values, with the same length as
+            ``len(self)``.
 
-        conversion : str
+        conversion
             A string denoting the coversion to be applied. The form of
-            `conversion` should be ``'<from>-><to>'``, where ``<from>`` and
-            ``<to>`` are not matching, and are each one of the following:
+            `conversion` should be ``f'{from}->{to}'``, where ``from`` and
+            ``to`` are each one of the following:
 
             * `'idx'`: array index
             * `'hz'`: Hertz
@@ -382,10 +380,9 @@ class FrequencyConverter:
 
         Returns
         -------
-        converted_lst : lst
-            A list of the same dimensions as `lst`, with converted values.
+        converted_lst
+            An iterable of the same dimensions as `lst`, with converted values.
         """
-
         if not self._check_valid_conversion(conversion):
             raise ValueError(f'{RED}convert is not valid.{END}')
 
@@ -415,7 +412,7 @@ class FrequencyConverter:
                     except StopIteration:
                         break
 
-                converted_lst.append(converted_sublst)
+                converted_lst.append(type(elem)((converted_sublst)))
 
             except TypeError:
                 # elem is a float/int...
@@ -423,29 +420,26 @@ class FrequencyConverter:
                     self._convert_value(elem, dim, conversion)
                 )
 
-        return converted_lst
+        return type(lst)(converted_lst)
 
-    def _check_valid_conversion(self, conversion):
-        """Check that conversion is a valid value"""
-        units = ['idx', 'ppm', 'hz']
-        for pair in itertools.product(units, repeat=2):
-            pair = iter(pair)
-            if f'{next(pair)}->{next(pair)}' == conversion:
-                return True
-        return False
+    def _check_valid_conversion(self, conversion: str) -> bool:
+        """Check that conversion is a valid value."""
+        pattern = r'^(idx|ppm|hz)->(idx|ppm|hz)$'
+        return bool(re.match(pattern, conversion))
 
-    def _convert_value(self, value, dim, conversion):
+    def _convert_value(
+        self, value: Union[int, float], dim: int, conversion: str
+    ) -> Union[int, float]:
+        """Convert frequency."""
         n = self.n[dim]
         sw = self.sw[dim]
         off = self.offset[dim]
-        if self.sfo is not None:
-            sfo = self.sfo[dim]
-        else:
-            if 'ppm' in conversion:
-                raise ValueError(
-                    f'{RED}WARNING tried to convert to/from ppm, when sfo'
-                    f' has not been specified!{END}'
-                )
+        if (self.sfo is None) and ('ppm' in conversion):
+            raise ValueError(
+                f'{RED}WARNING tried to convert to/from ppm, when sfo'
+                f' has not been specified!{END}'
+            )
+        sfo = self.sfo[dim]
 
         if conversion == 'idx->hz':
             return off + sw * (0.5 - (float(value) / (n - 1)))
@@ -475,49 +469,49 @@ class FrequencyConverter:
 
 
 class PathManager:
-    """Class for performing checks on paths.
+    """Class for performing checks on paths."""
 
-    Parameters
-    ----------
-    fname : str
-        Filename.
-    dir : str
-        Directory.
-    """
-    def __init__(self, fname, dir):
-
-        self.fname = Path(fname)
-        self.dir = Path(dir)
-        self.path = self.dir / self.fname
-
-    def check_file(self, force_overwrite=False):
-        """Performs checks on the path file dir/fname
+    def __init__(self, fname: str, dir: str) -> None:
+        """Initialise the path manager.
 
         Parameters
         ----------
-        force_overwrite : bool, default: False
+        fname
+            Filename.
+        dir
+            Directory.
+        """
+        self.fname = Path(fname)
+        self.dir = Path(dir)
+        self.path = (self.dir / self.fname).resolve()
+
+    def check_file(self, force_overwrite: bool = False) -> Literal[0, 1, 2]:
+        """Perform checks on the path.
+
+        Parameters
+        ----------
+        force_overwrite
             Specifies whether to ask the user if they are happy for the file
             `self.path` to be overwritten if it already exists in their
             filesystem.
 
         Returns
         -------
-        return_code : int
+        return_code
             See notes for details
 
         Notes
         -----
-        This method first checks whether dir exists. If it does, it checks
-        whether the file `dir/fname` exists. If it does, the user is asked for
-        permission to overwrite, if `force_overwrite` is `False`. The following
-        codes can be returned:
+        This method first checks whether the path directory exists. If it
+        does, it checks whether the full path exists. If it does, the user
+        is asked for permission to overwrite, if `force_overwrite` is `False`.
+        The following codes can be returned:
 
-        * ``0`` `dir/fname` doesn't exist/can be overwritten, and `dir` exists.
-        * ``1`` `dir/fname` already exists and the user does not give
-          permission to overwrite.
-        * ``2`` `dir` does not exist.
+        * ``0``: `dir` exists, `path` doesn't exist/can be overwritten.
+        * ``1``: `path` already exists and the user does not give permission
+          to overwrite.
+        * ``2``: `dir` does not exist.
         """
-
         if not self.dir.is_dir():
             return 2
 
@@ -529,43 +523,35 @@ class PathManager:
 
         return 0
 
-    def ask_overwrite(self):
-        """Asks the user if the are happy to overwrite the file given
-        by the path `self.path`"""
-
-        prompt = (
-            f'{ORA}The file {str(self.path)} already exists. Overwrite?\n'
-            f'Enter [y] or [n]:{END}'
-        )
-
+    def ask_overwrite(self) -> bool:
+        """Ask the user if the are happy to overwrite `path`."""
+        prompt = (f'{ORA}The file {str(self.path)} already exists. '
+                  f'Overwrite?{END}')
         return get_yes_no(prompt)
 
 
-def get_yes_no(prompt):
-    """Ask user to input 'yes' or 'no' (Y/y or N/n). Repeatedly does this
-    until a valid response is recieved"""
+def get_yes_no(prompt: str) -> bool:
+    """Ask user to input 'yes' or 'no'.
 
-    print(prompt)
-    response = input().lower()
+    User should provide one of the following: ``'y'``, ``'Y'``, ``'n'``,
+    ``'N'``. If an invalid response is given, the user is asked again.
+    """
+    print(f'{prompt}\nEnter [y] or [n]')
     while True:
+        response = input().lower()
         if response == 'y':
             return True
         elif response == 'n':
             return False
         else:
             print(f'{RED}Invalid input. Please enter [y] or [n]:{END}')
-            response = input().lower()
 
 
-def start_end_wrapper(start_text, end_text):
-    """Decorator which prints a message prior to and after a method.
-
-    Messages are sandwiched between double-lines.
-    """
-    def decorator(f):
-
+def start_end_wrapper(start_text: str, end_text: str) -> Callable:
+    """Print a message prior to and after a method call."""
+    def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
-        def inner(*args, **kwargs):
+        def inner(*args, **kwargs) -> Any:
 
             inst = args[0]
             if inst.fprint is False:
@@ -582,32 +568,30 @@ def start_end_wrapper(start_text, end_text):
                   f"{len(end_text) * '='}{END}")
 
             return result
-
         return inner
-
     return decorator
 
 
-def latex_nucleus(nucleus):
-    """Creates a isotope symbol string for processing by LaTeX.
+def latex_nucleus(nucleus: str) -> str:
+    r"""Create a isotope symbol string for processing by LaTeX.
 
     Parameters
     ----------
-    nucleus : str
-        Of the form `'<mass><sym>'`, where `'<mass>'` is the nuceleus'
-        mass number and `'<sym>'` is its chemical symbol. I.e. for
-        lead-207, `nucleus` would be `'207Pb'`.
+    nucleus
+        Of the form ``f'{mass}{sym}'``, where ``mass`` is the nuceleus'
+        mass number and ``sym`` is its chemical symbol. I.e. for
+        lead-207, `nucleus` should be ``'207Pb'``.
 
     Returns
     -------
-    latex_nucleus : str
-        Of the form ``$^{<mass>}$<sym>`` i.e. given `'207Pb'`, the
-        return value would be ``$^{207}$Pb``
+    latex_nucleus
+        Of the form ``f'$^{mass}${sym}'`` i.e. given ``'207Pb'``, the
+        return value would be ``'$^{207}$Pb'``
 
     Raises
     ------
     ValueError
-        If `nucleus` does not match the regex ``^[0-9]+[a-zA-Z]+$``
+        If `nucleus` does not match the regex ``r'^\d+[a-zA-Z]+$'``
     """
     if re.match(r'\d+[a-zA-Z]+', nucleus):
         mass = re.search(r'\d+', nucleus).group()
@@ -616,13 +600,22 @@ def latex_nucleus(nucleus):
 
     else:
         raise ValueError(
-            f'{RED}`nucleus` is invalid. Should match the regex'
-            f' \\d+[a-zA-Z]+{END}'
+            f'{RED}`nucleus` is invalid. Should match the regex '
+            f'\\d+[a-zA-Z]+{END}'
         )
 
 
-def significant_figures(value, s):
-    """Rounds `value` to `s` significant figures."""
+def significant_figures(value: float, s: int) -> Union[int, float]:
+    """Round a value to a certain number of significant figures.
+
+    Parameters
+    ----------
+    value
+        Value to round.
+
+    s
+        Significant figures.
+    """
     if value != 0:
         value = round(value, s - int(np.floor(np.log10(abs(value)))) - 1)
         # If value of form 123456.0, convert to 123456

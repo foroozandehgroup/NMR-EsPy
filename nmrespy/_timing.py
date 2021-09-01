@@ -2,14 +2,14 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-"""Provides timer decorator"""
+"""Support for timing routines."""
 
 import functools
 import time
 
 
 def timer(f):
-    """Times function f, and prints result once completed."""
+    """Time function f, and prints result once completed."""
     @functools.wraps(f)
     def timed(*args, **kwargs):
         start = time.time()
@@ -22,11 +22,24 @@ def timer(f):
     return timed
 
 
-def convert(secs):
-    """Takes a time in seconds and converts to min:sec:msec"""
-    mins = int(secs // 60)
-    secs %= 60
-    msecs = int(round(((secs - int(secs)) * 1000)))
-    secs = int(secs)
+def convert(time: float) -> str:
+    """Take a time in seconds and convert to formatted string.
 
-    return f'{mins} mins, {secs} secs, {msecs} msecs'
+    Parameters
+    ----------
+    time
+        Time in seconds
+
+    Returns
+    -------
+    formatted_time
+        Format of the string is ``f'{min} mins, {s} secs, {ms} msecs'``
+        where ``min``, ``s``, and ``ms`` are the number of minutes, seconds
+        and millisconds, respectively.
+    """
+    min = int(time // 60)
+    s = time % 60
+    ms = int(round(((s - int(s)) * 1000)))
+    s = int(s)
+
+    return f'{min} mins, {s} secs, {ms} msecs'

@@ -2,16 +2,16 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-"""nmrespy-specific errors"""
+"""NMR-EsPy-specific errors."""
 
-from nmrespy import *
+from nmrespy import RED, CYA, END, USE_COLORAMA, GITHUBLINK
 if USE_COLORAMA:
     import colorama
     colorama.init()
 
 
 class MoreThanTwoDimError(Exception):
-    """Raise when user tries importing data that is >2D"""
+    """Raise when user tries importing data that is >2D."""
 
     def __init__(self):
         self.msg = f'{RED}nmrespy does\'nt support >2D data.{END}'
@@ -19,8 +19,7 @@ class MoreThanTwoDimError(Exception):
 
 
 class TwoDimUnsupportedError(Exception):
-    """Raise when user tries running a method that doesn't support 2D
-    data yet"""
+    """Raise when user tries running a method that doesn't support 2D data."""
 
     def __init__(self):
         self.msg = (f'{RED}Unfortunately 2D virtual echo creation isn\'t'
@@ -31,9 +30,10 @@ class TwoDimUnsupportedError(Exception):
 
 
 class InvalidUnitError(Exception):
-    """Raise when the specified unit is invalid"""
+    """Raise when the specified unit is invalid."""
 
     def __init__(self, *args):
+        # args are strings with the valid unit names.
         valid_units = ', '.join([repr(unit) for unit in args])
         self.msg = (f'{RED}unit should be one of the following:'
                     f' {valid_units}{END}')
@@ -41,7 +41,7 @@ class InvalidUnitError(Exception):
 
 
 class InvalidDirectoryError(Exception):
-    """Raise when the a dictionary does not have the requisite files"""
+    """Raise when the a directory does not have the requisite files."""
 
     def __init__(self, dir):
         self.msg = (f'{RED}{str(dir)} does not contain the necessary files'
@@ -50,7 +50,7 @@ class InvalidDirectoryError(Exception):
 
 
 class ParameterNotFoundError(Exception):
-    """Raise when a desired parameter is not present in an acqus/procs file"""
+    """Raise when a desired parameter is not present in an acqus/procs file."""
 
     def __init__(self, param_name, path):
         self.msg = (f'{RED}Could not find parameter {param_name} in file'
@@ -59,7 +59,7 @@ class ParameterNotFoundError(Exception):
 
 
 class NoParameterEstimateError(Exception):
-    """Raise when instance does not possess a valid parameter array"""
+    """Raise when instance does not possess a valid parameter array."""
 
     def __init__(self):
         self.msg = (f'{RED}No attribute corresponding to a parameter array'
@@ -69,7 +69,7 @@ class NoParameterEstimateError(Exception):
 
 
 class PhaseVarianceAmbiguityError(Exception):
-    """Raise when phase_variance is True, but 'p' is not specified in mode"""
+    """Raise when phase_variance is True, but 'p' is not specified in mode."""
 
     def __init__(self, mode):
         self.msg = (f'{RED}You have specified you want to minimise phase'
@@ -81,8 +81,7 @@ class PhaseVarianceAmbiguityError(Exception):
 
 
 class AttributeIsNoneError(Exception):
-    """Raise when the user calls a `get_<attr>` method, but the attribute
-    is None"""
+    """Raise when a `get_<attr>` method is called and the attribute is None."""
 
     def __init__(self, attribute, method):
         self.msg = f'{RED}The attribute {attribute} is None.'
@@ -97,8 +96,7 @@ class AttributeIsNoneError(Exception):
 
 
 class LaTeXFailedError(Exception):
-    """Raise when the user calls write_result(), with format set to 'pdf',
-    but compiling the TeX file failed when pdflatex was called."""
+    """Raise when an issue in compiling with LaTeX arises."""
 
     def __init__(self, texpath):
         self.msg = (f'{RED}The file {texpath} failed to compile using'

@@ -6,10 +6,11 @@ import sys
 
 
 def get_opsys():
-    """Determine the operating system. This will determine the directory
-    pattern that will be used to determine whether any TopSpin directories
-    exist"""
+    """Determine the operating system.
 
+    This will determine the directory pattern that will be used to determine
+    whether any TopSpin directories exist.
+    """
     system = platform.system()
     if system in ["Linux", "Darwin"]:
         return "unix"
@@ -23,8 +24,7 @@ def get_opsys():
 
 
 def get_topspin_paths(opsys):
-    """Determine whether any TopSpin installations exist in the default
-    path"""
+    """Determine whether TopSpin installations exist in the default path."""
     if opsys == "unix":
         pattern = "/opt/topspin*"
     elif opsys == "windows":
@@ -45,10 +45,7 @@ def get_topspin_paths(opsys):
 
 
 def get_install_paths(topspin_paths):
-    """List the TopSpin paths available, and get the user to specify which
-    paths they would like to install the GUI loader to. Return the specified
-    paths"""
-
+    """Get the user to specify which paths to install the GUI loader to."""
     path_list = '\n\t'.join(
         [f"{[i]} {path}" for i, path in enumerate(topspin_paths, start=1)]
     )
@@ -76,8 +73,7 @@ def get_install_paths(topspin_paths):
 
 
 def parse_user_input(user_input, number):
-    """Takes user input related to desired TopSpin directories to install
-    to and parse the input."""
+    """Determine the paths the user wants to install the GUI loader to."""
     if user_input == "":
         # User pressed <Return>. Return list of all valid indices.
         return(list(range(number)))
@@ -101,8 +97,10 @@ def parse_user_input(user_input, number):
 
 
 def get_pdflatex_executable(opsys):
-    """Determine whether a pdflatex executable is on the system, and
-    return the path if it exists"""
+    """Find the path to the pdflatex executable.
+
+    If no executable can be found, `None` is returned
+    """
     # Check pdflatex exists (return code will be 0 if it does).
     if subprocess.run("pdflatex -v", shell=True, stdout=subprocess.PIPE,
                       stderr=subprocess.PIPE).returncode == 0:
@@ -127,7 +125,7 @@ def get_pdflatex_executable(opsys):
 
 
 def install(install_paths, txt):
-    """Try to write ``txt`` to each file path"""
+    """Try to write ``txt`` to each file path."""
     for path in install_paths:
         try:
             dst = pathlib.Path(path) / "exp/stan/nmr/py/user/nmrespy.py"
@@ -141,6 +139,7 @@ def install(install_paths, txt):
 
 
 def main():
+    """Configure installation of GUI loader to TopSpin."""
     opsys = get_opsys()
     if opsys is None:
         return

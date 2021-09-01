@@ -1,9 +1,9 @@
 from collections.abc import Iterable
-import importlib
+from importlib.util import find_spec
 from numbers import Number
 from pathlib import Path
-import platform
-from typing import Union
+from platform import system
+from typing import Any, Union
 from ._version import __version__
 
 
@@ -34,9 +34,8 @@ USE_COLORAMA = False
 
 # If on windows, enable ANSI colour escape sequences if colorama
 # is installed
-if platform.system() == 'Windows':
-    colorama_spec = importlib.util.find_spec("colorama")
-    if colorama_spec is not None:
+if system() == 'Windows':
+    if find_spec("colorama"):
         USE_COLORAMA = True
     # If colorama not installed, make color attributes empty to prevent
     # bizzare outputs
@@ -51,52 +50,8 @@ if platform.system() == 'Windows':
 
 
 class ExpInfo:
-    """Stores general information about experiments.
+    """Stores general information about experiments."""
 
-    Parameters
-    ----------
-    pts
-        The number of points the signal is composed of.
-
-    sw
-        The sweep width (spectral window) (Hz).
-
-    offset
-        The transmitter offset (Hz).
-
-    sfo
-        The transmitter frequency (MHz).
-
-    nuclei
-        The identity of each channel.
-
-    dim
-        The number of dimensions associated with the experiment.
-
-    kwargs
-        Any extra parameters to be included
-
-    Notes
-    -----
-    If ``dim`` is not specified, you must be explicit about the identites
-    of inputs in each dimensions. If the arguments ``sw``, ``offset``,
-    ``sfo`` and ``nuclei`` do not all have the same number of associated
-    parameters, and error will be thrown, as the dimension of the experiment
-    is ambiguous. For example, even if you have a 2D experiment
-    where the sweep width, offset, nucleus, etc are identical, you must
-    specify the values in each dimension, i.e.
-
-    .. code:: python3
-
-        expinfo = ExpInfo(sw=(5000, 5000), offset=(1000, 1000))
-
-    Alternatively, you can set ``dim`` manually, and then any underspecified
-    parameters will be implicitly filled in:
-
-    .. code:: python3
-
-        expinfo = ExpInfo(sw=5000, offset=1000, dim=2)
-    """
     def __init__(
         self,
         pts: Union[int, Iterable[int]],
@@ -107,10 +62,68 @@ class ExpInfo:
         dim: Union[int, None] = None,
         **kwargs
     ) -> None:
-        # Be leinient with parameter specfiication.
-        # Mopst of nmrespy expects parameters to be lists with either
-        # floats or ints for rigour.
+        """Create an ExpInfo instance.
 
+        Parameters
+        ----------
+        pts
+            The number of points the signal is composed of.
+
+        sw
+            The sweep width (spectral window) (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        sfo
+            The transmitter frequency (MHz).
+
+        nuclei
+            The identity of each channel.
+
+        dim
+            The number of dimensions associated with the experiment.
+
+        kwargs
+            Any extra parameters to be included
+
+        Notes
+        -----
+        If `dim` is not specified, you must be explicit about the identites
+        of inputs in each dimensions. If the arguments `sw`, `offset`,
+        `sfo` and `nuclei` do not all have the same number of associated
+        parameters, and error will be thrown, as the dimension of the
+        experiment is ambiguous. For example, even if you have a 2D experiment
+        where the sweep width, offset, nucleus, etc are identical in both
+        dimensions, you must specify the values in each dimension, i.e.
+
+        .. code:: python
+
+            >>> expinfo = ExpInfo(pts=(1024, 128), sw=(5000, 5000),
+            ...                   offset=(1000, 1000))
+            >>> expinfo.__dict__
+            {'pts': (1024, 128), 'sw': (5000.0, 5000.0),
+             'offset': (1000.0, 1000.0), 'sfo': None, 'nuclei': None,
+             'dim': 2, 'kwargs': {},
+             'self': <nmrespy.ExpInfo object at 0x7f788ea22310>}
+
+        Alternatively, you can set ``dim`` manually, and then any
+        underspecified parameters will be implicitly filled in:
+
+        .. code:: python
+
+            >>> expinfo = ExpInfo(pts=(1024, 128), sw=5000, offset=1000,
+            ...                   dim=2)
+            >>> expinfo.__dict__
+            {'pts': (1024, 128), 'sw': (5000.0, 5000.0),
+             'offset': (1000.0, 1000.0), 'sfo': None, 'nuclei': None,
+             'dim': 2, 'kwargs': {},
+             'self': <nmrespy.ExpInfo object at 0x7f788ebc2cd0>}
+
+        """
+        # Be leinient with parameter specfiication.
+        # Most of nmrespy expects parameters to be lists with either
+        # floats or ints for rigour.
         # If dim is specified, will be strict with ensuring each
         # parameter has the correct number of values. If not, will
         # duplicate values to match correct dim.
@@ -174,7 +187,11 @@ class ExpInfo:
         for name in names:
             self.__dict__[name] = tuple(self.__dict__[name])
 
-    def unpack(self, *args):
+    def unpack(self, *args) -> tuple[Any]:
+        """Unpack attributes.
+
+        `args` should be strings with names that match attribute names.
+        """
         if len(args) == 1:
             return self.__dict__[args[0]]
         else:
