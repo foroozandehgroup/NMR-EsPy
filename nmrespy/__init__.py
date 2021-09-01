@@ -3,7 +3,7 @@ from importlib.util import find_spec
 from numbers import Number
 from pathlib import Path
 from platform import system
-from typing import Any, Union
+from typing import Any, Type, Union
 from ._version import __version__
 
 
@@ -127,72 +127,140 @@ class ExpInfo:
         # If dim is specified, will be strict with ensuring each
         # parameter has the correct number of values. If not, will
         # duplicate values to match correct dim.
+        self._dim = dim
+        for kwkey, kwvalue in kwargs.items():
+            self.__dict__.update({kwkey: kwvalue})
+        lengths = []
+        names = ['_pts', '_sw', '_offset', '_sfo', '_nuclei']
+        test_types = [int, Number, Number, Number, str]
+        for i, (name, test_type) in enumerate(zip(names, test_types)):
+            value = locals()[name[1:]]
+            if i >= 2 and value is None:
+                names.remove(name)
+                test_types.remove(test_type)
+                continue
 
-        self.__dict__.update(locals())
-        names = ['pts', 'sw']
-        instances = [int, Number]
-        for name, inst in zip(('offset', 'sfo', 'nuclei'),
-                              (Number, Number, str)):
-            if self.__dict__[name] is not None:
-                names.append(name)
-                instances.append(inst)
-
-        errmsg = ("f{RED}Unable to process input{END}")
-
-        for name, inst in zip(names, instances):
-            value = self.__dict__[name]
+            errmsg = ("f{RED}Unable to process input{END}")
             # If single value (not in list/tuple/etc.) is given, pack into
             # a list (values will be converted to tuples at the end)
-            if isinstance(value, inst):
-                if inst == Number:
-                    # Convert numerical value to float
-                    self.__dict__[name] = [float(value)]
-                else:
-                    # Case for pts and nuclei
-                    self.__dict__[name] = [value]
-
-            elif isinstance(value, Iterable):
-                if not all([isinstance(v, inst) for v in value]):
+            if isinstance(value, test_type):
+                value = [value]
+            if isinstance(value, Iterable):
+                if not all([isinstance(v, test_type) for v in value]):
                     raise ValueError(errmsg)
-
-                if inst == Number:
-                    self.__dict__[name] = [float(v) for v in value]
-                else:
-                    self.__dict__[name] = list(value)
-
+                if test_type == Number:
+                    value = [float(v) for v in value]
             else:
                 raise ValueError(errmsg)
 
-        if isinstance(dim, int):
-            for name in names:
-                diff = dim - len(self.__dict__[name])
+            if isinstance(self._dim, int):
+                diff = self._dim - len(value)
                 if diff == 0:
                     pass
                 elif diff > 0:
-                    self.__dict__[name] += diff * [self.__dict__[name][-1]]
+                    value += diff * [value[-1]]
                 else:
                     raise ValueError(errmsg)
 
-        else:
-            lengths = [len(self.__dict__[name]) for name in names]
+            self.__dict__[name] = value
+
+        if self._dim is None:
             # Check all lists are of the same length
-            if len(set(lengths)) > 1:
-                raise ValueError(errmsg)
+            length_set = {len(self.__dict__[name]) for name in names}
+            if len(length_set) == 1:
+                self._dim = len(self._pts)
             else:
-                self.dim = lengths[0]
+                raise ValueError(errmsg)
 
-        if self.offset is None:
-            self.offset = [0.] * self.dim
-
+        if not isinstance(self._dim, int):
+            raise ValueError(f'{RED}Invalid value for `dim`{END}')
+        if self._offset is None:
+            self._offset = tuple([0.] * self._dim)
         for name in names:
             self.__dict__[name] = tuple(self.__dict__[name])
+        print(self.__dict__)
+
+    @property
+    def pts(self) -> Iterable[int]:
+        return self._pts
+
+    @pts.setter
+    def pts(self, new_value: Any) -> None:
+        pts = self._validate('pts', new_value, int)
+        # Error will have been raised if new_value is invalid
+        self._pts = pts
+
+    @property
+    def sw(self) -> Iterable[float]:
+        return self._sw
+
+    @sw.setter
+    def sw(self, new_value: Any) -> None:
+        sw = self._validate('sw', new_value, Number, float)
+        # Error will have been raised if new_value is invalid
+        self._sw = sw
+
+    @property
+    def offset(self) -> Iterable[float]:
+        return self._offset
+
+    @offset.setter
+    def offset(self, new_value: Any) -> None:
+        offset = self._validate('offset', new_value, Number, float)
+        # Error will have been raised if new_value is invalid
+        self._offset = offset
+
+    @property
+    def sfo(self) -> Iterable[float]:
+        return self._sfo
+
+    @sfo.setter
+    def sfo(self, new_value: Any) -> None:
+        sfo = self._validate('sfo', new_value, Number, float)
+        # Error will have been raised if new_value is invalid
+        self._sfo = sfo
+
+    @property
+    def nuclei(self) -> Iterable[str]:
+        return self._nuclei
+
+    @nuclei.setter
+    def nuclei(self, new_value: Any) -> None:
+        nuclei = self._validate('nuclei', new_value, str)
+        # Error will have been raised if new_value is invalid
+        self._nuclei = nuclei
+
+    @property
+    def dim(self) -> int:
+        return self._dim
+
+    @dim.setter
+    def dim(self, new_value):
+        raise ValueError(f'{RED}`dim` cannot be mutated.{END}')
+
+    def _validate(
+        self, name: str, value: Any, test_type: Type[Any],
+        final_type: Union[Type[Any], None] = None
+    ) -> None:
+        if not final_type:
+            final_type = test_type
+        if isinstance(value, test_type) and self._dim == 1:
+            return (final_type(value),)
+        elif (isinstance(value, Iterable) and
+              len(value) == self._dim and
+              all(isinstance(v, test_type) for v in value)):
+            return tuple([final_type(v) for v in value])
+        else:
+            raise ValueError(
+                f'{RED}Invalid value supplied to `{name}`: '
+                f'{repr(value)}{END}'
+            )
 
     def unpack(self, *args) -> tuple[Any]:
         """Unpack attributes.
 
         `args` should be strings with names that match attribute names.
         """
-        if len(args) == 1:
-            return self.__dict__[args[0]]
-        else:
-            return tuple([self.__dict__[arg] for arg in args])
+        to_underscore = ['pts', 'sw', 'offset', 'sfo', 'nuclei', 'dim']
+        ud_args = [f'_{a}' if a in to_underscore else a for a in args]
+        return tuple([self.__dict__[arg] for arg in ud_args])
