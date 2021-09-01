@@ -431,7 +431,7 @@ class FrequencyConverter:
         self, value: Union[int, float], dim: int, conversion: str
     ) -> Union[int, float]:
         """Convert frequency."""
-        n = self.n[dim]
+        pts = self.pts[dim]
         sw = self.sw[dim]
         off = self.offset[dim]
         if (self.sfo is None) and ('ppm' in conversion):
@@ -442,15 +442,15 @@ class FrequencyConverter:
         sfo = self.sfo[dim]
 
         if conversion == 'idx->hz':
-            return off + sw * (0.5 - (float(value) / (n - 1)))
+            return off + sw * (0.5 - (float(value) / (pts - 1)))
 
         elif conversion == 'idx->ppm':
-            return (off + sw * (0.5 - (float(value) / (n - 1)))) / sfo
+            return (off + sw * (0.5 - (float(value) / (pts - 1)))) / sfo
 
         elif conversion == 'ppm->idx':
             return int(
                 round(
-                    ((n - 1)) / (2 * sw) * (sw + 2 * (off - (value * sfo)))
+                    ((pts - 1)) / (2 * sw) * (sw + 2 * (off - (value * sfo)))
                 )
             )
 
@@ -458,7 +458,7 @@ class FrequencyConverter:
             return value * sfo
 
         elif conversion == 'hz->idx':
-            return int(round((n - 1) / (2 * sw) * (sw + 2 * (off - value))))
+            return int(round((pts - 1) / (2 * sw) * (sw + 2 * (off - value))))
 
         elif conversion == 'hz->ppm':
             return value / sfo

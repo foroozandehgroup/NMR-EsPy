@@ -1,19 +1,22 @@
+"""Test functionality in the nmrespy._misc module."""
+
 import pytest
 
 import numpy as np
 
-from nmrespy import *
+from nmrespy import RED, END, ExpInfo
 from nmrespy._misc import FrequencyConverter, ArgumentChecker
 
 
 def test_argchecker():
+    """Test :py:meth:`nmrespy._misc.ArgumentChecker`."""
     with pytest.raises(TypeError) as exc_info:
         checker = ArgumentChecker(dim=1)
         checker.stage(
             # should be a valid parameter array
             (np.array([[1, 2, 3, 4]]), 'theta0', 'parameter'),
             # should be an invalid sw
-            ([10], 'sw', 'float_list'),
+            ([10], 'sw', 'float_iter'),
             # should be an invalid boolean
             ('thisisastring', 'fprint', 'bool'),
         )
@@ -27,8 +30,8 @@ def test_argchecker():
     checker = ArgumentChecker(dim=2)
     checker.stage(
         (np.arange(12).reshape(2, 6), 'a', 'parameter'),
-        (None, 'b', 'int_list', True),
-        ([10.21, 43.74], 'c', 'float_list'),
+        (None, 'b', 'int_iter', True),
+        ([10.21, 43.74], 'c', 'float_iter'),
         (True, 'd', 'bool'),
         (-10, 'e', 'int'),
         (-10.563, 'f', 'float'),
@@ -42,23 +45,19 @@ def test_argchecker():
 
 
 def test_converter():
-    n = [101, 101]
+    """Test :py:meth:`nmrespy._misc.FrequencyConverter`."""
+    pts = [101, 101]
     sw = [10., 100.]
     offset = [0., 50.]
     sfo = [500., 500.]
+    expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
 
-    # test failures
-    # non-list arguments
-    with pytest.raises(TypeError):
-        FrequencyConverter(n, 'not_a_list', offset, sfo)
-    # lists not same length
-    with pytest.raises(TypeError):
-        FrequencyConverter(n, [sw[0]], offset, sfo)
-    # some elements are not numerical values
-    with pytest.raises(TypeError):
-        FrequencyConverter(n, [sw[0], 'not_a_number'], offset, sfo)
+    # Argument to FrequencyCOnverter is not an instance of nmrespy.ExpInfo
+    with pytest.raises(TypeError) as exc_info:
+        FrequencyConverter('not_expinfo')
+    assert str(exc_info.value) == f'{RED}Check `expinfo` is valid.{END}'
 
-    converter = FrequencyConverter(n, sw, offset, sfo)
+    converter = FrequencyConverter(expinfo)
 
     # index -> Hz
     assert converter._convert_value(0, 0, 'idx->hz') == 5.
