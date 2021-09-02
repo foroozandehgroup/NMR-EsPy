@@ -18,8 +18,7 @@ if USE_COLORAMA:
     import colorama
     colorama.init()
 import nmrespy._errors as errors
-from ._misc import (ArgumentChecker, FrequencyConverter,
-                    start_end_wrapper)
+from ._misc import ArgumentChecker, start_end_wrapper
 from ._timing import timer
 
 
@@ -369,23 +368,25 @@ class MatrixPencil:
         params[:, 0] *= norm
         self.result, self.M = self._remove_negative_damping(params)
 
-    def _generate_params(self, alpha, poles):
-        """Converts complex amplitude and signal pole arrays into a
-        parameter array.
+    def _generate_params(
+        self, alpha: np.ndarray, poles: np.ndarray
+    ) -> np.ndarray:
+        """Convert complex amplitudes and signal poles to parameter array.
 
         Parameters
         ----------
-        alpha : numpy.ndarray
+        alpha
             Complex amplitude array, of shape``(self.M,)``
 
-
-        poles: numpy.ndarray
+        poles
             Signal pole array, of shape ``(self.dim, self.M)``
 
         Returns
         -------
-        result : numpy.ndarray
-            Parameter array, of shape ``(self.M, 2 * self.dim + 2)``
+        result
+            Parameter array, of shape ``(M, 2 * dim + 2)`` where
+            ``M`` is the number of oscillators in the result and ``dim`` is
+            the data dimension.
         """
         sw, offset = self.expinfo.unpack('sw', 'offset')
         amp = np.abs(alpha)
@@ -402,27 +403,21 @@ class MatrixPencil:
         result = np.vstack((amp, phase, freq, damp)).T
         return result[np.argsort(result[:, 2])]
 
-    def _remove_negative_damping(self, params):
-        """Determines whether any oscillators possess negative amplitudes,
-        and remove these from the parameter array.
+    def _remove_negative_damping(self, params: np.ndarray) -> np.ndarray:
+        """Determine negative amplitude oscillators and remove.
 
         Parameters
         ----------
-        params : numpy.ndarray
+        params
             Parameter array, with shape ``(self.M, 2 * self.dim + 2)``
 
         Returns
         -------
-        ud_params : numpy.ndarray
+        ud_params
             Updated parameter array, with negative damping oscillators removed,
-            with shape ``(M_new, 2 * self.dim + 2)``, where
-            ``M_new <= self.M``.
-
-        M : int
-            Number of oscillators after removal of negative damping
-            oscillators.
+            with shape ``(M_new, 2 * dim + 2)``, where
+            ``M_new <= param.shape[0]`` and ``dim`` is the data dimension.
         """
-
         if self.fprint:
             print('--> Checking for oscillators with negative damping...')
 
