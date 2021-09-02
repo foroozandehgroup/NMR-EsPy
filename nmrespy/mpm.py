@@ -5,6 +5,7 @@
 """Computation of signal estimates using the Matrix Pencil Method."""
 
 import copy
+from typing import Iterable, Literal, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
@@ -12,44 +13,22 @@ import scipy.linalg as slinalg
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-from nmrespy import *
+from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
 if USE_COLORAMA:
     import colorama
     colorama.init()
 import nmrespy._errors as errors
-from nmrespy._misc import (ArgumentChecker, FrequencyConverter,
-                           start_end_wrapper)
+from ._misc import (ArgumentChecker, FrequencyConverter,
+                    start_end_wrapper)
 from ._timing import timer
 
 
 class MatrixPencil:
-    """Class for performing the Matrix Pencil Method with the option of model
-    order selection using the Minimum Description Length (MDL) [#]_. Supports
-    analysis of one-dimensional [#]_ [#]_ or two-dimensional data [#]_ [#]_
+    """Matrix Pencil Method with model order selection.
 
-    Parameters
-    ----------
-    data : numpy.ndarray
-        Signal to be considered (unnormalised).
-
-    sw : [float] or [float, float]
-        The experiment sweep width in each dimension in Hz.
-
-    offset : [float], [float, float] or None, default: None
-        The experiment transmitter offset frequency in Hz.
-
-    sfo : [float], [float, float] or None, default: None
-        The experiment transmitter frequency in each dimension in MHz. This is
-        not necessary, however if it set it `None`, no conversion from Hz
-        to ppm will be possible!
-
-    M : int, default: 0
-        The number of oscillators. If `0`, the number of oscilators will
-        be estimated using the MDL.
-
-    fprint : bool, default: True
-        Flag specifiying whether to print infomation to the terminal as
-        the method runs.
+    Model order selection achieved using the Minimum Description Length
+    (MDL) [#]_. Supports analysis of one-dimensional [#]_ [#]_ or
+    two-dimensional data [#]_ [#]_
 
     References
     ----------
@@ -75,107 +54,110 @@ class MatrixPencil:
        55.2 (2007), pp. 718–724.
     """
 
-    def __init__(self, data, sw, offset=None, sfo=None, M=0,
-                 start_point=None, fprint=True):
-        """Checks validity of inputs, and if valid, calls :py:meth:`_mpm`"""
+    def __init__(self, data: np.ndarray, expinfo: ExpInfo, *, M: int = 0,
+                 start_point: Union[Iterable[int], None] = None,
+                 fprint: bool = True) -> None:
+        """Initialise the class.
+
+        Check validity of inputs, and runs the MPM.
+
+        Parameters
+        ----------
+        data
+            Signal to be considered (unnormalised).
+
+        expinfo
+            Information on the experiment. Used to determine the sweep width,
+            transmitter offset, and (optional) transmitter frequency in MHz.
+            Transmitter offset is optional, however if it set it `None`, no
+            conversion of result frequencies from Hz to ppm will be possible.
+
+        M
+            The number of oscillators. If ``0``, the number of oscilators will
+            be estimated using the MDL.
+
+        start_point
+            For signals that have been truncated at the beginning, this
+            specifies the index of the initial point in the full, untruncated
+            signal. If ``None``, it will be assumed that the signal is not
+            truncated at the beginning (i.e. the first point occurs at time
+            zero).
+
+        fprint
+            Flag specifiying whether to print infomation to the terminal as
+            the method runs.
+        """
+        self.expinfo = expinfo
+        if not isinstance(expinfo, ExpInfo):
+            raise TypeError(f'{RED}Check `expinfo` is valid.{END}')
+        dim = self.expinfo.unpack('dim')
 
         try:
-            self.dim = data.ndim
-            if self.dim >= 3:
+            if dim != data.ndim:
+                raise ValueError(
+                    f'{RED}The dimension of `expinfo` does not agree with the '
+                    f'number of dimensions in `data`.{END}'
+                )
+            elif dim >= 3:
                 raise errors.MoreThanTwoDimError()
-        except Exception:
+        except AttributeError:
+            # data.ndim raised an attribute error
             raise TypeError(
-                f'{RED}data should be a numpy ndarray{END}'
+                f'{RED}`data` should be a numpy ndarray{END}'
             )
 
-        if offset is None:
-            offset = [0.0] * self.dim
         if start_point is None:
-            start_point = [0] * self.dim
+            start_point = [0] * dim
 
-        checker = ArgumentChecker(dim=self.dim)
+        checker = ArgumentChecker(dim=dim)
         checker.stage(
             (data, 'data', 'ndarray'),
-            (sw, 'sw', 'float_list'),
-            (offset, 'offset', 'float_list'),
-            (start_point, 'start_point', 'int_list'),
+            (start_point, 'start_point', 'int_iter'),
             (M, 'M', 'positive_int_or_zero'),
             (fprint, 'fprint', 'bool'),
-            (sfo, 'sfo', 'float_list', True)
         )
         checker.check()
-
         self.__dict__.update(locals())
-        self.n = list(self.data.shape)
+        self.expinfo.pts = self.data.shape
 
-        if sfo is not None:
-            self.converter = FrequencyConverter(
-                self.n, self.sw, self.offset, self.sfo
-            )
-
-        if self.dim == 1:
+        if dim == 1:
             self._mpm_1d()
         else:
             self._mpm_2d()
 
-    def get_result(self, freq_unit='hz'):
+    def get_result(self, freq_unit: Literal['hz', 'ppm'] = 'hz') -> np.ndarray:
         """Obtain the result of the MPM.
 
         Parameters
         ----------
-        freq_unit : 'hz' or 'ppm', default: 'hz'
-            The unit of the oscillator frequencies (corresponding to
-            ``result[:, 2]``)
+        freq_unit
+            The unit of the oscillator frequencies.
 
         Returns
         -------
-        result : numpy.ndarray
+        result
+            Eetimation result from the MPM.
         """
-
         if freq_unit == 'hz':
             return self.result
 
         elif freq_unit == 'ppm':
             # Check whether a frequency converter is associated with the
             # class
-            if 'converter' not in self.__dict__.keys():
+            if self.expinfo.sfo is None:
                 raise ValueError(
                     f'{RED}Insufficient information to determine'
                     f' frequencies in ppm. Did you perhaps forget to specify'
-                    f' sfo?{END}'
+                    f' `sfo` in `expinfo`?{END}'
                 )
 
             result = copy.deepcopy(self.result)
 
-            # TODO definitely a cleaner method of doing this...
-
-            # Get frequencies in Hz, and format to enable input into
-            # the frequency converter.
-            # Then convert values to ppm and reconvert back to NumPy array
             if self.dim == 1:
-                ppm = np.array(
-                    self.converter.convert(
-                        [list(result[:, 2])], conversion='hz->ppm',
-                    )
-                )
-                result[:, 2] = ppm
-
+                result[:, 2] /= self.expinfo.sfo[0]
             elif self.dim == 2:
-                ppm1 = np.array(
-                    self.converter.convert(
-                        [list(result[:, 2])], conversion='hz->ppm',
-                    )
-                )
-
-                ppm2 = np.array(
-                    self.converter.convert(
-                        [list(result[:, 3])], conversion='hz->ppm',
-                    )
-                )
-
-                result[:, 2] = ppm1
-                result[:, 3] = ppm2
-
+                result[:, 2] /= self.expinfo.sfo[0]
+                result[:, 3] /= self.expinfo.sfo[1]
             return result
 
         else:
@@ -183,15 +165,14 @@ class MatrixPencil:
 
     @timer
     @start_end_wrapper('MPM STARTED', 'MPM COMPLETE')
-    def _mpm_1d(self):
-        """Performs 1-dimensional Matrix Pencil Method"""
-
+    def _mpm_1d(self) -> None:
+        """Perform 1-dimensional Matrix Pencil Method."""
         # Normalise data
         norm = nlinalg.norm(self.data)
         normed_data = self.data / norm
 
         # Number of points
-        N = self.n[0]
+        N = self.expinfo.unpack('pts')[0]
 
         # Pencil parameter.
         # Optimal when between N/2 and N/3 (see Lin's paper)
@@ -273,14 +254,13 @@ class MatrixPencil:
     @timer
     @start_end_wrapper('MMEMP STARTED', 'MMEMP COMPLETE')
     def _mpm_2d(self):
-        """Performs 2-dimensional Modified Matrix Enhanced Pencil Method."""
-
+        """Perform 2-dimensional Modified Matrix Enhanced Pencil Method."""
         # Normalise data
         norm = nlinalg.norm(self.data)
         normed_data = self.data / norm
 
         # Number of points
-        N1, N2 = self.n
+        N1, N2 = self.expinfo.unpack('pts')
 
         # Pencil parameters
         K, L = tuple([int((n + 1) / 2) for n in (N1, N2)])
@@ -407,16 +387,16 @@ class MatrixPencil:
         result : numpy.ndarray
             Parameter array, of shape ``(self.M, 2 * self.dim + 2)``
         """
-
+        sw, offset = self.expinfo.unpack('sw', 'offset')
         amp = np.abs(alpha)
         phase = np.arctan2(np.imag(alpha), np.real(alpha))
         freq = np.vstack(
-            tuple([(self.sw[i] / (2 * np.pi)) * np.imag(np.log(poles[i]))
-                  + self.offset[i] for i in range(self.dim)])
+            tuple([(sw_ / (2 * np.pi)) * np.imag(np.log(poles_)) + offset_
+                   for sw_, offset_, poles_ in zip(sw, offset, poles)])
         )
         damp = np.vstack(
-            tuple([-self.sw[i] * np.real(np.log(poles[i]))
-                   for i in range(self.dim)])
+            tuple([-sw_ * np.real(np.log(poles_))
+                   for sw_, poles_ in zip(sw, poles)])
         )
 
         result = np.vstack((amp, phase, freq, damp)).T
