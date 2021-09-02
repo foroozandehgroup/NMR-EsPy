@@ -130,16 +130,20 @@ class ExpInfo:
         self._dim = dim
         for kwkey, kwvalue in kwargs.items():
             self.__dict__.update({kwkey: kwvalue})
-        lengths = []
-        names = ['_pts', '_sw', '_offset', '_sfo', '_nuclei']
-        test_types = [int, Number, Number, Number, str]
-        for i, (name, test_type) in enumerate(zip(names, test_types)):
-            value = locals()[name[1:]]
-            if i >= 2 and value is None:
-                names.remove(name)
-                test_types.remove(test_type)
-                continue
 
+        names = ['_pts', '_sw', '_offset', '_sfo', '_nuclei']
+        locs = locals()
+        values = [locs[name.replace('_', '')] for name in names]
+        test_types = [int, Number, Number, Number, str]
+
+        # Filter out any optional arguments that are None
+        rm_idx = [i for i, value in enumerate(values[2:], start=2)
+                  if value is None]
+        names = [x for i, x in enumerate(names) if i not in rm_idx]
+        values = [x for i, x in enumerate(values) if i not in rm_idx]
+        test_types = [x for i, x in enumerate(test_types) if i not in rm_idx]
+
+        for name, value, test_type in zip(names, values, test_types):
             errmsg = ("f{RED}Unable to process input{END}")
             # If single value (not in list/tuple/etc.) is given, pack into
             # a list (values will be converted to tuples at the end)
@@ -174,7 +178,7 @@ class ExpInfo:
 
         if not isinstance(self._dim, int):
             raise ValueError(f'{RED}Invalid value for `dim`{END}')
-        if self._offset is None:
+        if locs['offset'] is None:
             self._offset = tuple([0.] * self._dim)
         for name in names:
             self.__dict__[name] = tuple(self.__dict__[name])
@@ -242,19 +246,29 @@ class ExpInfo:
         self, name: str, value: Any, test_type: Type[Any],
         final_type: Union[Type[Any], None] = None
     ) -> None:
+        errmsg = f'{RED}Invalid value supplied to {name}: {repr(value)}{END}'
+
+        if isinstance(value, test_type):
+            if self._dim == 1:
+                value = [value]
+            else:
+                value = self._dim * [value]
+
+        elif (isinstance(value, Iterable) and
+              all(isinstance(v, test_type) for v in value)):
+            value = list(value)
+            diff = self._dim - len(value)
+            if diff < 0:
+                raise ValueError(errmsg)
+            elif diff > 0:
+                value += diff * [value[-1]]
+
+        else:
+            raise ValueError(errmsg)
+
         if not final_type:
             final_type = test_type
-        if isinstance(value, test_type) and self._dim == 1:
-            return (final_type(value),)
-        elif (isinstance(value, Iterable) and
-              len(value) == self._dim and
-              all(isinstance(v, test_type) for v in value)):
-            return tuple([final_type(v) for v in value])
-        else:
-            raise ValueError(
-                f'{RED}Invalid value supplied to `{name}`: '
-                f'{repr(value)}{END}'
-            )
+        return tuple([final_type(v) for v in value])
 
     def unpack(self, *args) -> tuple[Any]:
         """Unpack attributes.
@@ -263,4 +277,7 @@ class ExpInfo:
         """
         to_underscore = ['pts', 'sw', 'offset', 'sfo', 'nuclei', 'dim']
         ud_args = [f'_{a}' if a in to_underscore else a for a in args]
-        return tuple([self.__dict__[arg] for arg in ud_args])
+        if len(args) == 1:
+            return self.__dict__[ud_args[0]]
+        else:
+            return tuple([self.__dict__[arg] for arg in ud_args])

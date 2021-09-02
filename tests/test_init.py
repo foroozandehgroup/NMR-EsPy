@@ -52,30 +52,30 @@ def test_expinfo():
         {'array': [1, 2, 3, 4], 'dic': {'a': 10, 'b': 20}},
     )
 
-    assert expinfo.unpack('sw') == ((5000., 5000.),)
+    assert expinfo.unpack('sw') == (5000., 5000.)
     assert expinfo.unpack('sw', 'offset', 'sfo') == \
         ((5000., 5000.), (2000., 2000.), (500., 500.))
 
-    for input_ in ['fail', 1024, [1024., 1024]]:
+    for input_ in ['fail', [1024., 1024]]:
         with pytest.raises(ValueError) as exc_info:
             expinfo.pts = input_
         assert str(exc_info.value) == \
-            f'{RED}Invalid value supplied to `pts`: {repr(input_)}{END}'
+            f'{RED}Invalid value supplied to pts: {repr(input_)}{END}'
     expinfo.pts = [1024, 1024]
     assert expinfo.pts == (1024, 1024)
 
-    for input_ in ['fail', 1024, ['fail', 1024]]:
+    for input_ in ['fail', ['fail', 1024]]:
         with pytest.raises(ValueError) as exc_info:
             expinfo.sw = input_
         assert str(exc_info.value) == \
-            f'{RED}Invalid value supplied to `sw`: {repr(input_)}{END}'
+            f'{RED}Invalid value supplied to sw: {repr(input_)}{END}'
     expinfo.sw = [8000, 8000.]
     assert expinfo.sw == (8000., 8000.)
 
-    for input_ in ['13C', 1024, ['13C', 1024]]:
+    for input_ in [1024, ['13C', 1024]]:
         with pytest.raises(ValueError) as exc_info:
             expinfo.nuclei = input_
         assert str(exc_info.value) == \
-            f'{RED}Invalid value supplied to `nuclei`: {repr(input_)}{END}'
-    expinfo.nuclei = ['205Pb', '19F']
-    assert expinfo.nuclei == ('205Pb', '19F')
+            f'{RED}Invalid value supplied to nuclei: {repr(input_)}{END}'
+    expinfo.nuclei = '205Pb'
+    assert expinfo.nuclei == ('205Pb', '205Pb')
