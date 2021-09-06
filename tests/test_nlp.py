@@ -1,5 +1,5 @@
 import numpy as np
-from nmrespy.load import ExpInfo
+from nmrespy import ExpInfo
 from nmrespy.nlp.nlp import NonlinearProgramming
 from nmrespy.sig import make_fid
 
@@ -11,11 +11,8 @@ def test_nlp_1d():
         [1, 0, 2.5, 1],
         [2, 0, 5.5, 2],
     ])
-    sw = [20.]
-    offset = [0.]
-    n = [1024]
-    expinfo = ExpInfo(sw=sw, offset=offset)
-    fid = make_fid(params, n, sw, offset=offset)[0]
+    expinfo = ExpInfo(pts=1024, sw=20)
+    fid = make_fid(params, expinfo)[0]
     x0 = np.array([
         [3.9, 0.1, -4.3, 1.1],
         [4.2, -0.1, -2.3, 1.8],
@@ -41,13 +38,8 @@ def test_nlp_2d():
         [1, 0, 2.5, 3.5, 1, 1],
         [2, 0, 5.5, -0.5, 2, 2],
     ])
-    sw = [20., 20.]
-    offset = [0., 0.]
-    n = [128, 128]
-    expinfo = ExpInfo(sw=sw, offset=offset)
-
-    fid = make_fid(params, n, sw, offset=offset)[0]
-
+    expinfo = ExpInfo(pts=128, sw=20, dim=2)
+    fid = make_fid(params, expinfo)[0]
     x0 = np.array([
         [3.9, 0.1, -4.3, 4.7, 0.9, 1.1],
         [4.2, -0.1, -2.3, 2.4, 2.1, 1.8],

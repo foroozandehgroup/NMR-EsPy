@@ -4,38 +4,40 @@
 
 """Definitions of fidelities, gradients, and Hessians."""
 
+from typing import Tuple
+
 import numpy as np
 
 
-def f_1d(active, *args):
-    """
-    Cost function for 1D data
+args_type = Tuple[np.ndarray, np.ndarray, int, np.ndarray, list, bool]
+
+
+def f_1d(active: np.ndarray, *args: args_type) -> float:
+    """Cost function for 1D data.
 
     Parameters
     ----------
-    active : numpy.ndarray
+    active
         Array of active parameters (parameters to be optimised).
 
     args : list_iterator
         Contains elements in the following order:
 
-        * **data:** `numpy.ndarray.` Array of the original FID data.
-        * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
-        * **m:** `int.` Number of oscillators
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be
-          optimised).
-        * **idx:** `list.` Indicates the types of parameters that are
+        * **data:** Array of the original FID data.
+        * **tp:** The time-points the signal was sampled at
+        * **m:** Number of oscillators
+        * **passive:** Passive parameters (not to be optimised).
+        * **idx:** Indicates the types of parameters that are
           active: ``0`` - amplitudes, ``1`` - phases, ``2`` - frequencies,
           ``3`` - damping factors.
-        * **phase_variance:** `bool.` If `True`, include the oscillator phase
+        * **phase_variance:** If `True`, include the oscillator phase
           variance to the cost function.
 
     Returns
     -------
-    func : float
+    func
         Value of the cost function
     """
-
     # unpack arguments
     data, tp, m, passive, idx, phasevar = args
 
@@ -64,35 +66,32 @@ def f_1d(active, *args):
     return func
 
 
-def g_1d(active, *args):
-    """
-    Gradient of cost function for 1D data.
+def g_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
+    """Gradient of cost function for 1D data.
 
     Parameters
     ----------
-    active : numpy.ndarray
+    active
         Array of active parameters (parameters to be optimised).
 
-    args : list_iterator
+    args
         Contains elements in the following order:
 
-        * **data:** `numpy.ndarray.` Array of the original FID data.
-        * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
-        * **m:** `int.` Number of oscillators
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be
-          optimised).
-        * **idx:** `list.` Indicates the types of parameters are present
+        * **data:** Array of the original FID data.
+        * **tp:** The time-points the signal was sampled at
+        * **m:** Number of oscillators
+        * **passive:** Passive parameters (not to be optimised).
+        * **idx:** Indicates the types of parameters are present
           in the active oscillators (para_act): ``0`` - amplitudes, ``1`` -
           phases, ``2`` - frequencies, ``3`` - damping factors.
-        * **phase_variance:** `Bool.` If True, include the oscillator phase
+        * **phase_variance:** If True, include the oscillator phase
           variance to the cost function.
 
     Returns
     -------
-    grad : numpy.ndarray
+    grad
         Gradient of cost function, with ``grad.shape = (4 * m,)``.
     """
-
     # unpack arguments
     data, tp, m, passive, idx, phasevar = args
 
@@ -127,19 +126,19 @@ def g_1d(active, *args):
     # ================================================================
 
     def ad(arr):
-        """Derivative wrt amplitude"""
+        """Differentiate wrt amplitude."""
         return arr / theta[:m]
 
     def pd(arr):
-        """Derivative wrt phase"""
+        """Differentiate wrt phase."""
         return 1j * arr
 
     def fd(arr):
-        """Derivative wrt frequency"""
+        """Differentiate wrt frequency."""
         return np.einsum('ij,i->ij', arr, (1j * 2 * np.pi * tp[0]))
 
     def dd(arr):
-        """Derivative wrt damping factor"""
+        """Differentiate wrt damping factor."""
         return np.einsum('ij,i->ij', arr, -tp[0])
 
     if 0 in idx:
@@ -225,35 +224,32 @@ def g_1d(active, *args):
     return grad
 
 
-def h_1d(active, *args):
-    """
-    Hessian of cost function for 1D data
+def h_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
+    """Hessian of cost function for 1D data.
 
     Parameters
     ----------
-    active : numpy.ndarray
+    active
         Array of active parameters (parameters to be optimised).
 
-    args : list_iterator
+    args
         Contains elements in the following order:
 
-        * **data:** `numpy.ndarray.` Array of the original FID data.
-        * **tp:** `numpy.ndarray.` The time-points the signal was sampled at
-        * **m:** `int.` Number of oscillators
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be
-          optimised).
-        * **idx:** `list.` Indicates the types of parameters are present
+        * **data:** Array of the original FID data.
+        * **tp:** The time-points the signal was sampled at
+        * **m:** Number of oscillators
+        * **passive:** Passive parameters (not to be optimised).
+        * **idx:** Indicates the types of parameters are present
           in the active oscillators (para_act): ``0`` - amplitudes, ``1`` -
           phases, ``2`` - frequencies, ``3`` - damping factors.
-        * **phase_variance:** `Bool.` If True, include the oscillator phase
+        * **phase_variance:** If True, include the oscillator phase
           variance to the cost function.
 
     Returns
     -------
-    hess : numpy.ndarray
+    hess
         Hessian of cost function, with ``hess.shape = (4 * m,4 * m)``.
     """
-
     # unpack arguments
     data, tp, m, passive, idx, phasevar = args
 
@@ -298,19 +294,19 @@ def h_1d(active, *args):
     # ================================================================
 
     def ad(arr):
-        """Derivative wrt amplitude"""
+        """Differentiate wrt amplitude."""
         return arr / theta[:m]
 
     def pd(arr):
-        """Derivative wrt phase"""
+        """Differentiate wrt phase."""
         return 1j * arr
 
     def fd(arr):
-        """Derivative wrt frequency"""
+        """Differentiate wrt frequency."""
         return np.einsum('ij,i->ij', arr, (1j * 2 * np.pi * tp[0]))
 
     def dd(arr):
-        """Derivative wrt damping factor"""
+        """Differentiate wrt damping factor."""
         return np.einsum('ij,i->ij', arr, -tp[0])
 
     if 0 in idx:
@@ -454,36 +450,32 @@ def h_1d(active, *args):
     return hess
 
 
-def f_2d(active, *args):
-    """
-    Cost function for 2D data.
+def f_2d(active: np.ndarray, *args: args_type) -> float:
+    """Cost function for 2D data.
 
     Parameters
     ----------
-    para_act : numpy.ndarray
+    active
         Array of active parameters (parameters to be optimised).
 
     args : list_iterator
         Contains elements in the following order:
 
-        * **data:** `numpy.ndarray.` Array of the original FID data.
-        * **tp:** `(numpy.ndarray, numpy.ndarray).` The time-points the signal
-          was sampled, in both dimensions.
-        * **M:** `int.` Number of oscillators.
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be
-          optimised).
-        * **idx:** `list.` Indicates the types of parameters that are
-          active: ``0`` - amplitudes, ``1`` - phases, ``2`` & ``3`` -
-          frequencies, ``4`` & ``5`` - damping factors.
-        * **phasevar:** `bool.` If `True`, include the oscillator phase
+        * **data:** Array of the original FID data.
+        * **tp:** The time-points the signal was sampled at
+        * **m:** Number of oscillators
+        * **passive:** Passive parameters (not to be optimised).
+        * **idx:** Indicates the types of parameters that are
+          active: ``0`` - amplitudes, ``1`` - phases, ``2`` - frequencies,
+          ``3`` - damping factors.
+        * **phase_variance:** If `True`, include the oscillator phase
           variance to the cost function.
 
     Returns
     -------
-    func : float
-        Value of the cost function.
+    func
+        Value of the cost function
     """
-
     # unpack arguments
     data, tp, m, passive, idx, phasevar = args
 
@@ -514,36 +506,32 @@ def f_2d(active, *args):
     return func
 
 
-def g_2d(active, *args):
-    """
-    Gradient of cost function for 2D data.
+def g_2d(active: np.ndarray, *args: args_type) -> np.ndarray:
+    """Gradient of cost function for 2D data.
 
     Parameters
     ----------
-    active : numpy.ndarray
+    active
         Array of active parameters (parameters to be optimised).
 
-    args : list_iterator
+    args
         Contains elements in the following order:
 
-        * **data:** `numpy.ndarray.` Array of the original FID data.
-        * **tp:** `(numpy.ndarray, numpy.ndarray).` The time-points the signal
-          was sampled, in both dimensions.
-        * **m:** `int.` Number of oscillators.
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be
-          optimised).
-        * **idx:** `list.` Indicates the types of parameters that are
-          active: ``0`` - amplitudes, ``1`` - phases, ``2`` & ``3`` -
-          frequencies, ``4`` & ``5`` - damping factors.
-        * **phasevar:** `bool.` If `True`, include the oscillator phase
+        * **data:** Array of the original FID data.
+        * **tp:** The time-points the signal was sampled at
+        * **m:** Number of oscillators
+        * **passive:** Passive parameters (not to be optimised).
+        * **idx:** Indicates the types of parameters are present
+          in the active oscillators (para_act): ``0`` - amplitudes, ``1`` -
+          phases, ``2`` - frequencies, ``3`` - damping factors.
+        * **phase_variance:** If True, include the oscillator phase
           variance to the cost function.
 
     Returns
     -------
-    grad : numpy.ndarray
+    grad
         Gradient of cost function, with ``grad.shape = (6*M,)``.
     """
-
     # unpack arguments
     data, tp, m, passive, idx, phasevar = args
 
@@ -578,31 +566,31 @@ def g_2d(active, *args):
     # ================================================================
 
     def ad(arr):
-        """Derivative wrt amplitude"""
+        """Differentiate wrt amplitude."""
         return arr / theta[:m]
 
     def pd(arr):
-        """Derivative wrt phase"""
+        """Differentiate wrt phase."""
         return 1j * arr
 
     def f1d(arr):
-        """Derivative wrt frequency 1"""
+        """Differentiate wrt frequency 1."""
         return np.einsum(
             'ijk,i->ijk', arr, 1j * 2 * np.pi * tp[0]
         )
 
     def f2d(arr):
-        """Derivative wrt frequency 2"""
+        """Differentiate wrt frequency 2."""
         return np.einsum(
             'ijk,j->ijk', arr, 1j * 2 * np.pi * tp[1]
         )
 
     def d1d(arr):
-        """Derivative wrt damping factor 1"""
+        """Differentiate wrt damping factor 1."""
         return np.einsum('ijk,i->ijk', arr, -tp[0])
 
     def d2d(arr):
-        """Derivative wrt damping factor 2"""
+        """Differentiate wrt damping factor 2."""
         return np.einsum('ijk,j->ijk', arr, -tp[1])
 
     if 0 in idx:
@@ -705,34 +693,30 @@ def g_2d(active, *args):
     return grad
 
 
-def h_2d(active, *args):
-    """
-    Hessian of cost function for 2D data
-​
+def h_2d(active: np.ndarray, *args: args_type) -> np.ndarray:
+    """Hessian of cost function for 2D data.
+
     Parameters
     ----------
-    active : numpy.ndarray
+    active
         Array of active parameters (parameters to be optimised).
 
-    args : list_iterator
+    args
         Contains elements in the following order:
-
-        * **data:** `numpy.ndarray.` Array of the original FID data.
-        * **tp:** `(numpy.ndarray, numpy.ndarray).` The time-points the signal
-          was sampled at
-        * **m:** `int.` Number of oscillators
-        * **passive:** `numpy.ndarray.` Passive parameters (not to be
-          optimised).
-        * **idx:** `list.` Indicates the types of parameters that are
-          active: ``0`` - amplitudes, ``1`` - phases, ``2`` & ``3`` -
-          frequencies, ``4`` & ``5`` - damping factors.
-        * **phasevar:** `bool.` If `True`, include the oscillator phase
+        * **data:** Array of the original FID data.
+        * **tp:** The time-points the signal was sampled at
+        * **m:** Number of oscillators
+        * **passive:** Passive parameters (not to be optimised).
+        * **idx:** Indicates the types of parameters are present
+          in the active oscillators (para_act): ``0`` - amplitudes, ``1`` -
+          phases, ``2`` - frequencies, ``3`` - damping factors.
+        * **phase_variance:** If True, include the oscillator phase
           variance to the cost function.
 ​
     Returns
     -------
-    hess : numpy.ndarray
-        Hessian of cost function, with ``hess.shape = (6*M,6*M)``.
+    hess
+        Hessian of cost function, with ``hess.shape = (6*M, 6*M)``.
     """
     # unpack arguments
     data, tp, m, passive, idx, phasevar = args
@@ -787,31 +771,31 @@ def h_2d(active, *args):
     # ================================================================
 
     def ad(arr):
-        """Derivative wrt amplitude"""
+        """Differentiate wrt amplitude."""
         return arr / theta[:m]
 
     def pd(arr):
-        """Derivative wrt phase"""
+        """Differentiate wrt phase."""
         return 1j * arr
 
     def f1d(arr):
-        """Derivative wrt frequency 1"""
+        """Differentiate wrt frequency 1."""
         return np.einsum(
             'ijk,i->ijk', arr, 1j * 2 * np.pi * tp[0]
         )
 
     def f2d(arr):
-        """Derivative wrt frequency 2"""
+        """Differentiate wrt frequency 2."""
         return np.einsum(
             'ijk,j->ijk', arr, 1j * 2 * np.pi * tp[1]
         )
 
     def d1d(arr):
-        """Derivative wrt damping factor 1"""
+        """Differentiate wrt damping factor 1."""
         return np.einsum('ijk,i->ijk', arr, -tp[0])
 
     def d2d(arr):
-        """Derivative wrt damping factor 2"""
+        """Differentiate wrt damping factor 2."""
         return np.einsum('ijk,j->ijk', arr, -tp[1])
 
     if 0 in idx:
@@ -1025,70 +1009,70 @@ def h_2d(active, *args):
     return hess
 
 
-def _construct_parameters(active, passive, m, idx):
-    """
-    Constructs the full parameter vector from active and passive sub-vectors.
+def _construct_parameters(
+    active: np.ndarray, passive: np.ndarray, m: int, idx: list
+) -> np.ndarray:
+    """Construct the full parameter vector from active and passive vectors.
 
     Parameters
     ----------
-    active : numpy.ndarray
+    active
         Active parameter vector.
 
-    passive : numpy.ndarray
+    passive
         Passive parameter vector.
 
-    m : int
+    m
         Number of oscillators.
 
-    idx : list
+    idx
         Indicates the columns (axis 1) for active parameters.
 
     Returns
     -------
-    parameters - numpy.ndarray
+    params
         Full parameter vector with correct ordering
     """
-
     # number of columns in active parameter array
     p = int((active.shape[0] + passive.shape[0]) / m)
 
-    parameters = np.zeros(p * m)
+    params = np.zeros(p * m)
 
     for i in range(p):
         if i in idx:
-            parameters[i * m:(i + 1) * m] = active[:m]
+            params[i * m:(i + 1) * m] = active[:m]
             active = active[m:]
         else:
-            parameters[i * m:(i + 1) * m] = passive[:m]
+            params[i * m:(i + 1) * m] = passive[:m]
             passive = passive[m:]
 
-    return parameters
+    return params
 
 
-def _generate_diagonal_indices(p, m):
-    """
-    Determines all array indicies that correspond to positions in which
-    non-zero second derivatives reside, in the top right half of the Hessian.
+def _generate_diagonal_indices(
+    p: int, m: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Determine Hessian positions with non-zero second-derivatives.
+
+    Only indices in the top-right of the Hessian are generated.
 
     Parameters
     ----------
-    p : int
+    p
         The number of parameter 'groups'. For an N-dimensional signal this
         will be 2N + 2
 
-    m : int
+    m
         Number of oscillators in parameter estimate
 
     Returns
     -------
-
-    idx_0 : numpy.ndarray
+    idx_0
         0-axis coordinates of indices.
 
-    idx_1 : numpy.ndarray
+    idx_1
         1-axis coordinates of indices.
     """
-
     arr = np.zeros((p * m, p * m))  # dummy array with same shape as Hessian
     idx_0 = []  # axis 0 indices (rows)
     idx_1 = []  # axis 1 indices (columns)
@@ -1100,29 +1084,32 @@ def _generate_diagonal_indices(p, m):
     return np.hstack(idx_0), np.hstack(idx_1)
 
 
-def _diagonal_indices(arr, k=0):
-    """
-    Returns the indices of an array's kth diagonal. A generalisation of
-    numpy.diag_indices_from(), which can only be used to obtain the indices
-    along the main diagonal of an array.
+def _diagonal_indices(
+    arr: np.ndarray, k: int = 0
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the indices of an array's kth diagonal.
+
+    A generalisation of `numpy.diag_indices_from <https://numpy.org/doc\
+    /stable/reference/generated/numpy.diag_indices_from.html>`_,
+    which can only be used to obtain the indices along the main diagonal of
+    an array.
 
     Parameters
     ----------
-    arr : numpy.ndarray
+    arr
         Square array (Hessian matrix)
 
-    k : int
+    k
         Displacement from the main diagonal
 
     Returns
     -------
-    rows : numpy.ndarray
+    rows
         0-axis coordinates of indices.
 
-    cols : numpy.ndarray
+    cols
         1-axis coordinates of indices.
     """
-
     rows, cols = np.diag_indices_from(arr)
     if k < 0:
         return rows[-k:], cols[:k]

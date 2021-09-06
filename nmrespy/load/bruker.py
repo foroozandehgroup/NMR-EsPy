@@ -9,7 +9,7 @@ import re
 
 import numpy as np
 
-from nmrspy import *
+from nmrespy import *
 if USE_COLORAMA:
     import colorama
     colorama.init()

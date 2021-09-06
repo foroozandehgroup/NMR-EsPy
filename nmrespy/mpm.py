@@ -141,8 +141,6 @@ class MatrixPencil:
             return self.result
 
         elif freq_unit == 'ppm':
-            # Check whether a frequency converter is associated with the
-            # class
             if self.expinfo.sfo is None:
                 raise ValueError(
                     f'{RED}Insufficient information to determine'
