@@ -5,7 +5,7 @@
 """Computation of signal estimates using the Matrix Pencil Method."""
 
 import copy
-from typing import Iterable, Literal, Union
+from typing import Iterable, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
@@ -124,13 +124,14 @@ class MatrixPencil:
         else:
             self._mpm_2d()
 
-    def get_result(self, freq_unit: Literal['hz', 'ppm'] = 'hz') -> np.ndarray:
+    def get_result(self, freq_unit: str = 'hz') -> np.ndarray:
         """Obtain the result of the MPM.
 
         Parameters
         ----------
         freq_unit
-            The unit of the oscillator frequencies.
+            The unit of the oscillator frequencies. Should be one of
+            ``'hz'``, ``'ppm'``.
 
         Returns
         -------
