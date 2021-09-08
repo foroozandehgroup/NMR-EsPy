@@ -1,9 +1,8 @@
-from collections.abc import Iterable
 from importlib.util import find_spec
 from numbers import Number
 from pathlib import Path
 from platform import system
-from typing import Any, Type, Union
+from typing import Any, Iterable, Tuple, Type, Union
 from ._version import __version__
 
 
@@ -180,9 +179,12 @@ class ExpInfo:
             raise ValueError(f'{RED}Invalid value for `dim`{END}')
         if locs['offset'] is None:
             self._offset = tuple([0.] * self._dim)
+        if locs['sfo'] is None:
+            self._sfo = None
+        if locs['nuclei'] is None:
+            self._nuclei = None
         for name in names:
             self.__dict__[name] = tuple(self.__dict__[name])
-        print(self.__dict__)
 
     @property
     def pts(self) -> Iterable[int]:
@@ -270,7 +272,7 @@ class ExpInfo:
             final_type = test_type
         return tuple([final_type(v) for v in value])
 
-    def unpack(self, *args) -> tuple[Any]:
+    def unpack(self, *args) -> Tuple[Any]:
         """Unpack attributes.
 
         `args` should be strings with names that match attribute names.

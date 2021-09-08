@@ -8,7 +8,7 @@ from collections.abc import Callable
 import functools
 from pathlib import Path
 import re
-from typing import Any, Iterable, Literal, Union
+from typing import Any, Iterable, Union
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -485,7 +485,7 @@ class PathManager:
         self.dir = Path(dir)
         self.path = (self.dir / self.fname).resolve()
 
-    def check_file(self, force_overwrite: bool = False) -> Literal[0, 1, 2]:
+    def check_file(self, force_overwrite: bool = False) -> int:
         """Perform checks on the path.
 
         Parameters

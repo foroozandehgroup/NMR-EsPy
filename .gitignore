@@ -4,10 +4,9 @@ docs/_static
 docs/Makefile
 docs/html
 docs/latex
-venv
+.venv
 build
 dist
 .pytest_cache
 nmrespy.egg-info/
-.ycm_extra_conf.py
 examples/cpmg

@@ -4,7 +4,6 @@
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters"""
 
-from dataclasses import dataclass
 import functools
 from typing import Union
 
