@@ -4,11 +4,10 @@
 
 """Constructing and processing NMR signals."""
 
-from collections.abc import Iterable
 import copy
 import re
 import tkinter as tk
-from typing import Literal, Tuple, Union
+from typing import Iterable, Tuple, Union
 
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
@@ -36,7 +35,7 @@ return_type = Tuple[Union[np.ndarray, Tuple[np.ndarray, np.ndarray]],
 def make_fid(
     params: np.ndarray, expinfo: ExpInfo, *,
     snr: Union[float, None] = None, decibels: bool = True,
-    modulation: Literal['none', 'amp', 'phase'] = 'none'
+    modulation: str = 'none'
 ) -> return_type:
     r"""Construct a FID, as a summation of damped complex sinusoids.
 
@@ -237,7 +236,7 @@ def make_fid(
 
 
 def make_virtual_echo(
-    data: Iterable[np.ndarray], modulation: Literal['amp', 'phase'] = 'amp'
+    data: Iterable[np.ndarray], modulation: str = 'amp'
 ) -> np.ndarray:
     """Generate a virtual echo [#]_ from a time-domain signal.
 
@@ -353,7 +352,7 @@ def make_virtual_echo(
 
 def get_timepoints(
     expinfo: ExpInfo, *,
-    start_time: Union[list[Union[float, str]], None] = None,
+    start_time: Union[Iterable[Union[float, str]], None] = None,
     meshgrid_2d: bool = False
 ) -> Iterable[np.ndarray]:
     r"""Generate the timepoints at which an FID was sampled at.
@@ -420,7 +419,7 @@ def get_timepoints(
     return tp
 
 
-def get_shifts(expinfo: ExpInfo, *, unit: Literal['hz', 'ppm'] = 'hz',
+def get_shifts(expinfo: ExpInfo, *, unit: str = 'hz',
                flip: bool = True) -> Iterable[np.ndarray]:
     """Generate the frequencies a spectrum is sampled at.
 
@@ -432,7 +431,7 @@ def get_shifts(expinfo: ExpInfo, *, unit: Literal['hz', 'ppm'] = 'hz',
         ``expinfo.sfo`` is ``None``, shifts can only be obtained in Hz.
 
     unit
-        The unit of the chemical shifts.
+    The unit of the chemical shifts. One of ``'hz'``, ``'ppm'``.
 
     flip
         If `True`, the shifts will be returned in descending order, as is
@@ -865,13 +864,14 @@ class PhaseApp(tk.Tk):
         )
         self.cancel_button.grid(row=1, column=1, sticky='e', padx=(10, 0))
 
-    def update_phase(self, name: Literal['pivot', 'p0', 'p1']) -> None:
+    def update_phase(self, name: str) -> None:
         """Command run whenever a parameter is altered.
 
         Parameters
         ----------
         name
-            Name of quantity that was adjusted.
+            Name of quantity that was adjusted. One of ``'p0'``, ``'p1'``,
+            and ``'pivot'``.
         """
         value = self.__dict__[f'{name}_scale'].get()
 
@@ -1029,7 +1029,7 @@ def _generate_random_signal(
     para = np.hstack((para, *eta))
     para = para.reshape((m, 2 * (dim + 1)), order='F')
 
-    return *make_fid(para, expinfo, snr=snr), para
+    return (*make_fid(para, expinfo, snr=snr), para)
 
 
 def oscillator_integral(
@@ -1069,8 +1069,8 @@ def oscillator_integral(
     Notes
     -----
     The integration is performed using the composite Simpsons rule, provided
-    by `scipy.integrate.simpson <https://docs.scipy.org/doc/scipy/reference/\
-    generated/scipy.integrate.simpson.html#scipy.integrate.simpson>`_
+    by `scipy.integrate.simps <https://docs.scipy.org/doc/scipy-1.5.4/\
+    reference/generated/scipy.integrate.simps.html>`_
 
     Spacing of points along the frequency axes is set a `1` (i.e. `dx = 1`).
     """
@@ -1082,6 +1082,6 @@ def oscillator_integral(
     integral = np.absolute(integral) if abs_ else integral
 
     for axis in range(integral.ndim):
-        integral = integrate.simpson(integral, axis=axis)
+        integral = integrate.simps(integral, axis=axis)
 
     return integral
