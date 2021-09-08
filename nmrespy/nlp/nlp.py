@@ -4,11 +4,10 @@
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
-from collections.abc import Iterable
 import copy
 import functools
 import operator
-from typing import Literal, Union
+from typing import Iterable, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
@@ -54,11 +53,11 @@ class NonlinearProgramming(FrequencyConverter):
         self, data: np.ndarray, theta0: np.ndarray, expinfo: ExpInfo, *,
         start_point: Union[Iterable[int], None] = None,
         phase_variance: bool = True,
-        method: Literal['trust_region', 'lbfgs'] = 'trust_region',
+        method: str = 'trust_region',
         bound: bool = False, max_iterations: Union[int, None] = None,
         amp_thold: Union[float, None] = None,
         freq_thold: Union[float, None] = None,
-        negative_amps: Literal['remove', 'flip_phase'] = 'flip_phase',
+        negative_amps: str = 'flip_phase',
         fprint: bool = True,
         # mode: Pattern[str] = 'apfd'
     ) -> None:
@@ -126,7 +125,8 @@ class NonlinearProgramming(FrequencyConverter):
                  \rVert_2^2 + \mathrm{Var}\left(\boldsymbol{\phi}\right)
 
         method
-            Optimisation algorithm to use. These utilise
+            Optimisation algorithm to use. Should be ``'trust-region'`` or
+            ``'lbfgs'``. These utilise
             `scipy.optimise.minimise <https://docs.scipy.org/doc/scipy/\
             reference/generated/scipy.optimize.minimize.html>`_, with
             the method either being `trust-constr <https://docs.scipy.org/doc/\
@@ -183,13 +183,13 @@ class NonlinearProgramming(FrequencyConverter):
             Indicates how to treat oscillators which have gained negative
             amplitudes during the optimisation.
 
-            * `'remove'` will result in such oscillators being purged from
+            * ``'remove'`` will result in such oscillators being purged from
               the parameter estimate. The optimisation routine will the be
               re-run recursively until no oscillators have a negative
               amplitude.
-            * `'flip_phase'` will retain oscillators with negative amplitudes,
-              but the the amplitudes will be multiplied by -1, and a π radians
-              phase shift will be applied to these oscillators.
+            * ``'flip_phase'`` will retain oscillators with negative
+              amplitudes, but the the amplitudes will be multiplied by -1,
+              and a π radians phase shift will be applied to these oscillators.
 
         fprint
             If `True`, the method provides information on progress to
@@ -389,13 +389,14 @@ class NonlinearProgramming(FrequencyConverter):
         if not terminate:
             self._recursive_optimise()
 
-    def get_result(self, freq_unit: Literal['hz', 'ppm'] = 'hz') -> np.ndarray:
+    def get_result(self, freq_unit: str = 'hz') -> np.ndarray:
         """Obtain the result of nonlinear programming.
 
         Parameters
         ----------
         freq_unit
-            The unit of the oscillator frequencies.
+            The unit of the oscillator frequencies. Should be ``'hz'`` or
+            ``'ppm'``.
 
         Returns
         -------
@@ -403,13 +404,15 @@ class NonlinearProgramming(FrequencyConverter):
         """
         return self._get_array('result', freq_unit)
 
-    def get_errors(self, freq_unit: Literal['hz', 'ppm'] = 'hz') -> np.ndarray:
+    def get_errors(self, freq_unit: str = 'hz') -> np.ndarray:
         """Obtain errors of parameters estimates.
 
         Parameters
         ----------
         freq_unit
-            The unit of the oscillator frequencies.
+            The unit of the oscillator frequencies. Should be ``'hz'`` or
+            ``'ppm'``.
+
 
         Returns
         -------
@@ -417,9 +420,7 @@ class NonlinearProgramming(FrequencyConverter):
         """
         return self._get_array('errors', freq_unit)
 
-    def _get_array(
-        self, name: str, freq_unit: Literal['hz', 'ppm']
-    ) -> np.ndarray:
+    def _get_array(self, name: str, freq_unit: str) -> np.ndarray:
         if freq_unit == 'hz':
             return self.__dict__[name]
 
@@ -445,7 +446,7 @@ class NonlinearProgramming(FrequencyConverter):
             raise errors.InvalidUnitError('hz', 'ppm')
 
     def _shift_offset(
-        self, params: np.ndarray, direction: Literal['center', 'displace']
+        self, params: np.ndarray, direction: str
     ) -> np.ndarray:
         """Shift frequencies to center to or displace from 0.
 
@@ -454,9 +455,9 @@ class NonlinearProgramming(FrequencyConverter):
         params
             Full parameter array
 
-        direction : 'center' or 'displace'
-            `'center'` shifts frerquencies such that the central frequency
-            is set to zero. `'displace'` moves frequencies away from zero,
+        direction
+            ``'center'`` shifts frerquencies such that the central frequency
+            is set to zero. ``'displace'`` moves frequencies away from zero,
             to be reflected by offset.
 
         Returns
@@ -751,7 +752,7 @@ class NonlinearProgramming(FrequencyConverter):
         # See newton_meets_ockham, Eq. (22)
         self.errors = np.sqrt(
             fidelity * np.abs(np.diag(nlinalg.inv(hessian))) /
-            functools.reduce(operator.mul, [n - 1 for n in self.n])
+            functools.reduce(operator.mul, [n - 1 for n in self.expinfo.pts])
         )
 
         # Re-scale amplitude errors

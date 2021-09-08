@@ -1,3 +1,5 @@
+"""NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
+
 from importlib.util import find_spec
 from numbers import Number
 from pathlib import Path
@@ -188,6 +190,7 @@ class ExpInfo:
 
     @property
     def pts(self) -> Iterable[int]:
+        """Get number of points in the data."""
         return self._pts
 
     @pts.setter
@@ -198,6 +201,7 @@ class ExpInfo:
 
     @property
     def sw(self) -> Iterable[float]:
+        """Get sweep width (Hz)."""
         return self._sw
 
     @sw.setter
@@ -208,6 +212,7 @@ class ExpInfo:
 
     @property
     def offset(self) -> Iterable[float]:
+        """Get transmitter offset frequency (Hz)."""
         return self._offset
 
     @offset.setter
@@ -218,6 +223,7 @@ class ExpInfo:
 
     @property
     def sfo(self) -> Iterable[float]:
+        """Get transmitter frequency (MHz)."""
         return self._sfo
 
     @sfo.setter
@@ -228,6 +234,7 @@ class ExpInfo:
 
     @property
     def nuclei(self) -> Iterable[str]:
+        """Get nuclei associated with each channel."""
         return self._nuclei
 
     @nuclei.setter
@@ -238,6 +245,7 @@ class ExpInfo:
 
     @property
     def dim(self) -> int:
+        """Get number of dimensions in the expeirment."""
         return self._dim
 
     @dim.setter

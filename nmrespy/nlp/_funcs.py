@@ -712,7 +712,7 @@ def h_2d(active: np.ndarray, *args: args_type) -> np.ndarray:
           phases, ``2`` - frequencies, ``3`` - damping factors.
         * **phase_variance:** If True, include the oscillator phase
           variance to the cost function.
-​
+
     Returns
     -------
     hess
