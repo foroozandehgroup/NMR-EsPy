@@ -3,14 +3,13 @@
 # simon.hulse@chem.ox.ac.uk
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters"""
-
 import functools
-from typing import Union
+from typing import NewType, Tuple, Union
 
 import numpy as np
 import numpy.random as nrandom
 
-from nmrespy import *
+from nmrespy import RED, END, USE_COLORAMA, ExpInfo
 if USE_COLORAMA:
     import colorama
     colorama.init()
@@ -19,44 +18,82 @@ import nmrespy._errors as errors
 from nmrespy import sig
 
 
-@dataclass
+RegionType = NewType(
+    'RegionType',
+    Union[Tuple[int, int], Tuple[Tuple[int, int], Tuple[int, int]]]
+)
+
+
+# Used to have this as a dataclass but as the chemistry Linux machines
+# cannot have Python > 3.6, I have resorted back to a vanilla class.
 class FilterInfo:
-    _spectrum: np.ndarray
-    _sg: np.ndarray
-    _sg_noise: np.ndarray
-    _region: list[int]
-    _noise_region: list[int]
-    _cut_region: Union[list[int], None]
-    _converter: FrequencyConverter
+    def __init__(
+        self, _spectrum: np.ndarray, _sg: np.ndarray, _sg_noise: np.ndarray,
+        _region: RegionType, _noise_region: RegionType,
+        _cut_region: Union[RegionType, None], _converter: FrequencyConverter
+    ) -> None:
+        self.__dict__.update(locals())
+
+    @property
+    def cut_expinfo(self):
+        """Get `:py:class:nmrespy.ExpInfo` for the cut signal."""
+        pts = self.cut_shape
+        sw = self.get_cut_sw()
+        offset = self.get_cut_offset()
+        sfo = self.sfo
+        return ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
+
+    @property
+    def uncut_expinfo(self):
+        """Get `:py:class:nmrespy.ExpInfo` for the uncut signal."""
+        pts = self.shape
+        sw = self.get_sw()
+        offset = self.get_offset()
+        sfo = self.sfo
+        return ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
+
+    @property
+    def expinfo(self):
+        """Get `:py:class:nmrespy.ExpInfo` for the filtered signal.
+
+        If a cut region has been specified, returns :py:meth:`cut_expinfo`.
+        Otherwise, returns :py:meth:`uncut_expinfo`.
+        """
+        if self._cut_region is not None:
+            return self.cut_expinfo
+        else:
+            return self.uncut_expinfo
 
     @property
     def spectrum(self):
-        """Unfiltered spectrum."""
+        """Get unfiltered spectrum."""
         return self._spectrum
 
     @property
     def sg(self):
-        """Super-Gaussian filter."""
+        """Get super-Gaussian filter."""
         return self._sg
 
     @property
     def sg_noise(self):
-        """Additive noise vector."""
+        """Get additive noise vector."""
         return self._sg_noise
 
     @property
     def shape(self):
-        """Shape of :py:meth:`spectrum`."""
-        return list(self.spectrum.shape)
+        """Get shape of :py:meth:`spectrum`."""
+        return self.spectrum.shape
 
     @property
     def cut_shape(self):
-        """Shape of :py:meth:`cut_spectrum`."""
-        return [r[1] - r[0] + 1 for r in self.get_cut_region(unit='idx')]
+        """Get shape of :py:meth:`cut_spectrum`."""
+        return tuple(
+            [r[1] - r[0] + 1 for r in self.get_cut_region(unit='idx')]
+        )
 
     @property
     def filtered_spectrum(self):
-        """Filtered spectrum (uncut).
+        """Get filtered spectrum (uncut).
 
         Returns
         -------
@@ -66,7 +103,7 @@ class FilterInfo:
 
     @property
     def filtered_fid(self):
-        """Filtered time-domain signal (uncut)
+        """Get filtered time-domain signal (uncut)
 
         Returns
         -------
@@ -76,9 +113,9 @@ class FilterInfo:
 
     @property
     def cut_spectrum(self):
-        """Filtered, cut spectrum. If the user set ``cut=False`` when calling
-        :py:func:`filter_spectrum`, :py:meth:`filtered_spectrum` will be
-        returned.
+        """Get filtered, cut spectrum. If the user set ``cut=False`` when
+        calling :py:func:`filter_spectrum`, :py:meth:`filtered_spectrum` will
+        be returned.
 
         Returns
         -------
@@ -93,7 +130,7 @@ class FilterInfo:
 
     @property
     def cut_fid(self):
-        """Filtered, cut time-domain signal. If the user set ``cut=False``
+        """Get filtered, cut time-domain signal. If the user set ``cut=False``
         when calling :py:func:`filter_spectrum`, :py:meth:`filtered_fid` will
         be returned.
 
@@ -138,7 +175,7 @@ class FilterInfo:
         center : Union[[int], [float]]
         """
         region_idx = self.get_region(unit='idx')
-        center_idx = [int((r[0] + r[1]) // 2) for r in region_idx]
+        center_idx = tuple([int((r[0] + r[1]) // 2) for r in region_idx])
         return self._converter.convert(center_idx, f'idx->{unit}')
 
     @check_unit(['idx', 'hz', 'ppm'])
@@ -154,7 +191,7 @@ class FilterInfo:
         bw : Union[[int], [float]]
         """
         region = self.get_region(unit=unit)
-        return [abs(r[1] - r[0]) for r in region]
+        return tuple([abs(r[1] - r[0]) for r in region])
 
     @property
     def sfo(self):
@@ -237,7 +274,7 @@ class FilterInfo:
         if self._cut_region:
             cut_region = self._cut_region
         else:
-            cut_region = [[0, s - 1] for s in self.shape]
+            cut_region = tuple([[0, s - 1] for s in self.shape])
 
         return self._converter.convert(cut_region, f'idx->{unit}')
 
@@ -254,7 +291,7 @@ class FilterInfo:
         cut_sw : [float]
         """
         region = self.get_cut_region(unit=unit)
-        return [abs(r[1] - r[0]) for r in region]
+        return tuple([abs(r[1] - r[0]) for r in region])
 
     @check_unit(['hz', 'ppm'])
     def get_cut_offset(self, unit='hz'):
@@ -362,7 +399,7 @@ def superg_noise(spectrum, noise_region, sg):
     return sg_noise * (1 - sg)
 
 
-def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
+def filter_spectrum(spectrum, region, noise_region, expinfo,
                     region_unit='hz', sg_power=40., cut=True, cut_ratio=3.0):
     """Applies a super-Gaussian filter to a spectrum.
 
@@ -409,67 +446,76 @@ def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
     -------
     filter : freqfilter.FilterInfo
     """
+    if not isinstance(expinfo, ExpInfo):
+        raise TypeError(f'{RED}Check `expinfo` is valid.{END}')
+    dim = expinfo.unpack('dim')
 
-    # --- Check validity of parameters -------------------------------
-    if not isinstance(spectrum, np.ndarray):
+    try:
+        if dim != spectrum.ndim:
+            raise ValueError(
+                f'{RED}The dimension of `expinfo` does not agree with the '
+                f'number of dimensions in `spectrum`.{END}'
+            )
+        elif dim == 2:
+            raise errors.TwoDimUnsupportedError()
+        elif dim >= 3:
+            raise errors.MoreThanTwoDimError()
+    except AttributeError:
+        # spectrum.ndim raised an attribute error
         raise TypeError(
             f'{RED}`spectrum` should be a numpy array{END}'
         )
 
-    # Determine data dimension. If greater than 2, return error.
-    dim = spectrum.ndim
-    if dim >= 3:
-        raise errors.MoreThanTwoDimError()
-
-    components = [
-        (sw, 'sw', 'float_list'),
-        (offset, 'offset', 'float_list'),
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
+        (spectrum, 'spectrum', 'ndarray'),
         (sg_power, 'sg_power', 'float'),
         (cut, 'cut', 'bool'),
-        (cut_ratio, 'cut_ratio', 'greater_than_one'),
-        (sfo, 'sfo', 'float_list', True)
-    ]
+        (cut_ratio, 'cut_ratio', 'greater_than_one')
+    )
 
-    if (region_unit == 'ppm') and (sfo is None):
+    if (region_unit == 'ppm') and (expinfo.sfo is None):
         raise ValueError(
-            f'{RED}`sfo` cannot be None when `region_unit` is set '
-            f'to \'ppm\'{END}'
+            f'{RED}`region_unit` is set to \'ppm\', but `sfo` has not been '
+            f'specified in `expinfo`.{END}'
         )
     elif region_unit in ['hz', 'ppm']:
-        components.append((region, 'region', 'region_float'))
-        components.append((noise_region, 'noise_region', 'region_float'))
+        checker.stage(
+            (region, 'region', 'region_float'),
+            (noise_region, 'noise_region', 'region_float')
+        )
     elif region_unit == 'idx':
-        components.append((region, 'region', 'region_int'))
-        components.append((noise_region, 'noise_region', 'region_int'))
+        checker.stage(
+            (region, 'region', 'region_int'),
+            (noise_region, 'noise_region', 'region_int')
+        )
     else:
         raise ValueError(
             f'{RED}`region_unit` is invalid. Should be one of {{\'hz\', '
             f'\'idx\' and \'ppm\'}}{END}'
         )
 
-    checker = ArgumentChecker(dim=1)
-    checker.stage(*components)
     checker.check()
 
-    shape = list(spectrum.shape)
+    expinfo.pts = spectrum.shape
     # Convert region from hz or ppm to array indices
-    converter = FrequencyConverter(shape, sw, offset, sfo)
+    converter = FrequencyConverter(expinfo)
     region_idx = \
         converter.convert(region, f'{region_unit}->idx')
     noise_region_idx = \
         converter.convert(noise_region, f'{region_unit}->idx')
-    region_idx = [sorted(r) for r in region_idx]
-    noise_region_idx = [sorted(r) for r in noise_region_idx]
+    region_idx = tuple([tuple(sorted(r)) for r in region_idx])
+    noise_region_idx = tuple([tuple(sorted(r)) for r in noise_region_idx])
 
-    sg = superg(region_idx, shape, p=sg_power)
+    sg = superg(region_idx, expinfo.pts, p=sg_power)
     noise = superg_noise(spectrum, noise_region_idx, sg)
 
-    center = [int((r[0] + r[1]) // 2) for r in region_idx]
-    bw = [abs(r[1] - r[0]) for r in region_idx]
+    center = tuple([int((r[0] + r[1]) // 2) for r in region_idx])
+    bw = tuple([abs(r[1] - r[0]) for r in region_idx])
 
     if cut:
         cut_idx = []
-        for n, c, b in zip(shape, center, bw):
+        for n, c, b in zip(expinfo.pts, center, bw):
             mn = int(np.floor(c - (b / 2 * cut_ratio)))
             mx = int(np.ceil(c + (b / 2 * cut_ratio)))
             # Ensure the cut region remains within the valid span of
@@ -478,8 +524,8 @@ def filter_spectrum(spectrum, region, noise_region, sw, offset, sfo=None,
                 mn = 0
             if mx >= n:
                 mx = n - 1
-            cut_idx.append([mn, mx])
-
+            cut_idx.append((mn, mx))
+        cut_idx = tuple(cut_idx)
     else:
         cut_idx = None
 

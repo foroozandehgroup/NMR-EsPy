@@ -170,7 +170,11 @@ class ArgumentChecker:
 
         Each argument should be a tuple, with as a minimum
         """
-        self.components = []
+        try:
+            self.components
+        except AttributeError:
+            self.components = []
+
         for arg in args:
             if len(arg) == 3:
                 self.components.append(tuple(a for a in arg) + (False,))
