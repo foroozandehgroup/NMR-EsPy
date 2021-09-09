@@ -9,7 +9,7 @@ import re
 
 import numpy as np
 
-from nmrespy import *
+from nmrespy import RED, ORA, END, USE_COLORAMA
 if USE_COLORAMA:
     import colorama
     colorama.init()
@@ -17,7 +17,7 @@ import nmrespy._errors as errors
 from nmrespy._misc import get_yes_no
 
 
-def get_params_from_jcampdx(names, path):
+def get_params_from_jcampdx(path):
     """Retrieve parameters from files written in JCAMP-DX format.
 
     Parameters
@@ -36,19 +36,20 @@ def get_params_from_jcampdx(names, path):
     with open(path, 'r') as fh:
         txt = fh.read()
 
-    params = []
-    for name in names:
-        pattern = r'##\$' + name + r'= (\(\d+\.\.\d+\)\n)?(.+?)#'
-        try:
-            params.append(
-                re.search(pattern, txt, re.DOTALL)
-                  .groups()[-1]
-                  .replace('\n', ' ')
-                  .rstrip()
-            )
-        except AttributeError:
-            # re.search returned None
-            raise errors.ParameterNotFoundError(name, path)
+    params = {}
+    array_pattern = r'(?=##\$(.+?)= \(\d+\.\.\d+\)\n([\s\S]+?)##)'
+    array_matches = re.finditer(array_pattern, txt)
+
+    for match in array_matches:
+        key, value = match.groups()
+        params[key] = value.rstrip('\n').replace('\n', ' ').split(' ')
+
+    oneline_pattern = r'##\$(.+?)= (.+?)\n##'
+    oneline_matches = re.finditer(oneline_pattern, txt)
+
+    for match in oneline_matches:
+        key, value = match.groups()
+        params[key] = value
 
     return params
 

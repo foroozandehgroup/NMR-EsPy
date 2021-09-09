@@ -14,6 +14,14 @@ PDATAPATHS = [Path(f'data/{i}/pdata/1').resolve() for i in range(1, 3)]
 ALLPATHS = FIDPATHS + PDATAPATHS
 
 
+def test_get_params_from_jcampdx():
+    path = FIDPATHS[0] / 'acqus'
+    params = bload.get_params_from_jcampdx(path)
+    assert params['BYTORDA'] == '0'
+    assert params['CPDPRG'] == 4 * ['<>'] + 5 * ['<mlev>']
+    assert params['SFO1'] == '500.132249206'
+
+
 def _funky_mod(x, r):
     """Same as normal % operator, but if the result is 0, ``r`` is returned
     instead. i.e. 6 % 3 -> 3 rather than the usual 0."""
@@ -39,28 +47,6 @@ def test_determine_bruker_data_type():
         else:
             assert list(info['bin'].values())[0].name == \
                 f"{info['dim']}{info['dim'] * 'r'}"
-
-
-def test_get_params_from_jcampdx():
-    path = FIDPATHS[0] / 'acqus'
-    params = {
-        'BF1': '500.13',
-        'FnMODE': '0',
-        'NUC1': '<1H>',
-        'O1': '2249.20599998768',
-        'SFO1': '500.132249206',
-        'SW_h': '5494.50549450549',
-        # Example of a multiline arrayed parameter
-        'GPNAM': ' '.join(32 * ['<sine.100>'])
-    }
-
-    assert bload.get_params_from_jcampdx(list(params.keys()), path) == \
-        list(params.values())
-
-    with pytest.raises(err.ParameterNotFoundError):
-        bload.get_params_from_jcampdx(['IDONTEXIST'], path)
-    with pytest.raises(FileNotFoundError):
-        bload.get_params_from_jcampdx(['BF1'], FIDPATHS[0] / 'idontexist')
 
 
 def test_remove_zeros():
