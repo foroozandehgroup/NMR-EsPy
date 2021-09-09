@@ -2,9 +2,9 @@
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
 
-"""Frequecy filtration of NMR data using super-Gaussian band-pass filters"""
+"""Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
 import functools
-from typing import NewType, Tuple, Union
+from typing import Iterable, NewType, Tuple, Union
 
 import numpy as np
 import numpy.random as nrandom
@@ -18,24 +18,73 @@ import nmrespy._errors as errors
 from nmrespy import sig
 
 
-RegionType = NewType(
-    'RegionType',
-    Union[Tuple[int, int], Tuple[Tuple[int, int], Tuple[int, int]]]
+RegionIntType = NewType(
+    'RegionIntType',
+    Union[
+        Union[Tuple[int, int], Tuple[Tuple[int, int], Tuple[int, int]]],
+        None
+    ]
+)
+
+RegionIntFloatType = NewType(
+    'RegionIntFloatType',
+    Union[
+        Union[
+            Tuple[Union[int, float], Union[int, float]],
+            Tuple[Tuple[Union[int, float], Union[int, float]],
+                  Tuple[Union[int, float], Union[int, float]]],
+        ],
+        None
+    ]
 )
 
 
 # Used to have this as a dataclass but as the chemistry Linux machines
 # cannot have Python > 3.6, I have resorted back to a vanilla class.
 class FilterInfo:
+    """Object describing filtration proceedure.
+
+    .. note:
+        This should not be invoked directly, but is instead created by calling
+        the :py:func:`filter_spectrum` function.
+
+    Parameters
+    ----------
+    _spectrum
+        Spectral data to be filtered.
+
+    _sg
+        Super-Gaussian filter applied to the spectrum.
+
+    _sg_noise
+        Additive Gaussian noise added to the spectrum.
+
+    _region
+        Region (in array indices) of the spectrum selected for filtration.
+
+    _noise_region
+        Region (in array indices) of the spectrum selected for determining
+        the noise variance.
+
+    _cut_region
+        Region (in array indices) of the spectral data that was sliced away
+        from the original afer filtering.
+
+    _converter
+        :py:class:`nmrespy._misc.FrequencyConverter` instance used for
+        converting between Hz, ppm, and array indices.
+    """
+
     def __init__(
         self, _spectrum: np.ndarray, _sg: np.ndarray, _sg_noise: np.ndarray,
-        _region: RegionType, _noise_region: RegionType,
-        _cut_region: Union[RegionType, None], _converter: FrequencyConverter
+        _region: RegionIntType, _noise_region: RegionIntType,
+        _cut_region: RegionIntType, _converter: FrequencyConverter
     ) -> None:
+        """Create an instance of :py:class:`FilterInfo`."""
         self.__dict__.update(locals())
 
     @property
-    def cut_expinfo(self):
+    def cut_expinfo(self) -> ExpInfo:
         """Get `:py:class:nmrespy.ExpInfo` for the cut signal."""
         pts = self.cut_shape
         sw = self.get_cut_sw()
@@ -44,7 +93,7 @@ class FilterInfo:
         return ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
 
     @property
-    def uncut_expinfo(self):
+    def uncut_expinfo(self) -> ExpInfo:
         """Get `:py:class:nmrespy.ExpInfo` for the uncut signal."""
         pts = self.shape
         sw = self.get_sw()
@@ -53,7 +102,7 @@ class FilterInfo:
         return ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
 
     @property
-    def expinfo(self):
+    def expinfo(self) -> ExpInfo:
         """Get `:py:class:nmrespy.ExpInfo` for the filtered signal.
 
         If a cut region has been specified, returns :py:meth:`cut_expinfo`.
@@ -65,61 +114,48 @@ class FilterInfo:
             return self.uncut_expinfo
 
     @property
-    def spectrum(self):
+    def spectrum(self) -> np.ndarray:
         """Get unfiltered spectrum."""
         return self._spectrum
 
     @property
-    def sg(self):
+    def sg(self) -> np.ndarray:
         """Get super-Gaussian filter."""
         return self._sg
 
     @property
-    def sg_noise(self):
+    def sg_noise(self) -> np.ndarray:
         """Get additive noise vector."""
         return self._sg_noise
 
     @property
-    def shape(self):
+    def shape(self) -> Iterable[int]:
         """Get shape of :py:meth:`spectrum`."""
         return self.spectrum.shape
 
     @property
-    def cut_shape(self):
+    def cut_shape(self) -> Iterable[int]:
         """Get shape of :py:meth:`cut_spectrum`."""
         return tuple(
             [r[1] - r[0] + 1 for r in self.get_cut_region(unit='idx')]
         )
 
     @property
-    def filtered_spectrum(self):
-        """Get filtered spectrum (uncut).
-
-        Returns
-        -------
-        numpy.ndarray
-        """
+    def filtered_spectrum(self) -> np.ndarray:
+        """Get filtered spectrum (uncut)."""
         return (self.spectrum * self.sg) + self.sg_noise
 
     @property
-    def filtered_fid(self):
-        """Get filtered time-domain signal (uncut)
-
-        Returns
-        -------
-        numpy.ndarray
-        """
+    def filtered_fid(self) -> np.ndarray:
+        """Get filtered time-domain signal (uncut)."""
         return self._ift_and_slice(self.filtered_spectrum)
 
     @property
-    def cut_spectrum(self):
-        """Get filtered, cut spectrum. If the user set ``cut=False`` when
-        calling :py:func:`filter_spectrum`, :py:meth:`filtered_spectrum` will
-        be returned.
+    def cut_spectrum(self) -> np.ndarray:
+        """Get filtered, cut spectrum.
 
-        Returns
-        -------
-        numpy.ndarray
+        If the user set ``cut=False`` when calling :py:func:`filter_spectrum`,
+        :py:meth:`filtered_spectrum` will be returned.
         """
         if self._cut_region:
             cut_slice = tuple(np.s_[r[0]:r[1] + 1]
@@ -129,14 +165,11 @@ class FilterInfo:
             return self.filtered_spectrum
 
     @property
-    def cut_fid(self):
-        """Get filtered, cut time-domain signal. If the user set ``cut=False``
-        when calling :py:func:`filter_spectrum`, :py:meth:`filtered_fid` will
-        be returned.
+    def cut_fid(self) -> np.ndarray:
+        """Get filtered, cut time-domain signal.
 
-        Returns
-        -------
-        numpy.ndarray
+        If the user set ``cut=False`` when calling :py:func:`filter_spectrum`,
+        :py:meth:`filtered_fid` will be returned.
         """
         if self._cut_region:
             ratios = [unct / ct
@@ -147,7 +180,7 @@ class FilterInfo:
             return self.filtered_fid
 
     def check_unit(valid_units):
-        """Decorator which checks that the `unit` argument is valid"""
+        """Check that the `unit` argument is valid (decorator)."""
         def decorator(f):
             @functools.wraps(f)
             def checker(*args, **kwargs):
@@ -163,113 +196,93 @@ class FilterInfo:
         return decorator
 
     @check_unit(['idx', 'hz', 'ppm'])
-    def get_center(self, unit='hz'):
+    def get_center(self, unit: str = 'hz') -> Iterable[Union[int, float]]:
         """Get the center of the super-Gaussian filter.
 
         Parameters
         ----------
-        unit : {'idx', 'hz', 'ppm'}
-            Unit specifier.
-
-        Returns
-        center : Union[[int], [float]]
+        unit
+            Unit specifier. Should be one of ``'idx'``, ``'hz'``, ``'ppm'``.
         """
         region_idx = self.get_region(unit='idx')
         center_idx = tuple([int((r[0] + r[1]) // 2) for r in region_idx])
         return self._converter.convert(center_idx, f'idx->{unit}')
 
     @check_unit(['idx', 'hz', 'ppm'])
-    def get_bw(self, unit='hz'):
+    def get_bw(self, unit: str = 'hz') -> Iterable[Union[int, float]]:
         """Get the bandwidth of the super-Gaussian filter.
 
         Parameters
         ----------
         unit : {'idx', 'hz', 'ppm'}
-            Unit specifier.
-
-        Returns
-        bw : Union[[int], [float]]
+            Unit specifier. Should be one of ``'idx'``, ``'hz'``, ``'ppm'``.
         """
         region = self.get_region(unit=unit)
         return tuple([abs(r[1] - r[0]) for r in region])
 
     @property
-    def sfo(self):
-        """Transmitter frequency, in MHz.
-
-        Returns
-        -------
-        sfo : [float]
-        """
+    def sfo(self) -> Iterable[float]:
+        """Transmitter frequency, in MHz."""
         return self._converter.sfo
 
     @check_unit(['hz', 'ppm'])
-    def get_sw(self, unit='hz'):
+    def get_sw(self, unit: str = 'hz') -> Iterable[float]:
         """Sweep width of the original spectrum.
 
         Parameters
         ----------
-        unit : {'hz', 'ppm'}
-            Unit specifier.
-
-        Returns
-        sw : [float]
+        unit
+            Unit specifier. Should be one of ``'hz'``, ``'ppm'``.
         """
         return self._converter.convert(self._converter.sw, f'hz->{unit}')
 
     @check_unit(['hz', 'ppm'])
-    def get_offset(self, unit='hz'):
+    def get_offset(self, unit: str = 'hz') -> Iterable[float]:
         """Transmitter offset of the original spectrum.
 
         Parameters
         ----------
-        unit : {'hz', 'ppm'}
-            Unit specifier.
-
-        Returns
-        offset : [float]
+        unit
+            Unit specifier. Should be one of ``'hz'``, ``'ppm'``.
         """
         return self._converter.convert(self._converter.offset, f'hz->{unit}')
 
     @check_unit(['idx', 'hz', 'ppm'])
-    def get_region(self, unit='hz'):
-        """Selected spectral region for filtration.
+    def get_region(
+        self, unit: str = 'hz'
+    ) -> RegionIntFloatType:
+        """Get selected spectral region for filtration.
 
         Parameters
         ----------
         unit : {'idx', 'hz', 'ppm'}
-            Unit specifier.
-
-        Returns
-        region : Union[[float], [int]]
+            Unit specifier. Should be one of ``'hz'``, ``'ppm'``, ``'idx'``.
         """
         return self._converter.convert(self._region, f'idx->{unit}')
 
     @check_unit(['idx', 'hz', 'ppm'])
-    def get_noise_region(self, unit='hz'):
-        """Selected spectral noise region for filtration.
+    def get_noise_region(
+        self, unit: str = 'hz'
+    ) -> RegionIntFloatType:
+        """Get selected spectral noise region for filtration.
 
         Parameters
         ----------
-        unit : {'idx', 'hz', 'ppm'}
-            Unit specifier.
-
-        Returns
-        noise_region : Union[[float], [int]]
+        unit
+            Unit specifier. Should be one of ``'hz'``, ``'ppm'``, ``'idx'``.
         """
         return self._converter.convert(self._noise_region, f'idx->{unit}')
 
     @check_unit(['idx', 'hz', 'ppm'])
-    def get_cut_region(self, unit='hz'):
+    def get_cut_region(
+        self, unit: str = 'hz'
+    ) -> RegionIntFloatType:
         """Bounds of the cut spectral data.
 
         Parameters
         ----------
-        unit : {'idx', 'hz', 'ppm'}
-            Unit specifier.
-
-        Returns
-        cut_region : Union[[float], [int]]
+        unit
+            Unit specifier. Should be one of ``'hz'``, ``'ppm'``, ``'idx'``.
         """
         if self._cut_region:
             cut_region = self._cut_region
@@ -279,22 +292,26 @@ class FilterInfo:
         return self._converter.convert(cut_region, f'idx->{unit}')
 
     @check_unit(['hz', 'ppm'])
-    def get_cut_sw(self, unit='hz'):
-        """Sweep width of cut spectrum
+    def get_cut_sw(self, unit: str = 'hz') -> Iterable[float]:
+        """Sweep width of cut spectrum.
 
         Parameters
         ----------
-        unit : {'idx', 'hz', 'ppm'}
-            Unit specifier.
-
-        Returns
-        cut_sw : [float]
+        unit
+            Unit specifier. Should be one of ``'hz'``, ``'ppm'``.
         """
         region = self.get_cut_region(unit=unit)
         return tuple([abs(r[1] - r[0]) for r in region])
 
     @check_unit(['hz', 'ppm'])
-    def get_cut_offset(self, unit='hz'):
+    def get_cut_offset(self, unit: str = 'hz') -> Iterable[float]:
+        """Transmitter offset of cut spectrum.
+
+        Parameters
+        ----------
+        unit
+            Unit specifier. Should be one of ``'hz'``, ``'ppm'``.
+        """
         region = self.get_cut_region(unit=unit)
         return [(r[1] + r[0]) / 2 for r in region]
 
@@ -315,45 +332,45 @@ class FilterInfo:
         return sig.ift(spectrum)[tuple(slice)]
 
 
-def superg(region, shape, p=40.0):
-    """
-    Generates a super-Gaussian for filtration of frequency-domian data.
+def superg(region: RegionIntType, shape: Iterable[int],
+           p: float = 40.0) -> np.ndarray:
+    r"""Generate a super-Gaussian for filtration of frequency-domian data.
+
+    The super-Gaussian is described by the following expression:
 
     .. math::
 
-      g\\left[n_1, \\cdots, n_D\\right] =
-      \\exp \\left[ \\sum\\limits_{d=1}^D -2^{p+1}
-      \\left(\\frac{n_d - c_d}{b_d}\\right)^p\\right]
+      g\left[n_1, \cdots, n_D\right] =
+      \exp \left[ \sum\limits_{d=1}^D -2^{p+1}
+      \left(\frac{n_d - c_d}{b_d}\right)^p\right]
 
     Parameters
     ----------
-    region : [[int, int]] or [[int, int], [int, int]]
+    region
         The region for the filter to span. For each dimension, a list
         of 2 entries should exist, with the first element specifying the
         low boundary of the region, and the second element specifying the
-        high boundary of the region (in array indices). Note that for a given
-        dimension :math:`d`,
+        high boundary of the region (in array indices).
 
-    shape : [int] or [int, int]
+    shape
         The number of elements along each axis.
 
-    p : float, default: 40.0
+    p
         Power of the super-Gaussian. The greater the value, the more box-like
         the filter.
 
     Returns
     -------
-    sg : numpy.ndarray
+    sg
         Super-Gaussian filter.
 
-    center : [int] or [int, int]
+    center
         Index of the center of the filter in each dimension.
 
-    bw : [int] or [int, int]
+    bw
         Bandwidth of the filter in each dimension, in terms of the number
         of points spanned.
     """
-
     # Determine center and bandwidth of super gaussian in each dimension
     center = [int((r[0] + r[1]) // 2) for r in region]
     bw = [abs(r[1] - r[0]) for r in region]
@@ -370,25 +387,25 @@ def superg(region, shape, p=40.0):
     return sg + 1j * np.zeros(sg.shape)
 
 
-def superg_noise(spectrum, noise_region, sg):
-    """Given a spectrum, a region to sample the noise fron, and a
-    super-Gaussian filter, construct a synthetic noise sequence.
+def superg_noise(spectrum: np.ndarray, noise_region: RegionIntType,
+                 sg: np.ndarray) -> np.ndarray:
+    """Construct a synthetic noise sequence to add to the filtered spectrum.
 
     Parameters
     ----------
-    spectrum : numpy.ndarray
+    spectrum
         The spectrum.
 
-    noise_region : [[int, int]] or [[int, int], [int, int]]
+    noise_region
         The start and end indices in each dimension to slice the spectrum
         in order to sample the noise variance.
 
-    sg : numpy.ndarray
+    sg
         The super-Gaussian filter being applied to the spectrum.
 
     Returns
     -------
-    sg_noise : numpy.ndarray
+    sg_noise
         The synthetic noise signal.
     """
     noise_slice = tuple(np.s_[n[0]:n[1] + 1] for n in noise_region)
@@ -399,52 +416,53 @@ def superg_noise(spectrum, noise_region, sg):
     return sg_noise * (1 - sg)
 
 
-def filter_spectrum(spectrum, region, noise_region, expinfo,
-                    region_unit='hz', sg_power=40., cut=True, cut_ratio=3.0):
-    """Applies a super-Gaussian filter to a spectrum.
+def filter_spectrum(
+    spectrum: np.ndarray, region: RegionIntFloatType,
+    noise_region: RegionIntFloatType, expinfo: ExpInfo,
+    region_unit: str = 'hz', sg_power: float = 40., cut: bool = True,
+    cut_ratio: Union[float, None] = 3.0
+) -> FilterInfo:
+    """Frequency filtering via super-Gaussian filtration of spectral data.
 
     Parameters
     ----------
-    spectrum : numpy.ndarray
+    spectrum
         Frequency-domian data.
 
-    region : [[float, float]], or [[float, float], [float, float]]
+    region
         Boundaries specifying the region to apply the filter to.
 
-    noise_region : Same type as `region`
+    noise_region
         Boundaries specifying a region which does not contain any noticable
         signals (i.e. just containing noise).
 
-    sw : [float] or [float, float]
-        The sweep width of the signal in each dimension.
+    expinfo
+        Information on the experiment. Used to determine the number of points,
+        sweep width and transmitter offset.
 
-    offset : [float] or [float, float]
-        The transmitter offset in each dimension.
-
-    sfo : [float], [float, float] or None, default: None
-        The tansmitter frequency in each dimnesion (MHz). Required as float
-        list if `region_unit` is `'ppm'`.
-
-    region_unit : {'ppm', 'hz'} default: 'hz'
+    region_unit
         The units which the boundaries in `region` and `noise_region` are
-        given in.
+        given in. Should be one of ``'hz'`` or ``'ppm'``.
 
-    sg_power : float, default: 40.
+    sg_power
         Power of the super-Gaussian. The greater the value, the more box-like
         the filter.
 
-    cut : bool, default: True
-        If `True`, the filtered frequency-domain data will be trancated
+    cut
+        If ``True``, the filtered frequency-domain data will be trancated
         prior to inverse Fourier Transformation, reducing the number
-        of signal points. If False, the data is not truncated after FT.
+        of signal points. If ``False``, the data is not truncated after FT.
 
-    cut_ratio : float, default: 3.0
-        If `cut` is set to `True`, this gives the ratio of the cut signal's
-        bandwidth and the filter bandwidth. This should be greater than 1.0.
+    cut_ratio
+        If ``cut`` is set to ``True``, this gives the ratio of the cut
+        signal's bandwidth and the filter bandwidth. This should be greater
+        than ``1.0``.
 
     Returns
     -------
-    filter : freqfilter.FilterInfo
+    filterinfo
+        Object with various attributes relating to the filtration process.
+        See :py:class:`FilterInfo` for details.
     """
     if not isinstance(expinfo, ExpInfo):
         raise TypeError(f'{RED}Check `expinfo` is valid.{END}')

@@ -12,9 +12,9 @@
 #
 import os
 import sys
+import nmrespy
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.append(os.path.abspath('exts'))
-import nmrespy
 
 
 # -- Project information -----------------------------------------------------
@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
+    'sphinx_autodoc_typehints',
     'sphinx.ext.viewcode',
     'sphinx_selective_exclude.eager_only',
 ]
@@ -63,7 +64,8 @@ html_theme = "bizstyle"
 
 html_scaled_image_link = False
 
-# otherwise, readthedocs.org uses their theme by default, so no need to specify it
+# otherwise, readthedocs.org uses their theme by default, so no need to
+# specify it
 
 rst_prolog = """
 .. raw:: html
@@ -109,13 +111,12 @@ latex_elements = {
     'inputenc': '',
     'babel': '\\usepackage{polyglossia}',
     'fontenc': '',
-    'maxlistdepth' : '10',
-    'preamble' :
-r"""
+    'maxlistdepth': '10',
+    'preamble': r"""
 \usepackage[math-style=ISO,bold-style=ISO]{unicode-math}
 \usepackage{fontspec}
 \setmainfont{EBGaramond}[
-Path           = ../fonts/ebgaramond/,%
+Path           = ../../fonts/ebgaramond/,%
 Extension      = .otf,%
 UprightFont    = *-Regular,%
 BoldFont       = *-Bold,%
@@ -124,11 +125,11 @@ BoldItalicFont = *-BoldItalic,%
 ]
 \setmathfont{Garamond-Math}[
 Extension    = .otf,%
-Path         = ../fonts/ebgaramond/,%
+Path         = ../../fonts/ebgaramond/,%
 StylisticSet = {1,8,5},%
 ]
 \setmonofont{UbuntuMono}[
-Path           = ../fonts/ubuntumono/,%
+Path           = ../../fonts/ubuntumono/,%
 Extension      = .ttf,%
 UprightFont    = *-R,%
 BoldFont       = *-B,%

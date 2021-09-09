@@ -703,6 +703,7 @@ def h_2d(active: np.ndarray, *args: args_type) -> np.ndarray:
 
     args
         Contains elements in the following order:
+
         * **data:** Array of the original FID data.
         * **tp:** The time-points the signal was sampled at
         * **m:** Number of oscillators

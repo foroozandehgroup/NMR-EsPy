@@ -12,6 +12,5 @@ Reference
    plot
    sig
    write
-   cols
    errors
    misc
