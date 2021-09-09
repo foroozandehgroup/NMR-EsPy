@@ -71,8 +71,7 @@ class FilterInfo:
         from the original afer filtering.
 
     _converter
-        :py:class:`nmrespy._misc.FrequencyConverter` instance used for
-        converting between Hz, ppm, and array indices.
+        Used for converting between Hz, ppm, and array indices.
     """
 
     def __init__(
@@ -85,7 +84,7 @@ class FilterInfo:
 
     @property
     def cut_expinfo(self) -> ExpInfo:
-        """Get `:py:class:nmrespy.ExpInfo` for the cut signal."""
+        """Get :py:class:`nmrespy.ExpInfo` for the cut signal."""
         pts = self.cut_shape
         sw = self.get_cut_sw()
         offset = self.get_cut_offset()
@@ -94,7 +93,7 @@ class FilterInfo:
 
     @property
     def uncut_expinfo(self) -> ExpInfo:
-        """Get `:py:class:nmrespy.ExpInfo` for the uncut signal."""
+        """Get :py:class:`nmrespy.ExpInfo` for the uncut signal."""
         pts = self.shape
         sw = self.get_sw()
         offset = self.get_offset()
@@ -103,7 +102,7 @@ class FilterInfo:
 
     @property
     def expinfo(self) -> ExpInfo:
-        """Get `:py:class:nmrespy.ExpInfo` for the filtered signal.
+        """Get :py:class:`nmrespy.ExpInfo` for the filtered signal.
 
         If a cut region has been specified, returns :py:meth:`cut_expinfo`.
         Otherwise, returns :py:meth:`uncut_expinfo`.
@@ -179,7 +178,7 @@ class FilterInfo:
         else:
             return self.filtered_fid
 
-    def check_unit(valid_units):
+    def _check_unit(valid_units):
         """Check that the `unit` argument is valid (decorator)."""
         def decorator(f):
             @functools.wraps(f)
@@ -195,7 +194,7 @@ class FilterInfo:
             return checker
         return decorator
 
-    @check_unit(['idx', 'hz', 'ppm'])
+    @_check_unit(['idx', 'hz', 'ppm'])
     def get_center(self, unit: str = 'hz') -> Iterable[Union[int, float]]:
         """Get the center of the super-Gaussian filter.
 
@@ -208,13 +207,13 @@ class FilterInfo:
         center_idx = tuple([int((r[0] + r[1]) // 2) for r in region_idx])
         return self._converter.convert(center_idx, f'idx->{unit}')
 
-    @check_unit(['idx', 'hz', 'ppm'])
+    @_check_unit(['idx', 'hz', 'ppm'])
     def get_bw(self, unit: str = 'hz') -> Iterable[Union[int, float]]:
         """Get the bandwidth of the super-Gaussian filter.
 
         Parameters
         ----------
-        unit : {'idx', 'hz', 'ppm'}
+        unit
             Unit specifier. Should be one of ``'idx'``, ``'hz'``, ``'ppm'``.
         """
         region = self.get_region(unit=unit)
@@ -225,7 +224,7 @@ class FilterInfo:
         """Transmitter frequency, in MHz."""
         return self._converter.sfo
 
-    @check_unit(['hz', 'ppm'])
+    @_check_unit(['hz', 'ppm'])
     def get_sw(self, unit: str = 'hz') -> Iterable[float]:
         """Sweep width of the original spectrum.
 
@@ -236,7 +235,7 @@ class FilterInfo:
         """
         return self._converter.convert(self._converter.sw, f'hz->{unit}')
 
-    @check_unit(['hz', 'ppm'])
+    @_check_unit(['hz', 'ppm'])
     def get_offset(self, unit: str = 'hz') -> Iterable[float]:
         """Transmitter offset of the original spectrum.
 
@@ -247,7 +246,7 @@ class FilterInfo:
         """
         return self._converter.convert(self._converter.offset, f'hz->{unit}')
 
-    @check_unit(['idx', 'hz', 'ppm'])
+    @_check_unit(['idx', 'hz', 'ppm'])
     def get_region(
         self, unit: str = 'hz'
     ) -> RegionIntFloatType:
@@ -260,7 +259,7 @@ class FilterInfo:
         """
         return self._converter.convert(self._region, f'idx->{unit}')
 
-    @check_unit(['idx', 'hz', 'ppm'])
+    @_check_unit(['idx', 'hz', 'ppm'])
     def get_noise_region(
         self, unit: str = 'hz'
     ) -> RegionIntFloatType:
@@ -273,7 +272,7 @@ class FilterInfo:
         """
         return self._converter.convert(self._noise_region, f'idx->{unit}')
 
-    @check_unit(['idx', 'hz', 'ppm'])
+    @_check_unit(['idx', 'hz', 'ppm'])
     def get_cut_region(
         self, unit: str = 'hz'
     ) -> RegionIntFloatType:
@@ -291,7 +290,7 @@ class FilterInfo:
 
         return self._converter.convert(cut_region, f'idx->{unit}')
 
-    @check_unit(['hz', 'ppm'])
+    @_check_unit(['hz', 'ppm'])
     def get_cut_sw(self, unit: str = 'hz') -> Iterable[float]:
         """Sweep width of cut spectrum.
 
@@ -303,7 +302,7 @@ class FilterInfo:
         region = self.get_cut_region(unit=unit)
         return tuple([abs(r[1] - r[0]) for r in region])
 
-    @check_unit(['hz', 'ppm'])
+    @_check_unit(['hz', 'ppm'])
     def get_cut_offset(self, unit: str = 'hz') -> Iterable[float]:
         """Transmitter offset of cut spectrum.
 
@@ -437,8 +436,8 @@ def filter_spectrum(
         signals (i.e. just containing noise).
 
     expinfo
-        Information on the experiment. Used to determine the number of points,
-        sweep width and transmitter offset.
+        Information on the experiment. Used to determine the sweep width,
+        transmitter offset and transmitter frequency.
 
     region_unit
         The units which the boundaries in `region` and `noise_region` are
@@ -460,9 +459,24 @@ def filter_spectrum(
 
     Returns
     -------
-    filterinfo
-        Object with various attributes relating to the filtration process.
-        See :py:class:`FilterInfo` for details.
+    Object with various attributes relating to the filtration process.
+    See :py:class:`FilterInfo` for details.
+
+    Notes
+    -----
+    **Region specification**
+
+    For a :math:`d`-dimensional experiment, the ``region`` and ``noise_region``
+    arguments should be array-like objects (``list``, ``tuple``, etc.)
+    containing :math:`d` length-2 array-like objects. Each of these specifies
+    the boundaries of the region of interest in each dimension.
+
+    As an example, for a 2-dimensional dataset, where the desired region
+    is from 4 - 4.5ppm in dimension 1 and 1.2 - 1.6ppm in dimension 2,
+    ``region`` would be specified as: ``((4., 4.5), (1.2, 1.6))``. Note that
+    the order of values in each dimension is not important. Also,
+    ``region_unit`` would have to be manually set as ``'ppm'`` in this
+    example, as regions are expected in Hz by default.
     """
     if not isinstance(expinfo, ExpInfo):
         raise TypeError(f'{RED}Check `expinfo` is valid.{END}')

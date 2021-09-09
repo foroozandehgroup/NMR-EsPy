@@ -41,7 +41,7 @@ extensions = [
     'sphinx_selective_exclude.eager_only',
 ]
 
-master_doc = 'index'
+master_doc = 'content/index'
 
 todo_include_todos = True
 
