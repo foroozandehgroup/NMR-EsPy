@@ -10,7 +10,9 @@ from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
 if USE_COLORAMA:
     import colorama
     colorama.init()
+import nmrespy._errors as errors
 from nmrespy._misc import get_yes_no
+
 
 
 class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
@@ -57,16 +59,31 @@ def load_bruker(
         The associated data.
 
     expinfo: nmrespy.ExpInfo
-        Experiment information of use to NMR-EsPy.
+        Experiment information of use to NMR-EsPy. As well as the normal
+        associated properties (see the :py:class:`~nmrespy.ExpInfo` docs),
+        the ``parameters`` attribute is a ``dict`` with parameters from
+        all parameter files assocaited with the dataset.
+
+    Raises
+    ------
+    OSError
+        If the directory specified does not exist.
+
+    ValueError
+        If the directroy specified does not have the requisite data and
+        parameter files expected for a Bruker dataset.
+
+    MoreThanTwoDimError
+        If the dataset specified has more than 2 dimensions.
 
     Notes
     -----
-    *Directory Requirements*
+    **Directory Requirements**
 
-    The path specified by `directory` should
-    contain the following files depending on whether you are importing 1- or
-    2-dimesnional data, and whether you are importing raw FID data or
-    processed data:
+    There are certain file paths expected to be found relative to ``directory``
+    which contain the data and parameter files. The is an extensive list of
+    the paths expected to exist, for different data dimensions, and
+    data types (raw time-domain data or processed data):
 
     * 1D data
 
@@ -78,7 +95,7 @@ def load_bruker(
       - Processed data
 
         + `directory/1r`
-        + `directory/acqus`
+        + `directory/../../acqus`
         + `directory/procs`
 
 
@@ -93,76 +110,116 @@ def load_bruker(
       - Processed data
 
         + `directory/2rr`
-        + `directory/acqus`
-        + `directory/acqu2s`
+        + `directory/../../acqus`
+        + `directory/../../acqu2s`
         + `directory/procs`
         + `directory/proc2s`
 
-    * 3D data
-
-      - Raw FID
-
-        + `directory/ser`
-        + `directory/acqus`
-        + `directory/acqu2s`
-        + `directory/acqu3s`
-
-      - Processed data
-
-        + `directory/3rrr`
-        + `directory/acqus`
-        + `directory/acqu2s`
-        + `directory/acqu3s`
-        + `directory/procs`
-        + `directory/proc2s`
-        + `directory/proc3s`
-
-    *Digital Filters*
+    **Digital Filters**
 
     If you are importing raw FID data, make sure the path
     specified corresponds to an `fid` or `ser` file which has had its
-    digital filter removed. To do this, open the data you wish to analyse in
+    group delay artefact. To do this, open the data you wish to analyse in
     TopSpin, and enter `convdta` in the bottom-left command line. You will be
     prompted to enter a value for the new data directory. It is this value you
     should use in `directory`, not the one corresponding to the original
-    (uncorrected) signal. There alternative approaches you could take to
-    deal with this. For example, the nmrglue provides the function
-    `nmrglue.fileio.bruker.rm_dig_filter <https://nmrglue.readthedocs.io/en/\
-    latest/reference/generated/nmrglue.fileio.bruker.rm_dig_filter.html#\
-    nmrglue.fileio.bruker.rm_dig_filter>`_
+    (uncorrected) signal. 
 
     **For Development**
 
     .. todo::
-       Incorporate functionality to phase correct digitally filtered data.
-       This would circumvent the need to ask the user to ensure they have
-       performed `convdta` prior to importing.
+
+        Incorporate functionality to phase correct data to remove group delay.
+        This would circumvent the need to ask the user to ensure they have
+        performed `convdta` prior to importing.
+
+    Example
+    -------
+    .. code:: pycon
+
+        >>> from nmrespy.load import load_bruker
+        >>> load_bruker
+        <function load_bruker at 0x7f21fd526bf8>
+        >>> path = 'tests/data/1'
+        >>> data, expinfo = load_bruker(path)
+        You should ensure you data has had its group delay artefact removed.
+        Prior to dealing with the data in NMR-EsPy, you should call the
+        `CONVDTA` command on the dataset. If this has already been done, feel
+        free to proceed. If not, quit the program.
+        Continue? 
+        Enter [y] or [n]
+        y
+        >>> data.shape
+        (32692,)
+        >>> expinfo.sw
+        (5494.50549450549,)
+        >>> expinfo.offset
+        (2249.20599998768,)
+        >>> expinfo.sfo
+        (500.132249206,)
+        >>> expinfo.nuclei
+        ('1H',)
+        >>> for key in expinfo.parameters.keys():
+        ...     print(key)
+        ... 
+        acqus
+        >>> for key, value in expinfo.parameters['acqus'].items():
+        ...     print(f'{key} --> {value}')
+        ... 
+        ACQT0 --> -2.26890760309556
+        AMP --> [100, 100, 100, 100, 100, 100, 100, 100, 100, 100,
+                 100, 100, 100, 100, 100, 100, 100, 100, 100, 100,
+                 100, 100, 100, 100, 100, 100, 100, 100, 100, 100,
+                 100, 100]
+        AMPCOIL --> [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                     0, 0, 0]
+        AQSEQ --> 0
+        AQ_mod --> 3
+        AUNM --> <au_zg>
+        AUTOPOS --> <>
+        BF1 --> 500.13
+        BF2 --> 500.13
+        BF3 --> 500.13
+        BF4 --> 500.13
+        BF5 --> 500.13
+        BF6 --> 500.13
+        BF7 --> 500.13
+        BF8 --> 500.13
+        --snip--
+        ZGOPTNS --> <>
+        ZL1 --> 120
+        ZL2 --> 120
+        ZL3 --> 120
+        ZL4 --> 120
+        scaledByNS --> no
+        scaledByRG --> no
     """
     try:
-        dataset = bruker_utils.BrukerDataset(directory)
+        dataset = _BrukerDatasetForNmrespy(directory)
 
     except Exception as exc:
-        raise exc(f'{RED}{exc.__str__()}{END}')
+        raise type(exc)(f'{RED}{exc.__str__()}{END}')
+
+    if dataset.dim > 2:
+        raise errors.MoreThanTwoDimError()
 
     if dataset.dtype == 'fid' and ask_convdta:
         msg = (f'{ORA}You should ensure you data has had its group delay '
                'artefact removed. Prior to dealing with the data in NMR-EsPy, '
                'you should call the `CONVDTA` command on the dataset. If this '
                'has already been done, feel free to proceed. If not, quit the '
-               f'program.\nContinue? [y/n]: {END}')
+               f'program.\nContinue?{END}')
 
         response = get_yes_no(msg)
         if not response:
             exit()
-    
+
     # Complete set of parameters
-    params = dataset.get_parameters()
-    expinfo = extract_expinfo(dataset)
+    data = dataset.data
+    expinfo = dataset.expinfo
 
-
-
-
-
+    return data, expinfo
 
 
 # =================================================

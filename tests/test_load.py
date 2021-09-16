@@ -24,3 +24,13 @@ def test_bruker_dataset_for_nmrespy():
     assert expinfo.sfo == (float(params['SFO1']),)
     # Strip '<' and '>' characters from ends of string.
     assert expinfo.nuclei == (params['NUC1'][1:-1],)
+
+
+def test_load_bruker():
+    with pytest.raises(OSError) as exc_info:
+        data, expinfo = bruker.load_bruker('blah')
+
+    with pytest.raises(ValueError) as exc_info:
+        data, expinfo = bruker.load_bruker('.')
+
+    data, expinfo = bruker.load_bruker(FIDPATHS[0])
