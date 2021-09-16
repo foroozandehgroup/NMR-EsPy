@@ -10,3 +10,4 @@ dist
 .pytest_cache
 nmrespy.egg-info/
 examples/cpmg
+*.swp
