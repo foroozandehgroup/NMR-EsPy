@@ -1,7 +1,0 @@
-numpy
-matplotlib
-scipy
-Sphinx
-pytest
-flake8
-pydocstyle
