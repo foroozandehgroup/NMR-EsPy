@@ -14,12 +14,47 @@ PDATAPATHS = [Path(f'data/{i}/pdata/1').resolve() for i in range(1, 3)]
 ALLPATHS = FIDPATHS + PDATAPATHS
 
 
-def test_get_params_from_jcampdx():
+def test_parse_jcampdx():
     path = FIDPATHS[0] / 'acqus'
-    params = bload.get_params_from_jcampdx(path)
+    params = parse_jcampdx(path)
     assert params['BYTORDA'] == '0'
     assert params['CPDPRG'] == 4 * ['<>'] + 5 * ['<mlev>']
     assert params['SFO1'] == '500.132249206'
+
+
+def test_determine_data_type():
+    for i, (fidp, pdatap) in enumerate(zip(FIDPATHS, PDATAPATHS), start=1):
+        fid_dset = bload._determine_data_type(fidp)
+        pdata_dset = bload._determine_data_type(pdatap)
+
+        assert fid_dset.dim == pdata_dset.dim == i
+
+        assert fid_dset.dtype == 'fid'
+        assert pdata_dset.dtype == 'pdata'
+
+        assert fid_dset.datafile == fidp / ('fid' if i == 1 else 'ser')
+        assert pdata_dset.datafile == pdatap / f"{i}{i * 'r'}"
+
+        for s in ['', '2', '3'][:i]:
+            assert fid_dset.paramfiles[f'acqu{s}s'] == fidp / f'acqu{s}s'
+            assert pdata_dset.paramfiles[f'acqu{s}s'] == \
+                pdatap.parents[1] / f'acqu{s}s'
+            assert pdata_dset.paramfiles[f'proc{s}s'] == pdatap / f'proc{s}s'
+
+
+def test_fetch_parameters():
+    directory = Path(FIDPATHS[0])
+    info = bload._determine_bruker_data_type(directory)
+    params = bload._fetch_parameters(info['param'])
+    print(params)
+
+
+def test_get_expinfo():
+    directory = FIDPATHS[0]
+    parampaths = bload._determine_bruker_data_type(directory)['param']
+    params = bload._fetch_parameters(parampaths)
+    expinfo = bload._get_expinfo(params)
+    print(expinfo)
 
 
 def _funky_mod(x, r):

@@ -6,10 +6,11 @@
 
 from pathlib import Path
 import re
+from typing import FrozenSet, Iterable, List, NewType, Set, Tuple, Union
 
 import numpy as np
 
-from nmrespy import RED, ORA, END, USE_COLORAMA
+from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
 if USE_COLORAMA:
     import colorama
     colorama.init()
@@ -17,21 +18,24 @@ import nmrespy._errors as errors
 from nmrespy._misc import get_yes_no
 
 
-def get_params_from_jcampdx(path):
+# Dimension-specifying tags in Bruker parameter files
+# i.e. for a 3D experiment, acqus, acqu2s, and acqu3s files will exist.
+TAGS = ['', '2', '3']
+ListLike = NewType('ListLike', Union[FrozenSet, List, Tuple, Set])
+
+
+def parse_jcampdx(path: Union[Path, str]) -> dict:
     """Retrieve parameters from files written in JCAMP-DX format.
 
     Parameters
     ----------
-    names: [str]
-        The names of the parameters.
-
-    path: pathlib.Path
+    path
         The path to the parameter file.
 
     Returns
     -------
-    params: [str]
-        The values of the desired parameters as a string.
+    A dictionary of parameters. N.B. All returned values are either strings or
+    lists of strings.
     """
     with open(path, 'r') as fh:
         txt = fh.read()
@@ -44,7 +48,7 @@ def get_params_from_jcampdx(path):
         key, value = match.groups()
         params[key] = value.rstrip('\n').replace('\n', ' ').split(' ')
 
-    oneline_pattern = r'##\$(.+?)= (.+?)\n##'
+    oneline_pattern = r'(?=##\$(.+?)= (.+?)\n##)'
     oneline_matches = re.finditer(oneline_pattern, txt)
 
     for match in oneline_matches:
@@ -52,6 +56,101 @@ def get_params_from_jcampdx(path):
         params[key] = value
 
     return params
+
+
+class BrukerDataset:
+    def __init__(self, dtype: str, dim: int, files: dict) -> None:
+        # Warning text checking that the data being imported has had
+        # `convdta` applied to it.
+        if ask_convdta:
+            convdta_prompt = (
+                f'{ORA}WARNING: It is necessary that the FID you import has '
+                'been digitally filtered, using the <convdta> command in '
+                'TopSpin. If you have not done this, please do so before '
+                'proceeding\nIf you wish to proceed, enter [y]\nIf you wish '
+                f'to quit, enter [n]: {END}'
+            )
+
+        d = Path(directory).resolve()
+        if not d.is_dir():
+            raise IOError(f'\n{RED}Directory {d} doesn\'t exist!{END}')
+
+        try:
+            info = determine_bruker_data_type(d)
+            dim, dtype, files = [info[k] for k in ['data', 'dtype', 'files']]
+            del info
+        # If the directory is invalid, None is returned, which does not have 
+        # a __getitem__ attribute!
+        except TypeError:
+            raise errors.InvalidDirectoryError(d)
+
+        # TODO: 3D data not spported currently. Expect to allow Pseudo-2D data
+        # in the future
+        if info['dim'] > 2:
+            raise errors.MoreThanTwoDimError()
+
+        # If the data to be imported is a raw FID, alert the user about the
+        # necessity to correct for the digital filter
+        if dtype == 'fid' and ask_convdta:
+            get_yes_no(convdta_prompt)
+
+        
+
+
+        self.dim = dim
+        self.dtype = dtype
+        self.datafile = files.pop('data')
+        self.paramfiles = files
+
+    def 
+
+    def get_parameters(
+        self, filenames: Union[ListLike[str], str, None] = None
+    ) -> dict:
+        if isinstance(filenames, str):
+            filenames = [filenames]
+        elif isinstance(filenames, (list, tuple, set, frozenset)):
+            pass
+        elif filenames is None:
+            filenames = [k for k in self.paramfiles.keys()]
+        else:
+            raise TypeError(f'{RED}Invalid type for `filenames`{END}.')
+
+        params = {}
+        for name in filenames:
+            try:
+                params[name] = parse_jcampdx(self.paramfiles[name])
+            except KeyError:
+                raise ValueError(
+                    f'{RED}`{name}` is an invalid filename. Valid options '
+                    f"are:\n{', '.join([k for k in self.paramfiles.keys()])}."
+                    f'{END}'
+                )
+
+        return next(iter(params.values())) if len(params) == 1 else params
+
+    def get_expinfo(self) -> ExpInfo:
+        revtags = reversed(TAGS[:dim])
+        akeys = [f'acqu{x}s' for x in revtags]
+        pts, sw, offset, sfo, nuclei = [[] for  _ in range(5)]
+        for akey in akeys:
+            aparams = self.get_parameters(filenames=akey)
+            sw.append(float(aparams['SW_h']))
+            offset.append(float(aparams['O1']))
+            sfo.append(float(aparams['SFO1']))
+            nuclei.append(aparams['NUC1'])
+
+            if self.dtype == 'fid':
+                td = int(aparams['TD'])
+                if akey == '':
+                    td //= 2
+                pts.append(td)
+            elif self.dtype == 'pdata':
+                pkey = akey.replace('acqu', 'proc')
+                pparams = self.get_parameters(filenames=pkey)
+                pts.append(int(pparams['SI']))
+
+        return ExpInfo(pts, sw, offset, sfo, nuclei)
 
 
 def get_binary_format(info):
@@ -79,165 +178,120 @@ def get_binary_format(info):
             ('i4' if encoding == 0 else 'f8'))
 
 
-def determine_bruker_data_type(directory):
-    """Given a directory, determines what type of Bruker data is stored.
+def _determine_data_type(directory: Path) -> Union[BrukerDataset, None]:
+    """Determine the type of Bruker data stored in ``directory``.
 
-    This function is used to determine a) whether the specified data is
-    time-domain or pdata, and b) the dimension of the data (checks up to
-    3D). If it matches the required criteria, a dictionary of information
-    will be returned (See Returns). Otherwise, it will return ``None``.
+    This function is used to determine
+
+    a) whether the specified data is time-domain or pdata
+    b) the dimension of the data (checks up to 3D).
+
+    If the data satisfies the required criteria for a particular dataset type,
+    a dictionary of information will be returned. Otherwise, ``None`` will be
+    returned.
 
     Parameters
     ----------
-    directory : pathlib.Path
+    directory
         The path to the directory of interest.
 
     Returns
     -------
-    info : dict or None
-        If `info` is a dict, it will contain the following items:
+    Dictionary with the entries:
 
-        * **'dim'** : *int*, The dimension of the data.
-        * **'dtype'** : *{'fid', 'pdata'}*, The type of data (raw time-domain
-          or pdata).
-        * **'param'** : *dict*, a dictionary of all parameter file paths of
-          relevance.
-        * **'bin'** : *dict*, a dictionary of all binary file paths of
-          relevance.
-
-        If the directory does not satisfy the requirements, `info` will be
-        ``None``.
+    * ``'dim'`` (``int``) The dimension of the data.
+    * ``'dtype'`` (``'fid'`` or ``'pdata'``) The type of data (raw
+      time-domain or pdata).
+    * ``'files'`` (``List[pathlib.Path]``) Paths to data and parameter files.
     """
+    for option in _compile_experiment_options(directory):
+        files = option['files'].values()
+        if all_paths_exist(files):
+            return BrukerDataset(
+                option['dtype'], option['dim'], option['files']
+            )
+    return None
 
-    options = compile_bruker_path_options(directory)
-    idx = None
-    for i, option in enumerate(options):
-        if check_for_bruker_files(option):
-            idx = i
-    return options[idx] if isinstance(idx, int) else None
 
-
-def check_for_bruker_files(info):
-    """Asserts whether all the paths specified in ``info['bin']`` and
-    ``info['param']`` exist.
+def all_paths_exist(files: Iterable) -> bool:
+    """Determine if all the paths in ``files`` exist.
 
     Parameters
     ----------
-    info : dict
-        See :py:func:`determine_bruker_data_type` for a description of items.
-
-    Returns
-    -------
-    all_exist : bool
+    files
+        File paths to check.
     """
-
-    # Check binary file  and parameter file path(s) path exists
-    files_to_check = list(info['param'].values()) + list(info['bin'].values())
-    if not all([f.is_file() for f in files_to_check]):
-        # At least one parameter file is not found.
-        # Implies no entries in path_info will be valid.
-        return False
-    # An entry in path_info has all the requisite files!
-    return True
+    return all([f.is_file() for f in files])
 
 
-def compile_bruker_path_options(directory):
-    """Generates a dictionary of information relating to each experiment type,
-    given a certain path.
+def _compile_experiment_options(directory: Path) -> List[dict]:
+    """Generate information dictionaries for different experiment types.
+
+    Compiles dictionaries of information relavent to each experiment type:
+
+    * ``'files'`` - The expected paths to data and parameter files.
+    * ``'dim'`` - The data dimension.
+    * ``'dtype'`` - The type of data (time-domain or pdata).
 
     Parameters
     ----------
-    directory : pathlib.Path
+    directory
         Path to the directory of interest.
-
-    Returns
-    -------
-    options : [dict]
-        See :py:func:`determine_bruker_data_type` for a description of items
-        in each dict.
     """
+    twoback = directory.parents[1]
+    options = []
+    for i in range(1, 4):
+        acqusnames = [f'acqu{x}s' for x in TAGS[:i]]
+        acqusfiles = {
+            name: path for (name, path) in
+            zip(
+                acqusnames,
+                (directory / name for name in acqusnames)
+            )
+        }
+        # for n, p in zip(acqusnames, (directory / nm for nm in acqusnames)):
+        fidfiles = {
+            **{'data': directory / ('fid' if i == 1 else 'ser')},
+            **acqusfiles
+        }
+        options.append(
+            {
+                'files': fidfiles,
+                'dtype': 'fid',
+                'dim': i
+            }
+        )
 
-    oneback = directory.parents[1]
-    return [
-        # 1D FID
-        {
-            'bin': {
-                'fid': directory / 'fid',
-            },
-            'param': {
-                'acqus': directory / 'acqus',
-            },
-            'dim': 1,
-            'dtype': 'fid',
-        },
-        # 2D FID
-        {
-            'bin': {
-                'ser': directory / 'ser',
-            },
-            'param': {
-                'acqus': directory / 'acqus',
-                'acqu2s': directory / 'acqu2s',
-            },
-            'dim': 2,
-            'dtype': 'fid',
-        },
-        # 3D FID
-        {
-            'bin': {
-                'ser': directory / 'ser',
-            },
-            'param': {
-                'acqus': directory / 'acqus',
-                'acqu2s': directory / 'acqu2s',
-                'acqu3s': directory / 'acqu3s',
-            },
-            'dim': 3,
-            'dtype': 'fid',
-        },
-        # 1D Processed data
-        {
-            'bin': {
-                '1r': directory / '1r',
-            },
-            'param': {
-                'acqus': oneback / 'acqus',
-                'procs': directory / 'procs',
-            },
-            'dim': 1,
-            'dtype': 'pdata',
-        },
-        # 2D Processed data
-        {
-            'bin': {
-                '2rr': directory / '2rr',
-            },
-            'param': {
-                'acqus': oneback / 'acqus',
-                'acqu2s': oneback / 'acqu2s',
-                'procs': directory / 'procs',
-                'proc2s': directory / 'proc2s',
-            },
-            'dim': 2,
-            'dtype': 'pdata',
-        },
-        # 3D Processed data
-        {
-            'bin': {
-                '3rrr': directory / '3rrr',
-            },
-            'param': {
-                'acqus': oneback / 'acqus',
-                'acqu2s': oneback / 'acqu2s',
-                'acqu3s': oneback / 'acqu3s',
-                'procs': directory / 'procs',
-                'proc2s': directory / 'proc2s',
-                'proc3s': directory / 'proc3s',
-            },
-            'dim': 3,
-            'dtype': 'pdata',
-        },
-    ]
+        acqusfiles = {
+            name: path for (name, path) in
+            zip(
+                acqusnames,
+                (twoback / path.name for path in acqusfiles.values())
+            )
+        }
+        procsnames = [f'proc{x}s' for x in TAGS[:i]]
+        procsfiles = {
+            name: path for (name, path) in
+            zip(
+                procsnames,
+                (directory / name for name in procsnames)
+            )
+        }
+        pdatafiles = {
+            **{'data': directory / f"{i}{i * 'r'}"},
+            **acqusfiles,
+            **procsfiles,
+        }
+
+        options.append(
+            {
+                'files': pdatafiles,
+                'dtype': 'pdata',
+                'dim': i
+            }
+        )
+    print(options)
+    return options
 
 
 def get_parameters(info):
@@ -331,19 +385,19 @@ def remove_zeros(data, shape):
     return [d[mask] for d in data]
 
 
-def load_bruker(directory, ask_convdta=True):
-    """Loads data and relevant parameters from Bruker format.
+def load_bruker(directory: str, ask_convdta: bool = True) -> ExpInfo:
+    """Load data and parameters from Bruker format.
 
     Parameters
     ----------
-    directory: str
+    directory
         Absolute path to data directory.
 
-    ask_convdta: bool, optional
-        If `True` (default), the user will be warned that the data should
-        have its digitial filter removed prior to importing if the data to be
-        impoprted is from an `fid` or `ser` file. If `False`, the user is
-        not warned.
+    ask_convdta
+        If ``True``, the user will be warned that the data should have its
+        digitial filter removed prior to importing if the data to be impoprted
+        is from an ``fid`` or ``ser`` file. If ``False``, the user is not
+        warned.
 
     Returns
     -------
@@ -447,37 +501,11 @@ def load_bruker(directory, ask_convdta=True):
        performed `convdta` prior to importing.
     """
 
-    # Warning text checking that the data being imported has had
-    # `convdta` applied to it.
-    if ask_convdta:
-        convdta_prompt = (
-            f'{ORA}WARNING: It is necessary that the FID you import has '
-            'been digitally filtered, using the <convdta> command in TopSpin. '
-            'If you have not done this, please do so before proceeding\nIf '
-            'you wish to proceed, enter [y]\nIf you wish to quit, enter [n]: '
-            f'{END} '
-        )
+    bruker_dataset = BrukerDataset(dtype, dim, files)
+    expinfo = get_expinfo(all_params)
+    return
 
-    d = Path(directory)
-    if not d.is_dir():
-        raise IOError(f'\n{RED}Directory {directory} doesn\'t exist!'
-                      f'{END}')
-
-    info = determine_bruker_data_type(d)
-    if info is None:
-        raise errors.InvalidDirectoryError(directory)
-
-    # If the data to be imported is a raw FID, alert the user about the
-    # necessity to correct for the digital filter
-    if info['dtype'] == 'fid' and ask_convdta:
-        get_yes_no(convdta_prompt)
-
-    # TODO: 3D data not spported currently. Expect to allow Pseudo-2D data
-    # in the future
-    if info['dim'] > 2:
-        raise errors.MoreThanTwoDimError()
-
-    p = get_parameters(info)
+    get_parameters(info)
     for k, v in zip(p.keys(), p.values()):
         info[k] = v
     info['binfmt'] = get_binary_format(info)

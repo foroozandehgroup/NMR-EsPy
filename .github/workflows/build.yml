@@ -2,21 +2,21 @@ name: build
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
-      - name: checkout develop branch
+      - name: checkout master branch
         uses: actions/checkout@v2
         with:
-          ref: develop
-          path: develop
+          ref: master
+          path: master
 
       - name: Set up python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -26,19 +26,19 @@ jobs:
       - name: install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r develop/venv_requirements.txt
-          python -m pip install develop/
+          python -m pip install -r master/venv_requirements.txt
+          python -m pip install master/
 
       - name: lint with flake8
         run: |
           # Ignore star imports (F403/5),
           # indents before/after binary operators (W503/4),
           # invalid escape charaters (W605).
-          flake8 develop/examples/**/*.py develop/nmrespy/**/*.py develop/tests/*.py develop/setup.py --ignore F403,F405,W503,W504,W605 --per-file-ignores="develop/nmrespy/__init__.py:F401,develop/nmrespy/load/__init__.py:F401,develop/setup.py:F821"
+          flake8 master/examples/**/*.py master/nmrespy/**/*.py master/tests/*.py master/setup.py --ignore F403,F405,W503,W504,W605 --per-file-ignores="master/nmrespy/__init__.py:F401,master/nmrespy/load/__init__.py:F401,master/setup.py:F821"
 
       - name: test with pytest
         run: |
-          cd develop/tests/
+          cd master/tests/
           sed -i 's/VIEW_PEAKS = True/VIEW_PEAKS = False/g' test_plot.py
           sed -i 's/VIEW_RESULT_PLOTS = True/VIEW_RESULT_PLOTS = False/g' test_plot.py
           sed -i 's/VIEW_DATA = True/VIEW_DATA = False/g' test_estimator.py

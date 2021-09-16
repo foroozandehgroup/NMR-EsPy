@@ -2,7 +2,7 @@ name: publish-docs
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ master ]
 
 jobs:
   pubdocs:
@@ -12,8 +12,8 @@ jobs:
       - name: checkout nmrespy
         uses: actions/checkout@v2
         with:
-          ref: develop
-          path: develop
+          ref: master
+          path: master
 
       - name: setup python3.9
         uses: actions/setup-python@v2
@@ -34,7 +34,7 @@ jobs:
       - name: install nmrespy dependencies and sphinx and build docs
         run: |
           python -m pip install --upgrade pip
-          cd develop/
+          cd master/
           python -m pip install -r requirements.txt
           cd docs/
           python -m pip install -r requirements.txt
@@ -44,7 +44,7 @@ jobs:
 
       - name: complie with XeLaTeX
         run: |
-          cd develop/docs/latex/
+          cd master/docs/latex/
           xelatex nmr-espy.tex
           xelatex nmr-espy.tex
 
@@ -57,7 +57,7 @@ jobs:
       - name: update gh-pages
         run: |
           cd gh-pages
-          cp -r ../develop/docs/html/* ../develop/docs/latex/nmr-espy.pdf .
+          cp -r ../master/docs/html/* ../master/docs/latex/nmr-espy.pdf .
           touch .nojekyll
           git config --local user.name "GitHub Actions"
           git config --local user.email "<>"
