@@ -14,7 +14,6 @@ import nmrespy._errors as errors
 from nmrespy._misc import get_yes_no
 
 
-
 class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
     def __init__(self, directory: str) -> None:
         super().__init__(directory)
@@ -123,7 +122,7 @@ def load_bruker(
     TopSpin, and enter `convdta` in the bottom-left command line. You will be
     prompted to enter a value for the new data directory. It is this value you
     should use in `directory`, not the one corresponding to the original
-    (uncorrected) signal. 
+    (uncorrected) signal.
 
     **For Development**
 
@@ -146,7 +145,7 @@ def load_bruker(
         Prior to dealing with the data in NMR-EsPy, you should call the
         `CONVDTA` command on the dataset. If this has already been done, feel
         free to proceed. If not, quit the program.
-        Continue? 
+        Continue?
         Enter [y] or [n]
         y
         >>> data.shape
@@ -161,11 +160,11 @@ def load_bruker(
         ('1H',)
         >>> for key in expinfo.parameters.keys():
         ...     print(key)
-        ... 
+        ...
         acqus
         >>> for key, value in expinfo.parameters['acqus'].items():
         ...     print(f'{key} --> {value}')
-        ... 
+        ...
         ACQT0 --> -2.26890760309556
         AMP --> [100, 100, 100, 100, 100, 100, 100, 100, 100, 100,
                  100, 100, 100, 100, 100, 100, 100, 100, 100, 100,
