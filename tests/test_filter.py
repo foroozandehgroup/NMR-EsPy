@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
+from context import nmrespy
 from nmrespy import ExpInfo, mpm, sig, freqfilter as ff
 
 

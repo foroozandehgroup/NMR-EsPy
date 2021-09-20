@@ -1,7 +1,7 @@
 from pathlib import Path
 import pytest
 import subprocess
-
+from context import nmrespy
 from nmrespy import write as nwrite
 from nmrespy import _cols as cols
 

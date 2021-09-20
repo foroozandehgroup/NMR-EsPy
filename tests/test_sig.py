@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 from scipy.signal import argrelextrema
-
+from context import nmrespy
 from nmrespy import ExpInfo, sig
 
 
@@ -249,11 +249,11 @@ def test_phase():
     # TODO: 2D
 
 
-def test_maunal_phase():
-    if MANUAL_PHASE:
-        spectrum = sig.ft(simple_fid())
-        p0, p1 = sig.manual_phase_spectrum(spectrum)
-        sig.phase(spectrum, [p0], [p1])
+# def test_maunal_phase():
+#     if MANUAL_PHASE:
+#         spectrum = sig.ft(simple_fid())
+#         p0, p1 = sig.manual_phase_spectrum(spectrum)
+#         sig.phase(spectrum, [p0], [p1])
 
 
 def test_oscillator_integral():

@@ -16,15 +16,18 @@ import tempfile
 import numpy as np
 import scipy.linalg as slinalg
 
-from nmrespy import *
+from nmrespy import (RED, ORA, GRE, END, USE_COLORAMA, NMRESPYPATH,
+                     NMRESPYLOGOPATH, MFLOGOPATH, DOCSLINK, GITHUBLINK,
+                     GITHUBLOGOPATH, MFGROUPLINK, BOOKICONPATH, MAILTOLINK,
+                     EMAILICONPATH)
+from nmrespy import _errors, _misc
+
 if USE_COLORAMA:
     import colorama
     colorama.init()
-from nmrespy._errors import *
-from nmrespy._misc import ArgumentChecker, significant_figures, get_yes_no
 
 
-def raise_error(exception, msg, kill_on_error):
+def _raise_error(exception: Exception, msg, kill_on_error):
     if kill_on_error:
         raise exception(msg)
     else:
@@ -60,7 +63,7 @@ def _ask_overwrite(path, force):
         f'{ORA}The file {str(path)} already exists. Overwrite?\n'
         f'Enter [y] or [n]:{END}'
     )
-    return get_yes_no(prompt)
+    return _misc.get_yes_no(prompt)
 
 
 def write_result(
@@ -212,7 +215,7 @@ def write_result(
         msg = f'{RED}`parameters` should be a numpy array{END}'
         return raise_error(TypeError, msg, kill_on_error)
 
-    checker = ArgumentChecker(dim=dim)
+    checker = _misc.ArgumentChecker(dim=dim)
     checker.stage(
         (parameters, 'parameters', 'parameter'),
         (path, 'path', 'str'),
@@ -507,11 +510,11 @@ def _write_pdf(
     except subprocess.CalledProcessError:
         # pdflatex came across an error
         shutil.move(tex_tmp_path, tex_final_path)
-        raise LaTeXFailedError(tex_final_path)
+        raise _errors.LaTeXFailedError(tex_final_path)
 
     except FileNotFoundError:
         # Most probably, pdflatex does not exist
-        raise LaTeXFailedError(tex_final_path)
+        raise _errors.LaTeXFailedError(tex_final_path)
 
     # Remove other LaTeX files
     os.remove(tex_tmp_path.with_suffix('.out'))
@@ -795,7 +798,7 @@ def _strval(value, sig_figs, sci_lims, fmt):
 
     # Set to correct number of significant figures
     if isinstance(sig_figs, int):
-        value = significant_figures(value, sig_figs)
+        value = _misc.significant_figures(value, sig_figs)
     # Determine whether to express the value in scientific notation or not
     return _scientific_notation(value, sci_lims, fmt)
 

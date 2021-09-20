@@ -1,4 +1,5 @@
 import numpy as np
+from context import nmrespy
 from nmrespy import ExpInfo
 from nmrespy.nlp.nlp import NonlinearProgramming
 from nmrespy.sig import make_fid

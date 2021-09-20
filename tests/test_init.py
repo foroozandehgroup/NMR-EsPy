@@ -1,6 +1,7 @@
 """Test :py:mod:`nmrespy.__init__`."""
 
 import pytest
+from context import nmrespy
 from nmrespy import ExpInfo, RED, END
 
 
