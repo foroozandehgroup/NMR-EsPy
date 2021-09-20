@@ -443,7 +443,10 @@ class FrequencyConverter:
                 f'{RED}WARNING tried to convert to/from ppm, when sfo'
                 f' has not been specified!{END}'
             )
-        sfo = self.sfo[dim]
+        elif self.sfo is None:
+            pass
+        else:
+            sfo = self.sfo[dim]
 
         if conversion == 'idx->hz':
             return off + sw * (0.5 - (float(value) / (pts - 1)))

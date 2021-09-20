@@ -8,9 +8,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from nmrespy._misc import FrequencyConverter
-from nmrespy import _cols as cols, plot as nplot, sig
-
+from context import nmrespy
+from nmrespy import RED, END, ExpInfo, plot as nplot, sig, _misc
 
 VIEW_PEAKS = True
 VIEW_RESULT_PLOTS = True
@@ -44,7 +43,6 @@ def make_stylesheet(path):
 def test_extract_rc():
     styledir = Path(mpl.__file__).resolve().parent / "mpl-data/stylelib"
     files = [f for f in styledir.iterdir()]
-
     # Ensure _extract_rc works when you provide a stylesheet name
     # as well as a path to a stylesheet, and ensure the results are
     # identical
@@ -127,9 +125,9 @@ def test_configure_oscillator_colors():
         )
 
     assert str(exc_info.value) == \
-        (f'{cols.R}The following entries in `oscillator_colors` could '
+        (f'{RED}The following entries in `oscillator_colors` could '
          'not be recognised as valid colours in matplotlib:\n'
-         f'--> \'blah\'\n--> (1.2, 0.6, 0.4){cols.END}')
+         f'--> \'blah\'\n--> (1.2, 0.6, 0.4){END}')
 
 
 def test_get_region_slice():
@@ -138,18 +136,17 @@ def test_get_region_slice():
     hz_result = slice(1, 4, None),
     region_ppm = [[0.05, -0.15]]
     ppm_result = slice(4, 7, None),
-    n = [10]
-    sw = [9.]
-    offset = [0.]
-    sfo = [10.]
+    expinfo = ExpInfo(pts=10, sw=9., offset=0., sfo=10.)
 
-    assert nplot._get_region_slice('hz', region_hz, n, sw, offset, sfo) == \
+    assert nplot._get_region_slice('hz', region_hz, expinfo) == \
            hz_result
-    assert nplot._get_region_slice('hz', region_hz, n, sw, offset, None) == \
+    expinfo._sfo = None
+    assert nplot._get_region_slice('hz', region_hz, expinfo) == \
            hz_result
-    assert nplot._get_region_slice('ppm', region_ppm, n, sw, offset, sfo) == \
+    expinfo._sfo = (10.,)
+    assert nplot._get_region_slice('ppm', region_ppm, expinfo) == \
            ppm_result
-    assert nplot._get_region_slice('hz', None, n, sw, offset, sfo) == \
+    assert nplot._get_region_slice('hz', None, expinfo) == \
            (slice(0, 10, None),)
 
     # 2D example
@@ -157,18 +154,19 @@ def test_get_region_slice():
     hz_result = (slice(2, 7, None), slice(3, 6, None))
     region_ppm = [[0.2, -0.15], [0.15, -0.15]]
     ppm_result = (slice(5, 14, None), slice(5, 9, None))
-    n = [20, 10]
-    sw = [9., 9.]
-    offset = [0., 2.]
-    sfo = [10., 10.]
+    expinfo = ExpInfo(
+        pts=[20, 10], sw=[9., 9.], offset=[0., 2.], sfo=[10., 10.]
+    )
 
-    assert nplot._get_region_slice('hz', region_hz, n, sw, offset, sfo) == \
+    assert nplot._get_region_slice('hz', region_hz, expinfo) == \
            hz_result
-    assert nplot._get_region_slice('hz', region_hz, n, sw, offset, None) == \
+    expinfo._sfo = None
+    assert nplot._get_region_slice('hz', region_hz, expinfo) == \
            hz_result
-    assert nplot._get_region_slice('ppm', region_ppm, n, sw, offset, sfo) == \
+    expinfo._sfo = (10., 10.)
+    assert nplot._get_region_slice('ppm', region_ppm, expinfo) == \
            ppm_result
-    assert nplot._get_region_slice('hz', None, n, sw, offset, sfo) == \
+    assert nplot._get_region_slice('hz', None, expinfo) == \
            (slice(0, 20, None), slice(0, 10, None))
 
 
@@ -181,35 +179,30 @@ class Stuff:
             [3, 0, 1150, 50],
             [1, 0, 1200, 50]
         ])
-        self.n = [4096]
-        self.sw = [5000.]
-        self.offset = [0.]
-        self.sfo = [500.]
+        pts = 4096
+        sw = 5000.
+        offset = 0.
+        sfo = 500.
+        self.expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
         self.region_hz = [[1400., 800.]]
-        self.converter = FrequencyConverter(
-            self.n, self.sw, self.offset, self.sfo,
-        )
+        self.converter = _misc.FrequencyConverter(self.expinfo)
 
     def unpack(self):
         return (
             self.params,
-            self.n,
-            self.sw,
-            self.offset,
-            self.sfo,
+            self.expinfo,
             self.region_hz,
             self.converter,
         )
 
 
 def test_generate_peaks():
-    result, n, sw, offset, sfo, region_hz, converter = Stuff().unpack()
-    region_idx = converter.convert(region_hz, 'hz->idx')
-    slice_ = (slice(region_idx[0][0], region_idx[0][1] + 1, None),)
-    peaks = nplot._generate_peaks(result, n, sw, offset, slice_)
+    result, expinfo, region_hz, _ = Stuff().unpack()
+    slce = nplot._get_region_slice('hz', region_hz, expinfo)
+    peaks = nplot._generate_peaks(result, slce, expinfo)
 
     if VIEW_PEAKS:
-        shifts = sig.get_shifts(n, sw, offset=offset)[0][slice_]
+        shifts = sig.get_shifts(expinfo)[0][slce]
         fig, ax = plt.subplots()
         _ = [ax.plot(shifts, peak) for peak in peaks]
         ax.set_xlim(reversed(ax.get_xlim()))
@@ -220,8 +213,8 @@ def test_generate_peaks():
 
 
 def test_plot_result():
-    result, n, sw, offset, sfo, region_hz, converter = Stuff().unpack()
-    data = sig.make_fid(result, n, sw, offset, snr=30.)[0]
+    result, expinfo, region_hz, converter = Stuff().unpack()
+    data = sig.make_fid(result, expinfo, snr=30.)[0]
     region_ppm = converter.convert(region_hz, 'hz->ppm')
 
     kwargss = [
@@ -231,7 +224,6 @@ def test_plot_result():
         {'region': region_ppm, 'residual_shift': -100., 'plot_model': True,
          'model_shift': 100.},
         {'region': region_hz, 'shifts_unit': 'hz'},
-        {'region': region_ppm, 'nucleus': ['1H']},
         {'region': region_ppm, 'data_color': '#ff0000',
          'residual_color': '#00ff00', 'model_color': '#0000ff',
          'plot_model': True},
@@ -247,7 +239,6 @@ def test_plot_result():
         'Residual hidden, Model shown',
         'Residual shift -100, Model shift +100',
         'Region in Hz',
-        'Nucleus 1H',
         'Data colour R, Residual colour G, Model colour B',
         'Oscillator colours cycle through R, G, B',
         'No labels',
@@ -255,9 +246,7 @@ def test_plot_result():
     ]
 
     for kwargs, title in zip(kwargss, titles):
-        plot = nplot.plot_result(
-            data, result, sw, offset, sfo=sfo, **kwargs
-        )
+        plot = nplot.plot_result(data, result, expinfo, **kwargs)
 
         if VIEW_RESULT_PLOTS:
             plot.ax.set_title(title)

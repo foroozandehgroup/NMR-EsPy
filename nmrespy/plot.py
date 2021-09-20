@@ -4,11 +4,10 @@
 
 """Support for plotting estimation results"""
 
-from collections.abc import Iterable
 from pathlib import Path
 import re
 import tempfile
-from typing import Any, List, Union
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.cm as cm
@@ -17,9 +16,8 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
-from nmrespy import RED, END, ORA, USE_COLORAMA, NMRESPYPATH
-from nmrespy._errors import (InvalidUnitError, MoreThanTwoDimError,
-                             TwoDimUnsupportedError)
+from nmrespy import RED, END, ORA, USE_COLORAMA, NMRESPYPATH, ExpInfo
+import nmrespy._errors as errors
 from nmrespy._misc import ArgumentChecker, FrequencyConverter, latex_nucleus
 from nmrespy import sig
 
@@ -66,9 +64,9 @@ def _configure_oscillator_colors(oscillator_colors: Any, m: int) -> str:
 
     Returns
     -------
-    color_text
-        A string of hexadecimal colors, each separated by ``, `` if
-        ``oscillator_colors`` is a valid input, otherwise ``None``.
+    color_list
+        A list of hexadecimal colors, if  ``oscillator_colors`` is a valid
+        input, otherwise ``None``.
 
     Raises
     ------
@@ -89,11 +87,11 @@ def _configure_oscillator_colors(oscillator_colors: Any, m: int) -> str:
         oscillator_colors = [oscillator_colors]
 
     try:
-        osc_cols = [_to_hex(c) for c in oscillator_colors]
+        color_list = [_to_hex(c) for c in oscillator_colors]
     except TypeError:
         raise TypeError(f'{RED}`oscillator_colors` has an invalid type.{END}')
 
-    nones = [i for i, c in enumerate(osc_cols) if c is None]
+    nones = [i for i, c in enumerate(color_list) if c is None]
     if nones:
         msg = (
             f'{RED}The following entries in `oscillator_colors` could '
@@ -103,7 +101,7 @@ def _configure_oscillator_colors(oscillator_colors: Any, m: int) -> str:
         )
         raise ValueError(msg)
 
-    return ', '.join([f'\'{c}\'' for c in osc_cols])
+    return color_list
 
 
 def _get_rc_from_file(path: Path) -> Union[str, None]:
@@ -134,7 +132,27 @@ def _get_rc_from_file(path: Path) -> Union[str, None]:
         return None
 
 
-def _extract_rc(stylesheet: Union[ ):
+def _extract_rc(stylesheet: Union[Path, None]) -> str:
+    """Extract matplotlib rc from ``stylesheet``.
+
+    Parameters
+    ----------
+    stylesheet
+        Specification of the stylesheet. Both the stylesheet as a complete
+        path, and in the form
+        ``matplotlib/mpl-data/stylelib/{stylesheet}.mplstyle`` are tested.
+        If given ``None``, then the default nmrespy stylesheet will be used.
+
+    Returns
+    -------
+    rc: str
+        The rc found within the specified stylesheet.
+
+    Raises
+    ------
+    ValueError
+        If an appropriate file could not be found.
+    """
     # Default style sheet if one isn't explicitly given
     if stylesheet is None:
         stylesheet = NMRESPYPATH / 'config/nmrespy_custom.mplstyle'
@@ -162,72 +180,259 @@ def _extract_rc(stylesheet: Union[ ):
     )
 
 
-def _create_rc(stylesheet, oscillator_colors, m):
+def _create_rc(stylesheet: Union[Path, None], oscillator_colors: Any,
+               m: int) -> str:
+    """Construct rc for the result plot.
+
+    The folowing things are done:
+
+    * The rc is extracted based on ``stylesheet``.
+    * The oscillator colors are processed nased on ``oscillator_colors`` and
+      ``m``.
+    * The ``axes.prop_cycle`` parameter is overwritten from the rc, if it
+      exists.
+    * A new ``axes.prop_cycle`` parameter is appended to the rc based on the
+      specified oscillator colors.
+
+    Parameters
+    ----------
+    stylesheet
+        Specification of stylesheet to extract the rc from.
+
+    oscillator_colors
+        Specification of how to color oscillator peaks.
+
+    m
+        Number of oscillators. This is only required in the case that the
+        user has specified a matplotlib stylesheet.
+
+    Returns
+    -------
+    rc
+        Parameter specification.
+
+    Raises
+    ------
+    ValueError
+        If ``stylesheet`` or ``oscillator_colors`` are invalid arguments.
+        See :py:func:`_configure_oscillator_colors` and
+        :py:func:`_extract_rc` for more details.
+
+    TypeError
+        If ``oscillator_colors`` is an invalid type.
+    """
     rc = _extract_rc(stylesheet)
     osc_cols = _configure_oscillator_colors(oscillator_colors, m)
-    # Overwrite the line containing axes.prop_cycle
-    rc = '\n'.join(
-        filter(lambda ln: 'axes.prop_cycle' not in ln, rc.split('\n'))
-    ) + f'\naxes.prop_cycle: cycler(\'color\', [{col_txt}])\n'
+    rc = _update_prop_cycle(rc, osc_cols)
     # Seem to be getting bugs when using stylesheet with any hex colours
     # that have a # in front. Remove these.
-    rc = re.sub(r'#([0-9a-fA-F]{6})', r'\1', rc)
-    return rc
+    return re.sub(r'#([0-9a-fA-F]{6})', r'\1', rc)
 
 
-def _create_stylesheet(rc):
-    # Temporary path to save stylesheet to
+def _update_prop_cycle(rc: str, osc_cols: List) -> str:
+    """Overwrite color cycle in rc.
+
+    Parameters
+    ----------
+    rc
+        Rc.
+
+    osc_cols
+        List of colors to make up the color cycle.
+
+    Returns
+    -------
+    new_rc
+        Overwritten rc.
+    """
+    lines = rc.split('\n')
+    lines = list(filter(lambda ln: 'axes.prop_cycle' not in ln, lines))
+    color_strs = [f'\'{col}\'' for col in osc_cols]
+    lines.append(
+        f"axes.prop_cycle: cycler(\'color\', [{', '.join(color_strs)}])"
+    )
+    return '\n'.join(lines)
+
+
+def _create_stylesheet(rc: str) -> Path:
+    """Create a temportary stylesheet.
+
+    Parameters
+    ----------
+    rc
+        Content to insert into stylesheet.
+
+    Returns
+    -------
+    path: pathlib.Path
+        The path to the stylesheet.
+    """
     tmp_path = Path(tempfile.gettempdir()).resolve() / 'stylesheet.mplstyle'
     with open(tmp_path, 'w') as fh:
         fh.write(rc)
     return tmp_path
 
 
-def _configure_shifts_unit(shifts_unit, sfo):
+def _configure_shifts_unit(shifts_unit: str, expinfo: ExpInfo):
+    """Dermine the unit to set chemical shifts as.
+
+    Parameters
+    ----------
+    shifts_unit
+        The shift unit specification.
+
+    expinfo
+        Experiment information.
+
+    Returns
+    -------
+    ud_shifts_unit: str
+        Configured shifts unit.
+
+    Raises
+    ------
+    InvalidUnitError
+        If ``shifts_unit`` is not ``'hz'`` or ``'ppm'``.
+    """
     if shifts_unit not in ['hz', 'ppm']:
-        raise InvalidUnitError('hz', 'ppm')
-    if shifts_unit == 'ppm' and sfo is None:
+        raise errors.InvalidUnitError('hz', 'ppm')
+    # If user specifies ppm, but sfo isn;t specified, fall back to Hz
+    if shifts_unit == 'ppm' and expinfo.sfo is None:
         shifts_unit = 'hz'
         print(
-            f'{ORA}You need to specify `sfo` if you want chemical'
+            f'{ORA}You need to specify `sfo` in `expinfo` if you want chemical'
             f' shifts in ppm! Falling back to Hz...{END}'
         )
     return shifts_unit
 
 
-def _get_region_slice(shifts_unit, region, n, sw, offset, sfo):
+def _get_region_slice(
+    shifts_unit: str, region: Union[Iterable[Tuple[float, float]], None],
+    expinfo: ExpInfo
+) -> Iterable[slice]:
+    """Determine the slice for the specified spectral region.
+
+    Parameters
+    ----------
+    shifts_unit
+        Unit the region is expressed in.
+
+    region
+        The desired region.
+
+    expinfo
+        Experiment information.
+
+    Returns
+    -------
+    region_slice: Iterable[slice]
+        Slice for the region of interest.
+    """
     if region is None:
-        return tuple(slice(0, n_, None) for n_ in n)
+        return tuple(slice(0, p, None) for p in expinfo.pts)
 
-    limits = []
-    if isinstance(sfo, Iterable):
-        for (bound, n_, sw_, offset_, sfo_) in zip(region, n, sw, offset, sfo):
-            converter = FrequencyConverter([n_], [sw_], [offset_], sfo=[sfo_])
-            bound = converter.convert([bound], f'{shifts_unit}->idx')[0]
-            limits.append([min(bound), max(bound)])
+    converter = FrequencyConverter(expinfo)
+    int_region = converter.convert(region, f'{shifts_unit}->idx')
 
-    else:
-        for (bounds, n_, sw_, offset_) in zip(region, n, sw, offset):
-            converter = FrequencyConverter([n_], [sw_], [offset_])
-            bounds = converter.convert([bounds], f'{shifts_unit}->idx')[0]
-            limits.append([min(bounds), max(bounds)])
-
-    return tuple(slice(x[0], x[1] + 1, None) for x in limits)
+    return tuple(slice(x[0], x[1] + 1, None) for x in int_region)
 
 
-def _generate_peaks(result, n, sw, offset, region_slice):
-    return [np.real(sig.ft(sig.make_fid(
-            np.expand_dims(oscillator, axis=0), n, sw, offset=offset
-            )[0]))[region_slice]
-            for oscillator in result]
+def _generate_peaks(result: np.ndarray, region_slice: Iterable[slice],
+                    expinfo: ExpInfo) -> Iterable[np.ndarray]:
+    """Create a list of peaks for inidivdual oscillators.
+
+    Parameters
+    ----------
+    result
+        Estimation result.
+
+    region_slice
+        Spectral region of interest.
+
+    expinfo
+        Experiment information.
+
+    Returns
+    -------
+    peaks: Iterable[numpy.ndarray]
+        Iterable of peaks.
+    """
+    return [
+        np.real(
+            sig.ft(
+                sig.make_fid(
+                    np.expand_dims(oscillator, axis=0), expinfo,
+                )[0]
+            )
+        )[region_slice]
+        for oscillator in result
+    ]
 
 
-def _generate_model_and_residual(peaks, spectrum):
+def _generate_model_and_residual(
+    peaks: Iterable[np.ndarray], spectrum: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Generate the model and residual of the estimation result.
+
+    Parameters
+    ----------
+    peaks
+        Iterable of individual peaks which make up the estimation model.
+
+    spectrum
+        Fourier transform of estimated data.
+
+    Returns
+    -------
+    model: np.ndarray
+        Summation of all individual peaks.
+
+    residual: np.ndarray
+        Difference between ``spectrum`` and ``model``.
+    """
     model = sum(peaks)
     return model, spectrum - model
 
 
-def _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels):
+def _plot_oscillators(
+    lines: List[mpl.lines.Line2D], labels: List[mpl.text.Text], ax: plt.Axes,
+    shifts: np.ndarray, peaks: Iterable[np.ndarray], show_labels: bool
+) -> None:
+    """Plot each oscillator peak onto the specifed axes.
+
+    Nothing is returned from this function, however ``lines`` is mutated to
+    include a collection of
+    `matplotlib.lines.Line2D
+     <https://matplotlib.org/stable/api/_as_gen/matplotlib.lines.Line2D.html>`_
+    objects. ``ax`` is also mutated to include these lines.
+
+    Parameters
+    ----------
+    lines
+        List to append line objects to.
+
+    labels
+        List to append text objects to.
+
+    ax
+        Axes to plot lines and labels onto.
+
+    shifts
+        Chemical shifts.
+
+    peaks
+        Iterable of indiivdual oscillator peaks. Note that each item in this
+        should have the same length as ``shifts``.
+
+    show_labels
+        Whether or not to show oscillator labels on the plot.
+
+    Notes
+    -----
+    If ``show_labels`` is ``False``, text objects will still be created,
+    and appended to ``labels``, but their alpha transparency will be set to
+    ``0``.
+    """
     label_alpha = int(show_labels)
     for m, peak in enumerate(peaks, start=1):
         _plot_spectrum(lines, m, ax, shifts, peak)
@@ -236,22 +441,83 @@ def _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels):
         labels[m] = ax.text(x, y, str(m), fontsize=8, alpha=label_alpha)
 
 
-def _plot_spectrum(lines, name, ax, shifts, spectrum, color=None, show=True):
+def _plot_spectrum(
+    lines: Dict[str, mpl.lines.Line2D], name: str, ax: plt.Axes,
+    shifts: np.ndarray, spectrum: np.ndarray, color: Union[str, None] = None,
+    show: bool = True
+) -> None:
+    """Plot a spectrum to axes, and append to ``lines``.
+
+    Parameters
+    ----------
+    lines
+        Dictionary of line objects already present in the plot.
+
+    name
+        Name of key of newly added line.
+
+    ax
+        Axes to plot the line on.
+
+    shifts
+        Chemical shifts.
+
+    spectrum
+        Spectrum. Should have the same length as ``shifts``.
+
+    color
+        Color of plot line. If ``None``, the line's color will be dictated
+        by ``axes.prop_color`` is the stylesheet.
+
+    show
+        Whether or not to show the line. This parameter dictates the alpha
+        transparency of the plotline (``True -> 1``, ``False -> 0``).
+    """
     lines[name] = ax.plot(shifts, spectrum, color=color, alpha=int(show))[0]
 
 
-def _process_yshift(data, yshift, scale):
+def _process_yshift(data: np.ndarray, yshift: Union[float, None],
+                    scale: Union[float, None]) -> float:
+    """Determine the extent to shift data in the y-axis.
+
+    Parameters
+    ----------
+    data
+        Data of interest.
+
+    yshift
+        Either an explicit numerical value inidcating how much to shift the
+        data, or ``None``. If ``None``, the shift is computed based on
+        ``scale`` and the maximum value in ``data``.
+
+    scale
+        Proportionality quantity to determine the shift if ``yshift`` is
+        ``None``.
+
+    Returns
+    -------
+    ud_yshift: float
+        Equivalent to ``yshift`` if ``yshift`` is a ``float``, otherwise a
+        computed value based on the maximum point in the data, and ``scale``.
+    """
     if yshift:
         return yshift
     else:
         return scale * np.max(np.absolute(data))
 
 
-def _set_axis_limits(ax, lines):
+def _set_axis_limits(ax: plt.Axes) -> None:
+    """Configure the x- and y-limits of the plot axes.
+
+    Parameters
+    ----------
+    ax
+        Axes to manipulate.
+    """
     # Flip the x-axis
     ax.set_xlim(reversed(ax.get_xlim()))
     # y-limits
-    ydatas = [ln.get_ydata() for ln in lines.values() if ln.get_alpha() != 0]
+    ydatas = [ln.get_ydata() for ln in ax.lines if ln.get_alpha() != 0]
     maxi = max([np.amax(ydata) for ydata in ydatas])
     mini = min([np.amin(ydata) for ydata in ydatas])
     vertical_span = maxi - mini
@@ -260,257 +526,29 @@ def _set_axis_limits(ax, lines):
     ax.set_ylim(bottom, top)
 
 
-def _set_xaxis_label(ax, nucleus, shifts_unit):
-    # TODO Only works for 1D data ATM
-    # Produces a label of form ¹H (Hz) or ¹³C (ppm) etc.
-    nuc = latex_nucleus(nucleus[0]) if nucleus else 'chemical shift'
-    unit = '(Hz)' if shifts_unit == 'hz' else '(ppm)'
-    ax.set_xlabel(f'{nuc} {unit}')
+def _set_xaxis_label(ax: plt.Axes, expinfo: ExpInfo, shifts_unit: str) -> None:
+    """Construct axis label for the shifts axis.
 
-
-def plot_result(
-    data, result, sw, offset, plot_residual=True, plot_model=False,
-    residual_shift=None, model_shift=None, sfo=None, shifts_unit='ppm',
-    nucleus=None, region=None, data_color='#000000', residual_color='#808080',
-    model_color='#808080', oscillator_colors=None,
-    show_labels=True, stylesheet=None,
-):
-    """
-    Produces a figure of an estimation result.
-
-    The figure consists of the original data, in the Fourier domain, along
-    with each oscillator.
+    Label will be of the form ``f'$^{mass}${symbol} ({unit})'``, where
+    ``mass`` is the isotope mass, ``symbol`` is the element symbol, and unit
+    is the frequency unit (``'hz'`` or ``'ppm'``).
 
     Parameters
     ----------
-    data : numpy.ndarray
-        Data of interest (in the time-domain).
+    ax
+        Axes to append the label to.
 
-    result : numpy.ndarray
-        Parameter estimate, of form:
+    expinfo
+        Experiment information. The nucleus is extracted from this.
 
-        * **1-dimensional data:**
-
-          .. code:: python3
-
-             parameters = numpy.array([
-                [a_1, φ_1, f_1, η_1],
-                [a_2, φ_2, f_2, η_2],
-                ...,
-                [a_m, φ_m, f_m, η_m],
-             ])
-
-        * **2-dimensional data:**
-
-          .. code:: python3
-
-             parameters = numpy.array([
-                [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
-                [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
-                ...,
-                [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
-             ])
-
-    sw : [float] or [float, float]
-        Sweep width in each dimension (Hz).
-
-    offset : [float] or [float, float]
-        Transmitter offset in each dimension (Hz).
-
-    sfo : [float, [float, float] or None, default: None
-        Transmitter frequency in each dimnesion (MHz). Needed to plot the
-        chemical shift axis in ppm. If `None`, chemical shifts will be plotted
-        in Hz.
-
-    shifts_unit : {'ppm', 'hz'}, default: 'ppm'
-        Units to display chemical shifts in. If this is set to `'ppm'` but
-        `sfo` is not specified, it will revert to `'hz'`.
-
-    nucleus : [str], [str, str] or None, default: None
-        The nucleus in each dimension.
-
-    region : [[int, int]], [[float, float]], [[int, int], [int, int]] or \
-    [[float, float], [float, float]]
-        Boundaries specifying the region to show. See also
-        :py:class:`nmrespy.freqfilter.FrequencyFilter`. **N.B. the units
-        `region` is given in should match `shifts_unit`.**
-
-    plot_residual : bool, default: True
-        If `True`, plot a difference between the FT of `data` and the FT of
-        the model generated using `result`. NB the residual is plotted
-        regardless of `plot_residual`. `plot_residual` specifies the alpha
-        transparency of the plot line (1 for `True`, 0 for `False`)
-
-    residual_shift : float or None, default: None
-        Specifies a translation of the residual plot along the y-axis. If
-        `None`, the default shift will be applied.
-
-    plot_model : bool, default: False
-        If `True`, plot the FT of the model generated using `result`.
-        NB the residual is plotted regardless of `plot_model`. `plot_model`
-        specifies the alpha transparency of the plot line (1 for `True`,
-        0 for `False`)
-
-    model_shift : float or None, default: None
-        Specifies a translation of the residual plot along the y-axis. If
-        `None`, the default shift will be applied.
-
-    data_color : matplotlib color, default: '#000000'
-        The colour used to plot the original data. Any value that is
-        recognised by matplotlib as a color is permitted. See
-        `<here https://matplotlib.org/3.1.0/tutorials/colors/\
-        colors.html>`_ for a full description of valid values.
-
-    residual_color : matplotlib color, default: '#808080'
-        The colour used to plot the residual.
-
-    model_color : matplotlib color, default: '#808080'
-        The colour used to plot the model.
-
-    oscillator_colors : {matplotlib color, matplotlib colormap name, \
-    list, numpy.ndarray, None}, default: None
-        Describes how to color individual oscillators. The following
-        is a complete list of options:
-
-        * If a valid matplotlib color is given, all oscillators will
-          be given this color.
-        * If a string corresponding to a matplotlib colormap is given,
-          the oscillators will be consecutively shaded by linear increments
-          of this colormap. For all valid colormaps, see
-          `<here https://matplotlib.org/stable/tutorials/colors/\
-          colormaps.html>`__
-        * If a list or NumPy array containing valid matplotlib colors is
-          given, these colors will be cycled.
-          For example, if ``oscillator_colors = ['r', 'g', 'b']``:
-
-          + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
-          + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
-          + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
-
-        * If `None`:
-
-          + If a stylesheet is specified, with the attribute
-            ``axes.prop_cycle`` provided, this colour cycle will be used.
-          + Otherwise, the default colouring method will be applied,
-            which involves cycling through the following colors:
-
-            - :oscblue:`#1063E0`
-            - :oscorange:`#EB9310`
-            - :oscgreen:`#2BB539`
-            - :oscred:`#D4200C`
-
-    show_labels : Bool, default: True
-        If `True`, each oscillator will be given a numerical label
-        in the plot, if `False`, the labels will be hidden.
-
-    stylesheet : str or None, default: None
-        The name of/path to a matplotlib stylesheet for further
-        customaisation of the plot. See `<here https://matplotlib.org/\
-        stable/tutorials/introductory/customizing.html>`__ for more
-        information on stylesheets.
-
-    Returns
-    -------
-    plot : :py:class:`NmrespyPlot`
-        A class instance with the following attributes:
-
-        * fig : `matplotlib.figure.Figure <https://matplotlib.org/3.3.1/\
-        api/_as_gen/matplotlib.figure.Figure.html>`_
-            The resulting figure.
-        * ax : `matplotlib.axes.Axes <https://matplotlib.org/3.3.1/api/\
-        axes_api.html#matplotlib.axes.Axes>`_
-            The resulting set of axes.
-        * lines : dict
-            A dictionary containing a series of
-            `matplotlib.lines.Line2D <https://matplotlib.org/3.3.1/\
-            api/_as_gen/matplotlib.lines.Line2D.html>`_
-            instances. The data plot is given the key `0`, and the
-            individual oscillator plots are given the keys `1`,
-            `2`, `3`, ..., `<M>` where `<M>` is the number of
-            oscillators in the parameter estimate.
-        * labels : dict
-            A dictionary containing a series of
-            of `matplotlib.text.Text <https://matplotlib.org/3.1.1/\
-            api/text_api.html#matplotlib.text.Text>`_ instances, with the
-            keys `1`, `2`, etc. The Boolean argument `labels` affects the
-            alpha transparency of the labels:
-
-            + `True` sets alpha to 1 (making the labels visible)
-            + `False` sets alpha to 0 (making the labels invisible)
+    shifts_unit
+        The units of the frequency axis (``'hz'`` or ``'ppm'``).
     """
-
-    # --- Check arguments ------------------------------------------------
-    try:
-        dim = data.ndim
-    except Exception:
-        raise TypeError(f'{RED}`data` should be a NumPy array.{END}')
-    if dim == 2:
-        raise TwoDimUnsupportedError()
-    elif dim >= 3:
-        raise MoreThanTwoDimError()
-
-    checker = ArgumentChecker(dim=dim)
-    checker.stage(
-        (data, 'data', 'ndarray'),
-        (result, 'result', 'parameter'),
-        (sw, 'sw', 'float_list'),
-        (offset, 'offset', 'float_list'),
-        (data_color, 'data_color', 'mpl_color'),
-        (residual_color, 'residual_color', 'mpl_color'),
-        (model_color, 'model_color', 'mpl_color'),
-        (show_labels, 'labels', 'bool'),
-        (plot_residual, 'plot_residual', 'bool'),
-        (plot_model, 'plot_model', 'bool'),
-        (sfo, 'sfo', 'float_list', True),
-        (nucleus, 'nucleus', 'str_list', True),
-        (region, 'region', 'region_float', True),
-        (residual_shift, 'residual_shift', 'float', True),
-        (model_shift, 'model_shift', 'float', True),
-        (oscillator_colors, 'oscillator_colors', 'osc_cols', True),
-        (stylesheet, 'stylesheet', 'str', True)
-    )
-    checker.check()
-
-    # Setup the stylesheet
-    rc = _create_rc(stylesheet, oscillator_colors, result.shape[0])
-    plt.style.use(_create_stylesheet(rc))
-
-    n = list(data.shape)
-    shifts_unit = _configure_shifts_unit(shifts_unit, sfo)
-    region_slice = _get_region_slice(shifts_unit, region, n, sw, offset, sfo)
-    # Generate data: chemical shifts, data spectrum, oscillator peaks
-    shifts = [shifts[slice_] for shifts, slice_ in
-              zip(sig.get_shifts(n, sw, offset, sfo=sfo, unit=shifts_unit),
-                  region_slice)][0]
-    # TODO should replicate that way the spectrum was created (ve for example)
-    spectrum = np.real(sig.ft(data))[region_slice]
-    peaks = _generate_peaks(result, n, sw, offset, region_slice)
-    model, residual = _generate_model_and_residual(peaks, spectrum)
-
-    # Generate figure and axis
-    fig = plt.figure()
-    ax = fig.add_axes([0.02, 0.15, 0.96, 0.83])
-    lines, labels = {}, {}
-    # Plot oscillator peaks
-    _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels)
-    # Plot data
-    _plot_spectrum(lines, 'data', ax, shifts, spectrum, color=data_color)
-    # Plot model
-    model += _process_yshift(model, model_shift, 0.1)
-    _plot_spectrum(
-        lines, 'model', ax, shifts, model, color=model_color, show=plot_model
-    )
-    # Plot residual
-    residual += _process_yshift(residual, residual_shift, -1.5)
-    _plot_spectrum(
-        lines, 'residual', ax, shifts, residual, color=residual_color,
-        show=plot_residual
-    )
-
-    _set_axis_limits(ax, lines)
-    _set_xaxis_label(ax, nucleus, shifts_unit)
-
-    return NmrespyPlot(fig, ax, lines, labels)
+    # Produces a label of form ¹H (Hz) or ¹³C (ppm) etc.
+    nuc = expinfo.nuclei
+    nuc = latex_nucleus(nuc[0]) if nuc else 'chemical shift'
+    unit = '(Hz)' if shifts_unit == 'hz' else '(ppm)'
+    ax.set_xlabel(f'{nuc} {unit}')
 
 
 # TODO: Grow this class: provide functionality for easy tweaking
@@ -671,3 +709,237 @@ class NmrespyPlot:
 
         # Set x-label
         ax.set_xlabel(self.ax.get_xlabel())
+
+
+def plot_result(
+    data: np.ndarray, result: np.ndarray, expinfo: ExpInfo, *,
+    plot_residual: bool = True, plot_model: bool = False,
+    residual_shift: Union[float, None] = None,
+    model_shift: Union[float, None] = None, shifts_unit: str = 'ppm',
+    region: Union[Iterable[Tuple[float, float]], None] = None,
+    data_color: Any = '#000000', residual_color: Any = '#808080',
+    model_color: Any = '#808080', oscillator_colors: Any = None,
+    show_labels: bool = True, stylesheet: Union[str, None] = None,
+) -> NmrespyPlot:
+    """Produce a figure of an estimation result.
+
+    The figure consists of the original data, in the Fourier domain, along
+    with each oscillator. Optionally, a plot of the complete model, and
+    the residual between the data amd the model can be plotted.
+
+    .. note::
+
+        Currently, only 1D data is supported.
+
+    Parameters
+    ----------
+    data
+        Data of interest (in the time-domain).
+
+    result
+        Parameter estimate, of form:
+
+        * **1-dimensional data:**
+
+          .. code:: python
+
+             parameters = numpy.array([
+                [a_1, φ_1, f_1, η_1],
+                [a_2, φ_2, f_2, η_2],
+                ...,
+                [a_m, φ_m, f_m, η_m],
+             ])
+
+        * **2-dimensional data:**
+
+          .. code:: python
+
+             parameters = numpy.array([
+                [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
+                [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
+                ...,
+                [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
+             ])
+
+    expinfo
+        Experiment information.
+
+    shifts_unit
+        Units to display chemical shifts in. Can be either ``'ppm'`` or
+        ``'hz'``. If this is set to ``'ppm'`` but ``sfo`` is not specified in
+        ``expinfo``, it will revert to ``'hz'``.
+
+    region
+        Boundaries specifying the region to show. **N.B. the units
+        ``region`` is given in should match ``shifts_unit``.**
+
+    plot_residual
+        If ``True``, plot a difference between the FT of ``data`` and the FT
+        of the model generated using ``result``. NB the residual is plotted
+        regardless of ``plot_residual``. ``plot_residual`` specifies the alpha
+        transparency of the plot line (1 for ``True``, 0 for ``False``)
+
+    residual_shift
+        Specifies a translation of the residual plot along the y-axis. If
+        ``None``, a default shift will be applied.
+
+    plot_model
+        If ``True``, plot the FT of the model generated using ``result``.
+        NB the residual is plotted regardless of ``plot_model``. ``plot_model``
+        specifies the alpha transparency of the plot line (1 for ``True``,
+        0 for ``False``).
+
+    model_shift
+        Specifies a translation of the residual plot along the y-axis. If
+        ``None``, a default shift will be applied.
+
+    data_color
+        The colour used to plot the original data. See `Notes` for a
+        discussion of valid colors.
+        Any value that is
+        recognised by matplotlib as a color is permitted. See
+        `<here https://matplotlib.org/3.1.0/tutorials/colors/\
+        colors.html>`_ for a full description of valid values.
+
+    residual_color
+        The colour used to plot the residual. See `Notes` for a discussion of
+        valid colors.
+
+    model_color
+        The colour used to plot the model. See `Notes` for a discussion of
+        valid colors.
+
+    oscillator_colors
+        Describes how to color individual oscillators. The following
+        is a complete list of options:
+
+        * If a valid matplotlib color is given, all oscillators will
+          be given this color.
+        * If a string corresponding to a matplotlib colormap is given,
+          the oscillators will be consecutively shaded by linear increments
+          of this colormap. For all valid colormaps, see
+          `<here https://matplotlib.org/stable/tutorials/colors/\
+          colormaps.html>`__
+        * If an iterable object containing valid matplotlib colors is
+          given, these colors will be cycled.
+          For example, if ``oscillator_colors = ['r', 'g', 'b']``:
+
+          + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
+          + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
+          + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
+
+        * If ``None``, the default colouring method will be applied, which
+          involves cycling through the following colors:
+
+            - :oscblue:`#1063E0`
+            - :oscorange:`#EB9310`
+            - :oscgreen:`#2BB539`
+            - :oscred:`#D4200C`
+
+    show_labels
+        If ``True``, each oscillator will be given a numerical label
+        in the plot, if ``False``, the labels will be hidden.
+
+    stylesheet
+        The name of/path to a matplotlib stylesheet for further
+        customaisation of the plot. See `<here https://matplotlib.org/\
+        stable/tutorials/introductory/customizing.html>`__ for more
+        information on stylesheets.
+
+    Returns
+    -------
+    plot: :py:class:`NmrespyPlot`
+        The result plot.
+
+    Notes
+    -----
+    **Valid matplotlib colors**
+
+    Any argument which can be converted to a hexadecimal RGB value by
+    matpotlib is be specified as a color. A complete list of all valid
+    color arguments can be found `here <https://matplotlib.org/stable/
+    tutorials/colors/colors.html#sphx-glr-tutorials-colors-colors-py>`_
+    """
+    if not isinstance(expinfo, ExpInfo):
+        raise TypeError(f'{RED}Check `expinfo` is valid.{END}')
+    dim = expinfo.unpack('dim')
+
+    try:
+        if dim != data.ndim:
+            raise ValueError(
+                f'{RED}The dimension of `expinfo` does not agree with the '
+                f'number of dimensions in `data`.{END}'
+            )
+        elif dim == 2:
+            raise errors.TwoDimUnsupportedError()
+        elif dim >= 3:
+            raise errors.MoreThanTwoDimError()
+    except AttributeError:
+        # data.ndim raised an attribute error
+        raise TypeError(
+            f'{RED}`data` should be a numpy array{END}'
+        )
+
+    checker = ArgumentChecker(dim=dim)
+    checker.stage(
+        (data, 'data', 'ndarray'),
+        (result, 'result', 'parameter'),
+        (data_color, 'data_color', 'mpl_color'),
+        (residual_color, 'residual_color', 'mpl_color'),
+        (model_color, 'model_color', 'mpl_color'),
+        (show_labels, 'labels', 'bool'),
+        (plot_residual, 'plot_residual', 'bool'),
+        (plot_model, 'plot_model', 'bool'),
+        (region, 'region', 'region_float', True),
+        (residual_shift, 'residual_shift', 'float', True),
+        (model_shift, 'model_shift', 'float', True),
+        (oscillator_colors, 'oscillator_colors', 'osc_cols', True),
+        (stylesheet, 'stylesheet', 'str', True)
+    )
+    checker.check()
+
+    # Setup the stylesheet
+    rc = _create_rc(stylesheet, oscillator_colors, result.shape[0])
+    stylepath = _create_stylesheet(rc)
+    plt.style.use(stylepath)
+
+    expinfo._pts = data.shape
+    shifts_unit = _configure_shifts_unit(shifts_unit, expinfo)
+    region_slice = _get_region_slice(shifts_unit, region, expinfo)
+    # Generate data: chemical shifts, data spectrum, oscillator peaks
+    shifts = [
+        shifts[slice_] for shifts, slice_ in
+        zip(
+            sig.get_shifts(expinfo, unit=shifts_unit),
+            region_slice
+        )
+    ][0]
+    # TODO should replicate that way the spectrum was created (ve for example)
+    spectrum = np.real(sig.ft(data))[region_slice]
+    peaks = _generate_peaks(result, region_slice, expinfo)
+    model, residual = _generate_model_and_residual(peaks, spectrum)
+
+    # Generate figure and axis
+    fig = plt.figure()
+    ax = fig.add_axes([0.02, 0.15, 0.96, 0.83])
+    lines, labels = {}, {}
+    # Plot oscillator peaks
+    _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels)
+    # Plot data
+    _plot_spectrum(lines, 'data', ax, shifts, spectrum, color=data_color)
+    # Plot model
+    model += _process_yshift(model, model_shift, 0.1)
+    _plot_spectrum(
+        lines, 'model', ax, shifts, model, color=model_color, show=plot_model
+    )
+    # Plot residual
+    residual += _process_yshift(residual, residual_shift, -1.5)
+    _plot_spectrum(
+        lines, 'residual', ax, shifts, residual, color=residual_color,
+        show=plot_residual
+    )
+
+    _set_axis_limits(ax)
+    _set_xaxis_label(ax, expinfo, shifts_unit)
+
+    return NmrespyPlot(fig, ax, lines, labels)
