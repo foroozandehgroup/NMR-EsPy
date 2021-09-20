@@ -127,12 +127,12 @@ class NonlinearProgramming(FrequencyConverter):
         method
             Optimisation algorithm to use. Should be ``'trust-region'`` or
             ``'lbfgs'``. These utilise
-            `scipy.optimise.minimise <https://docs.scipy.org/doc/scipy/\
+            `scipy.optimise.minimise <https://docs.scipy.org/doc/scipy/
             reference/generated/scipy.optimize.minimize.html>`_, with
-            the method either being `trust-constr <https://docs.scipy.org/doc/\
+            the method either being `trust-constr <https://docs.scipy.org/doc/
             scipy/reference/optimize.minimize-trustconstr.html\
             #optimize-minimize-trustconstr>`_, or
-            `L-BFGS-B <https://docs.scipy.org/doc/scipy/reference/\
+            `L-BFGS-B <https://docs.scipy.org/doc/scipy/reference/
             optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
         bound
@@ -142,7 +142,7 @@ class NonlinearProgramming(FrequencyConverter):
             * :math:`0 \leq a_m \leq \infty`
             * :math:`-\pi < \phi_m \leq \pi`
             * :math:`-f_{\mathrm{sw}} / 2 + f_{\mathrm{off}} \leq f_m \leq\
-            f_{\mathrm{sw}} / 2 + f_{\mathrm{off}}`
+              f_{\mathrm{sw}} / 2 + f_{\mathrm{off}}`
             * :math:`0 \leq \eta_m \leq \infty`
 
             :math:`(\forall m \in \{1, \cdots, M\})`

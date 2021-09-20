@@ -44,7 +44,7 @@ RegionIntFloatType = NewType(
 class FilterInfo:
     """Object describing filtration proceedure.
 
-    .. note:
+    .. note::
         This should not be invoked directly, but is instead created by calling
         the :py:func:`filter_spectrum` function.
 
@@ -79,7 +79,6 @@ class FilterInfo:
         _region: RegionIntType, _noise_region: RegionIntType,
         _cut_region: RegionIntType, _converter: FrequencyConverter
     ) -> None:
-        """Create an instance of :py:class:`FilterInfo`."""
         self.__dict__.update(locals())
 
     @property
@@ -360,15 +359,8 @@ def superg(region: RegionIntType, shape: Iterable[int],
 
     Returns
     -------
-    sg
+    sg: numpy.ndarray
         Super-Gaussian filter.
-
-    center
-        Index of the center of the filter in each dimension.
-
-    bw
-        Bandwidth of the filter in each dimension, in terms of the number
-        of points spanned.
     """
     # Determine center and bandwidth of super gaussian in each dimension
     center = [int((r[0] + r[1]) // 2) for r in region]
@@ -404,7 +396,7 @@ def superg_noise(spectrum: np.ndarray, noise_region: RegionIntType,
 
     Returns
     -------
-    sg_noise
+    sg_noise: numpy.ndarray
         The synthetic noise signal.
     """
     noise_slice = tuple(np.s_[n[0]:n[1] + 1] for n in noise_region)
@@ -459,8 +451,8 @@ def filter_spectrum(
 
     Returns
     -------
-    Object with various attributes relating to the filtration process.
-    See :py:class:`FilterInfo` for details.
+    filterinfo: :py:class:`FilterInfo`
+        Object with various attributes relating to the filtration process.
 
     Notes
     -----

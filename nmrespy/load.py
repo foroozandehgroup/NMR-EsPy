@@ -20,6 +20,7 @@ class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
 
     @property
     def expinfo(self) -> ExpInfo:
+        """Extract :py:class:`ExpInfo` from the dataset."""
         acqusfiles = sorted([f for f in self.valid_parameter_filenames
                              if 'acqu' in f])
         sw, offset, sfo, nuclei = [[] for _ in range(4)]
@@ -59,7 +60,7 @@ def load_bruker(
 
     expinfo: nmrespy.ExpInfo
         Experiment information of use to NMR-EsPy. As well as the normal
-        associated properties (see the :py:class:`~nmrespy.ExpInfo` docs),
+        associated properties (see the :py:class:`ExpInfo` docs),
         the ``parameters`` attribute is a ``dict`` with parameters from
         all parameter files assocaited with the dataset.
 
@@ -88,40 +89,40 @@ def load_bruker(
 
       - Raw FID
 
-        + `directory/fid`
-        + `directory/acqus`
+        + ``directory/fid``
+        + ``directory/acqus``
 
       - Processed data
 
-        + `directory/1r`
-        + `directory/../../acqus`
-        + `directory/procs`
+        + ``directory/1r``
+        + ``directory/../../acqus``
+        + ``directory/procs``
 
 
     * 2D data
 
       - Raw FID
 
-        + `directory/ser`
-        + `directory/acqus`
-        + `directory/acqu2s`
+        + ``directory/ser``
+        + ``directory/acqus``
+        + ``directory/acqu2s``
 
       - Processed data
 
-        + `directory/2rr`
-        + `directory/../../acqus`
-        + `directory/../../acqu2s`
-        + `directory/procs`
-        + `directory/proc2s`
+        + ``directory/2rr``
+        + ``directory/../../acqus``
+        + ``directory/../../acqu2s``
+        + ``directory/procs``
+        + ``directory/proc2s``
 
     **Digital Filters**
 
     If you are importing raw FID data, make sure the path
-    specified corresponds to an `fid` or `ser` file which has had its
+    specified corresponds to an ``fid`` or ``ser`` file which has had its
     group delay artefact. To do this, open the data you wish to analyse in
-    TopSpin, and enter `convdta` in the bottom-left command line. You will be
+    TopSpin, and enter ``convdta`` in the bottom-left command line. You will be
     prompted to enter a value for the new data directory. It is this value you
-    should use in `directory`, not the one corresponding to the original
+    should use in ``directory``, not the one corresponding to the original
     (uncorrected) signal.
 
     **For Development**
@@ -130,7 +131,7 @@ def load_bruker(
 
         Incorporate functionality to phase correct data to remove group delay.
         This would circumvent the need to ask the user to ensure they have
-        performed `convdta` prior to importing.
+        performed ``convdta`` prior to importing.
 
     Example
     -------

@@ -712,7 +712,7 @@ def h_2d(active: np.ndarray, *args: args_type) -> np.ndarray:
           in the active oscillators (para_act): ``0`` - amplitudes, ``1`` -
           phases, ``2`` - frequencies, ``3`` - damping factors.
         * **phase_variance:** If True, include the oscillator phase
-        variance to the cost function.
+          variance to the cost function.
 
     Returns
     -------

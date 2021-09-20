@@ -403,7 +403,7 @@ def _plot_oscillators(
     Nothing is returned from this function, however ``lines`` is mutated to
     include a collection of
     `matplotlib.lines.Line2D
-     <https://matplotlib.org/stable/api/_as_gen/matplotlib.lines.Line2D.html>`_
+    <https://matplotlib.org/stable/api/_as_gen/matplotlib.lines.Line2D.html>`_
     objects. ``ax`` is also mutated to include these lines.
 
     Parameters
