@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from pathlib import Path
 import re
 import tempfile
+from typing import Any, List, Union
 
 import matplotlib as mpl
 import matplotlib.cm as cm
@@ -16,37 +17,82 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
-from nmrespy import *
+from nmrespy import RED, END, ORA, USE_COLORAMA, NMRESPYPATH
+from nmrespy._errors import (InvalidUnitError, MoreThanTwoDimError,
+                             TwoDimUnsupportedError)
+from nmrespy._misc import ArgumentChecker, FrequencyConverter, latex_nucleus
+from nmrespy import sig
+
 if USE_COLORAMA:
     import colorama
     colorama.init()
-import nmrespy._errors as errors
-from nmrespy._misc import *
-from nmrespy import sig
 
 
-def _to_hex(color):
-    """Attempts to convert color into a hex. If an invalid RGBA argument is
-    given, None is returned, rather then an error call"""
+def _to_hex(color: Any) -> Union[str, None]:
+    r"""Attempt to convert color into a hexadecimal RGBA string.
+
+    If an invalid RGBA argument is given, ``None`` is returned.
+
+    Parameters
+    ----------
+    color
+        Object to attempt to convert to a color.
+
+    Returns
+    -------
+    hex_color: Union[str, None]
+        A string matching the regular expression ``r'^#[0-9a-f]{8}$'``, if
+        ``color`` could be converted. Otherwise, ``None``.
+    """
     try:
-        return mcolors.to_hex(color)
+        return mcolors.to_hex(color).lower()
     except ValueError:
         return None
 
 
-def _configure_oscillator_colors(oscillator_colors, m):
-    # Determine oscillator colours to use
+def _configure_oscillator_colors(oscillator_colors: Any, m: int) -> str:
+    """Attempt to convert oscillator color input into a string of hex values.
+
+    Parameters
+    ----------
+    oscillator_colors
+        Input to convert to a list of hexadecimal colors.
+
+    m
+        Number of oscillators in the result. This is used if
+        ``oscillator_colors`` is a valid
+        `mpl colormap <https://matplotlib.org/stable/gallery/color/
+        colormap_reference.html>`_, to create a list of the correct length.
+
+    Returns
+    -------
+    color_text
+        A string of hexadecimal colors, each separated by ``, `` if
+        ``oscillator_colors`` is a valid input, otherwise ``None``.
+
+    Raises
+    ------
+    TypeError
+        If ``oscillator_colors`` is not ``None``, a ``str`` or an iterable
+        object.
+
+    ValueError
+        If an iterable argument is given for `oscillator_colors`, and at least
+        one of the inputs cannot be converted to a hex color.
+    """
     if oscillator_colors is None:
         return ['#1063e0', '#eb9310', '#2bb539', '#d4200c']
-
     if oscillator_colors in plt.colormaps():
         return [_to_hex(c) for c in
                 cm.get_cmap(oscillator_colors)(np.linspace(0, 1, m))]
-
     if isinstance(oscillator_colors, str):
         oscillator_colors = [oscillator_colors]
 
-    osc_cols = [_to_hex(c) for c in oscillator_colors]
+    try:
+        osc_cols = [_to_hex(c) for c in oscillator_colors]
+    except TypeError:
+        raise TypeError(f'{RED}`oscillator_colors` has an invalid type.{END}')
+
     nones = [i for i, c in enumerate(osc_cols) if c is None]
     if nones:
         msg = (
@@ -57,10 +103,25 @@ def _configure_oscillator_colors(oscillator_colors, m):
         )
         raise ValueError(msg)
 
-    return osc_cols
+    return ', '.join([f'\'{c}\'' for c in osc_cols])
 
 
-def _get_rc_from_file(path):
+def _get_rc_from_file(path: Path) -> Union[str, None]:
+    """Extract rc object from a filepath.
+
+    If the file is not a valid matplotlib stylesheet, ``None`` is returned.
+
+    Parameters
+    ----------
+    path
+        Path to extract rc from.
+
+    Returns
+    -------
+    rc: Union[str, None]
+        The stylesheet's rc, if the sheet exists and is formatted correctly.
+        Otherwise, ``None``.
+    """
     try:
         rc = str(mpl.rc_params_from_file(
             path, fail_on_error=True, use_default_template=False
@@ -73,7 +134,7 @@ def _get_rc_from_file(path):
         return None
 
 
-def _extract_rc(stylesheet):
+def _extract_rc(stylesheet: Union[ ):
     # Default style sheet if one isn't explicitly given
     if stylesheet is None:
         stylesheet = NMRESPYPATH / 'config/nmrespy_custom.mplstyle'
@@ -104,7 +165,6 @@ def _extract_rc(stylesheet):
 def _create_rc(stylesheet, oscillator_colors, m):
     rc = _extract_rc(stylesheet)
     osc_cols = _configure_oscillator_colors(oscillator_colors, m)
-    col_txt = ', '.join([f'\'{c.lower()}\'' for c in osc_cols])
     # Overwrite the line containing axes.prop_cycle
     rc = '\n'.join(
         filter(lambda ln: 'axes.prop_cycle' not in ln, rc.split('\n'))
@@ -125,7 +185,7 @@ def _create_stylesheet(rc):
 
 def _configure_shifts_unit(shifts_unit, sfo):
     if shifts_unit not in ['hz', 'ppm']:
-        raise errors.InvalidUnitError('hz', 'ppm')
+        raise InvalidUnitError('hz', 'ppm')
     if shifts_unit == 'ppm' and sfo is None:
         shifts_unit = 'hz'
         print(
