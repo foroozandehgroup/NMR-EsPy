@@ -9,7 +9,7 @@ version can be installed using:
 
    $ python3 -m pip install nmrespy
 
-You need to be using Python 3.9 or above.
+You need to be using Python 3.6 or above.
 
 Python Packages
 ---------------
@@ -17,9 +17,9 @@ Python Packages
 +----------------------------------------------------------+------------+---------------------------------------+
 | Package                                                  | Version    | Details                               |
 +==========================================================+============+=======================================+
-| `Numpy <https://numpy.org/>`_                            | 1.20+      | Ubiquitous                            |
+| `Numpy <https://numpy.org/>`_                            | 1.19+      | Ubiquitous                            |
 +----------------------------------------------------------+------------+---------------------------------------+
-| `Scipy <https://www.scipy.org/>`_                        | 1.6+       | Ubiquitous                            |
+| `Scipy <https://www.scipy.org/>`_                        | 1.5+       | Ubiquitous                            |
 +----------------------------------------------------------+------------+---------------------------------------+
 | `Matplotlib <https://matplotlib.org/stable/index.html>`_ | 3.3+       | Required for result plotting, and for |
 |                                                          |            | manual phase-correction               |

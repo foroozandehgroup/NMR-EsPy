@@ -12,10 +12,10 @@
 #
 import os
 import sys
-import nmrespy
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.append(os.path.abspath('exts'))
-
+import nmrespy
+import sphinx_nameko_theme
 
 # -- Project information -----------------------------------------------------
 project = 'NMR-EsPy'
@@ -36,7 +36,6 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
-    'sphinx_autodoc_typehints',
     'sphinx.ext.viewcode',
     'sphinx_selective_exclude.eager_only',
 ]
@@ -60,9 +59,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 
-html_theme = "bizstyle"
-
+html_theme = "nameko"
+html_theme_path = [sphinx_nameko_theme.get_html_theme_path()]
 html_scaled_image_link = False
+
 
 # otherwise, readthedocs.org uses their theme by default, so no need to
 # specify it

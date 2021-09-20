@@ -2,8 +2,7 @@
 docs/_templates
 docs/_static
 docs/Makefile
-docs/html
-docs/latex
+docs/_build
 .venv
 build
 dist

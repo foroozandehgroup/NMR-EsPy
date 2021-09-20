@@ -1,9 +1,0 @@
-#!/bin/bash
-if [ "$HOSTNAME" = "precision" ] ; then
-	NMRESPYDIR=/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy
-elif [ "$HOSTNAME" = "belladonna.chem.ox.ac.uk" ] ; then
-	NMRESPYDIR=/u/mf/jesu2901/Documents/DPhil/projects/spectral_estimation/NMR-EsPy
-fi
-
-SITEPACKS="${NMRESPYDIR}/.venv/lib/python3.6/site-packages/"
-cp -r "${NMRESPYDIR}/nmrespy" $SITEPACKS
