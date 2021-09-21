@@ -27,38 +27,68 @@ if USE_COLORAMA:
     colorama.init()
 
 
-def _raise_error(exception: Exception, msg, kill_on_error):
+# TODO
+def _raise_error(exception, msg, kill_on_error):
     if kill_on_error:
         raise exception(msg)
     else:
         return None
 
-
-def _configure_save_path(path, fmt, force_overwrite):
-    path = Path(path).resolve()
+def _append_suffix(path: Path, fmt: str) -> Path:
     if not path.suffix == f'.{fmt}':
         path = path.with_suffix(f'.{fmt}')
+    return path
 
+
+def _configure_save_path(
+    path: str, fmt: str, force_overwrite: bool
+) -> Union[Path, None]:
+    """Determine the path to save the file to.
+
+    Parameters
+    ----------
+    path
+        Path given by the user, to be processed.
+
+    fmt
+        File format specified. Will be one of ``'txt'``, ``'pdf'``, ``'csv'``.
+
+    force_overwrite
+        Whether or not to ask the user if they are happy overwriting the
+        file if it already exists.
+
+    Returns
+    -------
+    path: Union[pathlib.Path, None]
+        The path to the result file, or ``None``, if the path given already
+        exists, and the user has specified not to overwrite.
+
+    Raises
+    ------
+    ValueError
+        If the directory implied by ``path`` does not exist.
+    """
+    path = _append_suffix(Path(path).resolve(), fmt)
     if path.is_file():
         response = _ask_overwrite(path, force_overwrite)
         if not response:
-            msg = (f'{RED}Overwrite of file {path} denied. Result file '
-                   f'will not be written.{END}')
-            return False, msg
-        return True, path
+            print(f'{RED}Overwrite of file {path} denied. File will not be '
+                  f'overwritten.{END}')
+            return None
+        return path
 
     if not path.parent.is_dir():
         msg = (f'{RED}The directory specified by `path` does not '
                f'exist:\n{path.parent}{END}')
-        return False, msg
+        raise _errors.ValueError(msg)
 
-    return True, path
+    return path
 
 
-def _ask_overwrite(path, force):
+def _ask_overwrite(path: Path, force: bool) -> bool:
+    """Determine whether the user is happy to overwrite an existing file."""
     if force:
         return True
-
     prompt = (
         f'{ORA}The file {str(path)} already exists. Overwrite?\n'
         f'Enter [y] or [n]:{END}'
