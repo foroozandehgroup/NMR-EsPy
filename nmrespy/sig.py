@@ -1081,7 +1081,7 @@ def oscillator_integral(
     )
     integral = np.absolute(integral) if abs_ else integral
 
-    for axis in range(integral.ndim):
+    for axis in reversed(range(integral.ndim)):
         integral = integrate.simps(integral, axis=axis)
 
     return integral

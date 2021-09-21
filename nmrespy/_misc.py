@@ -610,22 +610,3 @@ def latex_nucleus(nucleus: str) -> str:
             f'{RED}`nucleus` is invalid. Should match the regex '
             f'\\d+[a-zA-Z]+{END}'
         )
-
-
-def significant_figures(value: float, s: int) -> Union[int, float]:
-    """Round a value to a certain number of significant figures.
-
-    Parameters
-    ----------
-    value
-        Value to round.
-
-    s
-        Significant figures.
-    """
-    if value != 0:
-        value = round(value, s - int(np.floor(np.log10(abs(value)))) - 1)
-        # If value of form 123456.0, convert to 123456
-        if float(value).is_integer():
-            value = int(value)
-    return value
