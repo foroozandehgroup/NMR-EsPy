@@ -4,36 +4,19 @@
 
 """Writing estimation results to .txt, .pdf and .csv files"""
 
-import csv
-import datetime
-import os
+from collections import deque
 from pathlib import Path
 import re
-import shutil
-import subprocess
-import tempfile
-from typing import Callable, Iterable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
 
-from nmrespy import (RED, ORA, GRE, END, ExpInfo, USE_COLORAMA, NMRESPYPATH,
-                     NMRESPYLOGOPATH, MFLOGOPATH, DOCSLINK, GITHUBLINK,
-                     GITHUBLOGOPATH, MFGROUPLINK, BOOKICONPATH, MAILTOLINK,
-                     EMAILICONPATH)
-from nmrespy import _errors, _misc, sig
-
+from nmrespy import RED, ORA, END, ExpInfo, USE_COLORAMA, _misc, sig
+from . import textfile, pdffile, csvfile
 if USE_COLORAMA:
     import colorama
     colorama.init()
-
-
-# TODO
-def _raise_error(exception, msg, kill_on_error):
-    if kill_on_error:
-        raise exception(msg)
-    else:
-        return None
 
 
 def _append_suffix(path: Path, fmt: str) -> Path:
@@ -82,7 +65,7 @@ def _configure_save_path(
     if not path.parent.is_dir():
         msg = (f'{RED}The directory specified by `path` does not '
                f'exist:\n{path.parent}{END}')
-        raise _errors.ValueError(msg)
+        raise ValueError(msg)
 
     return path
 
@@ -99,8 +82,8 @@ def _ask_overwrite(path: Path, force: bool) -> bool:
 
 
 def write_result(
-    expinfo: ExpInfo, params: np.ndarray, *,
-    errors: Union[np.ndarray, None] = None, path: str = './nmrespy_result',
+    expinfo: ExpInfo, params: np.ndarray,
+    errors: Union[np.ndarray, None] = None, *, path: str = './nmrespy_result',
     fmt: str = 'txt', description: Union[str, None] = None,
     sig_figs: Union[int, None] = 5,
     sci_lims: Union[Tuple[int, int], None] = (-2, 3),
@@ -219,7 +202,7 @@ def write_result(
     """
     if not isinstance(expinfo, ExpInfo):
         raise TypeError(f'{RED}Check `expinfo` is valid.{END}')
-        dim = expinfo.unpack('dim')
+    dim = expinfo.unpack('dim')
 
     try:
         if dim != int(params.shape[1] / 2) - 1:
@@ -262,29 +245,40 @@ def write_result(
     def fmtval(value):
         return _format_value(value, sig_figs, sci_lims, fmt)
 
-    param_table = _construct_paramtable(params, errors, fmtval)
+    param_table = _construct_paramtable(params, errors, expinfo, fmt, fmtval)
     info_table = _construct_infotable(expinfo)
 
-    # --- Write to the specified file type -------------------------------
     if fmt == 'txt':
-        textfile.write_txt(
-            path, description, info_table, param_table, fprint
+        textfile.write(
+            path, param_table, info_table, description, fprint
         )
     elif fmt == 'pdf':
-        _write_pdf(
-            path, description, info_headings, info, param_titles, param_table,
-            pdflatex_exe, fprint,
+        pdffile.write(
+            path, param_table, info_table, description, pdflatex_exe, fprint,
         )
     elif fmt == 'csv':
-        _write_csv(
-            path, description, info_headings, info, param_titles, param_table,
-            fprint,
-        )
+        # TODO
+        pass
 
 
 def _construct_infotable(expinfo: ExpInfo) -> List[List[str]]:
-    # TODO
-    pass
+    dim, sw, offset, sfo, nuclei = \
+        expinfo.unpack('dim', 'sw', 'offset', 'sfo', 'nuclei')
+    titles = ['Parameter'] + [f'F{i}' for i in range(1, dim + 1)]
+    names = deque(['Sweep width (Hz)', 'Transmitter offset (Hz)'])
+    values = deque([[str(x) for x in param] for param in (sw, offset)])
+    if sfo:
+        names.appendleft('Transmitter frequency (MHz)')
+        names.insert(2, 'Sweep width (ppm)')
+        names.append('Transmitter offset (ppm)')
+        values.appendleft([str(x) for x in sfo])
+        values.insert(2, [str(x / y) for x, y in zip(sw, sfo)])
+        values.append([str(x / y) for x, y in zip(offset, sfo)])
+    if nuclei:
+        names.appendleft('Nucleus')
+        values.appendleft([x for x in nuclei])
+    infotable = [[name] + value for name, value in zip(names, values)]
+    return [titles] + infotable
 
 
 def _map_to_latex_titles(titles: List[str]) -> List[str]:
@@ -320,9 +314,9 @@ def _map_to_latex_titles(titles: List[str]) -> List[str]:
             latex_titles.append('$\\eta_{1,m}\\ (\\text{s}^{-1})$')
         elif title == 'Damp. 2 (s⁻¹)':
             latex_titles.append('$\\eta_{2,m}\\ (\\text{s}^{-1})$')
-        elif title == 'Integ.':
+        elif title == 'Integral':
             latex_titles.append('$\\int$')
-        elif title == 'Norm. Integ.':
+        elif title == 'Norm. Integral':
             latex_titles.append(
                 '$\\nicefrac{\\int}{\\left\\lVert\\int\\right\\rVert}$'
             )
@@ -350,7 +344,7 @@ def _make_titles(expinfo: ExpInfo, fmt: str) -> List[str]:
             titles += ['Freq. 1 (ppm)', 'Freq. 2 (ppm)']
         titles += ['Damp. 1 (s⁻¹)', 'Damp. 2 (s⁻¹)']
 
-    titles += ['Integ.', 'Norm. Integ.']
+    titles += ['Integral', 'Norm. Integral']
     return titles if fmt != 'pdf' else _map_to_latex_titles(titles)
 
 

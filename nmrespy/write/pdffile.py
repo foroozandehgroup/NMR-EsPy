@@ -1,6 +1,23 @@
-def _write_pdf(
-    path, description, info_headings, info, param_titles, param_table,
-    pdflatex_exe, fprint,
+import datetime
+import os
+import pathlib
+import shutil
+import subprocess
+import tempfile
+from typing import Dict, List, Union
+from nmrespy import (GRE, END, NMRESPYPATH, MFLOGOPATH, NMRESPYLOGOPATH,
+                     DOCSLINK, MFGROUPLINK, BOOKICONPATH, GITHUBLINK,
+                     GITHUBLOGOPATH, MAILTOLINK, EMAILICONPATH, USE_COLORAMA,
+                     _errors)
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
+
+
+def write(
+    path: pathlib.Path, param_table: List[List[str]],
+    info_table: Union[List[List[str]], None], description: Union[str, None],
+    pdflatex_exe: Union[str, None], fprint: bool,
 ):
     """Writes parameter estimate to a PDF using ``pdflatex``.
 
@@ -9,202 +26,190 @@ def _write_pdf(
     path : pathlib.Path
         File path
 
-    description : str or None, default: None
+    param_table
+        Table of estimation result parameters.
+
+    info_table
+        Table of experiment information.
+
+    description
         A descriptive statement.
 
-    info_headings : list or None, default: None
-        Headings for experiment information.
+    pdflatex_exe
+        Path to ``pdflatex`` executable.
 
-    info : list or None, default: None
-        Information that corresponds to each heading in `info_headings`.
-
-    param_titles : list
-        Titles for parameter array table.
-
-    param_table : list
-        Array of contents to append to the result table.
-
-    fprint: bool
+    fprint
         Specifies whether or not to print output to terminal.
     """
-    # Open text of template .tex file which will be amended
+    try:
+        text = _read_template()
+    except Exception as e:
+        raise e
+
+    text = _append_links_and_paths(text)
+    text = _append_timestamp(text)
+    text = _append_description(text, description)
+    text = _append_info_table(text, info_table)
+    text = _append_param_table(text, param_table)
+
+    # TODO support for including result figure
+
+    texpaths = _get_texpaths(path)
+    with open(texpaths['tmp']['tex'], 'w', encoding='utf-8') as fh:
+        fh.write(text)
+
+
+    _compile_tex(texpaths, pdflatex_exe)
+    _cleanup(texpaths)
+
+    if fprint:
+        print(f'{GRE}Result successfuly output to:\n'
+              f"{texpaths['final']['pdf']}\n"
+              'If you wish to customise the document, the TeX file can'
+              ' be found at:\n'
+              f"{texpaths['final']['tex']}{END}")
+
+
+def _read_template() -> str:
+    """Extract LaTeX template text."""
     with open(NMRESPYPATH / 'config/latex_template.txt', 'r') as fh:
-        txt = fh.read()
+        text = fh.read()
+    return text
 
+
+def _append_links_and_paths(template: str) -> str:
+    """Inputs web links and image paths into the text."""
     # Add image paths and weblinks to TeX document
-    # If on Windows, have to replace paths of the form:
-    # C:\a\b\c
-    # to:
-    # C:/a/b/c
-    patterns = (
-        '<MFLOGOPATH>',
-        '<NMRESPYLOGOPATH>',
-        '<DOCSLINK>',
-        '<MFGROUPLINK>',
-        '<BOOKICONPATH>',
-        '<GITHUBLINK>',
-        '<GITHUBLOGOPATH>',
-        '<MAILTOLINK>',
-        '<EMAILICONPATH>',
-        '<TIMESTAMP>'
-    )
+    stuff = {
+        '<MFLOGOPATH>': MFLOGOPATH,
+        '<NMRESPYLOGOPATH>': NMRESPYLOGOPATH,
+        '<DOCSLINK>': DOCSLINK,
+        '<MFGROUPLINK>': MFGROUPLINK,
+        '<BOOKICONPATH>': BOOKICONPATH,
+        '<GITHUBLINK>': GITHUBLINK,
+        '<GITHUBLOGOPATH>': GITHUBLOGOPATH,
+        '<MAILTOLINK>': MAILTOLINK,
+        '<EMAILICONPATH>': EMAILICONPATH,
+    }
 
-    paths = (
-        MFLOGOPATH,
-        NMRESPYLOGOPATH,
-        DOCSLINK,
-        MFGROUPLINK,
-        BOOKICONPATH,
-        GITHUBLINK,
-        GITHUBLOGOPATH,
-        MAILTOLINK,
-        EMAILICONPATH,
-    )
+    for before, after in stuff.items():
+        # On Windows, have to replace paths C:\a\b\c -> C:/a/b/c
+        template = template.replace(before, str(after).replace('\\', '/'))
 
-    for pattern, path_ in zip(patterns, paths):
-        txt = txt.replace(pattern, str(path_).replace('\\', '/'))
+    return template
 
-    # Include a timestamp
-    txt = txt.replace('<TIMESTAMP>', _timestamp().replace('\n', '\\\\'))
 
-    # --- Description ----------------------------------------------------
+def _append_timestamp(text: str) -> str:
+    return text.replace('<TIMESTAMP>', _timestamp())
+
+
+def _append_description(text: str, description: Union[str, None]) -> str:
+    """Append description to text."""
     if description is None:
-        # No description given, remove relavent section of .tex file
-        txt = txt.replace(
+        return text.replace(
             '% user provided description\n\\subsection*{Description}\n'
             '<DESCRIPTION>',
             '',
         )
-
     else:
-        txt = txt.replace('<DESCRIPTION>', description)
+        return text.replace('<DESCRIPTION>', description)
 
-    # --- Experiment Info ------------------------------------------------
-    if info is None:
-        # No info given, remove relavent section of .tex file
-        txt = txt.replace(
-            '\n% experiment parameters\n'
-            '\\subsection*{Experiment Information}\n'
-            '\\hspace{-6pt}\n'
-            '\\begin{tabular}{ll}\n<INFOTABLE>\n'
-            '\\end{tabular}\n',
-            '',
-        )
 
-    else:
-        # Construct 2-column tabular of experiment info headings and values
-        rows = list(list(row) for row in zip(info_headings, info))
-        info_table = _latex_tabular(rows)
-        txt = txt.replace('<INFOTABLE>', info_table)
+def _append_info_table(text: str, info_table: List[List[str]]) -> str:
+    return text.replace('<INFOTABLE>', _latex_longtable(info_table))
 
-    # --- Parameter Table ------------------------------------------------
-    # Determine number of columns required
-    txt = txt.replace('<COLUMNS>', len(param_titles) * 'c')
-    # Construct parameter title and table body
-    txt = txt.replace('<PARAMTITLES>', _latex_tabular([param_titles]))
-    txt = txt.replace('<PARAMTABLE>', _latex_tabular(param_table))
 
-    # Incude plus-minus symbol. For denoting errors.
-    txt = txt.replace("±", "$\\pm$ ")
+def _append_param_table(text: str, param_table: List[List[str]]) -> str:
+    param_table = [[e.replace('±', '$\\pm$') for e in row]
+                   for row in param_table]
+    return text.replace('<PARAMTABLE>', _latex_longtable(param_table))
 
-    # TODO support for including result figure
-    txt = txt.replace(
-        '% figure of result\n\\begin{center}\n'
-        '\\includegraphics{<FIGURE_PATH>}\n\\end{center}\n',
-        '',
-    )
 
-    # TODO
-    # Put all LatEx compilation stuff in separate function
-    # compile_status = _compile_latex_pdf()
+def _latex_longtable(rows: List[List[str]]) -> str:
+    """Creates a string of text for a LaTeX longtable.
 
-    # --- Generate PDF using pdflatex ------------------------------------
-    # Create required file paths:
-    # .tex and .pdf paths with temporary directory (this is where the files
-    # will be initially created)
-    # .tex and .pdf files with desired directory (files will be moved from
-    # temporary directory to desired directory once pdflatex is run).
-    tex_tmp_path = Path(tempfile.gettempdir()) / path.with_suffix('.tex').name
-    pdf_tmp_path = Path(tempfile.gettempdir()) / path.name
-    tex_final_path = path.with_suffix('.tex')
-    pdf_final_path = path
+    Parameters
+    ----------
+    rows
+        The contents of the table. The first element is assumed to be a list
+        of titles.
 
-    # Write contents to cwd tex file
-    with open(tex_tmp_path, 'w', encoding='utf-8') as fh:
-        fh.write(txt)
+    Returns
+    -------
+    longtable: str
+        LaTeX longtable
+    """
+    column_specifier = ' '.join(['c' for _ in range(len(rows[0]))])
+    table = f"\\begin{{longtable}}[l]{{{column_specifier}}}\n\\toprule\n"
+    for i, row in enumerate(rows):
+        table += ' & '.join([e for e in row])
+        if i == 0:
+            table += '\n\\\\\\midrule\n'
+        else:
+            table += '\\\\\n'
+    table += '\\bottomrule\n\\end{longtable}'
+    return table
 
+
+def _timestamp() -> str:
+    """Construct a string with time and date information.
+
+    Returns
+    -------
+    timestamp
+        Of the form:
+
+        .. code::
+
+            hh:mm:ss
+            dd-mm-yy
+    """
+    now = datetime.datetime.now()
+    d = now.strftime('%d')  # Day
+    m = now.strftime('%m')  # Month
+    y = now.strftime('%Y')  # Year
+    t = now.strftime('%X')  # Time (hh:mm:ss)
+    return f'{t}\\\\{d}-{m}-{y}'
+
+
+def _get_texpaths(path: pathlib.Path) -> Dict[str, Dict[str, pathlib.Path]]:
+    tmpdir = pathlib.Path(tempfile.gettempdir())
+    return {
+        'tmp': {
+            suffix: tmpdir / path.with_suffix(f'.{suffix}').name
+            for suffix in ('tex', 'pdf', 'out', 'aux', 'log')
+        },
+        'final': {
+            'tex': path.with_suffix('.tex'),
+            'pdf': path
+        }
+    }
+
+
+def _compile_tex(
+    texpaths: Dict[str, Dict[str, pathlib.Path]], pdflatex_exe: str
+) -> None:
+    if pdflatex_exe is None:
+        pdflatex_exe = "pdflatex"
+
+    to_compile = texpaths['tmp']['tex']
     try:
-        if pdflatex_exe is None:
-            pdflatex_exe = "pdflatex"
-        # -halt-on-error flag is vital. If any error arises in running
-        # pdflatex, the program would get stuck
         subprocess.run(
-            [pdflatex_exe,
-             '-halt-on-error',
-             f'-output-directory={tex_tmp_path.parent}',
-             tex_tmp_path],
+            [
+                pdflatex_exe,
+                '-halt-on-error',
+                f'-output-directory={to_compile.parent}',
+                to_compile
+            ],
             stdout=subprocess.DEVNULL,
             check=True,
         )
 
-        # Move pdf and tex files from temp directory to desired directory
-        shutil.move(tex_tmp_path, tex_final_path)
-        shutil.move(pdf_tmp_path, pdf_final_path)
-
-    except subprocess.CalledProcessError:
-        # pdflatex came across an error
-        shutil.move(tex_tmp_path, tex_final_path)
-        raise _errors.LaTeXFailedError(tex_final_path)
-
-    except FileNotFoundError:
-        # Most probably, pdflatex does not exist
-        raise _errors.LaTeXFailedError(tex_final_path)
-
-    # Remove other LaTeX files
-    os.remove(tex_tmp_path.with_suffix('.out'))
-    os.remove(tex_tmp_path.with_suffix('.aux'))
-    os.remove(tex_tmp_path.with_suffix('.log'))
-
-    # # TODO: remove figure file if it exists
-    # try:
-    #     os.remove(figure_path)
-    # except UnboundLocalError:
-    #     pass
-
-    # Print success message
-    if fprint:
-        print(f'{GRE}Result successfuly output to:\n'
-              f'{pdf_final_path}\n'
-              'If you wish to customise the document, the TeX file can'
-              ' be found at:\n'
-              f'{tex_final_path}{END}')
+    except Exception:
+        shutil.move(texpaths['tmp']['tex'], texpaths['final']['tex'])
+        raise _errors.LaTeXFailedError(texpaths['final']['tex'])
 
 
-def _latex_tabular(rows):
-    """Creates a string of text that denotes a tabular entity in LaTeX
-
-    Parameters
-    ----------
-    rows : list
-        Nested list, with each sublist containing elements of a single row
-        of the table.
-
-    Returns
-    -------
-    table : str
-        LaTeX-formated table
-
-    Example
-    -------
-    .. code:: python3
-
-       >>> from nmrespy.write import _latex_tabular
-       >>> rows = [['A1', 'A2', 'A3'], ['B1', 'B2', 'B3']]
-       >>> print(_latex_tabular(rows))
-       A1 & A2 & A3 \\\\
-       B1 & B2 & B3 \\\\
-    """
-    table = ''
-    for row in rows:
-        table += ' & '.join([e for e in row]) + ' \\\\\n'
-    return table
+def _cleanup(texpaths: Dict[str, Dict[str, pathlib.Path]]) -> None:
+    for f in texpaths['tmp'].values():
+        os.remove(f)

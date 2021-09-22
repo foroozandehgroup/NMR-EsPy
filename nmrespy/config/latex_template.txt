@@ -22,8 +22,6 @@ urlcolor   = urlblue,%
 \usepackage{varwidth}
 
 \setlength\parindent{0pt}
-\renewcommand{\ss}{\textsuperscript}
-
 \pagenumbering{gobble}
 
 \begin{document}
@@ -49,23 +47,17 @@ urlcolor   = urlblue,%
 % experiment parameters
 \subsection*{Experiment Information}
 \hspace{-6pt}
-\begin{tabular}{ll}
 <INFOTABLE>
-\end{tabular}
 
+% estimation result
 \subsection*{Result}
-\begin{longtable}[l]{<COLUMNS>}
-\toprule
-<PARAMTITLES>
-\midrule
 <PARAMTABLE>
-\bottomrule
-\end{longtable}
 
-% figure of result
-\begin{center}
-\includegraphics{<FIGURE_PATH>}
-\end{center}
+% TODO
+%% figure of result
+%\begin{center}
+%\includegraphics{<FIGURE_PATH>}
+%\end{center}
 
 % blurb
 \small

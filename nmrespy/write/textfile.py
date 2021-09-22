@@ -4,9 +4,9 @@ from typing import List, Union
 from nmrespy import GRE, END, GITHUBLINK
 
 
-def _write_txt(
-    path: pathlib.Path, description: Union[str, None],
-    infotable: Union[List[List[str]], None], table: List[List[str]],
+def write(
+    path: pathlib.Path, param_table: List[List[str]],
+    info_table: Union[List[List[str]], None], description: Union[str, None],
     fprint: bool,
 ) -> None:
     """Write a result textfile.
@@ -16,19 +16,19 @@ def _write_txt(
     path
         File path.
 
-    description
-        A descriptive statement.
+    param_table
+        Table of estimation result parameters.
 
-    infotable
+    info_table
         Table of experiment information.
 
-    table
-        Table of estimation result parameters.
+    description
+        A descriptive statement.
 
     fprint
         Specifies whether or not to print output to terminal.
     """
-    text = _create_contents(table, infotable, description)
+    text = _create_contents(param_table, info_table, description)
 
     try:
         _write_file(path, text)
@@ -55,7 +55,7 @@ def _write_file(path: pathlib.Path, text: str) -> None:
 
 
 def _create_contents(
-    table: List[List[str]], infotable: Union[List[List[str]], None],
+    param_table: List[List[str]], info_table: Union[List[List[str]], None],
     description: Union[str, None]
 ) -> str:
     """Create text to be inserted into a file.
@@ -70,9 +70,10 @@ def _create_contents(
     msg = f'{_timestamp()}\n\n'
     if description:
         msg += f'Description:\n{description}\n\n'
-    if infotable:
-        msg += f'Experiment Information:\n{_txt_tabular(infotable)}\n\n'
-    msg += f'{_txt_tabular(table, titles=True)}\n\n'
+    if info_table:
+        msg += (f'Experiment Information:\n'
+                f'{_txt_tabular(info_table, titles=True)}\n\n')
+    msg += f'{_txt_tabular(param_table, titles=True)}\n\n'
     msg += _footer()
 
     return msg

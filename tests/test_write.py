@@ -4,14 +4,15 @@ import subprocess
 from context import nmrespy
 import numpy as np
 import numpy.linalg as nlinalg
-from nmrespy import ExpInfo, sig, write as nwrite
+from nmrespy import RED, END, ExpInfo, sig, write as nwrite
 
 USER_INPUT = True
-FILE = Path(__file__).resolve().parent / 'file.pdf'
 
 
 class Stuff:
-    def __init__(self, dim: int = 1, inc_sfo: bool = True):
+    def __init__(
+        self, dim: int = 1, inc_nuc: bool = True, inc_sfo: bool = True
+    ) -> None:
         self.params = np.zeros((5, 2 + 2 * dim))
         self.params[:, 0] = np.array([1, 3, 6, 3, 1])
         self.params[:, 1] = np.zeros(5)
@@ -24,8 +25,10 @@ class Stuff:
         sw = 5000.
         offset = 0.
         sfo = 500. if inc_sfo else None
-        self.expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo, dim=dim)
-
+        nuclei = '1H' if inc_nuc else None
+        self.expinfo = ExpInfo(
+            pts=pts, sw=sw, offset=offset, sfo=sfo, nuclei=nuclei, dim=dim
+        )
         self.integrals = np.array([sig.oscillator_integral(osc, self.expinfo)
                                    for osc in self.params])
 
@@ -156,21 +159,37 @@ class TestMakeErrorTable():
         assert np.all(np.isnan(table[:, 7:]))
 
 
-def test_format_error_table():
-    errors, expinfo = Stuff().unpack('errors', 'expinfo')
-    table = nwrite._make_error_table(errors, expinfo)
-    fmtstr = lambda x: nwrite._strval(x, 4, (-2, 3), 'txt')
-    fmttable = nwrite._format_error_table(table, fmtstr)
+class TestConstructInfotable:
+    def test_onedim(self):
+        expinfo, = Stuff(inc_sfo=False, inc_nuc=False).unpack('expinfo')
+        infotable = nwrite._construct_infotable(expinfo)
+        assert len(infotable) == 3
+        assert infotable[0] == ['Parameter', 'F1']
+        assert infotable[1] == ['Sweep width (Hz)', '5000.0']
+        assert infotable[2] == ['Transmitter offset (Hz)', '0.0']
 
+    def test_onedim_sfo(self):
+        expinfo, = Stuff(inc_nuc=False).unpack('expinfo')
+        infotable = nwrite._construct_infotable(expinfo)
+        assert len(infotable) == 6
+        assert infotable[0] == ['Parameter', 'F1']
+        assert infotable[1] == ['Transmitter frequency (MHz)', '500.0']
+        assert infotable[2] == ['Sweep width (Hz)', '5000.0']
+        assert infotable[3] == ['Sweep width (ppm)', '10.0']
+        assert infotable[4] == ['Transmitter offset (Hz)', '0.0']
+        assert infotable[5] == ['Transmitter offset (ppm)', '0.0']
 
-def test_construct_table():
-    params, errors, expinfo = Stuff().unpack('params', 'errors', 'expinfo')
-    def fmtval(value):
-        return nwrite._format_value(value, 5, (-2, 3), 'txt')
-    table = nwrite._construct_paramtable(
-        params, errors, expinfo, 'txt', fmtval
-    )
-    print(nwrite._txt_tabular(table, titles=False))
+    def test_onedim_sfo_nuc(self):
+        expinfo, = Stuff().unpack('expinfo')
+        infotable = nwrite._construct_infotable(expinfo)
+        assert len(infotable) == 7
+        assert infotable[0] == ['Parameter', 'F1']
+        assert infotable[1] == ['Nucleus', '1H']
+        assert infotable[2] == ['Transmitter frequency (MHz)', '500.0']
+        assert infotable[3] == ['Sweep width (Hz)', '5000.0']
+        assert infotable[4] == ['Sweep width (ppm)', '10.0']
+        assert infotable[5] == ['Transmitter offset (Hz)', '0.0']
+        assert infotable[6] == ['Transmitter offset (ppm)', '0.0']
 
 
 def test_format_string():
@@ -195,41 +214,29 @@ def test_format_string():
         assert nwrite._format_value(value, sig_figs, sci_lims, fmt) == result
 
 
-def test_me():
-    assert nwrite._configure_save_path('file', 'pdf', True) == (True, FILE)
+def test_configure_save_path():
+    filepath = Path(__file__).resolve().parent / 'file.pdf'
+    assert nwrite._configure_save_path('file', 'pdf', True) == filepath
 
     # Make file `file.pdf` and assert that same result is returned when
     # `force_overwrite` is `True`
     subprocess.run(['touch', 'file.pdf'])
-    assert nwrite._configure_save_path('file', 'pdf', True) == \
-        (True, FILE)
+    assert nwrite._configure_save_path('file', 'pdf', True) == filepath
 
     if USER_INPUT:
         # Set `force_overwrite` to False and ensure the user is prompted
-        print(f"\n{cols.R}PLEASE PRESS y{cols.END}")
-        assert nwrite._configure_save_path('file', 'pdf', False) == \
-            (True, FILE)
-
-        print(f"{cols.R}PLEASE PRESS n{cols.END}")
-        assert nwrite._configure_save_path('file', 'pdf', False) == \
-            (False,
-             f'{cols.R}Overwrite of file {str(FILE)} denied. Result '
-             f'file will not be written.{cols.END}')
+        print(f"\n{RED}PLEASE PRESS y{END}")
+        assert nwrite._configure_save_path('file', 'pdf', False) == filepath
+        print(f"{RED}PLEASE PRESS n{END}")
+        assert nwrite._configure_save_path('file', 'pdf', False) is None
 
     subprocess.run(['rm', 'file.pdf'])
 
     # Non-existent directory
-    invalid_path = FILE.parent / 'extra_dir' / 'file'
-    assert nwrite._configure_save_path(invalid_path, 'pdf', False) == \
-        (False,
-         f'{cols.R}The directory specified by `path` does not exist:\n'
-         f'{invalid_path.parent}{cols.END}')
-
-
-def test_raise_error():
-    msg = 'Value is not valid.'
+    invalid_path = filepath.parent / 'extra_dir' / 'file'
     with pytest.raises(ValueError) as exc_info:
-        nwrite.raise_error(ValueError, msg, True)
-    assert str(exc_info.value) == msg
+        nwrite._configure_save_path(invalid_path, 'pdf', False)
 
-    assert nwrite.raise_error(ValueError, msg, False) is None
+    assert str(exc_info.value) == \
+        (f'{RED}The directory specified by `path` does not exist:\n'
+         f'{invalid_path.parent}{END}')
