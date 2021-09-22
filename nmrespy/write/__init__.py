@@ -102,8 +102,7 @@ def write_result(
     expinfo: ExpInfo, params: np.ndarray, *,
     errors: Union[np.ndarray, None] = None, path: str = './nmrespy_result',
     fmt: str = 'txt', description: Union[str, None] = None,
-    info_headings: Union[Iterable[str], None] = None,
-    info: Union[Iterable[str], None] = None, sig_figs: Union[int, None] = 5,
+    sig_figs: Union[int, None] = 5,
     sci_lims: Union[Tuple[int, int], None] = (-2, 3),
     force_overwrite: bool = False, pdflatex_exe: Union[str, None] = None,
     fprint: bool = True, kill_on_error: bool = False
@@ -132,13 +131,6 @@ def write_result(
 
     description
         A descriptive statement.
-
-    info_headings
-        Headings for experiment information. Could include items like
-        `'Sweep width (Hz)'`, `'Transmitter offset (Hz)'`, etc.
-
-    info
-        Information that corresponds to each heading in ``info_headings``.
 
     sig_figs
         The number of significant figures to give to parameter values. If
@@ -253,30 +245,10 @@ def write_result(
         (force_overwrite, 'force_overwrite', 'bool'),
         (fprint, 'fprint', 'bool'),
         (description, 'description', 'str', True),
-        (info_headings, 'info_headings', 'list', True),
-        (info, 'info', 'list', True),
         (sig_figs, 'sig_figs', 'positive_int', True),
         (sci_lims, 'sci_lims', 'pos_neg_tuple', True),
     )
     checker.check()
-
-    if len(list(filter(lambda x: x is None, [info_headings, info]))) == 1:
-        raise ValueError(
-            f'{RED}`info` and `info_headings` should either both be lists'
-            f' of the same length, or both be None.{END}'
-        )
-    # info and info_headings should be the same length if lists
-    if isinstance(info, list) and len(info) != len(info_headings):
-        raise ValueError(
-            f'{RED}`info` and `info_headings` should be the same'
-            f' length{END}'
-        )
-    # params and errors should be the same shape, if errors is not None
-    if isinstance(errors, np.ndarray) and errors.shape != params.shape:
-        raise ValueError(
-            f'{RED}`params` and `errors` should be the same'
-            f' shape{END}'
-        )
 
     path = _configure_save_path(path, fmt, force_overwrite)
     if not path:
@@ -291,12 +263,12 @@ def write_result(
         return _format_value(value, sig_figs, sci_lims, fmt)
 
     param_table = _construct_paramtable(params, errors, fmtval)
+    info_table = _construct_infotable(expinfo)
 
     # --- Write to the specified file type -------------------------------
     if fmt == 'txt':
-        _write_txt(
-            path, description, info_headings, info, param_titles, param_table,
-            fprint,
+        textfile.write_txt(
+            path, description, info_table, param_table, fprint
         )
     elif fmt == 'pdf':
         _write_pdf(
@@ -310,306 +282,9 @@ def write_result(
         )
 
 
-def _write_txt(
-    path, description, info_headings, info, table, fprint,
-):
-    """
-    Writes parameter estimate to a textfile.
-
-    Parameters
-    -----------
-    path : pathlib.Path
-        File path
-
-    description : str or None, default: None
-        A descriptive statement.
-
-    info_headings : list or None, default: None
-        Headings for experiment information.
-
-    info : list or None, default: None
-        Information that corresponds to each heading in `info_headings`.
-
-    param_titles : list
-        Titles for parameter array table.
-
-    param_table : list
-        Array of contents to append to the result table.
-
-    fprint: bool
-        Specifies whether or not to print output to terminal.
-    """
-
-    # --- Write header ---------------------------------------------------
-    # Time and date
-    msg = f'{_timestamp()}\n'
-    # User-provided description
-    if description is not None:
-        msg += f'\nDescription:\n{description}\n'
-
-    # Table of experiment information
-    if info is not None:
-        msg += '\nExperiment Information:\n'
-        msg += _txt_tabular([info_headings, info]) + '\n'
-
-    # --- Add parameter table --------------------------------------------
-    # Table of oscillator parameters
-    # N.B. list(map(list, zip(*param_table))) effectively transposes the
-    # list, which is given row-by-row. _txt_tabular takes a nested list
-    # of columns as arguments.
-    msg += _txt_tabular(table, titles=True)
-
-    # --- Write footer ---------------------------------------------------
-    msg += ("\nEstimation performed using NMR-EsPy\n"
-            "Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk\n"
-            "If used in any publications, please cite:\n"
-            "<no papers yet...>\n"
-            "For more information, visit the GitHub repo:\n")
-
-    msg += GITHUBLINK
-    # Save message to textfile
-    with open(path, 'w', encoding='utf-8') as file:
-        file.write(msg)
-
-    if fprint:
-        print(f'{GRE}Saved result to {path}{END}')
-
-
-def _write_pdf(
-    path, description, info_headings, info, param_titles, param_table,
-    pdflatex_exe, fprint,
-):
-    """Writes parameter estimate to a PDF using ``pdflatex``.
-
-    Parameters
-    -----------
-    path : pathlib.Path
-        File path
-
-    description : str or None, default: None
-        A descriptive statement.
-
-    info_headings : list or None, default: None
-        Headings for experiment information.
-
-    info : list or None, default: None
-        Information that corresponds to each heading in `info_headings`.
-
-    param_titles : list
-        Titles for parameter array table.
-
-    param_table : list
-        Array of contents to append to the result table.
-
-    fprint: bool
-        Specifies whether or not to print output to terminal.
-    """
-    # Open text of template .tex file which will be amended
-    with open(NMRESPYPATH / 'config/latex_template.txt', 'r') as fh:
-        txt = fh.read()
-
-    # Add image paths and weblinks to TeX document
-    # If on Windows, have to replace paths of the form:
-    # C:\a\b\c
-    # to:
-    # C:/a/b/c
-    patterns = (
-        '<MFLOGOPATH>',
-        '<NMRESPYLOGOPATH>',
-        '<DOCSLINK>',
-        '<MFGROUPLINK>',
-        '<BOOKICONPATH>',
-        '<GITHUBLINK>',
-        '<GITHUBLOGOPATH>',
-        '<MAILTOLINK>',
-        '<EMAILICONPATH>',
-        '<TIMESTAMP>'
-    )
-
-    paths = (
-        MFLOGOPATH,
-        NMRESPYLOGOPATH,
-        DOCSLINK,
-        MFGROUPLINK,
-        BOOKICONPATH,
-        GITHUBLINK,
-        GITHUBLOGOPATH,
-        MAILTOLINK,
-        EMAILICONPATH,
-    )
-
-    for pattern, path_ in zip(patterns, paths):
-        txt = txt.replace(pattern, str(path_).replace('\\', '/'))
-
-    # Include a timestamp
-    txt = txt.replace('<TIMESTAMP>', _timestamp().replace('\n', '\\\\'))
-
-    # --- Description ----------------------------------------------------
-    if description is None:
-        # No description given, remove relavent section of .tex file
-        txt = txt.replace(
-            '% user provided description\n\\subsection*{Description}\n'
-            '<DESCRIPTION>',
-            '',
-        )
-
-    else:
-        txt = txt.replace('<DESCRIPTION>', description)
-
-    # --- Experiment Info ------------------------------------------------
-    if info is None:
-        # No info given, remove relavent section of .tex file
-        txt = txt.replace(
-            '\n% experiment parameters\n'
-            '\\subsection*{Experiment Information}\n'
-            '\\hspace{-6pt}\n'
-            '\\begin{tabular}{ll}\n<INFOTABLE>\n'
-            '\\end{tabular}\n',
-            '',
-        )
-
-    else:
-        # Construct 2-column tabular of experiment info headings and values
-        rows = list(list(row) for row in zip(info_headings, info))
-        info_table = _latex_tabular(rows)
-        txt = txt.replace('<INFOTABLE>', info_table)
-
-    # --- Parameter Table ------------------------------------------------
-    # Determine number of columns required
-    txt = txt.replace('<COLUMNS>', len(param_titles) * 'c')
-    # Construct parameter title and table body
-    txt = txt.replace('<PARAMTITLES>', _latex_tabular([param_titles]))
-    txt = txt.replace('<PARAMTABLE>', _latex_tabular(param_table))
-
-    # Incude plus-minus symbol. For denoting errors.
-    txt = txt.replace("±", "$\\pm$ ")
-
-    # TODO support for including result figure
-    txt = txt.replace(
-        '% figure of result\n\\begin{center}\n'
-        '\\includegraphics{<FIGURE_PATH>}\n\\end{center}\n',
-        '',
-    )
-
+def _construct_infotable(expinfo: ExpInfo) -> List[List[str]]:
     # TODO
-    # Put all LatEx compilation stuff in separate function
-    # compile_status = _compile_latex_pdf()
-
-    # --- Generate PDF using pdflatex ------------------------------------
-    # Create required file paths:
-    # .tex and .pdf paths with temporary directory (this is where the files
-    # will be initially created)
-    # .tex and .pdf files with desired directory (files will be moved from
-    # temporary directory to desired directory once pdflatex is run).
-    tex_tmp_path = Path(tempfile.gettempdir()) / path.with_suffix('.tex').name
-    pdf_tmp_path = Path(tempfile.gettempdir()) / path.name
-    tex_final_path = path.with_suffix('.tex')
-    pdf_final_path = path
-
-    # Write contents to cwd tex file
-    with open(tex_tmp_path, 'w', encoding='utf-8') as fh:
-        fh.write(txt)
-
-    try:
-        if pdflatex_exe is None:
-            pdflatex_exe = "pdflatex"
-        # -halt-on-error flag is vital. If any error arises in running
-        # pdflatex, the program would get stuck
-        subprocess.run(
-            [pdflatex_exe,
-             '-halt-on-error',
-             f'-output-directory={tex_tmp_path.parent}',
-             tex_tmp_path],
-            stdout=subprocess.DEVNULL,
-            check=True,
-        )
-
-        # Move pdf and tex files from temp directory to desired directory
-        shutil.move(tex_tmp_path, tex_final_path)
-        shutil.move(pdf_tmp_path, pdf_final_path)
-
-    except subprocess.CalledProcessError:
-        # pdflatex came across an error
-        shutil.move(tex_tmp_path, tex_final_path)
-        raise _errors.LaTeXFailedError(tex_final_path)
-
-    except FileNotFoundError:
-        # Most probably, pdflatex does not exist
-        raise _errors.LaTeXFailedError(tex_final_path)
-
-    # Remove other LaTeX files
-    os.remove(tex_tmp_path.with_suffix('.out'))
-    os.remove(tex_tmp_path.with_suffix('.aux'))
-    os.remove(tex_tmp_path.with_suffix('.log'))
-
-    # # TODO: remove figure file if it exists
-    # try:
-    #     os.remove(figure_path)
-    # except UnboundLocalError:
-    #     pass
-
-    # Print success message
-    if fprint:
-        print(f'{GRE}Result successfuly output to:\n'
-              f'{pdf_final_path}\n'
-              'If you wish to customise the document, the TeX file can'
-              ' be found at:\n'
-              f'{tex_final_path}{END}')
-
-
-def _write_csv(
-    path, description, info_headings, info, param_titles, param_table,
-    fprint,
-):
-    """Writes parameter estimate to a CSV.
-
-    Parameters
-    -----------
-    path : pathlib.Path
-        File path
-
-    description : str or None, default: None
-        A descriptive statement.
-
-    info_headings : list or None, default: None
-        Headings for experiment information.
-
-    info : list or None, default: None
-        Information that corresponds to each heading in `info_headings`.
-
-    param_titles : list
-        Titles for parameter array table.
-
-    param_table : list
-        Array of contents to append to the result table.
-
-    fprint: bool
-        Specifies whether or not to print output to terminal.
-    """
-
-    with open(path, 'w', encoding='utf-8') as fh:
-        writer = csv.writer(fh)
-        # Timestamp
-        writer.writerow([_timestamp().replace('\n', ' ')])
-        writer.writerow([])
-        # Description
-        if description is not None:
-            writer.writerow(['Description:', description])
-            writer.writerow([])
-        # Experiment info
-        if info is not None:
-            writer.writerow(['Experiment Info:'])
-            for row in zip(info_headings, info):
-                writer.writerow(row)
-            writer.writerow([])
-        # Parameter table
-        writer.writerow(['Result:'])
-        writer.writerow(param_titles)
-        for row in param_table:
-            writer.writerow(row)
-
-    if fprint:
-        print(f'{GRE}Saved result to {path}{END}')
+    pass
 
 
 def _map_to_latex_titles(titles: List[str]) -> List[str]:
@@ -788,27 +463,6 @@ def _compute_integrals(expinfo: ExpInfo, params: np.ndarray) -> np.ndarray:
     return np.array([sig.oscillator_integral(osc, expinfo) for osc in params])
 
 
-def _timestamp() -> str:
-    """Constructs a string with time/date information.
-
-    Returns
-    -------
-    timestamp: str
-        Of the form:
-
-        .. code::
-
-           hh:mm:ss
-           dd-mm-yy
-    """
-    now = datetime.datetime.now()
-    d = now.strftime('%d')  # Day
-    m = now.strftime('%m')  # Month
-    y = now.strftime('%Y')  # Year
-    t = now.strftime('%X')  # Time (hh:mm:ss)
-    return f'{t}\n{d}-{m}-{y}'
-
-
 def _format_value(
     value: float, sig_figs: Union[int, None],
     sci_lims: Union[Tuple[int, int], None], fmt: str
@@ -896,86 +550,3 @@ def _scientific_notation(value: float) -> str:
         String denoting ``value`` in scientific notation.
     """
     return re.sub(r'\.?0+e(\+|-)0?', r'e\1', f'{value:e}')
-
-
-def _txt_tabular(rows: List[List[str]], titles: bool = False) -> str:
-    """Tabularise a list of lists.
-
-    Parameters
-    ----------
-    rows
-        A list of lists, with each sublist representing the rows of the
-        table. Each sublist must be of the same length.
-
-    titles
-        If ``True``, the first entry in ``rows`` will be treated as the
-        titles of the table, and be separated from the other rows by a bar.
-
-    Returns
-    -------
-    table
-        Tabularised content of ``rows``.
-    """
-    pads = []
-    for column in zip(*rows):
-        # For each column find the longest string, and set its length
-        # as the width
-        pads.append(max(len(str(element)) for element in column))
-
-    separator = '│' if titles else ' '
-
-    table = ''
-    for i, row in enumerate(rows):
-        # Iterate over each adjacent pair of elements in row
-        for j, (pad, e1, e2) in enumerate(zip(pads, row, row[1:])):
-            # Amount of padding between pair
-            p = pad - len(e1) + 1
-            # First element -> don't want any padding before it.
-            # All other elements are padded from the left.
-            if j == 0:
-                table += f"{e1}{p * ' '}{separator}{e2}"
-            else:
-                table += f"{p * ' '}{separator}{e2}"
-        table += '\n'
-
-        # Add a horizontal line underneath the first row to separate the
-        # titles from the other contents
-        if titles and i == 0:
-            for k, pad in enumerate(pads):
-                p = pad + 1
-                # Add a bar that looks like this: '────────┼'
-                table += f"{p * '─'}┼"
-            # Remove the trailing '┼' and add a newline
-            table = table[:-1] + '\n'
-
-    return table
-
-
-def _latex_tabular(rows):
-    """Creates a string of text that denotes a tabular entity in LaTeX
-
-    Parameters
-    ----------
-    rows : list
-        Nested list, with each sublist containing elements of a single row
-        of the table.
-
-    Returns
-    -------
-    table : str
-        LaTeX-formated table
-
-    Example
-    -------
-    .. code:: python3
-
-       >>> from nmrespy.write import _latex_tabular
-       >>> rows = [['A1', 'A2', 'A3'], ['B1', 'B2', 'B3']]
-       >>> print(_latex_tabular(rows))
-       A1 & A2 & A3 \\\\
-       B1 & B2 & B3 \\\\
-    """
-    table = ''
-    for row in rows:
-        table += ' & '.join([e for e in row]) + ' \\\\\n'
-    return table
