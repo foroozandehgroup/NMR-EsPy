@@ -1,0 +1,18 @@
+
+
+
+
+========================================
+2021-09-16 15:45:01
+Routine name              - p1cal
+Optimisation parameters   - ['p1']
+Cost function             - minabsint
+AU programme              - 
+Initial values            - [44.0]
+Lower bounds              - [36.0]
+Upper bounds              - [52.0]
+Tolerances                - [0.2]
+Optimisation algorithm    - bobyqa
+
+    p1          cf      
+------------------------

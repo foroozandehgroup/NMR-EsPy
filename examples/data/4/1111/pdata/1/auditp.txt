@@ -1,0 +1,31 @@
+##TITLE= Audit trail, TopSpin 4.0.8
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= simon
+$$ /home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/data/4/1111/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2021-09-16 15:49:00.155 +0100>,<CHEM\nmr-user>,<CUTTLEFISH-CRL>,<go4>,<TopSpin 3.6.2>,
+      <created by zg
+	started at 2021-09-16 15:48:28.186 +0100,
+	POWCHK enabled, PULCHK disabled,
+       configuration hash MD5:
+       6E 17 21 92 02 F6 5F 36 1C 55 71 C4 40 F2 33 8B
+       data hash MD5: 64K
+       00 2E E6 2B 39 EF D7 B0 32 77 21 22 11 D4 64 EE>)
+(   2,<2021-09-23 10:41:21.212 +0100>,<simon>,<precision>,<proc1d>,<TopSpin 4.0.8>,
+      <convdta from       1 "4" "/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/examples/data"
+       data hash MD5: 65384
+       4A F4 81 A9 BA 58 2D 03 62 C0 FF 4B 22 FE 1A AE>)
+(   3,<2021-09-23 10:41:21.326 +0100>,<simon>,<precision>,<proc1d>,<TopSpin 4.0.8>,
+      <Start of raw data processing
+       efp LB = 0.3 FT_mod = 6 PKNL = 1 PHC0 = 221.9081 PHC1 = 1.735187 SI = 64K 
+       data hash MD5: 64K
+       1E 14 7B 1E 67 16 F1 5E B4 10 B7 BC 85 BB A0 DB>)
+(   4,<2021-09-23 10:41:21.376 +0100>,<simon>,<precision>,<proc1d>,<TopSpin 4.0.8>,
+      <abs n ABSG = 5 
+       data hash MD5: 64K
+       AA E3 3D 86 46 1B 93 86 43 7C A0 0D 3D 54 3C EA>)
+##END=
+
+$$ hash MD5
+$$ 45 41 99 AF 40 42 2E 41 0A 91 A5 E2 4A A7 72 0E

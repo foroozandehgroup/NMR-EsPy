@@ -1,0 +1,84 @@
+
+
+
+
+========================================
+2021-09-16 15:45:01
+Routine name              - p1cal
+Optimisation parameters   - ['p1']
+Cost function             - minabsint
+AU programme              - 
+Initial values            - [44.0]
+Lower bounds              - [36.0]
+Upper bounds              - [52.0]
+Tolerances                - [0.2]
+Optimisation algorithm    - bobyqa
+
+    p1          cf      
+------------------------
+
+
+
+
+========================================
+2021-09-16 15:46:27
+Routine name              - p1cal
+Optimisation parameters   - ['p1']
+Cost function             - minabsint
+AU programme              - 
+Initial values            - [44.0]
+Lower bounds              - [36.0]
+Upper bounds              - [52.0]
+Tolerances                - [0.2]
+Optimisation algorithm    - bobyqa
+
+    p1          cf      
+------------------------
+ 44.0000    96467423.3604  
+ 46.0000    59734233.1115  
+ 42.0000    131103614.4655  
+ 48.0000    21826780.2197  
+ 52.0000    70713855.8911  
+ 47.7000    27683689.0951  
+ 48.3000    18025673.4491  
+ 49.1408    17364164.9685  
+ 48.7574    16419627.9241  
+ 48.8138    16271898.5851  
+
+Best values found           - [48.81378471321432]
+Cost function at minimum    - 16271898.58510525
+Number of spectra ran       - 10
+Total time taken            - 0:01:24
+
+
+
+
+========================================
+2021-09-16 16:47:54
+Routine name              - p1cal
+Optimisation parameters   - ['p1']
+Cost function             - minabsint
+AU programme              - 
+Initial values            - [44.0]
+Lower bounds              - [36.0]
+Upper bounds              - [52.0]
+Tolerances                - [0.2]
+Optimisation algorithm    - bobyqa
+
+    p1          cf      
+------------------------
+ 44.0000    8730128.0326  
+ 46.0000    5227842.9243  
+ 42.0000    11672549.9382  
+ 48.0000    1761300.0580  
+ 52.0000    6492693.6905  
+ 47.7000    2283615.9104  
+ 48.3000    1464647.0462  
+ 49.0774    1822165.1516  
+ 48.5151    1939045.8850  
+ 48.1558    2072216.6640  
+
+Best values found           - [48.3]
+Cost function at minimum    - 1464647.046242928
+Number of spectra ran       - 10
+Total time taken            - 0:01:24

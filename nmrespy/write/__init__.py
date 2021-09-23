@@ -249,16 +249,13 @@ def write_result(
     info_table = _construct_infotable(expinfo)
 
     if fmt == 'txt':
-        textfile.write(
-            path, param_table, info_table, description, fprint
-        )
+        textfile.write(path, param_table, info_table, description, fprint)
     elif fmt == 'pdf':
         pdffile.write(
             path, param_table, info_table, description, pdflatex_exe, fprint,
         )
     elif fmt == 'csv':
-        # TODO
-        pass
+        csvfile.write(path, param_table, info_table, description, fprint)
 
 
 def _construct_infotable(expinfo: ExpInfo) -> List[List[str]]:

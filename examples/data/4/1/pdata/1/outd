@@ -1,0 +1,16 @@
+##TITLE= Parameter file, TopSpin 3.6.2
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= nmr-user
+$$ 2021-09-16 15:45:18.233 +0100  CHEM\nmr-user@CUTTLEFISH-CRL
+$$ C:/NMR/data/mfgroup/nmr/210916-7g-cpmg/1/pdata/1/outd
+$$ process C:\Bruker\TopSpin3.6.2\prog\mod\dirdata.exe
+##$CURPLOT= <>
+##$CURPRIN= <$>
+##$DFORMAT= <normdp>
+##$LAYOUT= <+/1D_H.xwp>
+##$LFORMAT= <normlp>
+##$PFORMAT= <normpl>
+##END=
