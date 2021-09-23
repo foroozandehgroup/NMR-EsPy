@@ -683,6 +683,7 @@ def phase(data: np.ndarray, p0: Iterable[float], p1: Iterable[float],
         # Determine axis for einsum (i or j)
         axis = chr(axis + 105)
         p = np.exp(1j * (p0_ + p1_ * np.arange(-piv, -piv + n) / n))
+        print(p)
         phased_data = np.einsum(f'{idx},{axis}->{idx}', data, p)
 
     return phased_data

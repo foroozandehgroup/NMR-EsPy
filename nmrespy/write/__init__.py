@@ -12,7 +12,7 @@ from typing import Callable, List, Tuple, Union
 import numpy as np
 import numpy.linalg as nlinalg
 
-from nmrespy import RED, ORA, END, ExpInfo, USE_COLORAMA, _misc, sig
+from nmrespy import RED, ORA, END, ExpInfo, USE_COLORAMA, _misc, plot, sig
 from . import textfile, pdffile, csvfile
 if USE_COLORAMA:
     import colorama
@@ -88,7 +88,8 @@ def write_result(
     sig_figs: Union[int, None] = 5,
     sci_lims: Union[Tuple[int, int], None] = (-2, 3),
     force_overwrite: bool = False, pdflatex_exe: Union[str, None] = None,
-    fprint: bool = True, kill_on_error: bool = False
+    pdf_append_figure: Union[plot.NmrespyPlot, None] = None,
+    fprint: bool = True
 ) -> None:
     """Writes an estimation result to a .txt, .pdf or .csv file.
 
@@ -133,6 +134,13 @@ def write_result(
         * If set to ``True``, the current file will be overwritten without
           prompt.
 
+    fprint
+        Specifies whether or not to print information to the terminal.
+
+    pdf_append_figure
+        If an instance of :py:class:`~nmrespy.plot.NmrespyPlot`, and ``fmt``
+        is set to ``'pdf'``. The plot will be included in the result file.
+
     pdflatex_exe
         The path to the system's ``pdflatex`` executable.
 
@@ -141,12 +149,6 @@ def write_result(
            You are unlikely to need to set this manually. It is primarily
            present to specify the path to ``pdflatex.exe`` on Windows when
            the NMR-EsPy GUI has been loaded from TopSpin.
-
-    fprint
-        Specifies whether or not to print information to the terminal.
-
-    kill_on_error
-        Specifies whether to raise an error if a fault is determined.
 
     Raises
     ------
@@ -230,16 +232,14 @@ def write_result(
         (description, 'description', 'str', True),
         (sig_figs, 'sig_figs', 'positive_int', True),
         (sci_lims, 'sci_lims', 'pos_neg_tuple', True),
+        # TODO add checking for pdf_append_figure
     )
     checker.check()
 
     path = _configure_save_path(path, fmt, force_overwrite)
     if not path:
-        if kill_on_error:
-            print(f'{ORA}Skipping call to `write_result`...{END}')
-            return None
-        else:
-            print(f'{RED}Exiting program...{END}')
+        print(f'{ORA}Skipping call to `write_result`...{END}')
+        return None
 
     # Short-hand function for value formatting
     def fmtval(value):
@@ -253,6 +253,7 @@ def write_result(
     elif fmt == 'pdf':
         pdffile.write(
             path, param_table, info_table, description, pdflatex_exe, fprint,
+            pdf_append_figure
         )
     elif fmt == 'csv':
         csvfile.write(path, param_table, info_table, description, fprint)

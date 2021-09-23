@@ -8,16 +8,18 @@ from typing import Dict, List, Union
 from nmrespy import (GRE, END, NMRESPYPATH, MFLOGOPATH, NMRESPYLOGOPATH,
                      DOCSLINK, MFGROUPLINK, BOOKICONPATH, GITHUBLINK,
                      GITHUBLOGOPATH, MAILTOLINK, EMAILICONPATH, USE_COLORAMA,
-                     _errors)
+                     _errors, plot)
 if USE_COLORAMA:
     import colorama
     colorama.init()
 
+TMPDIR = pathlib.Path(tempfile.gettempdir())
 
 def write(
     path: pathlib.Path, param_table: List[List[str]],
     info_table: Union[List[List[str]], None], description: Union[str, None],
     pdflatex_exe: Union[str, None], fprint: bool,
+    figure: Union[plot.NmrespyPlot, None]
 ):
     """Writes parameter estimate to a PDF using ``pdflatex``.
 
@@ -40,6 +42,14 @@ def write(
 
     fprint
         Specifies whether or not to print output to terminal.
+
+    figure
+        If an instance of :py:class:`~nmrespy.plot.NmrespyPlot`, and ``fmt``
+        is set to ``'pdf'``. The  figure will be included in the result file.
+
+    **figure_kwargs
+        Keyword arguments for the :py:func:`~nmrespy.plot.plot_result`
+        function.
     """
     try:
         text = _read_template()
@@ -51,13 +61,11 @@ def write(
     text = _append_description(text, description)
     text = _append_info_table(text, info_table)
     text = _append_param_table(text, param_table)
-
-    # TODO support for including result figure
+    text = _append_figure(text, figure)
 
     texpaths = _get_texpaths(path)
     with open(texpaths['tmp']['tex'], 'w', encoding='utf-8') as fh:
         fh.write(text)
-
 
     _compile_tex(texpaths, pdflatex_exe)
     _cleanup(texpaths)
@@ -151,6 +159,21 @@ def _latex_longtable(rows: List[List[str]]) -> str:
     return table
 
 
+def _append_figure(text: str, figure: Union[plot.NmrespyPlot, None]):
+    if isinstance(figure, plot.NmrespyPlot):
+        path = TMPDIR / 'figure.pdf'
+        figure.fig.savefig(path, dpi=600, format='pdf')
+        text.replace(
+            '<RESULTFIGURE>',
+            '% figure of result\n\\begin{center}\n'
+            f'\\includegraphics{{{path}}}\n\\end{{center}}'
+        )
+    else:
+        text.replace('\n<RESULTFIGURE>', '')
+
+    return text
+
+
 def _timestamp() -> str:
     """Construct a string with time and date information.
 
@@ -173,10 +196,9 @@ def _timestamp() -> str:
 
 
 def _get_texpaths(path: pathlib.Path) -> Dict[str, Dict[str, pathlib.Path]]:
-    tmpdir = pathlib.Path(tempfile.gettempdir())
     return {
         'tmp': {
-            suffix: tmpdir / path.with_suffix(f'.{suffix}').name
+            suffix: TMPDIR / path.with_suffix(f'.{suffix}').name
             for suffix in ('tex', 'pdf', 'out', 'aux', 'log')
         },
         'final': {
@@ -213,3 +235,6 @@ def _compile_tex(
 def _cleanup(texpaths: Dict[str, Dict[str, pathlib.Path]]) -> None:
     for f in texpaths['tmp'].values():
         os.remove(f)
+        figurepath = TMPDIR / 'figure.pdf'
+    if figurepath.is_file():
+        os.remove(figurepath)

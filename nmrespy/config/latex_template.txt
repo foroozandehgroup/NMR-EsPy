@@ -53,11 +53,7 @@ urlcolor   = urlblue,%
 \subsection*{Result}
 <PARAMTABLE>
 
-% TODO
-%% figure of result
-%\begin{center}
-%\includegraphics{<FIGURE_PATH>}
-%\end{center}
+<RESULTFIGURE>
 
 % blurb
 \small

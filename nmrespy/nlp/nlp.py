@@ -719,7 +719,7 @@ class NonlinearProgramming(FrequencyConverter):
                 self.active[amp_slice] *= -1
 
                 # Phase flip
-                if 1 in self.active:
+                if 1 in self.active_idx:
                     phase_slice = self._get_slice([1], osc_idx=negative_idx)
                     self.active[phase_slice] = \
                         self._pi_flip(self.active[phase_slice])
