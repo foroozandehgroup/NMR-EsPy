@@ -5,15 +5,19 @@ import sys
 sys.path.insert(0, str(pathlib.Path('../..').resolve()))
 from nmrespy import freqfilter, load, mpm, plot, sig, write
 from nmrespy.nlp import nlp
+
+
+# --- Tweak these as you wish
+region = ((3.05, 2.7),)
+optimiser_iterations = 1000
+# ---------------------------
+
 data, expinfo = load.load_bruker('../data/4/1111', ask_convdta=False)
-normal_spectrum = sig.ft(data)
-normal_shifts = sig.get_shifts(expinfo, unit='ppm')[0]
 data = sig.phase(data, [2.417], [0.])
 virtual_echo = sig.make_virtual_echo([data])
 spectrum = sig.ft(virtual_echo)
 expinfo._pts = virtual_echo.shape
 shifts = sig.get_shifts(expinfo, unit='ppm')[0]
-region = ((3.05, 2.7),)
 noise_region = ((11.5, 11.),)
 filterinfo = freqfilter.filter_spectrum(
     spectrum, region, noise_region, expinfo, region_unit='ppm', cut_ratio=1.3,
@@ -26,7 +30,8 @@ filter_shifts = sig.get_shifts(filter_expinfo, unit='ppm')[0]
 mpm_result = mpm.MatrixPencil(fid, filter_expinfo)
 x0 = mpm_result.get_result()
 nlp_result = nlp.NonlinearProgramming(
-    fid, x0, filter_expinfo, negative_amps='remove', max_iterations=800,
+    fid, x0, filter_expinfo, negative_amps='remove',
+    max_iterations=optimiser_iterations,
 )
 x = nlp_result.get_result()
 
@@ -53,10 +58,10 @@ description = ("Gramicidin \\textsuperscript{{1}}H data, region: "
 write.write_result(
     filter_expinfo, x0, path=str(path / 'mpm_params'),
     description=description + " MPM result.", pdf_append_figure=mpmplot,
-    fmt='pdf'
+    fmt='pdf', force_overwrite=True,
 )
 write.write_result(
     filter_expinfo, x, errors=nlp_result.get_errors(),
     path=str(path / 'nlp_params'), description=description + " NLP result.",
-    pdf_append_figure=nlpplot, fmt='pdf'
+    pdf_append_figure=nlpplot, fmt='pdf', force_overwrite=True
 )

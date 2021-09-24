@@ -15,6 +15,7 @@ if USE_COLORAMA:
 
 TMPDIR = pathlib.Path(tempfile.gettempdir())
 
+
 def write(
     path: pathlib.Path, param_table: List[List[str]],
     info_table: Union[List[List[str]], None], description: Union[str, None],
@@ -163,13 +164,13 @@ def _append_figure(text: str, figure: Union[plot.NmrespyPlot, None]):
     if isinstance(figure, plot.NmrespyPlot):
         path = TMPDIR / 'figure.pdf'
         figure.fig.savefig(path, dpi=600, format='pdf')
-        text.replace(
+        text = text.replace(
             '<RESULTFIGURE>',
             '% figure of result\n\\begin{center}\n'
             f'\\includegraphics{{{path}}}\n\\end{{center}}'
         )
     else:
-        text.replace('\n<RESULTFIGURE>', '')
+        text = text.replace('<RESULTFIGURE>', '')
 
     return text
 
@@ -233,6 +234,8 @@ def _compile_tex(
 
 
 def _cleanup(texpaths: Dict[str, Dict[str, pathlib.Path]]) -> None:
+    shutil.copy(texpaths['tmp']['tex'], texpaths['final']['tex'])
+    shutil.copy(texpaths['tmp']['pdf'], texpaths['final']['pdf'])
     for f in texpaths['tmp'].values():
         os.remove(f)
         figurepath = TMPDIR / 'figure.pdf'
