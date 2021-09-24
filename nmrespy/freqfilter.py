@@ -556,3 +556,12 @@ def filter_spectrum(
     return FilterInfo(
         spectrum, sg, noise, region_idx, noise_region_idx, cut_idx, converter
     )
+
+
+def baseline_fix(
+    spectrum: np.ndarray, region: Iterable[Tuple[int, int]], sg_power: float
+) -> np.ndarray:
+    sg = superg(region, spectrum.shape, p=sg_power)
+    # Dermine region to consider
+    span = 20
+    opt_region = (slice(r[0] - span, r[0] + span) for r in region)

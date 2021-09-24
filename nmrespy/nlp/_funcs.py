@@ -61,7 +61,7 @@ def f_1d(active: np.ndarray, *args: args_type) -> float:
         # also present if not, phases will be between 0 and m
         phases = theta[m:2 * m] if 0 in idx else theta[:m]
         mu = np.einsum('i->', phases) / m
-        func += ((np.einsum('i->', phases ** 2) / m) - mu ** 2) / np.pi
+        func += 0.8 * ((np.einsum('i->', phases ** 2) / m) - mu ** 2) / np.pi
 
     return func
 
@@ -219,7 +219,7 @@ def g_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
         i = 1 if 0 in idx else 0
         phases = theta[i * m:(i + 1) * m]
         mu = np.einsum('i->', phases) / m
-        grad[i * m:(i + 1) * m] += ((2 / m) * (phases - mu)) / np.pi
+        grad[i * m:(i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
 
     return grad
 
@@ -442,10 +442,10 @@ def h_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
         # if 0 in idx, phases will be between m and 2m, as amps
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
-        hess[i * m:(i + 1) * m, i * m:(i + 1) * m] -= (2 / (m ** 2 * np.pi))
+        hess[i * m:(i + 1) * m, i * m:(i + 1) * m] -= 0.8 * (2 / (m ** 2 * np.pi))
         hess[main_diagonals[0][i * m:(i + 1) * m],
              main_diagonals[1][i * m:(i + 1) * m]] \
-            += 2 / (np.pi * m)
+            += 0.8 * 2 / (np.pi * m)
 
     return hess
 

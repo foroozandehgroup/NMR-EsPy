@@ -2,7 +2,7 @@
 
 import numpy as np
 from context import nmrespy
-from nmrespy import ExpInfo, mpm, sig, freqfilter as ff
+from nmrespy import ExpInfo, _misc, mpm, sig, freqfilter as ff
 
 
 def round_region(region):
@@ -112,19 +112,21 @@ def test_filter_performance():
     assert np.allclose(p[0], cut_result, rtol=0, atol=1e-1)
 
 
-# def test_iterative_filtering():
-#     sw = [5000.]
-#     offset = [2000.]
-#     n = [4096]
-#     oscs = 20
-#     freqs = np.linspace(-sw[0] / 3 + offset[0], sw[0] / 3 + offset[0], oscs)
-#     params = np.zeros((oscs, 4))
-#     params[:, 0] = 1.
-#     params[:, 2] = freqs
-#     params[:, 3] = 10.
-#     fid = sig.make_fid(params, n, sw, offset, snr=40.)[0]
-#     ve = sig.make_virtual_echo([fid])
-#     spectrum = sig.ft(ve)
-#
-#     region_number = [10]
-#     ff.iterative_filtering(spectrum, region_number)
+def test_iterative_filtering():
+    sw = [5000.]
+    offset = [2000.]
+    n = [4096]
+    freqs = np.vstack((
+        np.linspace(-sw[0] / 4 + offset[0], -sw[0] / 8 + offset[0]),
+        np.linspace(sw[0] / 8 + offset[0], sw[0] / 4 + offset[0]),
+    ))
+    params = np.zeros((freqs.shape[0], 4))
+    params[:, 0] = 1.
+    params[:, 2] = freqs
+    params[:, 3] = 10.
+    expinfo = ExpInfo(pts=n, sw=sw, offset=offset)
+    fid = sig.make_fid(params, expinfo, snr=40.)[0]
+    ve = sig.make_virtual_echo([fid])
+    spectrum = sig.ft(ve)
+    freqconv = _misc.FrequencyConverter(expinfo)
+    region_hz = ((),)
