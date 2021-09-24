@@ -1,3 +1,4 @@
+import functools
 from pathlib import Path
 import pytest
 import subprocess
@@ -214,29 +215,43 @@ def test_format_string():
         assert nwrite._format_value(value, sig_figs, sci_lims, fmt) == result
 
 
-def test_configure_save_path():
+class TestConfigureSavePath:
     filepath = Path(__file__).resolve().parent / 'file.pdf'
-    assert nwrite._configure_save_path('file', 'pdf', True) == filepath
 
-    # Make file `file.pdf` and assert that same result is returned when
-    # `force_overwrite` is `True`
-    subprocess.run(['touch', 'file.pdf'])
-    assert nwrite._configure_save_path('file', 'pdf', True) == filepath
+    def mk_rm_file(method):
+        @functools.wraps(method)
+        def inner():
+            subprocess.run(['touch', 'file.pdf'])
+            method()
+            subprocess.run(['rm', 'file.pdf'])
 
-    if USER_INPUT:
-        # Set `force_overwrite` to False and ensure the user is prompted
-        print(f"\n{RED}PLEASE PRESS y{END}")
-        assert nwrite._configure_save_path('file', 'pdf', False) == filepath
-        print(f"{RED}PLEASE PRESS n{END}")
+    def test_file_doesnt_exist(self):
+        assert nwrite._configure_save_path('file', 'pdf', True) == \
+            self.filepath
+
+    def test_file_exists_force_true(self):
+        subprocess.run(['touch', 'file.pdf'])
+        assert nwrite._configure_save_path('file', 'pdf', True) == \
+            self.filepath
+        subprocess.run(['rm', 'file.pdf'])
+
+    def test_file_exists_force_false_input_yes(self, monkeypatch):
+        subprocess.run(['touch', 'file.pdf'])
+        monkeypatch.setattr('builtins.input', lambda: 'y')
+        assert nwrite._configure_save_path('file', 'pdf', False) == \
+            self.filepath
+        subprocess.run(['rm', 'file.pdf'])
+
+    def test_file_exists_force_false_input_no(self, monkeypatch):
+        subprocess.run(['touch', 'file.pdf'])
+        monkeypatch.setattr('builtins.input', lambda: 'n')
         assert nwrite._configure_save_path('file', 'pdf', False) is None
+        subprocess.run(['rm', 'file.pdf'])
 
-    subprocess.run(['rm', 'file.pdf'])
-
-    # Non-existent directory
-    invalid_path = filepath.parent / 'extra_dir' / 'file'
-    with pytest.raises(ValueError) as exc_info:
-        nwrite._configure_save_path(invalid_path, 'pdf', False)
-
-    assert str(exc_info.value) == \
-        (f'{RED}The directory specified by `path` does not exist:\n'
-         f'{invalid_path.parent}{END}')
+    def test_invalid_dir(self):
+        invalid_path = self.filepath.parent / 'extra_dir' / 'file'
+        with pytest.raises(ValueError) as exc_info:
+            nwrite._configure_save_path(invalid_path, 'pdf', False)
+        assert str(exc_info.value) == \
+            (f'{RED}The directory specified by `path` does not exist:\n'
+             f'{invalid_path.parent}{END}')

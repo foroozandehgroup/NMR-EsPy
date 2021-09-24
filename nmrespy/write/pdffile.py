@@ -215,29 +215,30 @@ def _compile_tex(
     if pdflatex_exe is None:
         pdflatex_exe = "pdflatex"
 
-    to_compile = texpaths['tmp']['tex']
+    src = texpaths['tmp']['tex']
+    dst = texpaths['final']['tex']
     try:
         subprocess.run(
             [
                 pdflatex_exe,
                 '-halt-on-error',
-                f'-output-directory={to_compile.parent}',
-                to_compile
+                f'-output-directory={src.parent}',
+                src
             ],
             stdout=subprocess.DEVNULL,
             check=True,
         )
 
-    except Exception:
-        shutil.move(texpaths['tmp']['tex'], texpaths['final']['tex'])
-        raise _errors.LaTeXFailedError(texpaths['final']['tex'])
+    except Exception or subprocess.SubprocessError:
+        shutil.move(src, dst)
+        raise _errors.LaTeXFailedError(dst)
 
 
 def _cleanup(texpaths: Dict[str, Dict[str, pathlib.Path]]) -> None:
     shutil.copy(texpaths['tmp']['tex'], texpaths['final']['tex'])
-    shutil.copy(texpaths['tmp']['pdf'], texpaths['final']['pdf'])
-    for f in texpaths['tmp'].values():
+    if texpaths['tmp']['pdf'].is_file():
+        shutil.copy(texpaths['tmp']['pdf'], texpaths['final']['pdf'])
+
+    files = [texpaths['tmp'].values() + TMPDIR / 'figure.pdf']
+    for f in filter(lambda f: f.isfile(), files):
         os.remove(f)
-        figurepath = TMPDIR / 'figure.pdf'
-    if figurepath.is_file():
-        os.remove(figurepath)
