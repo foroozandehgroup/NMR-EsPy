@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
+from scipy.optimize import minimize
 from context import nmrespy
 from nmrespy import ExpInfo, _misc, mpm, sig, freqfilter as ff
 
@@ -110,23 +111,3 @@ def test_filter_performance():
     # give cut signal a larger tolerance due to greater uncertainty generated
     # by cutting
     assert np.allclose(p[0], cut_result, rtol=0, atol=1e-1)
-
-
-def test_iterative_filtering():
-    sw = [5000.]
-    offset = [2000.]
-    n = [4096]
-    freqs = np.vstack((
-        np.linspace(-sw[0] / 4 + offset[0], -sw[0] / 8 + offset[0]),
-        np.linspace(sw[0] / 8 + offset[0], sw[0] / 4 + offset[0]),
-    ))
-    params = np.zeros((freqs.shape[0], 4))
-    params[:, 0] = 1.
-    params[:, 2] = freqs
-    params[:, 3] = 10.
-    expinfo = ExpInfo(pts=n, sw=sw, offset=offset)
-    fid = sig.make_fid(params, expinfo, snr=40.)[0]
-    ve = sig.make_virtual_echo([fid])
-    spectrum = sig.ft(ve)
-    freqconv = _misc.FrequencyConverter(expinfo)
-    region_hz = ((),)

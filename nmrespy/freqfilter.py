@@ -8,6 +8,7 @@ from typing import Iterable, NewType, Tuple, Union
 
 import numpy as np
 import numpy.random as nrandom
+from scipy.optimize import minimize
 
 from nmrespy import RED, END, USE_COLORAMA, ExpInfo
 if USE_COLORAMA:
@@ -70,6 +71,9 @@ class FilterInfo:
         Region (in array indices) of the spectral data that was sliced away
         from the original afer filtering.
 
+    _sg_power
+        Power of super-Gaussian filter
+
     _converter
         Used for converting between Hz, ppm, and array indices.
     """
@@ -77,7 +81,8 @@ class FilterInfo:
     def __init__(
         self, _spectrum: np.ndarray, _sg: np.ndarray, _sg_noise: np.ndarray,
         _region: RegionIntType, _noise_region: RegionIntType,
-        _cut_region: RegionIntType, _converter: FrequencyConverter
+        _cut_region: RegionIntType, _sg_power: float,
+        _converter: FrequencyConverter
     ) -> None:
         self.__dict__.update(locals())
 
@@ -139,9 +144,14 @@ class FilterInfo:
         )
 
     @property
+    def sg_power(self) -> float:
+        return self._sg_power
+
+    @property
     def filtered_spectrum(self) -> np.ndarray:
         """Get filtered spectrum (uncut)."""
-        return (self.spectrum * self.sg) + self.sg_noise
+        filtered_spectrum = (self.spectrum * self.sg) + self.sg_noise
+        return filtered_spectrum + self._baseline_fix(filtered_spectrum)
 
     @property
     def filtered_fid(self) -> np.ndarray:
@@ -253,7 +263,7 @@ class FilterInfo:
 
         Parameters
         ----------
-        unit : {'idx', 'hz', 'ppm'}
+        unit
             Unit specifier. Should be one of ``'hz'``, ``'ppm'``, ``'idx'``.
         """
         return self._converter.convert(self._region, f'idx->{unit}')
@@ -329,6 +339,38 @@ class FilterInfo:
 
         return sig.ift(spectrum)[tuple(slice)]
 
+    def _baseline_fix(self, filtered_spectrum: np.ndarray) -> np.ndarray:
+        region = self.get_region(unit='idx')
+        sg = np.real(self.sg)
+        boundaries = []
+        for (_, rr) in region:
+            lb = None
+            rb = None
+            shift = 0
+            while(any([x is None for x in (lb, rb)])):
+                if rb is None and sg[rr + shift] < 1E-6:
+                    rb = rr + shift
+                if lb is None and sg[rr - shift] > 1 - 1E-3:
+                    lb = rr - shift
+                shift += 1
+            boundaries.append(slice(lb, rb))
+        boundaries = tuple(boundaries)
+
+        spectrum_slice = filtered_spectrum[boundaries]
+        sg_slice = self.sg[boundaries]
+        x0 = 0.
+        args = (spectrum_slice, sg_slice)
+        optim_amp = minimize(
+            self._baseline_cost_func, x0, args=args, method='trust-constr'
+        )['x']
+        return optim_amp * self.sg
+
+    @staticmethod
+    def _baseline_cost_func(amp, *args):
+        spectrum_slice, sg_slice = args
+        residual = spectrum_slice + (amp * sg_slice)
+        return np.sum(np.abs(residual))
+
 
 def superg(region: RegionIntType, shape: Iterable[int],
            p: float = 40.0) -> np.ndarray:
@@ -401,7 +443,9 @@ def superg_noise(spectrum: np.ndarray, noise_region: RegionIntType,
     """
     noise_slice = tuple(np.s_[n[0]:n[1] + 1] for n in noise_region)
     noise_variance = np.var(spectrum[noise_slice])
-    sg_noise = nrandom.normal(0, np.sqrt(noise_variance), size=spectrum.shape)
+    sg_noise = 0.5 * nrandom.normal(
+        0, np.sqrt(noise_variance), size=spectrum.shape
+    )
     # Scale noise elements according to corresponding value of the
     # super-Gaussian filter
     return sg_noise * (1 - sg)
@@ -554,7 +598,8 @@ def filter_spectrum(
         cut_idx = None
 
     return FilterInfo(
-        spectrum, sg, noise, region_idx, noise_region_idx, cut_idx, converter
+        spectrum, sg, noise, region_idx, noise_region_idx, cut_idx, sg_power,
+        converter
     )
 
 
