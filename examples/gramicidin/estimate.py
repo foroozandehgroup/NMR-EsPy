@@ -16,13 +16,7 @@ optimiser_iterations = 200
 data, expinfo = load.load_bruker('../data/4/1111', ask_convdta=False)
 data = sig.phase(data, [2.417], [0.])
 virtual_echo = sig.make_virtual_echo([data])
-for x in (0.5, 2, 4):
-    data[0] *= x
-    spectrum = sig.ft(data)
-    import matplotlib.pyplot as plt
-    plt.plot(spectrum)
-    plt.show()
-exit()
+spectrum = sig.ft(virtual_echo) + 1E6
 noise_region = ((11.5, 11.),)
 filterinfo = freqfilter.filter_spectrum(
     spectrum, region, noise_region, expinfo, region_unit='ppm',
@@ -37,19 +31,6 @@ mpm_result = mpm.MatrixPencil(fid, filter_expinfo, M=20)
 x0 = mpm_result.get_result()
 nlp_result = nlp.NonlinearProgramming(
     fid, x0, filter_expinfo, negative_amps='remove',
-    max_iterations=optimiser_iterations,
-)
-x = nlp_result.get_result()
-sfo = expinfo.sfo[0]
-to_add = np.array([
-    [22, 0, 4.70 * sfo, 20],
-    [22, 0, 4.71 * sfo, 20],
-    [22, 0, 4.72 * sfo, 20],
-    [22, 0, 4.73 * sfo, 20],
-])
-x = np.vstack((x, to_add))
-nlp_result = nlp.NonlinearProgramming(
-    fid, x, filter_expinfo, negative_amps='remove',
     max_iterations=optimiser_iterations,
 )
 x = nlp_result.get_result()

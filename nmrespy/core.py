@@ -7,19 +7,14 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 
-from nmrespy import *
+from nmrespy import (
+    RED, MAG, END, USE_COLORAMA, _errors, _misc, load, freqfilter as ff,
+    mpm, plot, sig, write
+)
+from nmrespy.nlp import nlp
 if USE_COLORAMA:
     import colorama
     colorama.init()
-import nmrespy._errors as errors
-from nmrespy._misc import *
-from nmrespy.load import load_bruker
-from nmrespy.freqfilter import filter_spectrum
-from nmrespy.mpm import MatrixPencil
-from nmrespy.nlp.nlp import NonlinearProgramming
-from nmrespy.plot import plot_result
-from nmrespy.write import write_result
-from nmrespy import sig
 
 
 class Estimator:
@@ -36,52 +31,27 @@ class Estimator:
 
     Parameters
     ----------
-    data : numpy.ndarray
+    data
         The data associated with the binary file in `path`.
 
-    path : pathlib.Path or None
+    path
         The path to the directory contaioning the NMR data.
 
-    sw : [float] or [float, float]
-        The experiment sweep width in each dimension (Hz).
+    expinfo
+        Experiment information.
 
-    offset : [float] or [float, float]
-        The transmitter's offset frequency in each dimension (Hz).
-
-    sfo : [float] or [float, float] or None
-        The transmitter frequency in each dimension (MHz)
-
-    nuc : [str] or [str, str] or None
-        The nucleus in each dimension. Elements will be of the form
-        `'<mass><element>'`, where `'<mass>'` is the mass number of the
-        isotope and `'<element>'` is the chemical symbol of the element.
-
-    fmt : str or None
-        The format of the binary file from which the data was obtained.
-        Of the form `'<endian><unitsize>'`, where `'<endian>'` is either
-        `'<'` (little endian) or `'>'` (big endian), and `'<unitsize>'`
-        is either `'i4'` (32-bit integer) or `'f8'` (64-bit float).
-
-    _origin : dict or None, default None
+    _origin
         For internal use. Specifies how the instance was initalised. If `None`,
         implies that the instance was initialised manually, rather than using
         one of :py:meth:`new_bruker`, :py:meth:`new_synthetic_from_data`
         and :py:meth:`new_synthetic_from_parameters`.
     """
 
-    def __init__(
-        self, data, path, sw, off, sfo, nuc, fmt, _origin=None
-    ):
+    def __init__(self, data, path, expinfo, _origin=None):
         self.data = data
         self.dim = self.data.ndim
-        self.n = [int(n) for n in self.data.shape]
         self.path = path
-        self.sw = sw
-        self.offset = off
-        self.sfo = sfo
-        self.nuc = nuc
-        self.fmt = fmt
-
+        self.expinfo = expinfo
         # Attributes that will be assigned to after the user runs
         # the folowing methods:
         # * frequency_filter (filter_info)
@@ -93,13 +63,7 @@ class Estimator:
         # Specifies whether the last time self.result was changed
         # was when nonlinear_prograaming was called.
         self._saveable = False
-        # Create a converter object, enabling conversion idx, hz (and ppm,
-        # if sfo is not None)
-        self._converter = FrequencyConverter(
-            list(data.shape), self.sw, self.offset, self.sfo
-        )
 
-        # --- Create attribute for logging method calls ------------------
         now = datetime.datetime.now()
         self._log = (
             "==============================\n"
@@ -115,19 +79,13 @@ class Estimator:
         self._log += "\n"
 
     def __repr__(self):
-        msg = (
+        return (
             f'nmrespy.core.Estimator('
             f'{self.data}, '
             f'{self.path}, '
-            f'{self.sw}, '
-            f'{self.offset}, '
-            f'{self.n}, '
-            f'{self.sfo}, '
-            f'{self.nuc}, '
-            f'{self.fmt})'
+            f'{self.expinfo}, '
+            f'{self._origin})'
         )
-
-        return msg
 
     def __str__(self):
         """A formatted list of class attributes"""
@@ -137,12 +95,9 @@ class Estimator:
             f"{hex(id(self))}>{END}\n"
         )
 
-        dic = self.__dict__
-        keys, vals = dic.keys(), dic.values()
         items = [f'{MAG}{k}{END} : {v}'
-                 for k, v in zip(keys, vals) if k[0] != '_']
+                 for k, v in self.__dict__.items() if k[0] != '_']
         msg += '\n'.join(items)
-
         return msg
 
     def logger(f):
