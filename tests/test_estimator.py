@@ -33,14 +33,14 @@ def test_synthetic_estimator():
         [4, 0, 100, 10],
         [2, 0, 50, 10],
     ])
-    n = [4096]
-    sw = [5000.]
-    offset = [2000.]
-    sfo = [500.]
-    estimator = Estimator.new_synthetic_from_parameters(
-        params, n, sw, offset, sfo
-    )
-
+    pts = 4096
+    sw = 5000.
+    offset = 2000.
+    sfo = 500.
+    expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
+    estimator = Estimator.new_synthetic_from_parameters(params, expinfo)
+    print(estimator)
+    return None
     # --- Data path (doesn't exist for synthetic data) ---------------
     assert estimator.get_datapath(kill=False) is None
     with pytest.raises(errors.AttributeIsNoneError):

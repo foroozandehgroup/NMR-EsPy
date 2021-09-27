@@ -160,14 +160,14 @@ class Estimator:
 
     @classmethod
     def new_synthetic_from_parameters(
-        cls, parameters, n, sw, offset, sfo, snr=30.,
+        cls, params: np.ndarray, expinfo: ExpInfo, *, snr: float = 30.,
     ):
         """Generate an instance of :py:class:`Estimator` from a
         list of oscillator parameters.
 
         Parameters
         ----------
-        parameters : numpy.ndarray
+        params
             Parameter array with the following structure:
 
             * **1-dimensional data:**
@@ -192,46 +192,46 @@ class Estimator:
                     [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
                  ])
 
-        n : [int], [int, int]
-            Number of points to construct signal from in each dimension.
+        expinfo
+            Experiment information
 
-        sw : [float], [float, float]
-            Sweep width in each dimension, in Hz.
-
-        offset : [float], [float, float]
-            Transmitter offset frequency in each dimension, in Hz.
-
-        sfo : [float], [float, float]
-            Transmitter frequency in each dimension, in MHz.
-
-        snr : float or None, default: None
+        snr
             The signal-to-noise ratio. If `None` then no noise will be added
             to the FID.
 
         Returns
         -------
-        estimator : :py:class:`Estimator`"""
+        estimator: :py:class:`Estimator`"""
 
         try:
-            p = parameters.shape[1]
+            p = params.shape[1]
             if p in [4, 6]:
                 dim = int((p - 2) / 2)
             else:
                 raise ValueError(
-                    f'{RED}`parameters` should have a size of 4 or 6 in '
+                    f'{RED}`params` should have a size of 4 or 6 in '
                     f'axis 1.{END}'
                 )
-
         except AttributeError:
-            raise ValueError(f'{RED}`parameters` should be a numpy array.')
+            raise ValueError(
+                f'{RED}`params` should be a numpy array.{END}'
+            )
 
-        checker = ArgumentChecker(dim=dim)
+        try:
+            if expinfo.unpack('dim') != dim:
+                raise ValueError(
+                    f'{RED}The dimension implied by `params` and `expinfo` '
+                    f'do not match!{END}'
+                )
+        except AttributeError:
+            raise TypeError(
+                f'{RED}`expinfo` should be an instance of '
+                f'nmrespy.ExpInfo{END}'
+            )
+
+        checker = _misc.ArgumentChecker(dim=dim)
         checker.stage(
-            (parameters, 'parameters', 'parameter'),
-            (n, 'n', 'int_list'),
-            (sw, 'sw', 'float_list'),
-            (offset, 'offset', 'float_list'),
-            (sfo, 'sfo', 'float_list', True),
+            (params, 'params', 'parameter'),
             (snr, 'snr', 'float', True)
         )
         checker.check()
@@ -239,16 +239,7 @@ class Estimator:
         data = sig.make_fid(parameters, n, sw, offset=offset, snr=snr)[0]
         origin = {'method': 'new_synthetic_from_parameters', 'args': locals()}
 
-        return cls(
-            data=data,
-            path=None,
-            sw=sw,
-            off=offset,
-            sfo=sfo,
-            nuc=None,
-            fmt=None,
-            _origin=origin
-        )
+        return cls(data=data, path=None, expinfo=expinfo, _origin=origin)
 
     @classmethod
     def from_pickle(cls, path):
