@@ -9,7 +9,7 @@ import numpy as np
 
 from nmrespy import (
     RED, MAG, END, USE_COLORAMA, _errors, _misc, load, freqfilter as ff,
-    mpm, plot, sig, write
+    mpm, plot, sig, write, ExpInfo
 )
 from nmrespy.nlp import nlp
 if USE_COLORAMA:
@@ -174,7 +174,7 @@ class Estimator:
 
               .. code:: python
 
-                 parameters = numpy.array([
+                 params = numpy.array([
                     [a_1, φ_1, f_1, η_1],
                     [a_2, φ_2, f_2, η_2],
                     ...,
@@ -185,7 +185,7 @@ class Estimator:
 
               .. code:: python
 
-                 parameters = numpy.array([
+                 params = numpy.array([
                     [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
                     [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
                     ...,
@@ -202,7 +202,6 @@ class Estimator:
         Returns
         -------
         estimator: :py:class:`Estimator`"""
-
         try:
             p = params.shape[1]
             if p in [4, 6]:
@@ -213,7 +212,7 @@ class Estimator:
                     f'axis 1.{END}'
                 )
         except AttributeError:
-            raise ValueError(
+            raise TypeError(
                 f'{RED}`params` should be a numpy array.{END}'
             )
 
@@ -236,7 +235,7 @@ class Estimator:
         )
         checker.check()
 
-        data = sig.make_fid(parameters, n, sw, offset=offset, snr=snr)[0]
+        data = sig.make_fid(params, expinfo, snr=snr)[0]
         origin = {'method': 'new_synthetic_from_parameters', 'args': locals()}
 
         return cls(data=data, path=None, expinfo=expinfo, _origin=origin)
@@ -361,36 +360,24 @@ class Estimator:
         if fprint:
             print(f'{GRE}Saved instance of Estimator to {path}{END}')
 
-    def get_datapath(self, type_='Path', kill=True):
+    def get_datapath(self, kill: bool = True) -> Path:
         """Return path of the data directory.
 
         Parameters
         ----------
-        type_ : 'Path' or 'str', default: 'Path'
-            The type of the returned path. If `'Path'`, the returned object
-            is an instance of `pathlib.Path <https://docs.python.org/3/\
-            library/pathlib.html#pathlib.Path>`_. If `'str'`, the returned
-            object is an instance of str.
+        kill
+            If the path is ``None``, ``kill`` specifies how the method will
+            act:
 
-        kill : bool, default: True
-            If the path is `None`, `kill` specifies how the method will act:
-
-            * If `True`, an AttributeIsNoneError is raised.
-            * If `False`, `None` is returned.
+            * If ``True``, an AttributeIsNoneError is raised.
+            * If ``False``, ``None`` is returned.
 
         Returns
         -------
-        path : str or pathlib.Path
+        path : pathlib.Path
         """
 
-        path = self._check_if_none('path', kill)
-
-        if type_ == 'Path':
-            return path
-        elif type_ == 'str':
-            return str(path) if path is not None else None
-        else:
-            raise ValueError(f'{R}type_ should be \'Path\' or \'str\'')
+        return self._check_if_none('path', kill)
 
     def get_data(self):
         """Return the original data.

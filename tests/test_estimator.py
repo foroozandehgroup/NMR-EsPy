@@ -9,7 +9,7 @@ import numpy as np
 from numpy import random as nrandom
 
 from context import nmrespy
-from nmrespy import *
+from nmrespy import RED, END, ExpInfo
 from nmrespy.core import Estimator
 from nmrespy import sig
 import nmrespy._errors as errors
@@ -23,8 +23,8 @@ RUN_PDFLATEX = True
 MANUAL_PHASE = True
 
 
-def test_synthetic_estimator():
-    params = np.array([
+class TestSyntheticEstimator:
+    params_1d = np.array([
         [1, 0, 3000, 10],
         [3, 0, 3050, 10],
         [3, 0, 3100, 10],
@@ -33,14 +33,45 @@ def test_synthetic_estimator():
         [4, 0, 100, 10],
         [2, 0, 50, 10],
     ])
-    pts = 4096
-    sw = 5000.
-    offset = 2000.
-    sfo = 500.
-    expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
-    estimator = Estimator.new_synthetic_from_parameters(params, expinfo)
-    print(estimator)
-    return None
+    params_2d = np.array([
+        [1, 0, 3000, 3000, 10, 10],
+        [3, 0, 3050, 3050, 10, 10],
+        [3, 0, 3100, 3100, 10, 10],
+        [1, 0, 3150, 3150, 10, 10],
+        [2, 0, 150, 150, 10, 10],
+        [4, 0, 100, 100, 10, 10],
+        [2, 0, 50, 50, 10, 10],
+    ])
+    expinfo_1d = ExpInfo(pts=4096, sw=5000, offset=2000, sfo=500)
+    expinfo_2d = ExpInfo(pts=512, sw=5000, offset=2000, sfo=500, dim=2)
+
+    def test_init(self):
+        Estimator.new_synthetic_from_parameters(
+            self.params_1d, self.expinfo_1d)
+        Estimator.new_synthetic_from_parameters(
+            self.params_2d, self.expinfo_2d)
+
+        with pytest.raises(TypeError) as exc_info:
+            Estimator.new_synthetic_from_parameters(
+                self.params_1d.tolist(), self.expinfo_1d)
+        assert str(exc_info.value) == \
+            f'{RED}`params` should be a numpy array.{END}'
+
+        with pytest.raises(ValueError) as exc_info:
+            Estimator.new_synthetic_from_parameters(
+                self.params_1d[:, :-1], self.expinfo_1d)
+        assert str(exc_info.value) == \
+            f'{RED}`params` should have a size of 4 or 6 in axis 1.{END}'
+
+        with pytest.raises(TypeError) as exc_info:
+            Estimator.new_synthetic_from_parameters(self.params_1d, 'blah')
+        assert str(exc_info.value) == \
+            f'{RED}`expinfo` should be an instance of nmrespy.ExpInfo{END}'
+
+        with pytest.raises(ValueError) as exc_info:
+
+def test_synthetic_estimator():
+
     # --- Data path (doesn't exist for synthetic data) ---------------
     assert estimator.get_datapath(kill=False) is None
     with pytest.raises(errors.AttributeIsNoneError):
