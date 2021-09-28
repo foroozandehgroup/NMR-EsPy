@@ -9,18 +9,12 @@ import numpy as np
 from numpy import random as nrandom
 
 from context import nmrespy
-from nmrespy import RED, END, ExpInfo
+from nmrespy import RED, END, ExpInfo, _errors, sig
 from nmrespy.core import Estimator
-from nmrespy import sig
-import nmrespy._errors as errors
 
 
-# Set these to True if you want to check interactive and visual things.
-VIEW_DATA = True
-VIEW_RESULT_FILES = True
-VIEW_RESULT_FIGURES = True
-RUN_PDFLATEX = True
-MANUAL_PHASE = True
+# Set this to True if you want to check interactive and visual things.
+INTERACT = True
 
 
 class TestSyntheticEstimator:
@@ -42,14 +36,44 @@ class TestSyntheticEstimator:
         [4, 0, 100, 100, 10, 10],
         [2, 0, 50, 50, 10, 10],
     ])
-    expinfo_1d = ExpInfo(pts=4096, sw=5000, offset=2000, sfo=500)
-    expinfo_2d = ExpInfo(pts=512, sw=5000, offset=2000, sfo=500, dim=2)
+    expinfo_1d = ExpInfo(pts=4096, sw=5000, offset=2000, sfo=500, nuclei='1H')
+    expinfo_2d = ExpInfo(pts=512, sw=5000, offset=2000, sfo=500, nuclei='1H',
+                         dim=2)
+    expinfo_1d_no_nuc = ExpInfo(pts=4096, sw=5000, offset=2000, sfo=500)
+    expinfo_2d_no_nuc = ExpInfo(pts=512, sw=5000, offset=2000, sfo=500, dim=2)
+    expinfo_1d_no_sfo = ExpInfo(pts=4096, sw=5000, offset=2000, nuclei='1H')
+    expinfo_2d_no_sfo = ExpInfo(pts=512, sw=5000, offset=2000, nuclei='1H',
+                                dim=2)
+    expinfo_1d_no_sfo_no_nuc = ExpInfo(pts=4096, sw=5000, offset=2000)
+    expinfo_2d_no_sfo_no_nuc = ExpInfo(pts=512, sw=5000, offset=2000, dim=2)
+
+    def estimator_1d(self, sfo=True, nuclei=True):
+        if sfo and nuclei:
+            expinfo = self.expinfo_1d
+        elif sfo:
+            expinfo = self.expinfo_1d_no_nuc
+        elif nuclei:
+            expinfo = self.expinfo_1d_no_sfo
+        else:
+            expinfo = self.expinfo_1d_no_sfo_no_nuc
+        return Estimator.new_synthetic_from_parameters(
+            self.params_1d, expinfo, snr=40.)
+
+    def estimator_2d(self, sfo=True, nuclei=True):
+        if sfo and nuclei:
+            expinfo = self.expinfo_2d
+        elif sfo:
+            expinfo = self.expinfo_2d_no_nuc
+        elif nuclei:
+            expinfo = self.expinfo_2d_no_sfo
+        else:
+            expinfo = self.expinfo_2d_no_sfo_no_nuc
+        return Estimator.new_synthetic_from_parameters(
+            self.params_2d, expinfo, snr=40.)
 
     def test_init(self):
-        Estimator.new_synthetic_from_parameters(
-            self.params_1d, self.expinfo_1d)
-        Estimator.new_synthetic_from_parameters(
-            self.params_2d, self.expinfo_2d)
+        self.estimator_1d()
+        self.estimator_2d()
 
         with pytest.raises(TypeError) as exc_info:
             Estimator.new_synthetic_from_parameters(
@@ -69,37 +93,160 @@ class TestSyntheticEstimator:
             f'{RED}`expinfo` should be an instance of nmrespy.ExpInfo{END}'
 
         with pytest.raises(ValueError) as exc_info:
+            Estimator.new_synthetic_from_parameters(
+                self.params_1d, self.expinfo_2d)
+        assert str(exc_info.value) == \
+            (f'{RED}The dimension implied by `params` and `expinfo` do not '
+             f'match!{END}')
+
+        with pytest.raises(Exception) as exc_info:
+            Estimator.new_synthetic_from_parameters(
+                self.params_1d, self.expinfo_1d, snr='blah')
+        assert str(exc_info.value) == \
+            (f'{RED}The following arguments are invalid:\n'
+             f'--> snr\n'
+             f'Have a look at the documentation for more info.{END}')
+
+    def test_datapath(self):
+        estimator = self.estimator_1d()
+        assert estimator.datapath is None
+        with pytest.raises(ValueError) as exc_info:
+            estimator.datapath = Path('.').resolve()
+        assert str(exc_info.value) == f'{RED}`datapath` is not mutable!{END}'
+
+    def test_data(self):
+        estimator = self.estimator_1d()
+        assert isinstance(estimator.data, np.ndarray)
+        with pytest.raises(ValueError) as exc_info:
+            estimator.data = np.array([1, 2, 3, 4, 5, 6])
+        assert str(exc_info.value) == f'{RED}`data` is not mutable!{END}'
+
+    def test_dim(self):
+        estimator = self.estimator_1d()
+        assert estimator.dim == 1
+        with pytest.raises(ValueError) as exc_info:
+            estimator.dim = 2
+        assert str(exc_info.value) == f'{RED}`dim` is not mutable!{END}'
+
+    def test_expinfo(self):
+        estimator = self.estimator_1d()
+        assert isinstance(estimator.expinfo, ExpInfo)
+        with pytest.raises(ValueError) as exc_info:
+            estimator.expinfo = ExpInfo(pts=2048, sw=1000, offset=1000)
+        assert str(exc_info.value) == f'{RED}`expinfo` is not mutable!{END}'
+
+    def test_sw(self):
+        for i in range(1, 3):
+            estimator = getattr(self, f'estimator_{i}d')()
+            assert estimator.get_sw() == tuple([5000. for _ in range(i)])
+            assert estimator.get_sw(unit='ppm') == \
+                tuple([10. for _ in range(i)])
+
+            with pytest.raises(_errors.InvalidUnitError) as exc_info:
+                estimator.get_sw(unit='blah')
+            assert str(exc_info.value) == \
+                (f'{RED}unit should be one of the following: \'hz\', '
+                 f'\'ppm\'{END}')
+
+            estimator = getattr(self, f'estimator_{i}d')(sfo=False)
+            with pytest.raises(_errors.InvalidUnitError) as exc_info:
+                estimator.get_sw(unit='ppm')
+            assert str(exc_info.value) == \
+                f'{RED}unit should be one of the following: \'hz\'{END}'
+
+    def test_offset(self):
+        for i in range(1, 3):
+            estimator = getattr(self, f'estimator_{i}d')()
+            assert estimator.get_offset() == tuple([2000. for _ in range(i)])
+            assert estimator.get_offset(unit='ppm') == \
+                tuple([4. for _ in range(i)])
+
+            with pytest.raises(_errors.InvalidUnitError) as exc_info:
+                estimator.get_offset(unit='blah')
+            assert str(exc_info.value) == \
+                (f'{RED}unit should be one of the following: \'hz\', '
+                 f'\'ppm\'{END}')
+
+            estimator = getattr(self, f'estimator_{i}d')(sfo=False)
+            with pytest.raises(_errors.InvalidUnitError) as exc_info:
+                estimator.get_offset(unit='ppm')
+            assert str(exc_info.value) == \
+                f'{RED}unit should be one of the following: \'hz\'{END}'
+
+    def test_sfo(self):
+        for i in range(1, 3):
+            estimator = getattr(self, f'estimator_{i}d')()
+            assert estimator.sfo == tuple([500. for _ in range(i)])
+            estimator = getattr(self, f'estimator_{i}d')(sfo=False)
+            assert estimator.sfo is None
+
+    def test_bf(self):
+        for i in range(1, 3):
+            estimator = getattr(self, f'estimator_{i}d')()
+            assert estimator.bf == tuple([499.998 for _ in range(i)])
+            estimator = getattr(self, f'estimator_{i}d')(sfo=False)
+            assert estimator.sfo is None
+
+    def test_nuclei(self):
+        for i in range(1, 3):
+            estimator = getattr(self, f'estimator_{i}d')()
+            assert estimator.nuclei == tuple(['1H' for _ in range(i)])
+            estimator = getattr(self, f'estimator_{i}d')(nuclei=False)
+            assert estimator.nuclei is None
+
+    def test_shifts(self):
+        for i in range(1, 3):
+            estimator = getattr(self, f'estimator_{i}d')()
+            pts = estimator.data.shape
+            sw = estimator.get_sw()
+            offset = estimator.get_offset()
+            sfo = estimator.sfo
+
+            assert np.allclose(
+                np.array(estimator.get_shifts()),
+                np.array(
+                    [np.linspace(sw_ / 2 + offset_, -sw_ / 2 + offset_, pts_)
+                     for sw_, offset_, pts_ in zip(sw, offset, pts)]
+                ),
+                atol=1E-8, rtol=0.
+            )
+
+            assert np.allclose(
+                np.array(estimator.get_shifts(unit='ppm')),
+                np.array(
+                    [np.linspace(sw_ / 2 + offset_, -sw_ / 2 + offset_, pts_)
+                     for sw_, offset_, pts_ in zip(sw, offset, pts)]
+                ) / np.expand_dims(np.array(sfo), axis=-1),
+                atol=1E-8, rtol=0.
+            )
+
+    def test_timepoints(self):
+        for i in range(1, 3):
+            estimator = getattr(self, f'estimator_{i}d')()
+            pts = estimator.data.shape
+            sw = estimator.get_sw()
+
+            assert np.allclose(
+                np.array(estimator.timepoints),
+                np.array(
+                    [np.linspace(0, (pts_ - 1) / sw_, pts_)
+                     for sw_, pts_ in zip(sw, pts)]
+                ),
+                atol=1E-8, rtol=0.
+            )
+
+    def test_view_data(self):
+        if INTERACT:
+            estimator = self.estimator_1d()
+            estimator.view_data(domain='frequency')
+            estimator.view_data(domain='frequency', freq_xunit='hz')
+            estimator.view_data(domain='frequency', component='imag')
+            estimator.view_data(domain='frequency', component='both')
+            estimator.view_data(domain='time')
+            estimator.view_data(domain='time', component='imag')
+            estimator.view_data(domain='time', component='both')
 
 def test_synthetic_estimator():
-
-    # --- Data path (doesn't exist for synthetic data) ---------------
-    assert estimator.get_datapath(kill=False) is None
-    with pytest.raises(errors.AttributeIsNoneError):
-        estimator.get_datapath()
-
-    # --- Data dimension ---------------------------------------------
-    assert estimator.get_dim() == 1
-
-    # --- Sweep width ------------------------------------------------
-    assert round(estimator.get_sw()[0], 3) == round(sw[0], 3)
-    assert round(estimator.get_sw(unit='hz')[0], 3) == round(sw[0], 3)
-    assert round(estimator.get_sw(unit='ppm')[0], 3) == \
-           round(sw[0] / sfo[0], 3)
-
-    with pytest.raises(errors.InvalidUnitError):
-        estimator.get_sw(unit='invalid')
-
-    # --- Offset -----------------------------------------------------
-    assert round(estimator.get_offset()[0], 3) == round(offset[0], 3)
-    assert round(estimator.get_offset(unit='hz')[0], 3) == round(offset[0], 3)
-    assert round(estimator.get_offset(unit='ppm')[0], 3) == \
-           round(offset[0] / sfo[0], 3)
-
-    # --- Transmitter and basic frequency ----------------------------
-    assert round(estimator.get_sfo()[0], 3) == round(sfo[0], 3)
-    assert round(estimator.get_bf()[0], 3) == \
-           round(sfo[0] - (offset[0] / 1E6), 3)
-
     # --- Nucleus (doesn't exist for synthetic data) -----------------
     assert estimator.get_nucleus(kill=False) is None
     with pytest.raises(errors.AttributeIsNoneError):

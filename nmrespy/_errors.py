@@ -84,13 +84,10 @@ class AttributeIsNoneError(Exception):
     """Raise when a `get_<attr>` method is called and the attribute is None."""
 
     def __init__(self, attribute, method):
-        self.msg = f'{RED}The attribute {attribute} is None.'
+        self.msg = f'{RED}The attribute `{attribute}` is None.'
         if method is not None:
-            self.msg += (
-                f' Perhaps you are yet to call {method} on the class'
-                f' instance?'
-            )
-
+            self.msg += \
+                f'\nPerhaps you are yet to call `{method}` on the estimator?'
         self.msg += END
         super().__init__(self.msg)
 

@@ -3,6 +3,7 @@ import datetime
 import functools
 from pathlib import Path
 import pickle
+from typing import Any, Iterable, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,8 +35,8 @@ class Estimator:
     data
         The data associated with the binary file in `path`.
 
-    path
-        The path to the directory contaioning the NMR data.
+    datapath
+        The path to the directory containing the NMR data.
 
     expinfo
         Experiment information.
@@ -47,11 +48,11 @@ class Estimator:
         and :py:meth:`new_synthetic_from_parameters`.
     """
 
-    def __init__(self, data, path, expinfo, _origin=None):
-        self.data = data
-        self.dim = self.data.ndim
-        self.path = path
-        self.expinfo = expinfo
+    def __init__(self, data, datapath, expinfo, _origin=None):
+        self._data = data
+        self._datapath = datapath
+        self._expinfo = expinfo
+        self._converter = _misc.FrequencyConverter(self._expinfo)
         # Attributes that will be assigned to after the user runs
         # the folowing methods:
         # * frequency_filter (filter_info)
@@ -82,7 +83,7 @@ class Estimator:
         return (
             f'nmrespy.core.Estimator('
             f'{self.data}, '
-            f'{self.path}, '
+            f'{self.datapath}, '
             f'{self.expinfo}, '
             f'{self._origin})'
         )
@@ -238,7 +239,7 @@ class Estimator:
         data = sig.make_fid(params, expinfo, snr=snr)[0]
         origin = {'method': 'new_synthetic_from_parameters', 'args': locals()}
 
-        return cls(data=data, path=None, expinfo=expinfo, _origin=origin)
+        return cls(data=data, datapath=None, expinfo=expinfo, _origin=origin)
 
     @classmethod
     def from_pickle(cls, path):
@@ -360,271 +361,175 @@ class Estimator:
         if fprint:
             print(f'{GRE}Saved instance of Estimator to {path}{END}')
 
-    def get_datapath(self, kill: bool = True) -> Path:
-        """Return path of the data directory.
+    @property
+    def datapath(self) -> Union[Path, None]:
+        """Return the path to the data."""
+        return self._datapath
 
-        Parameters
-        ----------
-        kill
-            If the path is ``None``, ``kill`` specifies how the method will
-            act:
+    @datapath.setter
+    def datapath(self, value):
+        raise ValueError(f'{RED}`datapath` is not mutable!{END}')
 
-            * If ``True``, an AttributeIsNoneError is raised.
-            * If ``False``, ``None`` is returned.
+    @property
+    def data(self) -> np.ndarray:
+        """Return the original data."""
+        return self._data
 
-        Returns
-        -------
-        path : pathlib.Path
-        """
+    @data.setter
+    def data(self, value):
+        raise ValueError(f'{RED}`data` is not mutable!{END}')
 
-        return self._check_if_none('path', kill)
+    @property
+    def dim(self) -> int:
+        """Return the data dimension."""
+        return self.data.ndim
 
-    def get_data(self):
-        """Return the original data.
+    @dim.setter
+    def dim(self, value):
+        raise ValueError(f'{RED}`dim` is not mutable!{END}')
 
-        Returns
-        -------
-        data : numpy.ndarray
-        """
-        return self.data
+    @property
+    def expinfo(self) -> ExpInfo:
+        return self._expinfo
 
-    def get_dim(self):
-        """Return the data dimension.
+    @expinfo.setter
+    def expinfo(self, value):
+        raise ValueError(f'{RED}`expinfo` is not mutable!{END}')
 
-        Returns
-        -------
-        dim : 1 or 2
-        """
-        return self.dim
-
-    def get_n(self):
-        """Return the number of datapoints in each dimension
-
-        Returns
-        -------
-        n : [int] or [int, int]
-        """
-        return self.n
-
-    def get_sw(self, unit='hz', kill=True):
+    def get_sw(self, unit: str = 'hz') -> Iterable[float]:
         """Return the experiment sweep width in each dimension.
 
         Parameters
         ----------
-        unit : 'hz' or 'ppm', default: 'hz'
-
-        kill : bool, default: True
-            If `unit` is `'ppm'`, but `self.sfo` is `None`, `kill` specifies
-            how the method will act:
-
-            * If `True`, an AttributeIsNoneError is raised.
-            * If `False`, `None` is returned.
+        unit
+            The unit of the sweep width. Should be ``'hz'`` or ``'ppm'``.
 
         Returns
         -------
-        sw : [float] or [float, float]
+        sw : Iterable[float]
 
         Raises
         ------
         InvalidUnitError
-            If `unit` is not `'hz'` or `'ppm'`
-
-        Notes
-        -----
-        If `unit` is set to `'ppm'` and `self.sfo` is not specified
-        (`None`), there is no way of retreiving the sweep width in ppm.
-        `None` will be returned.
+            If ``unit`` is not ``'hz'`` or ``'ppm'``, or ``'unit'`` is
+            ``'ppm'`` and the transmitter frequency (``sfo``) is not
+            specified by ``expinfo``.
         """
-
-        sw = copy.deepcopy(self.sw)
+        sw = self.expinfo.sw
         if unit == 'hz':
             return sw
         elif unit == 'ppm':
-            sfo = self.get_sfo(kill)
+            sfo = self.expinfo.sfo
             if sfo is None:
-                return None
+                raise _errors.InvalidUnitError('hz')
             return self._converter.convert(sw, 'hz->ppm')
         else:
-            raise errors.InvalidUnitError('hz', 'ppm')
+            raise _errors.InvalidUnitError('hz', 'ppm')
 
-    def get_offset(self, unit='hz', kill=True):
+    def get_offset(self, unit='hz'):
         """Return the transmitter's offset frequency in each dimesnion.
 
         Parameters
         ----------
-        unit : 'hz' or 'ppm', default: 'hz'
+        unit
+            The unit of the offset. Should be ``'hz'`` or ``'ppm'``.
 
         Returns
         -------
-        offset : [float] or [float, float]
-
-        kill : bool, default: True
-            If `unit` is `'ppm'`, but `self.sfo` is `None`, `kill` specifies
-            how the method will act:
-
-            * If `True`, an AttributeIsNoneError is raised.
-            * If `False`, `None` is returned.
+        offset : Iterable[float]
 
         Raises
         ------
         InvalidUnitError
-            If `unit` is not `'hz'` or `'ppm'`
-
-        Notes
-        -----
-        If `unit` is set to `'ppm'` and `self.sfo` is not specified
-        (`None`), there is no way of retreiving the offset in ppm.
-        `None` will be returned.
+            If ``unit`` is not ``'hz'`` or ``'ppm'``, or ``'unit'`` is
+            ``'ppm'`` and the transmitter frequency (``sfo``) is not
+            specified by ``expinfo``.
         """
-
-        offset = copy.deepcopy(self.offset)
+        offset = self.expinfo.offset
         if unit == 'hz':
             return offset
         elif unit == 'ppm':
-            sfo = self.get_sfo(kill)
+            sfo = self.expinfo.sfo
             if sfo is None:
-                return None
+                raise _errors.InvalidUnitError('hz')
             return self._converter.convert(offset, 'hz->ppm')
         else:
-            raise errors.InvalidUnitError('hz', 'ppm')
+            raise _errors.InvalidUnitError('hz', 'ppm')
 
-    def get_sfo(self, kill=True):
+    @property
+    def sfo(self) -> Union[Iterable[float], None]:
         """Return transmitter frequency for each channel (MHz).
 
-        Parameters
-        ----------
-        kill : bool, default: True
-            If the path is `None`, `kill` specifies how the method will act:
-
-            * If `True`, an AttributeIsNoneError is raised.
-            * If `False`, `None` is returned.
-
         Returns
         -------
-        sfo : [float] or [float, float]
+        sfo : Union[Iterable[float], None]
         """
+        return self.expinfo.sfo
 
-        return self._check_if_none('sfo', kill)
-
-    def get_bf(self, kill=True):
+    @property
+    def bf(self) -> Union[Iterable[float], None]:
         """Return the transmitter's basic frequency for each channel (MHz).
 
-        Parameters
-        ----------
-        kill : bool, default: True
-            If the path is `None`, `kill` specifies how the method will act:
-
-            * If `True`, an AttributeIsNoneError is raised.
-            * If `False`, `None` is returned.
-
         Returns
         -------
-        bf : [float] or [float, float]
+        bf: Union[Iterable[float], None]
         """
-
-        sfo = self._check_if_none('sfo', kill)
+        sfo = self.sfo
         if sfo is None:
             return None
+        offset = self.get_offset()
+        return tuple([s - (o / 1E6) for s, o in zip(sfo, offset)])
 
-        off = self.get_offset()
-        return [s - (o / 1E6) for s, o in zip(sfo, off)]
-
-    def get_nucleus(self, kill=True):
+    @property
+    def nuclei(self) -> Union[Iterable[str], None]:
         """Return the target nucleus of each channel.
 
-        Parameters
-        ----------
-        kill : bool, default: True
-            If the path is `None`, `kill` specifies how the method will act:
-
-            * If `True`, an AttributeIsNoneError is raised.
-            * If `False`, `None` is returned.
-
         Returns
         -------
-        nuc : [str] or [str, str]
+        nuc: Union[Iterable[str], None]
         """
+        return self.expinfo.nuclei
 
-        return self._check_if_none('nuc', kill)
-
-    def get_shifts(self, unit='hz', meshgrid=False, kill=True):
-        """Return the sampled frequencies consistent with experiment's
-        parameters (sweep width, transmitter offset, number of points).
+    def get_shifts(self, *, unit: str = 'hz') -> Iterable[np.ndarray]:
+        """Return the sampled frequencies.
 
         Parameters
         ----------
-        unit : 'ppm' or 'hz', default: 'ppm'
-            The unit of the value(s).
-
-        meshgrid : bool
-            Only appicable for 2D data. If set to `True`, the shifts in
-            each dimension will be fed into
-            `numpy.meshgrid <https://numpy.org/doc/stable/reference/\
-            generated/numpy.meshgrid.html>`_
-
-        kill : bool
-            If `self.sfo` (need to get shifts in ppm) is `None`, `kill`
-            specifies how the method will act:
-
-            * If `True`, an AttributeIsNoneError is raised.
-            * If `False`, `None` is returned.
+        unit
+            The unit of the frequencies. Should be one of ``'hz'`` and
+            ``'ppm'``.
 
         Returns
         -------
-        shifts : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
+        shifts: Iterable[numpy.ndarray]
             The frequencies sampled along each dimension.
 
         Raises
         ------
         InvalidUnitError
-            If `unit` is not `'hz'` or `'ppm'`
+            If ``unit`` is not ``'hz'`` or ``'ppm'``, or ``unit`` is ``ppm``,
+            but ``sfo`` is not given in ``expinfo``.
 
         Notes
         -----
-        The shifts are returned in ascending order.
+        The shifts are returned in descending order.
         """
-
         if unit not in ['ppm', 'hz']:
-            raise errors.InvalidUnitError('ppm', 'hz')
+            raise _errors.InvalidUnitError('ppm', 'hz')
+        if unit == 'ppm' and self.sfo is None:
+            raise _errors.InvalidUnitError('hz')
+        return sig.get_shifts(self.expinfo, unit=unit)
 
-        if unit == 'ppm':
-            if self._check_if_none('sfo', kill) is None:
-                return None
-
-        shifts = sig.get_shifts(
-            self.get_n(), self.get_sw(unit=unit),
-            self.get_offset(unit=unit, kill=kill), flip=True,
-        )
-
-        if self.get_dim() == 2 and meshgrid:
-            return list(np.meshgrid(shifts[0], shifts[1]))
-
-        return shifts
-
-    def get_timepoints(self, meshgrid=False):
-        """Return the sampled times consistent with experiment's
-        parameters (sweep width, number of points).
-
-        Parameters
-        ----------
-        meshgrid : bool
-            Only appicable for 2D data. If set to `True`, the time-points in
-            each dimension will be fed into
-            `numpy.meshgrid <https://numpy.org/doc/stable/reference/\
-            generated/numpy.meshgrid.html>`_
+    @property
+    def timepoints(self) -> Iterable[np.ndarray]:
+        """Return the sampled timepoints.
 
         Returns
         -------
-        tp : [numpy.ndarray] or [numpy.ndarray, numpy.ndarray]
+        tp: Iterable[np.ndarray]
             The times sampled along each dimension (seconds).
         """
-
-        tp = sig.get_timepoints(self.get_n(), self.get_sw())
-
-        if meshgrid and self.get_dim() == 2:
-            return list(np.meshgrid(tp[0], tp[1], indexing='ij'))
-
-        return tp
+        return sig.get_timepoints(self.expinfo)
 
     def get_result(self, kill=True, freq_unit='hz'):
         """Returns the estimation result
@@ -696,9 +601,12 @@ class Estimator:
         else:
             raise InvalidUnitError('hz', 'ppm')
 
-    def _check_if_none(self, name, kill, method=None):
-        """Retrieve attributes that may be assigned the value `None`. Return
-        None/raise error depending on the value of ``kill``
+    def _check_if_none(
+        self, name: str, kill: bool, method: Union[str, None] = None
+    ) -> Any:
+        """Deal with attributes that may be assigned the value `None`.
+
+        Return None/raise error depending on the value of ``kill``
 
         Parameters
         ----------
@@ -722,66 +630,64 @@ class Estimator:
 
         attribute = self.__dict__[name]
         if attribute is None:
-            if kill is True:
-                raise errors.AttributeIsNoneError(name, method)
+            if kill:
+                raise _errors.AttributeIsNoneError(name, method)
             else:
                 return None
-
         else:
             return attribute
 
-    def view_data(self, domain='frequency', freq_xunit='ppm',
-                  component='real'):
+    def view_data(
+        self, domain: str = 'frequency', freq_xunit: str = 'ppm',
+        component: str = 'real'
+    ) -> None:
         """Generate a simple, interactive plot of the data using matplotlib.
 
         Parameters
         ----------
-        domain : 'frequency' or 'time', default: 'frequency'
-            The domain of the sig.
+        domain
+            The domain of the signal. Should be ``'frequency'`` or ``'time'``.
 
-        freq_xunit : 'ppm' or 'hz', default: 'ppm'
-            The unit of the x-axis, if `domain` is set as `'frequency'`. If
-            `domain` is set as `'time'`, the x-axis unit will the seconds.
+        freq_xunit
+            The unit of the x-axis, if ``domain`` is set as ``'frequency'``.
+            If ``domain`` is set as ``'time'``, the x-axis unit will be in
+            seconds regardless of ``freq_xunit``.
 
-        component : 'real', 'imag' or 'both', default: 'real'
-            The component of the data to display. `'both'` displays both
-            the real and imaginary components
+        component :
+            The component of the data to display. Should be one of ``'real'``,
+            ``'imag'`` or ``'both'``. ``'both'`` displays both the real and
+            imaginary components.
         """
         # TODO: 2D equivalent
-        dim = self.get_dim()
+        if self.dim != 1:
+            raise _errors.TwoDimUnsupportedError()
 
         if domain == 'time':
-            if dim == 1:
-                xlabel = '$t\\ (s)$'
-                ydata = self.get_data()
-                xdata = self.get_timepoints()[0]
-
-            elif dim == 2:
-                raise errors.TwoDimUnsupportedError()
+            xlabel = '$t\\ (s)$'
+            ydata = self.data
+            xdata = self.timepoints[0]
 
         elif domain == 'frequency':
             # frequency domain treatment
-            if dim == 1:
-                ydata = sig.ft(self.get_data())
+            ydata = sig.ft(self.data)
 
-                if freq_xunit == 'hz':
-                    xlabel = '$\\omega\\ (Hz)$'
-                    xdata = self.get_shifts(unit='hz')[0]
-                elif freq_xunit == 'ppm':
-                    xlabel = '$\\omega\\ (ppm)$'
-                    xdata = self.get_shifts(unit='ppm')[0]
-                else:
-                    msg = f'{R}freq_xunit was not given a valid value' \
-                          + f' (should be \'ppm\' or \'hz\').{END}'
-                    raise ValueError(msg)
-
-            elif dim == 2:
-                raise errors.TwoDimUnsupportedError()
+            if freq_xunit == 'hz':
+                xlabel = '$\\omega\\ (Hz)$'
+                xdata = self.get_shifts(unit='hz')[0]
+            elif freq_xunit == 'ppm':
+                xlabel = '$\\omega\\ (ppm)$'
+                xdata = self.get_shifts(unit='ppm')[0]
+            else:
+                raise ValueError(
+                    f'{RED}`freq_xunit` was not given a valid value'
+                    f' (should be \'ppm\' or \'hz\').{END}'
+                )
 
         else:
-            msg = f'{R}domain was not given a valid value' \
-                  + f' (should be \'frequency\' or \'time\').{END}'
-            raise ValueError(msg)
+            raise ValueError(
+                f'{RED}`domain` was not given a valid value'
+                f' (should be \'frequency\' or \'time\').{END}'
+            )
 
         if component == 'real':
             plt.plot(xdata, np.real(ydata), color='k')
@@ -792,12 +698,12 @@ class Estimator:
             plt.plot(xdata, np.imag(ydata), color='#808080', label='Im')
             plt.legend()
         else:
-            msg = f'{R}component was not given a valid value' \
-                  + f' (should be \'real\', \'imag\' or \'both\').{END}'
-            raise ValueError(msg)
+            raise ValueError(
+                f'{RED}`component` was not given a valid value'
+                f' (should be \'real\', \'imag\' or \'both\').{END}'
+            )
 
-        if domain == 'frequency':
-            plt.xlim(xdata[0], xdata[-1])
+        plt.xlim(xdata[0], xdata[-1])
         plt.xlabel(xlabel)
         plt.show()
 
@@ -861,31 +767,30 @@ class Estimator:
                             offset=self.get_offset())
 
     @logger
-    def phase_data(self, p0=None, p1=None):
-        """Phase `self.data`
+    def phase_data(
+        self, p0: Union[Iterable[float, None]] = None,
+        p1: Union[Iterable[float, None]] = None
+    ) -> None:
+        """Phase the data associated with the estimator.
 
         Parameters
         ----------
-        p0 : [float], [float, float], or None default: None
+        p0
             Zero-order phase correction in each dimension in radians.
-            If `None`, the phase will be set to `0.0` in each dimension.
+            If ``None``, the phase will be set to ``0.0`` in each dimension.
 
-        p1 : [float], [float, float], or None default: None
+        p1
             First-order phase correction in each dimension in radians.
-            If `None`, the phase will be set to `0.0` in each dimension.
+            If ``None``, the phase will be set to ``0.0`` in each dimension.
         """
-
         if p0 is None:
-            p0 = self.get_dim() * [0.0]
+            p0 = self.dim * [0.0]
         if p1 is None:
-            p1 = self.get_dim() * [0.0]
-
-        self.data = sig.ift(
-            sig.phase(sig.ft(self.data), p0, p1)
-        )
+            p1 = self.dim * [0.0]
+        self._data = sig.phase(self.data, p0, p1)
 
     def manual_phase_data(self, max_p1=None):
-        """Perform manual phase correction of `self.data`.
+        """Perform manual phase correction on the data.
 
         Zero- and first-order phase pharameters are determined via
         interaction with a Tkinter- and matplotlib-based graphical user
