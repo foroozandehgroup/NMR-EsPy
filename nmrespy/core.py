@@ -768,8 +768,8 @@ class Estimator:
 
     @logger
     def phase_data(
-        self, p0: Union[Iterable[float, None]] = None,
-        p1: Union[Iterable[float, None]] = None
+        self, *, p0: Union[Iterable[float], None] = None,
+        p1: Union[Iterable[float], None] = None
     ) -> None:
         """Phase the data associated with the estimator.
 
@@ -789,24 +789,23 @@ class Estimator:
             p1 = self.dim * [0.0]
         self._data = sig.phase(self.data, p0, p1)
 
-    def manual_phase_data(self, max_p1=None):
+    def manual_phase_data(self, *, max_p1=None):
         """Perform manual phase correction on the data.
 
         Zero- and first-order phase pharameters are determined via
-        interaction with a Tkinter- and matplotlib-based graphical user
-        interface.
+        interaction with a Tkinter-based graphical user interface.
 
         Parameters
         ----------
-        max_p1 : float or None, default: None
+        max_p1
             Specifies the range of first-order phases permitted. For each
-            dimension, the user will be allowed to choose a value of `p1`
+            dimension, the user will be allowed to choose a value of ``p1``
             within [`-max_p1`, `max_p1`]. By default, `max_p1` will be
             ``10 * numpy.pi``.
         """
-        p0, p1 = sig.manual_phase_spectrum(sig.ft(self.data), max_p1)
+        p0, p1 = sig.manual_phase_spectrum(sig.ft(self.data), max_p1=max_p1)
         if not (p0 is None and p1 is None):
-            self.phase_data(p0=[p0], p1=[p1])
+            self.phase_data(p0=p0, p1=p1)
 
     @logger
     def frequency_filter(

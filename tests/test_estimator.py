@@ -246,6 +246,23 @@ class TestSyntheticEstimator:
             estimator.view_data(domain='time', component='imag')
             estimator.view_data(domain='time', component='both')
 
+    def test_phase(self):
+        estimator = self.estimator_1d()
+        init_data = estimator.data
+        estimator.phase_data(p0=(1.2,), p1=(2.3,))
+        assert not np.allclose(estimator.data, init_data)
+        estimator.phase_data(p0=(-1.2,), p1=(-2.3,))
+        assert np.allclose(estimator.data, init_data)
+
+    def test_manual_phase(self):
+        if INTERACT:
+            estimator = self.estimator_1d()
+            print('p1 should be ±10 radians')
+            estimator.manual_phase_data()
+            print('p1 should be ±2 radians')
+            estimator.manual_phase_data(max_p1=2 * np.pi)
+
+
 def test_synthetic_estimator():
     # --- Nucleus (doesn't exist for synthetic data) -----------------
     assert estimator.get_nucleus(kill=False) is None
