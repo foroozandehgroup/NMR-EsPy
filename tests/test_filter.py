@@ -111,3 +111,29 @@ def test_filter_performance():
     # give cut signal a larger tolerance due to greater uncertainty generated
     # by cutting
     assert np.allclose(p[0], cut_result, rtol=0, atol=1e-1)
+
+def test_fix_baseline():
+    p = np.array([
+        [10, 0, 350, 10],
+        [20, 0, 340, 10],
+        [10, 0, 330, 10],
+        [10, 0, -100, 10],
+        [30, 0, -90, 10],
+        [30, 0, -80, 10],
+        [10, 0, -70, 10],
+    ])
+    sw = 1000.
+    offset = 0.
+    sfo = 500.
+    pts = 4096
+    expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
+    region = ((300., 380.),)
+    noise_region = ((-225., -250.),)
+    fid = sig.make_fid(p, expinfo, snr=20.)[0]
+    spectrum = sig.ft(fid)
+    finfo = ff.filter_spectrum(spectrum, region, noise_region, expinfo)
+    import matplotlib.pyplot as plt
+    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
+    ax1.plot(spectrum)
+    ax2.plot(finfo.filtered_spectrum)
+    plt.show()

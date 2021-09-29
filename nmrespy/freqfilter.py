@@ -148,10 +148,15 @@ class FilterInfo:
         return self._sg_power
 
     @property
+    def _filtered_unfixed_spectrum(self):
+        """Filtered spectrum without any baseline fix."""
+        return (self.spectrum * self.sg) + self.sg_noise
+
+    @property
     def filtered_spectrum(self) -> np.ndarray:
         """Get filtered spectrum (uncut)."""
-        filtered_spectrum = (self.spectrum * self.sg) + self.sg_noise
-        return filtered_spectrum + self._baseline_fix(filtered_spectrum)
+        spectrum = self._filtered_unfixed_spectrum
+        return spectrum + self._baseline_fix(spectrum)
 
     @property
     def filtered_fid(self) -> np.ndarray:
@@ -340,37 +345,78 @@ class FilterInfo:
         return sig.ift(spectrum)[tuple(slice)]
 
     def _baseline_fix(self, filtered_spectrum: np.ndarray) -> np.ndarray:
+        def is_small(x):
+            return x < 1E-6
+
+        def is_large(x):
+            return x > 1 - 1E-3
+
+        dims = filtered_spectrum.ndim
         region = self.get_region(unit='idx')
         sg = np.real(self.sg)
         boundaries = []
-        for (_, rr) in region:
-            lb = None
-            rb = None
-            shift = 0
-            while(any([x is None for x in (lb, rb)])):
-                if rb is None and sg[rr + shift] < 1E-6:
-                    rb = rr + shift
-                if lb is None and sg[rr - shift] > 1 - 1E-3:
-                    lb = rr - shift
-                shift += 1
-            boundaries.append(slice(lb, rb))
+        for dim, bounds in enumerate(region):
+            for i, bound in enumerate(bounds):
+                rcutoff = None
+                lcutoff = None
+                shift = 0
+                while(any([x is None for x in (lcutoff, rcutoff)])):
+                    if i == 0:
+                        if lcutoff is None and is_small(sg[bound - shift]):
+                            lcutoff = bound - shift
+                        if rcutoff is None and is_large(sg[bound + shift]):
+                            rcutoff = bound + shift
+                    if i == 1:
+                        if lcutoff is None and is_large(sg[bound - shift]):
+                            lcutoff = bound - shift
+                        if rcutoff is None and is_small(sg[bound + shift]):
+                            rcutoff = bound + shift
+                    shift += 1
+                boundaries.append(
+                    tuple(
+                        dim * [slice(None, None, None)] +
+                        [slice(lcutoff, rcutoff)] +
+                        (dims - dim - 1) * [slice(None, None, None)]
+                    )
+                )
         boundaries = tuple(boundaries)
-
-        spectrum_slice = filtered_spectrum[boundaries]
-        sg_slice = self.sg[boundaries]
-        x0 = 0.
-        args = (spectrum_slice, sg_slice)
-        optim_amp = minimize(
+        if dims == 1:
+            x0 = tuple([0. for _ in range(4)])
+        elif dims == 2:
+            x0 = tuple([0. for _ in range(7)])
+        args = (filtered_spectrum, sg, boundaries)
+        result = minimize(
             self._baseline_cost_func, x0, args=args, method='trust-constr'
         )['x']
-        return optim_amp * self.sg
+        amp = result[0]
+        quad_coeffs = result[1:]
+        return amp * self.sg * self._quadratic(filtered_spectrum.shape,
+                                                     quad_coeffs)
 
-    @staticmethod
-    def _baseline_cost_func(amp, *args):
-        spectrum_slice, sg_slice = args
-        residual = spectrum_slice + (amp * sg_slice)
+    def _baseline_cost_func(self, x, *args):
+        spectrum, sg, boundaries = args
+        amp = x[0]
+        quad_coeffs = x[1:]
+        residual = 0.
+        for bounds in boundaries:
+            spectrum_slice = spectrum[bounds]
+            sg_slice = sg[bounds]
+            quadratic = self._quadratic(spectrum.shape, quad_coeffs)[bounds]
+            residual += spectrum_slice + (amp * sg_slice * quadratic)
         return np.sum(np.abs(residual))
 
+    @staticmethod
+    def _quadratic(pts, coeffs):
+        points = [np.linspace(0, 1, p) for p in pts]
+        if len(points) == 1:
+            x = points[0]
+            a, b, c = coeffs
+            return (a * x ** 2) + (b * x) + c
+        elif len(points) == 2:
+            x, y = np.meshgrid(*points, indexing='ij')
+            a, b, c, d, e, f = coeffs
+            return (a * x ** 2) + (b * y ** 2) + (c * x * y) + \
+                   (d * x) + (e * y) + f
 
 def superg(region: RegionIntType, shape: Iterable[int],
            p: float = 40.0) -> np.ndarray:

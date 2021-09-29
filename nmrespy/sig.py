@@ -7,7 +7,7 @@
 import copy
 import re
 import tkinter as tk
-from typing import Iterable, Tuple, Union
+from typing import Dict, Iterable, Tuple, Union
 
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
@@ -380,7 +380,7 @@ def get_timepoints(
 
     Returns
     -------
-    tp
+    tp: Iterable[numpy.ndarray]
         The time points sampled in each dimension.
 
     Notes
@@ -431,7 +431,7 @@ def get_shifts(expinfo: ExpInfo, *, unit: str = 'hz',
         ``expinfo.sfo`` is ``None``, shifts can only be obtained in Hz.
 
     unit
-    The unit of the chemical shifts. One of ``'hz'``, ``'ppm'``.
+        The unit of the chemical shifts. One of ``'hz'``, ``'ppm'``.
 
     flip
         If `True`, the shifts will be returned in descending order, as is
@@ -439,7 +439,7 @@ def get_shifts(expinfo: ExpInfo, *, unit: str = 'hz',
 
     Returns
     -------
-    shifts
+    shifts: Iterable[numpy.ndarray]
         The chemical shift values sampled in each dimension.
     """
     try:
@@ -497,7 +497,7 @@ def ft(fid: np.ndarray, *, flip: bool = True) -> np.ndarray:
 
     Returns
     -------
-    spectrum
+    spectrum: numpy.ndarray
         Fourier transform of the data, (optionally) flipped in each
         dimension.
     """
@@ -562,7 +562,7 @@ def proc_amp_modulated(data: Tuple[np.ndarray, np.ndarray]) -> np.ndarray:
 
     Returns
     -------
-    spectrum
+    spectrum: np.ndarray
         Frequency-dsicrimiated spectrum.
     """
     checker = ArgumentChecker(dim=2)
@@ -580,7 +580,9 @@ def proc_amp_modulated(data: Tuple[np.ndarray, np.ndarray]) -> np.ndarray:
     )
 
 
-def proc_phase_modulated(data: Tuple[np.ndarray, np.ndarray]) -> dict:
+def proc_phase_modulated(
+    data: Tuple[np.ndarray, np.ndarray]
+) -> Dict[str, np.ndarray]:
     """Process phase modulated 2D FIDs.
 
     This function generates the set of spectra corresponding to the
@@ -593,7 +595,7 @@ def proc_phase_modulated(data: Tuple[np.ndarray, np.ndarray]) -> dict:
 
     Returns
     -------
-    spectra
+    spectra: Dict[str, numpy.ndarray]
         Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``.
 
     References
@@ -690,8 +692,8 @@ def phase(data: np.ndarray, p0: Iterable[float], p1: Iterable[float],
 
 
 def manual_phase_spectrum(
-    spectrum: np.ndarray, *, max_p1: float = 10 * np.pi
-) -> Tuple[Union[float, None], Union[float, None]]:
+    spectrum: np.ndarray, *, max_p1: Union[float, None] = None
+) -> Tuple[Union[Iterable[float], None], Union[Iterable[float], None]]:
     """Manual phase correction using a Graphical User Interface.
 
     .. warning::
@@ -708,29 +710,29 @@ def manual_phase_spectrum(
 
     Returns
     -------
-    p0
+    p0: Union[Iterable[float], None]
         Zero-order phase correction in each dimension, in radians. If the
-        user chooses to cancel rather than save, this is set to `None`.
+        user chooses to cancel rather than save, this is set to ``None``.
 
-    p1
+    p1: Union[Iterable[float], None]
         First-order phase correction in each dimension, in radians. If the
-        user chooses to cancel rather than save, this is set to `None`.
+        user chooses to cancel rather than save, this is set to ``None``.
     """
     try:
         dim = spectrum.ndim
     except Exception:
         raise TypeError(f'{RED}spectrum should be a numpy array{END}')
-
-    # Only valid for 1D so far
     if dim != 1:
         raise errors.TwoDimUnsupportedError()
+    if max_p1 is None:
+        max_pi = 10 * np.pi
 
     init_spectrum = copy.deepcopy(spectrum)
 
     app = PhaseApp(init_spectrum, max_p1)
     app.mainloop()
 
-    return app.p0, app.p1
+    return (app.p0,), (app.p1,)
 
 
 class PhaseApp(tk.Tk):
@@ -1065,7 +1067,8 @@ def oscillator_integral(
 
     Returns
     -------
-    integral
+    integral: float
+        Oscillator integral.
 
     Notes
     -----
