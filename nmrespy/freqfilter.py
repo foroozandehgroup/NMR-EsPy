@@ -4,6 +4,7 @@
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
 import functools
+import operator
 from typing import Iterable, NewType, Tuple, Union
 
 import numpy as np
@@ -54,11 +55,8 @@ class FilterInfo:
     _spectrum
         Spectral data to be filtered.
 
-    _sg
-        Super-Gaussian filter applied to the spectrum.
-
-    _sg_noise
-        Additive Gaussian noise added to the spectrum.
+    _expinfo
+        Experiment Information.
 
     _region
         Region (in array indices) of the spectrum selected for filtration.
@@ -66,10 +64,6 @@ class FilterInfo:
     _noise_region
         Region (in array indices) of the spectrum selected for determining
         the noise variance.
-
-    _cut_region
-        Region (in array indices) of the spectral data that was sliced away
-        from the original afer filtering.
 
     _sg_power
         Power of super-Gaussian filter
@@ -79,42 +73,12 @@ class FilterInfo:
     """
 
     def __init__(
-        self, _spectrum: np.ndarray, _sg: np.ndarray, _sg_noise: np.ndarray,
+        self, _spectrum: np.ndarray, _expinfo: ExpInfo,
         _region: RegionIntType, _noise_region: RegionIntType,
-        _cut_region: RegionIntType, _sg_power: float,
-        _converter: FrequencyConverter
+        _sg_power: float, _converter: FrequencyConverter
     ) -> None:
         self.__dict__.update(locals())
-
-    @property
-    def cut_expinfo(self) -> ExpInfo:
-        """Get :py:class:`nmrespy.ExpInfo` for the cut signal."""
-        pts = self.cut_shape
-        sw = self.get_cut_sw()
-        offset = self.get_cut_offset()
-        sfo = self.sfo
-        return ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
-
-    @property
-    def uncut_expinfo(self) -> ExpInfo:
-        """Get :py:class:`nmrespy.ExpInfo` for the uncut signal."""
-        pts = self.shape
-        sw = self.get_sw()
-        offset = self.get_offset()
-        sfo = self.sfo
-        return ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
-
-    @property
-    def expinfo(self) -> ExpInfo:
-        """Get :py:class:`nmrespy.ExpInfo` for the filtered signal.
-
-        If a cut region has been specified, returns :py:meth:`cut_expinfo`.
-        Otherwise, returns :py:meth:`uncut_expinfo`.
-        """
-        if self._cut_region is not None:
-            return self.cut_expinfo
-        else:
-            return self.uncut_expinfo
+        self._sg_noise = None
 
     @property
     def spectrum(self) -> np.ndarray:
@@ -124,24 +88,21 @@ class FilterInfo:
     @property
     def sg(self) -> np.ndarray:
         """Get super-Gaussian filter."""
-        return self._sg
+        return superg(self._region, self._spectrum.shape, self._sg_power)
 
     @property
     def sg_noise(self) -> np.ndarray:
         """Get additive noise vector."""
+        if self._sg_noise is None:
+            self._sg_noise = superg_noise(
+                self.spectrum, self.get_noise_region(unit='idx'), self.sg
+            )
         return self._sg_noise
 
     @property
     def shape(self) -> Iterable[int]:
         """Get shape of :py:meth:`spectrum`."""
         return self.spectrum.shape
-
-    @property
-    def cut_shape(self) -> Iterable[int]:
-        """Get shape of :py:meth:`cut_spectrum`."""
-        return tuple(
-            [r[1] - r[0] + 1 for r in self.get_cut_region(unit='idx')]
-        )
 
     @property
     def sg_power(self) -> float:
@@ -152,45 +113,70 @@ class FilterInfo:
         """Filtered spectrum without any baseline fix."""
         return (self.spectrum * self.sg) + self.sg_noise
 
-    @property
-    def filtered_spectrum(self) -> np.ndarray:
-        """Get filtered spectrum (uncut)."""
-        spectrum = self._filtered_unfixed_spectrum
-        return spectrum + self._baseline_fix(spectrum)
-
-    @property
-    def filtered_fid(self) -> np.ndarray:
-        """Get filtered time-domain signal (uncut)."""
-        return self._ift_and_slice(self.filtered_spectrum)
-
-    @property
-    def cut_spectrum(self) -> np.ndarray:
-        """Get filtered, cut spectrum.
-
-        If the user set ``cut=False`` when calling :py:func:`filter_spectrum`,
-        :py:meth:`filtered_spectrum` will be returned.
-        """
-        if self._cut_region:
-            cut_slice = tuple(np.s_[r[0]:r[1] + 1]
-                              for r in self.get_cut_region(unit='idx'))
-            return self.filtered_spectrum[cut_slice]
+    def get_filtered_spectrum(
+        self, *, cut_ratio: Union[float, None] = 1.1,
+        fix_baseline: bool = True,
+    ) -> Tuple[np.ndarray, ExpInfo]:
+        """Get filtered spectrum."""
+        if isinstance(cut_ratio, float):
+            cut_idx = self._cut_indices(cut_ratio)
+        elif cut_ratio is None:
+            cut_idx = tuple([(0, s - 1) for s in self.shape])
         else:
-            return self.filtered_spectrum
+            raise TypeError(f'{RED}`cut_ratio` should be a float or None{END}')
 
-    @property
-    def cut_fid(self) -> np.ndarray:
-        """Get filtered, cut time-domain signal.
+        cut_slice = tuple([slice(lft, rgt + 1) for lft, rgt in cut_idx])
+        filtered_spectrum = self._filtered_unfixed_spectrum
+        if fix_baseline:
+            filtered_spectrum += self._baseline_fix(filtered_spectrum)
+        filtered_spectrum = filtered_spectrum[cut_slice]
 
-        If the user set ``cut=False`` when calling :py:func:`filter_spectrum`,
-        :py:meth:`filtered_fid` will be returned.
-        """
-        if self._cut_region:
-            ratios = [unct / ct
-                      for unct, ct in zip(self.shape, self.cut_shape)]
-            factor = np.prod(ratios)
-            return self._ift_and_slice(self.cut_spectrum) / factor
-        else:
-            return self.filtered_fid
+        pts = filtered_spectrum.shape
+        cut_hz = self._converter.convert(cut_idx, 'idx->hz')
+        sw = tuple([abs(lft - rgt) for lft, rgt in cut_hz])
+        offset = tuple([(lft + rgt) / 2 for lft, rgt in cut_hz])
+        sfo, nuclei = self._expinfo.unpack('sfo', 'nuclei')
+        expinfo = ExpInfo(
+            pts=pts, sw=sw, offset=offset, sfo=sfo, nuceli=nuclei,
+        )
+        return filtered_spectrum, expinfo
+
+    def get_filtered_fid(
+        self, cut_ratio: Union[float, None] = 1.1, fix_baseline: bool = True
+    ) -> Tuple[np.ndarray, ExpInfo]:
+        filtered_spectrum, expinfo = \
+            self.get_filtered_spectrum(
+                cut_ratio=cut_ratio, fix_baseline=fix_baseline
+            )
+        filtered_fid = self._ift_and_slice(filtered_spectrum)
+        if isinstance(cut_ratio, float):
+            scaling_factor = self._cut_scaling_factor(cut_ratio)
+            filtered_fid *= scaling_factor
+        expinfo._pts = filtered_fid.shape
+        return filtered_fid, expinfo
+
+    def _cut_indices(self, cut_ratio: float):
+        center = self.get_center(unit='idx')
+        bw = self.get_bw(unit='idx')
+        pts = self.spectrum.shape
+        cut_idx = []
+        for n, c, b in zip(pts, center, bw):
+            mn = int(np.floor(c - (b / 2 * cut_ratio)))
+            mx = int(np.ceil(c + (b / 2 * cut_ratio)))
+            # ensure the cut region remains within the valid span of
+            # values (0 -> n-1)
+            if mn < 0:
+                mn = 0
+            if mx >= n:
+                mx = n - 1
+            cut_idx.append((mn, mx))
+        return tuple(cut_idx)
+
+    def _cut_scaling_factor(self, cut_ratio: float) -> float:
+        cut_idx = self._cut_indices(cut_ratio)
+        cut_shape = tuple([rgt - lft for lft, rgt in cut_idx])
+        ratios = [cut / uncut for cut, uncut in zip(cut_shape, self.shape)]
+        return functools.reduce(operator.mul, ratios)
 
     def _check_unit(valid_units):
         """Check that the `unit` argument is valid (decorator)."""
@@ -233,33 +219,6 @@ class FilterInfo:
         region = self.get_region(unit=unit)
         return tuple([abs(r[1] - r[0]) for r in region])
 
-    @property
-    def sfo(self) -> Iterable[float]:
-        """Transmitter frequency, in MHz."""
-        return self._converter.sfo
-
-    @_check_unit(['hz', 'ppm'])
-    def get_sw(self, unit: str = 'hz') -> Iterable[float]:
-        """Sweep width of the original spectrum.
-
-        Parameters
-        ----------
-        unit
-            Unit specifier. Should be one of ``'hz'``, ``'ppm'``.
-        """
-        return self._converter.convert(self._converter.sw, f'hz->{unit}')
-
-    @_check_unit(['hz', 'ppm'])
-    def get_offset(self, unit: str = 'hz') -> Iterable[float]:
-        """Transmitter offset of the original spectrum.
-
-        Parameters
-        ----------
-        unit
-            Unit specifier. Should be one of ``'hz'``, ``'ppm'``.
-        """
-        return self._converter.convert(self._converter.offset, f'hz->{unit}')
-
     @_check_unit(['idx', 'hz', 'ppm'])
     def get_region(
         self, unit: str = 'hz'
@@ -286,63 +245,19 @@ class FilterInfo:
         """
         return self._converter.convert(self._noise_region, f'idx->{unit}')
 
-    @_check_unit(['idx', 'hz', 'ppm'])
-    def get_cut_region(
-        self, unit: str = 'hz'
-    ) -> RegionIntFloatType:
-        """Bounds of the cut spectral data.
-
-        Parameters
-        ----------
-        unit
-            Unit specifier. Should be one of ``'hz'``, ``'ppm'``, ``'idx'``.
-        """
-        if self._cut_region:
-            cut_region = self._cut_region
-        else:
-            cut_region = tuple([[0, s - 1] for s in self.shape])
-
-        return self._converter.convert(cut_region, f'idx->{unit}')
-
-    @_check_unit(['hz', 'ppm'])
-    def get_cut_sw(self, unit: str = 'hz') -> Iterable[float]:
-        """Sweep width of cut spectrum.
-
-        Parameters
-        ----------
-        unit
-            Unit specifier. Should be one of ``'hz'``, ``'ppm'``.
-        """
-        region = self.get_cut_region(unit=unit)
-        return tuple([abs(r[1] - r[0]) for r in region])
-
-    @_check_unit(['hz', 'ppm'])
-    def get_cut_offset(self, unit: str = 'hz') -> Iterable[float]:
-        """Transmitter offset of cut spectrum.
-
-        Parameters
-        ----------
-        unit
-            Unit specifier. Should be one of ``'hz'``, ``'ppm'``.
-        """
-        region = self.get_cut_region(unit=unit)
-        return [(r[1] + r[0]) / 2 for r in region]
-
     @staticmethod
     def _ift_and_slice(spectrum, slice_axes=None):
-
         dim = spectrum.ndim
         if slice_axes is None:
             slice_axes = list(range(dim))
 
-        slice = []
+        fid_slice = []
         for i in range(dim):
             if i in slice_axes:
-                slice.append(np.s_[0:int(spectrum.shape[i] // 2)])
+                fid_slice.append(slice(0, int(spectrum.shape[i] // 2)))
             else:
-                slice.append(np.s_[0:spectrum.shape[i]])
-
-        return sig.ift(spectrum)[tuple(slice)]
+                fid_slice.append(slice(0, spectrum.shape[i]))
+        return sig.ift(spectrum)[tuple(fid_slice)]
 
     def _baseline_fix(self, filtered_spectrum: np.ndarray) -> np.ndarray:
         def is_small(x):
@@ -380,29 +295,30 @@ class FilterInfo:
                     )
                 )
         boundaries = tuple(boundaries)
-        if dims == 1:
-            x0 = tuple([0. for _ in range(4)])
-        elif dims == 2:
-            x0 = tuple([0. for _ in range(7)])
+        print(boundaries)
+        # if dims == 1:
+            # x0 = tuple([0. for _ in range(4)])
+        # elif dims == 2:
+            # x0 = tuple([0. for _ in range(7)])
+        x0 = 0.
         args = (filtered_spectrum, sg, boundaries)
-        result = minimize(
-            self._baseline_cost_func, x0, args=args, method='trust-constr'
+        amp = minimize(
+            self._baseline_cost_func, x0, args=args, method='COBYLA'
         )['x']
-        amp = result[0]
-        quad_coeffs = result[1:]
-        return amp * self.sg * self._quadratic(filtered_spectrum.shape,
-                                                     quad_coeffs)
+        # quad_coeffs = result[1:]
+        return amp * self.sg  # * self._quadratic(filtered_spectrum.shape,
+                                               # quad_coeffs)
 
     def _baseline_cost_func(self, x, *args):
         spectrum, sg, boundaries = args
         amp = x[0]
-        quad_coeffs = x[1:]
+        # quad_coeffs = x[1:]
         residual = 0.
         for bounds in boundaries:
             spectrum_slice = spectrum[bounds]
             sg_slice = sg[bounds]
-            quadratic = self._quadratic(spectrum.shape, quad_coeffs)[bounds]
-            residual += spectrum_slice + (amp * sg_slice * quadratic)
+            # quadratic = self._quadratic(spectrum.shape, quad_coeffs)[bounds]
+            residual += spectrum_slice + (amp * sg_slice)  # * quadratic)
         return np.sum(np.abs(residual))
 
     @staticmethod
@@ -417,6 +333,7 @@ class FilterInfo:
             a, b, c, d, e, f = coeffs
             return (a * x ** 2) + (b * y ** 2) + (c * x * y) + \
                    (d * x) + (e * y) + f
+
 
 def superg(region: RegionIntType, shape: Iterable[int],
            p: float = 40.0) -> np.ndarray:
@@ -489,7 +406,7 @@ def superg_noise(spectrum: np.ndarray, noise_region: RegionIntType,
     """
     noise_slice = tuple(np.s_[n[0]:n[1] + 1] for n in noise_region)
     noise_variance = np.var(spectrum[noise_slice])
-    sg_noise = 0.5 * nrandom.normal(
+    sg_noise = nrandom.normal(
         0, np.sqrt(noise_variance), size=spectrum.shape
     )
     # Scale noise elements according to corresponding value of the
@@ -498,10 +415,9 @@ def superg_noise(spectrum: np.ndarray, noise_region: RegionIntType,
 
 
 def filter_spectrum(
-    spectrum: np.ndarray, region: RegionIntFloatType,
-    noise_region: RegionIntFloatType, expinfo: ExpInfo,
-    region_unit: str = 'hz', sg_power: float = 40., cut: bool = True,
-    cut_ratio: Union[float, None] = 3.0
+    spectrum: np.ndarray, expinfo: ExpInfo, region: RegionIntFloatType,
+    noise_region: RegionIntFloatType, *, region_unit: str = 'hz',
+    sg_power: float = 40.
 ) -> FilterInfo:
     """Frequency filtering via super-Gaussian filtration of spectral data.
 
@@ -584,8 +500,6 @@ def filter_spectrum(
     checker.stage(
         (spectrum, 'spectrum', 'ndarray'),
         (sg_power, 'sg_power', 'float'),
-        (cut, 'cut', 'bool'),
-        (cut_ratio, 'cut_ratio', 'greater_than_one')
     )
 
     if (region_unit == 'ppm') and (expinfo.sfo is None):
@@ -621,38 +535,6 @@ def filter_spectrum(
     region_idx = tuple([tuple(sorted(r)) for r in region_idx])
     noise_region_idx = tuple([tuple(sorted(r)) for r in noise_region_idx])
 
-    sg = superg(region_idx, expinfo.pts, p=sg_power)
-    noise = superg_noise(spectrum, noise_region_idx, sg)
-
-    center = tuple([int((r[0] + r[1]) // 2) for r in region_idx])
-    bw = tuple([abs(r[1] - r[0]) for r in region_idx])
-
-    if cut:
-        cut_idx = []
-        for n, c, b in zip(expinfo.pts, center, bw):
-            mn = int(np.floor(c - (b / 2 * cut_ratio)))
-            mx = int(np.ceil(c + (b / 2 * cut_ratio)))
-            # Ensure the cut region remains within the valid span of
-            # values (0 -> n-1)
-            if mn < 0:
-                mn = 0
-            if mx >= n:
-                mx = n - 1
-            cut_idx.append((mn, mx))
-        cut_idx = tuple(cut_idx)
-    else:
-        cut_idx = None
-
     return FilterInfo(
-        spectrum, sg, noise, region_idx, noise_region_idx, cut_idx, sg_power,
-        converter
+        spectrum, expinfo, region_idx, noise_region_idx, sg_power, converter
     )
-
-
-def baseline_fix(
-    spectrum: np.ndarray, region: Iterable[Tuple[int, int]], sg_power: float
-) -> np.ndarray:
-    sg = superg(region, spectrum.shape, p=sg_power)
-    # Dermine region to consider
-    span = 20
-    opt_region = (slice(r[0] - span, r[0] + span) for r in region)
