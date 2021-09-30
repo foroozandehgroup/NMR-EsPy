@@ -685,14 +685,13 @@ def phase(data: np.ndarray, p0: Iterable[float], p1: Iterable[float],
         # Determine axis for einsum (i or j)
         axis = chr(axis + 105)
         p = np.exp(1j * (p0_ + p1_ * np.arange(-piv, -piv + n) / n))
-        print(p)
         phased_data = np.einsum(f'{idx},{axis}->{idx}', data, p)
 
     return phased_data
 
 
-def manual_phase_spectrum(
-    spectrum: np.ndarray, *, max_p1: Union[float, None] = None
+def manual_phase_data(
+    spectrum: np.ndarray, *, max_p1: Union[Iterable[float], None] = None
 ) -> Tuple[Union[Iterable[float], None], Union[Iterable[float], None]]:
     """Manual phase correction using a Graphical User Interface.
 
@@ -725,13 +724,13 @@ def manual_phase_spectrum(
     if dim != 1:
         raise errors.TwoDimUnsupportedError()
     if max_p1 is None:
-        max_pi = 10 * np.pi
+        max_p1 = tuple(dim * [10 * np.pi])
 
     init_spectrum = copy.deepcopy(spectrum)
 
     app = PhaseApp(init_spectrum, max_p1)
     app.mainloop()
-
+    print(app.p0, app.p1)
     return (app.p0,), (app.p1,)
 
 
@@ -743,7 +742,7 @@ class PhaseApp(tk.Tk):
     This is invoked when :py:func:`manual_phase_spectrum` is called.
     """
 
-    def __init__(self, spectrum: np.ndarray, max_p1: float) -> None:
+    def __init__(self, spectrum: np.ndarray, max_p1: Iterable[float]) -> None:
         """Construct the GUI.
 
         Parameters
@@ -753,13 +752,13 @@ class PhaseApp(tk.Tk):
 
         max_p1
             Specifies the range of first-order phases permitted.
-            Bounds are set as ``[-max_p1, max_p1]``.
+            Bounds are set as ``[-max_p1, max_p1]`` in each dimension.
         """
         super().__init__()
         self.p0 = 0.0
         self.p1 = 0.0
         self.n = spectrum.size
-        self.pivot = int(self.n // 2)
+        self.pivot = 0
         self.init_spectrum = copy.deepcopy(spectrum)
 
         self.columnconfigure(0, weight=1)
@@ -810,8 +809,8 @@ class PhaseApp(tk.Tk):
         items = [
             (self.pivot, self.p0, self.p1),
             ('pivot', 'p0', 'p1'),
-            (0, -np.pi, -max_p1),
-            (self.n, np.pi, max_p1),
+            (0, -np.pi, -max_p1[0]),
+            (self.n, np.pi, max_p1[0]),
         ]
 
         for i, (init, name, mn, mx) in enumerate(zip(*items)):

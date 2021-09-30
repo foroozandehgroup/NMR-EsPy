@@ -16,6 +16,10 @@ from nmrespy.core import Estimator
 # Set this to True if you want to check interactive and visual things.
 INTERACT = True
 
+VIEW_DATA = False
+MANUAL_PHASE = False
+
+
 
 class TestSyntheticEstimator:
     params_1d = np.array([
@@ -236,7 +240,7 @@ class TestSyntheticEstimator:
             )
 
     def test_view_data(self):
-        if INTERACT:
+        if INTERACT and VIEW_DATA:
             estimator = self.estimator_1d()
             estimator.view_data(domain='frequency')
             estimator.view_data(domain='frequency', freq_xunit='hz')
@@ -255,12 +259,19 @@ class TestSyntheticEstimator:
         assert np.allclose(estimator.data, init_data)
 
     def test_manual_phase(self):
-        if INTERACT:
+        if INTERACT and MANUAL_PHASE:
             estimator = self.estimator_1d()
             print('p1 should be ±10 radians')
             estimator.manual_phase_data()
             print('p1 should be ±2 radians')
-            estimator.manual_phase_data(max_p1=2 * np.pi)
+            estimator.manual_phase_data(max_p1=(2 * np.pi,))
+
+    def frequency_filter(self):
+        estimator = self.estimator_1d()
+        estimator.frequency_filter(
+            region=((3250., 2900.),), noise_region=((1000., 1500.),),
+            region_unit='hz',
+        )
 
 
 def test_synthetic_estimator():

@@ -787,7 +787,7 @@ class Estimator:
             p0 = self.dim * [0.0]
         if p1 is None:
             p1 = self.dim * [0.0]
-        self._data = sig.phase(self.data, p0, p1)
+        self._data = sig.phase(self._data, p0, p1)
 
     def manual_phase_data(self, *, max_p1=None):
         """Perform manual phase correction on the data.
@@ -803,7 +803,7 @@ class Estimator:
             within [`-max_p1`, `max_p1`]. By default, `max_p1` will be
             ``10 * numpy.pi``.
         """
-        p0, p1 = sig.manual_phase_spectrum(sig.ft(self.data), max_p1=max_p1)
+        p0, p1 = sig.manual_phase_data(sig.ft(self.data), max_p1=max_p1)
         if not (p0 is None and p1 is None):
             self.phase_data(p0=p0, p1=p1)
 
