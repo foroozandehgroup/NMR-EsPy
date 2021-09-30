@@ -130,20 +130,6 @@ class TestFilterPerformance:
         assert np.allclose(expected, mpm_result, rtol=0, atol=1e-1)
 
 
-def blah():
-    uncut_result = mpm.MatrixPencil(
-        filter_.filtered_fid, filter_.uncut_expinfo
-    ).get_result()
-
-    cut_result = mpm.MatrixPencil(
-        filter_.cut_fid, filter_.cut_expinfo
-    ).get_result()
-
-    assert np.allclose(p[0], uncut_result, rtol=0, atol=1e-2)
-    # give cut signal a larger tolerance due to greater uncertainty generated
-    # by cutting
-    assert np.allclose(p[0], cut_result, rtol=0, atol=1e-1)
-
 def test_fix_baseline():
     p = np.array([
         [10, 0, 350, 10],
@@ -163,9 +149,9 @@ def test_fix_baseline():
     noise_region = ((-225., -250.),)
     fid = sig.make_fid(p, expinfo, snr=20.)[0]
     spectrum = sig.ft(fid)
-    finfo = ff.filter_spectrum(spectrum, region, noise_region, expinfo)
+    finfo = ff.filter_spectrum(spectrum, expinfo, region, noise_region)
     import matplotlib.pyplot as plt
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
     ax1.plot(spectrum)
-    ax2.plot(finfo.filtered_spectrum)
+    ax2.plot(finfo.get_filtered_spectrum()[0])
     plt.show()
