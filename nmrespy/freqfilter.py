@@ -295,31 +295,49 @@ class FilterInfo:
                     )
                 )
         boundaries = tuple(boundaries)
-        print(boundaries)
-        # if dims == 1:
-            # x0 = tuple([0. for _ in range(4)])
-        # elif dims == 2:
-            # x0 = tuple([0. for _ in range(7)])
-        x0 = 0.
+        spec = np.hstack(
+            (filtered_spectrum[boundaries[0]], filtered_spectrum[boundaries[1]])
+        )
+        x0 = [0., 0., 1.]
+        slices = len(boundaries)
+        for i, bounds in enumerate(boundaries):
+            if i % 2 == 0:
+                x0[0] += filtered_spectrum[bounds[0].stop] / slices
+            elif i % 2 == 1:
+                x0[0] += filtered_spectrum[bounds[0].start] / slices
         args = (filtered_spectrum, sg, boundaries)
-        amp = minimize(
+        result = minimize(
             self._baseline_cost_func, x0, args=args, method='COBYLA'
         )['x']
-        # quad_coeffs = result[1:]
-        return amp * self.sg  # * self._quadratic(filtered_spectrum.shape,
-                                               # quad_coeffs)
+        amp, m, c = result
+        import matplotlib.pyplot as plt
+        sg = amp * self.sg
+        plt.plot(sg)
+        plt.plot(filtered_spectrum)
+        region = self.get_region(unit='idx')[0]
+        line = self._linear(filtered_spectrum.size, [m, c])
+        line[:region[0]] = 0.
+        line[region[1]:] = 0.
+        plt.plot(line)
+        plt.plot(filtered_spectrum - (sg * line))
+        plt.show()
+        return amp * self.sg
 
     def _baseline_cost_func(self, x, *args):
         spectrum, sg, boundaries = args
-        amp = x[0]
-        # quad_coeffs = x[1:]
         residual = 0.
         for bounds in boundaries:
             spectrum_slice = spectrum[bounds]
             sg_slice = sg[bounds]
-            # quadratic = self._quadratic(spectrum.shape, quad_coeffs)[bounds]
-            residual += spectrum_slice + (amp * sg_slice)  # * quadratic)
-        return np.sum(np.abs(residual))
+            line = self._linear(spectrum.size, x[1:])[bounds]
+            residual += spectrum_slice + (x[0] * sg_slice * line)
+        return np.sum(residual ** 2)
+
+    @staticmethod
+    def _linear(pts, coeffs):
+        m, c = coeffs
+        x = np.linspace(0, 1, pts)
+        return (m * x) + c
 
     @staticmethod
     def _quadratic(pts, coeffs):
@@ -327,6 +345,7 @@ class FilterInfo:
         if len(points) == 1:
             x = points[0]
             a, b, c = coeffs
+            # print(f'a: {a}, b: {b}, c: {c}')
             return (a * x ** 2) + (b * x) + c
         elif len(points) == 2:
             x, y = np.meshgrid(*points, indexing='ij')

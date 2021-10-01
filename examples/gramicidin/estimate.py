@@ -9,7 +9,7 @@ import numpy as np
 
 
 # --- Tweak these as you wish
-region = ((4.9, 4.65),)
+region = ((4.92, 4.63),)
 optimiser_iterations = 200
 # ---------------------------
 
@@ -19,13 +19,13 @@ virtual_echo = sig.make_virtual_echo([data])
 spectrum = sig.ft(virtual_echo)
 noise_region = ((11.5, 11.),)
 filterinfo = freqfilter.filter_spectrum(
-    spectrum, expinfo, region, noise_region, region_unit='ppm',
+    spectrum, expinfo, region, noise_region, region_unit='ppm', sg_power=50.
 )
 # Get filtered signal and expinfo
-spectrum, _ = filterinfo.get_filtered_spectrum(cut_ratio=1.5)
-import matplotlib.pyplot as plt
-plt.plot(spectrum)
-plt.show()
+fix_spectrum, _ = filterinfo.get_filtered_spectrum(cut_ratio=None)
+unfix_spectrum, _ = filterinfo.get_filtered_spectrum(cut_ratio=None,
+                                                     fix_baseline=False)
+exit()
 fid, filter_expinfo= filterinfo.get_filtered_fid(cut_ratio=1.5)
 filter_shifts = sig.get_shifts(filter_expinfo, unit='ppm')[0]
 
