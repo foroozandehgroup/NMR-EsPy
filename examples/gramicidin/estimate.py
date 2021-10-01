@@ -23,8 +23,9 @@ filterinfo = freqfilter.filter_spectrum(
 )
 # Get filtered signal and expinfo
 fix_spectrum, _ = filterinfo.get_filtered_spectrum(cut_ratio=None)
-unfix_spectrum, _ = filterinfo.get_filtered_spectrum(cut_ratio=None,
-                                                     fix_baseline=False)
+import matplotlib.pyplot as plt
+plt.plot(fix_spectrum)
+plt.show()
 exit()
 fid, filter_expinfo= filterinfo.get_filtered_fid(cut_ratio=1.5)
 filter_shifts = sig.get_shifts(filter_expinfo, unit='ppm')[0]
