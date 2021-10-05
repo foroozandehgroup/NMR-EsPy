@@ -1,7 +1,7 @@
 numpy
 matplotlib
 scipy
-scikit-learnn
+scikit-learn
 Sphinx
 pytest
 flake8

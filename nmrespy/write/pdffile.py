@@ -239,6 +239,6 @@ def _cleanup(texpaths: Dict[str, Dict[str, pathlib.Path]]) -> None:
     if texpaths['tmp']['pdf'].is_file():
         shutil.copy(texpaths['tmp']['pdf'], texpaths['final']['pdf'])
 
-    files = [texpaths['tmp'].values() + TMPDIR / 'figure.pdf']
-    for f in filter(lambda f: f.isfile(), files):
+    files = [p / TMPDIR / 'figure.pdf' for p in texpaths['tmp'].values()]
+    for f in filter(lambda f: f.is_file(), files):
         os.remove(f)
