@@ -311,7 +311,7 @@ class FilterInfo:
                 amp -= filtered_spectrum[bounds[0].start] / slices
         sg = self.sg
         args = (filtered_spectrum, sg, boundaries)
-        amp = minimize(self._sg_cost, amp, args=args, method='COBYLA')['x']
+        amp = minimize(self._sg_cost, amp, args=args, method='BFGS')['x']
         return amp * sg
 
     def _fit_line(
@@ -322,60 +322,72 @@ class FilterInfo:
         y1 = filtered_spectrum[x1]
         y2 = filtered_spectrum[x2]
         m = (y2 - y1) / (x2 - x1)
-        c = ((y2 + y1) - m * (x2 + x1)) / 2
+        c = (y2 + y1) - m * (x2 + x1) / 2
+        x0 = (m, c)
+        sg = self.sg
+        args = (filtered_spectrum, sg, boundaries)
+        m, c = minimize(self._linear_cost, x0, args=args, method='BFGS')['x']
         line = -(m * np.arange(filtered_spectrum.size) + c)
-        return line * self.sg
+        return line * sg
+
+    def _fit_quadratic(
+        self, filtered_spectrum: np.ndarray, boundaries: Iterable[Tuple[slice]]
+    ):
+        x1 = boundaries[0][0].stop
+        x2 = boundaries[1][0].start
+        y1 = filtered_spectrum[x1]
+        y2 = filtered_spectrum[x2]
+        a = 0.
+        b = (y2 - y1) / (x2 - x1)
+        c = (y2 + y1) - b * (x2 + x1) / 2
+        x0 = (a, b, c)
+        sg = self.sg
+        args = (filtered_spectrum, sg, boundaries)
+        a, b, c = minimize(
+            self._quadratic_cost, x0, args=args, method='BFGS'
+        )['x']
+        points = np.arange(sg.size)
+        quadratic = -(a * (points ** 2) + b * points + c)
+        return quadratic * sg
 
     def _baseline_fix(self, filtered_spectrum: np.ndarray) -> np.ndarray:
         boundaries = self._get_cf_boundaries()
         fix = self._fit_sg(filtered_spectrum, boundaries)
-        fix += self._fit_line(filtered_spectrum + fix, boundaries)
+        fix += self._fit_quadratic(filtered_spectrum + fix, boundaries)
         return fix
 
-    def _sg_cost(self, amp, *args):
+    @staticmethod
+    def _sg_cost(amp, *args):
         spectrum, sg, boundaries = args
-        residual = np.array([], dtype='float64')
+        cf = 0.
         for i, bounds in enumerate(boundaries):
             spectrum_slice = spectrum[bounds]
             sg_slice = sg[bounds]
-            residual = np.hstack((residual, spectrum_slice + (amp * sg_slice)))
-        return np.sum(residual ** 2)
-
-    def _poly_cost(self, x, *args):
-        spectrum, sg, boundaries = args
-        residual = 0.
-        for i, bounds in enumerate(boundaries):
-            spectrum_slice = spectrum[bounds]
-            sg_slice = sg[bounds]
-            linear = self._linear(spectrum.size, x)[bounds]
-            # if i == 0:
-                # fig, ax = plt.subplots(nrows=1, ncols=2)
-                # ax[0].plot(spectrum_slice, label='spec')
-                # ax[1].plot(linear, label='linear')
-                # residual += spectrum_slice + (linear * sg_slice)
-                # ax[0].plot(residual)
-                # plt.show()
-        return np.sum(residual ** 2)
+            cf += np.sum((spectrum_slice + (amp * sg_slice)) ** 2)
+        return cf
 
     @staticmethod
-    def _linear(pts, coeffs):
+    def _linear_cost(coeffs, *args):
         m, c = coeffs
-        x = np.linspace(0, 1, pts)
-        return (m * x) + c
+        spectrum, sg, boundaries = args
+        cf = 0.
+        for i, bounds in enumerate(boundaries):
+            spectrum_slice = spectrum[bounds]
+            line = (-(m * np.arange(spectrum.size) + c) * sg)[bounds]
+            cf += np.sum((spectrum_slice + line) ** 2)
+        return cf
 
     @staticmethod
-    def _quadratic(pts, coeffs):
-        points = [np.linspace(0, 1, p) for p in pts]
-        if len(points) == 1:
-            x = points[0]
-            a, b, c = coeffs
-            # print(f'a: {a}, b: {b}, c: {c}')
-            return (a * x ** 2) + (b * x) + c
-        elif len(points) == 2:
-            x, y = np.meshgrid(*points, indexing='ij')
-            a, b, c, d, e, f = coeffs
-            return (a * x ** 2) + (b * y ** 2) + (c * x * y) + \
-                   (d * x) + (e * y) + f
+    def _quadratic_cost(coeffs, *args):
+        a, b, c = coeffs
+        spectrum, sg, boundaries = args
+        cf = 0.
+        for i, bounds in enumerate(boundaries):
+            spectrum_slice = spectrum[bounds]
+            points = np.arange(spectrum.size)
+            quad = (-(a * (points ** 2) + b * points + c) * sg)[bounds]
+            cf += np.sum((spectrum_slice + quad) ** 2)
+        return cf
 
 
 def superg(region: RegionIntType, shape: Iterable[int],
