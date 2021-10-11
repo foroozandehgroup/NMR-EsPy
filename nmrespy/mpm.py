@@ -1,6 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 07 Oct 2021 12:13:38 BST
 
 """Computation of signal estimates using the Matrix Pencil Method."""
 

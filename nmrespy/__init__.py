@@ -1,3 +1,8 @@
+# __init__.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 07 Oct 2021 12:09:33 BST
+
 """NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
 
 from importlib.util import find_spec
@@ -5,7 +10,7 @@ from numbers import Number
 from pathlib import Path
 from platform import system
 from typing import Any, Iterable, Tuple, Type, Union
-from ._version import __version__
+from ._version import __version__  # noqa: F401
 
 
 # Paths and links

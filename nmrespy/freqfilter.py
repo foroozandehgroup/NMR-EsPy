@@ -1,7 +1,7 @@
-import matplotlib.pyplot as plt
-# filter.py
+# freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 07 Oct 2021 12:13:04 BST
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
 import functools

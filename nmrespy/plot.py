@@ -1,6 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 07 Oct 2021 12:13:30 BST
 
 """Support for plotting estimation results"""
 

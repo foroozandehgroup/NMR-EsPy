@@ -1,6 +1,7 @@
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 07 Oct 2021 12:12:17 BST
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 

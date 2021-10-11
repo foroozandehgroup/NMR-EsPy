@@ -1,3 +1,8 @@
+# load.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 07 Oct 2021 12:13:14 BST
+
 """Provides functionality for importing NMR data."""
 
 import re

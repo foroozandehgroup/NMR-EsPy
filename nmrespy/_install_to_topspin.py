@@ -1,3 +1,8 @@
+# _install_to_topspin.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 07 Oct 2021 12:11:36 BST
+
 import glob
 import pathlib
 import platform

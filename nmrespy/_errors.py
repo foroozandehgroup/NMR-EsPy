@@ -1,6 +1,7 @@
-# _errors
+# _errors.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 07 Oct 2021 12:11:29 BST
 
 """NMR-EsPy-specific errors."""
 

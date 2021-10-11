@@ -1,6 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Mon 11 Oct 2021 15:17:26 BST
 
 """Constructing and processing NMR signals."""
 
@@ -739,7 +740,7 @@ class PhaseApp(tk.Tk):
 
     Notes
     -----
-    This is invoked when :py:func:`manual_phase_spectrum` is called.
+    This is invoked when :py:func:`manual_phase_data` is called.
     """
 
     def __init__(self, spectrum: np.ndarray, max_p1: Iterable[float]) -> None:
