@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:13:04 BST
+# Last Edited: Wed 13 Oct 2021 17:43:02 BST
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
 import functools
@@ -254,12 +254,14 @@ class FilterInfo:
             slice_axes = list(range(dim))
 
         fid_slice = []
+        factor = 1
         for i in range(dim):
             if i in slice_axes:
+                factor *= 2
                 fid_slice.append(slice(0, int(spectrum.shape[i] // 2)))
             else:
                 fid_slice.append(slice(0, spectrum.shape[i]))
-        return sig.ift(spectrum)[tuple(fid_slice)]
+        return factor * sig.ift(spectrum)[tuple(fid_slice)]
 
     def _get_cf_boundaries(self) -> Iterable[Tuple[slice]]:
         def is_small(x):
