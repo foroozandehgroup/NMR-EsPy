@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:13:30 BST
+# Last Edited: Wed 13 Oct 2021 16:13:42 BST
 
 """Support for plotting estimation results"""
 
@@ -477,19 +477,19 @@ def _plot_spectrum(
     lines[name] = ax.plot(shifts, spectrum, color=color, alpha=int(show))[0]
 
 
-def _process_yshift(data: np.ndarray, yshift: Union[float, None],
+def _process_yshift(spectrum: np.ndarray, yshift: Union[float, None],
                     scale: Union[float, None]) -> float:
-    """Determine the extent to shift data in the y-axis.
+    """Determine the extent to shift spectrum in the y-axis.
 
     Parameters
     ----------
-    data
+    spectrum
         Data of interest.
 
     yshift
         Either an explicit numerical value inidcating how much to shift the
-        data, or ``None``. If ``None``, the shift is computed based on
-        ``scale`` and the maximum value in ``data``.
+        spectrum, or ``None``. If ``None``, the shift is computed based on
+        ``scale`` and the maximum value in ``spectrum``.
 
     scale
         Proportionality quantity to determine the shift if ``yshift`` is
@@ -499,12 +499,12 @@ def _process_yshift(data: np.ndarray, yshift: Union[float, None],
     -------
     ud_yshift: float
         Equivalent to ``yshift`` if ``yshift`` is a ``float``, otherwise a
-        computed value based on the maximum point in the data, and ``scale``.
+        computed value based on the maximum point in the spectrum, and ``scale``.
     """
     if yshift:
         return yshift
     else:
-        return scale * np.max(np.absolute(data))
+        return scale * np.max(np.absolute(spectrum))
 
 
 def _set_axis_limits(ax: plt.Axes) -> None:
@@ -713,7 +713,7 @@ class NmrespyPlot:
 
 
 def plot_result(
-    data: np.ndarray, result: np.ndarray, expinfo: ExpInfo, *,
+    spectrum: np.ndarray, result: np.ndarray, expinfo: ExpInfo, *,
     plot_residual: bool = True, plot_model: bool = False,
     residual_shift: Union[float, None] = None,
     model_shift: Union[float, None] = None, shifts_unit: str = 'ppm',
@@ -724,7 +724,7 @@ def plot_result(
 ) -> NmrespyPlot:
     """Produce a figure of an estimation result.
 
-    The figure consists of the original data, in the Fourier domain, along
+    The figure consists of the spectral data, along
     with each oscillator. Optionally, a plot of the complete model, and
     the residual between the data amd the model can be plotted.
 
@@ -734,8 +734,8 @@ def plot_result(
 
     Parameters
     ----------
-    data
-        Data of interest (in the time-domain).
+    spectrum
+        Spectral data of interest.
 
     result
         Parameter estimate, of form:
@@ -775,7 +775,7 @@ def plot_result(
         ``region`` is given in should match ``shifts_unit``.**
 
     plot_residual
-        If ``True``, plot a difference between the FT of ``data`` and the FT
+        If ``True``, plot a difference between the FT of ``spectrum`` and the FT
         of the model generated using ``result``. NB the residual is plotted
         regardless of ``plot_residual``. ``plot_residual`` specifies the alpha
         transparency of the plot line (1 for ``True``, 0 for ``False``)
@@ -795,7 +795,7 @@ def plot_result(
         ``None``, a default shift will be applied.
 
     data_color
-        The colour used to plot the original data. See `Notes` for a
+        The colour used to plot the original spectrum. See `Notes` for a
         discussion of valid colors.
         Any value that is
         recognised by matplotlib as a color is permitted. See
@@ -866,24 +866,24 @@ def plot_result(
     dim = expinfo.unpack('dim')
 
     try:
-        if dim != data.ndim:
+        if dim != spectrum.ndim:
             raise ValueError(
                 f'{RED}The dimension of `expinfo` does not agree with the '
-                f'number of dimensions in `data`.{END}'
+                f'number of dimensions in `spectrum`.{END}'
             )
         elif dim == 2:
             raise errors.TwoDimUnsupportedError()
         elif dim >= 3:
             raise errors.MoreThanTwoDimError()
     except AttributeError:
-        # data.ndim raised an attribute error
+        # spectrum.ndim raised an attribute error
         raise TypeError(
-            f'{RED}`data` should be a numpy array{END}'
+            f'{RED}`spectrum` should be a numpy array{END}'
         )
 
     checker = ArgumentChecker(dim=dim)
     checker.stage(
-        (data, 'data', 'ndarray'),
+        (spectrum, 'spectrum', 'ndarray'),
         (result, 'result', 'parameter'),
         (data_color, 'data_color', 'mpl_color'),
         (residual_color, 'residual_color', 'mpl_color'),
@@ -904,10 +904,9 @@ def plot_result(
     stylepath = _create_stylesheet(rc)
     plt.style.use(stylepath)
 
-    expinfo._pts = data.shape
+    expinfo._pts = spectrum.shape
     shifts_unit = _configure_shifts_unit(shifts_unit, expinfo)
     region_slice = _get_region_slice(shifts_unit, region, expinfo)
-    # Generate data: chemical shifts, data spectrum, oscillator peaks
     shifts = [
         shifts[slice_] for shifts, slice_ in
         zip(
@@ -916,7 +915,7 @@ def plot_result(
         )
     ][0]
     # TODO should replicate that way the spectrum was created (ve for example)
-    spectrum = np.real(sig.ft(data))[region_slice]
+    spectrum = spectrum[region_slice]
     peaks = _generate_peaks(result, region_slice, expinfo)
     model, residual = _generate_model_and_residual(peaks, spectrum)
 
@@ -926,7 +925,7 @@ def plot_result(
     lines, labels = {}, {}
     # Plot oscillator peaks
     _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels)
-    # Plot data
+    # Plot spectrum
     _plot_spectrum(lines, 'data', ax, shifts, spectrum, color=data_color)
     # Plot model
     model += _process_yshift(model, model_shift, 0.1)

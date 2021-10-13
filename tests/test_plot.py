@@ -1,3 +1,8 @@
+# test_plot.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Wed 13 Oct 2021 16:13:26 BST
+
 import os
 from pathlib import Path
 import pytest
@@ -215,6 +220,8 @@ def test_generate_peaks():
 def test_plot_result():
     result, expinfo, region_hz, converter = Stuff().unpack()
     data = sig.make_fid(result, expinfo, snr=30.)[0]
+    data[0] /= 2
+    spectrum = sig.ft(data)
     region_ppm = converter.convert(region_hz, 'hz->ppm')
 
     kwargss = [
@@ -246,7 +253,7 @@ def test_plot_result():
     ]
 
     for kwargs, title in zip(kwargss, titles):
-        plot = nplot.plot_result(data, result, expinfo, **kwargs)
+        plot = nplot.plot_result(spectrum, result, expinfo, **kwargs)
 
         if VIEW_RESULT_PLOTS:
             plot.ax.set_title(title)
