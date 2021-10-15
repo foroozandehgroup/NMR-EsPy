@@ -1,6 +1,7 @@
-# nlp.nlp.py
+# __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Fri 15 Oct 2021 10:12:06 BST
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
@@ -18,7 +19,7 @@ import nmrespy._errors as errors
 from nmrespy._misc import (start_end_wrapper, ArgumentChecker,
                            FrequencyConverter)
 from nmrespy._timing import timer
-import nmrespy.nlp._funcs as funcs
+from . import _funcs as funcs
 from nmrespy.sig import get_timepoints
 
 if USE_COLORAMA:

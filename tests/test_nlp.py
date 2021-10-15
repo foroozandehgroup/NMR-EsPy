@@ -1,7 +1,12 @@
+# test_nlp.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Fri 15 Oct 2021 10:10:03 BST
+
 import numpy as np
-from context import nmrespy
+from context import nmrespy  # noqa: F401
 from nmrespy import ExpInfo
-from nmrespy.nlp.nlp import NonlinearProgramming
+from nmrespy.nlp import NonlinearProgramming
 from nmrespy.sig import make_fid
 
 
