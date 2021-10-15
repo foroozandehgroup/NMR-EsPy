@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 13 Oct 2021 16:13:42 BST
+# Last Edited: Fri 15 Oct 2021 11:28:46 BST
 
 """Support for plotting estimation results"""
 
@@ -499,7 +499,8 @@ def _process_yshift(spectrum: np.ndarray, yshift: Union[float, None],
     -------
     ud_yshift: float
         Equivalent to ``yshift`` if ``yshift`` is a ``float``, otherwise a
-        computed value based on the maximum point in the spectrum, and ``scale``.
+        computed value based on the maximum point in the spectrum, and
+        ``scale``.
     """
     if yshift:
         return yshift
@@ -775,8 +776,8 @@ def plot_result(
         ``region`` is given in should match ``shifts_unit``.**
 
     plot_residual
-        If ``True``, plot a difference between the FT of ``spectrum`` and the FT
-        of the model generated using ``result``. NB the residual is plotted
+        If ``True``, plot a difference between the FT of ``spectrum`` and the
+        FT of the model generated using ``result``. NB the residual is plotted
         regardless of ``plot_residual``. ``plot_residual`` specifies the alpha
         transparency of the plot line (1 for ``True``, 0 for ``False``)
 

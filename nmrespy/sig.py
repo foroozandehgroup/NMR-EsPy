@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 11 Oct 2021 15:17:26 BST
+# Last Edited: Fri 15 Oct 2021 11:24:33 BST
 
 """Constructing and processing NMR signals."""
 
@@ -295,7 +295,6 @@ def make_virtual_echo(
         ve[:pts] = data
         ve[0] = np.real(ve[0])
         ve[pts:] = data.conj()[1:][::-1]
-        return ve
 
     elif dim == 2:
         # TODO NEEDS FIXING
@@ -348,7 +347,38 @@ def make_virtual_echo(
         tmp4[:, -1] /= 2
         tmp4 = np.roll(tmp4, 1, axis=(0, 1))
 
-        return tmp1 + tmp2 + tmp3 + tmp4
+        ve = tmp1 + tmp2 + tmp3 + tmp4
+
+    return ve
+
+
+def zf(data: np.ndarray) -> np.ndarray:
+    """Zero-fill data to the next power of 2 in each dimension.
+
+    Parameters
+    ----------
+    data
+        Signal to zero-fill.
+
+    Returns
+    -------
+    zf_data: numpy.ndarray
+        Zero-filled data.
+    """
+    zf_data = copy.deepcopy(data)
+    # Zero-fill to nearest power of 2
+    for i, n in enumerate(zf_data.shape):
+        if (n & (n - 1) == 0):
+            pass
+        else:
+            nearest_pow_2 = int(2 ** np.ceil(np.log2(n)))
+            pts_to_append = nearest_pow_2 - n
+            shape_to_add = list(zf_data.shape)
+            shape_to_add[i] = pts_to_append
+            zeros = np.zeros(shape_to_add, dtype='complex')
+            zf_data = np.concatenate((zf_data, zeros), axis=i)
+
+    return zf_data
 
 
 def get_timepoints(

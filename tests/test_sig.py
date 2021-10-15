@@ -1,7 +1,12 @@
+# test_sig.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Fri 15 Oct 2021 11:24:29 BST
+
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 from scipy.signal import argrelextrema
-from context import nmrespy
+from context import nmrespy  # noqa: F401
 from nmrespy import ExpInfo, sig
 
 
@@ -293,6 +298,14 @@ def test_random_signal():
     assert same(tp[0], np.linspace(0, (pts - 1) / sw, pts))
     assert same(sig.make_fid(params, expinfo)[0], fid)
 
+
+def test_zf():
+    fid = simple_fid()
+    fid = fid[:900]
+    fid = sig.zf(fid)
+    assert fid.size == 1024
+    assert np.all((fid[900:] == 0. + 0.j))
+    assert fid[899] != 0. + 0.j
 
 # TODO:
 # --- More rigourous 2D checking in general ---
