@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 15 Oct 2021 13:27:03 BST
+# Last Edited: Mon 18 Oct 2021 11:17:37 BST
 
 """Constructing and processing NMR signals."""
 
@@ -291,10 +291,10 @@ def make_virtual_echo(
     if dim == 1:
         data = data[0]
         pts = data.size
-        ve = np.zeros((2 * pts), dtype='complex')
+        ve = np.zeros((2 * pts - 1), dtype='complex')
         ve[0] = np.real(data[0])
         ve[1:pts] = data[1:]
-        ve[pts + 1:] = data[1:][::-1].conj()
+        ve[pts:] = data[1:][::-1].conj()
 
     elif dim == 2:
         # TODO NEEDS FIXING

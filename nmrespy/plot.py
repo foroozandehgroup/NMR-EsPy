@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 15 Oct 2021 11:28:46 BST
+# Last Edited: Mon 18 Oct 2021 11:18:29 BST
 
 """Support for plotting estimation results"""
 
@@ -502,7 +502,7 @@ def _process_yshift(spectrum: np.ndarray, yshift: Union[float, None],
         computed value based on the maximum point in the spectrum, and
         ``scale``.
     """
-    if yshift:
+    if yshift is not None:
         return yshift
     else:
         return scale * np.max(np.absolute(spectrum))
