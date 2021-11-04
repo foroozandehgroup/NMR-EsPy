@@ -1,7 +1,7 @@
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:12:17 BST
+# Last Edited: Mon 25 Oct 2021 17:08:57 BST
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
@@ -314,10 +314,6 @@ class ArgumentChecker:
     def check_start_time(self, obj: Any) -> bool:
         """Check whether object is a valid start time specifier for signal."""
         if isinstance(obj, (list, tuple)) and (len(obj) == self.dim):
-            print(all(
-                isinstance(item, float) or re.match(r'^-?\d+dt$', item)
-                for item in obj
-            ))
             return all(
                 isinstance(item, float) or re.match(r'^-?\d+dt$', item)
                 for item in obj

@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 15 Oct 2021 10:12:06 BST
+# Last Edited: Tue 26 Oct 2021 17:00:19 BST
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
@@ -300,6 +300,8 @@ class NonlinearProgramming(FrequencyConverter):
         # 2. Shift oscillator frequencies to center about 0
         x0 = self._shift_offset(x0, 'center')
 
+        # Negligible amplitude threshold
+        self.amp_thold = self.amp_thold * nlinalg.norm(x0[:self.m])
         # Time points in each dimension
         tp = get_timepoints(self.expinfo)
         self.tp = [tp + sp / sw for tp, sp, sw
@@ -344,8 +346,6 @@ class NonlinearProgramming(FrequencyConverter):
         # Merge self.active and self.passive to get the full vector
         # called self.result
         self._merge_active_passive()
-        # Remove any oscillators with negligible amplitudes
-        self._negligible_amplitudes()
 
         # Rescale
         self.result[:self.m] *= self.norm
@@ -385,10 +385,15 @@ class NonlinearProgramming(FrequencyConverter):
         self._run_optimiser()
 
         # Dermine whether any negative amplitudes are in self.active
-        terminate = self._check_negative_amps()
-
-        if not terminate:
-            self._recursive_optimise()
+        terminate = True
+        checks = (
+            self._check_negative_amps,
+            self._check_negligible_amps,
+        )
+        for check in checks:
+            terminate = check()
+            if not terminate:
+                return self._recursive_optimise()
 
     def get_result(self, freq_unit: str = 'hz') -> np.ndarray:
         """Obtain the result of nonlinear programming.
@@ -762,20 +767,27 @@ class NonlinearProgramming(FrequencyConverter):
             self.errors, (int(self.errors.size / 4), 4), order='F',
         )
 
-    def _negligible_amplitudes(self) -> None:
+    def _check_negligible_amps(self) -> bool:
         """Determine oscillators with negligible amplitudes, and remove."""
-        # Threshold
-        thold = self.amp_thold * nlinalg.norm(self.result[:self.m])
+        if 0 not in self.active_idx:
+            return True
+
         # Indices of negligible amplitude oscillators
-        negligible_idx = list(np.nonzero(self.result[:self.m] < thold)[0])
+        negligible_idx = list(
+            np.nonzero(self.active[:self.m] < self.amp_thold)[0]
+        )
         # Remove negligible oscillators
-        slice = self._get_slice(list(range(self.p)), osc_idx=negligible_idx)
-        self.result = np.delete(self.result, slice)
+        slice_ = self._get_slice(list(range(self.p)), osc_idx=negligible_idx)
+        self.active = np.delete(self.active, slice_)
         # Update number of oscillators
-        self.m = int(self.result.size / self.p)
+        self.m = int(self.active.size / self.p)
 
         if negligible_idx:
             print(
                 f'{ORA}Oscillations with negligible amplitude removed.'
                 f' \nUpdated number of oscillators: {self.m}{END}'
             )
+            return False
+
+        else:
+            return True

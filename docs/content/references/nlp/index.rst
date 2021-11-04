@@ -1,11 +1,15 @@
 nmrespy.nlp
 ===========
 
-Nonlinear programming.
+.. automodule:: nmrespy.nlp.__init__
+
+.. autoclass:: nmrespy.nlp.NonlinearProgramming
+   :special-members:
+   :members:
+   :private-members:
 
 .. toctree::
    :maxdepth: 2
    :caption: Modules:
 
-   nlp
    _funcs
