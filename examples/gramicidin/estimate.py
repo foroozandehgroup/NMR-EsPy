@@ -9,7 +9,7 @@ from nmrespy.nlp import nlp  # noqa: E402
 
 p0 = (2.417,)
 p1 = (0.,)
-region = ((4.92, 4.63),)
+region = ((4.95, 4.60),)
 noise_region = ((11.5, 11.),)
 optimiser_iterations = 1000
 

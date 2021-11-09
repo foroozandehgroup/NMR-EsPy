@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 18 Oct 2021 11:18:29 BST
+# Last Edited: Tue 09 Nov 2021 12:19:53 GMT
 
 """Support for plotting estimation results"""
 
@@ -474,7 +474,9 @@ def _plot_spectrum(
         Whether or not to show the line. This parameter dictates the alpha
         transparency of the plotline (``True -> 1``, ``False -> 0``).
     """
-    lines[name] = ax.plot(shifts, spectrum, color=color, alpha=int(show))[0]
+    lines[name] = ax.plot(
+        shifts, np.real(spectrum), color=color, alpha=int(show)
+    )[0]
 
 
 def _process_yshift(spectrum: np.ndarray, yshift: Union[float, None],
@@ -927,7 +929,9 @@ def plot_result(
     # Plot oscillator peaks
     _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels)
     # Plot spectrum
+    print("BEFORE")
     _plot_spectrum(lines, 'data', ax, shifts, spectrum, color=data_color)
+    print("AFTER")
     # Plot model
     model += _process_yshift(model, model_shift, 0.1)
     _plot_spectrum(
