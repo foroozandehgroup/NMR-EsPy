@@ -1,12 +1,13 @@
-# nlp.funcs.py
+# _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-
+# Last Edited: Tue 09 Nov 2021 15:02:09 GMT
 """Definitions of fidelities, gradients, and Hessians."""
 
 from typing import Tuple
 
 import numpy as np
+import numpy.linalg as nlinalg
 
 
 args_type = Tuple[np.ndarray, np.ndarray, int, np.ndarray, list, bool]
@@ -39,7 +40,7 @@ def f_1d(active: np.ndarray, *args: args_type) -> float:
         Value of the cost function
     """
     # unpack arguments
-    data, tp, m, passive, idx, phasevar = args
+    data, tp, m, passive, idx, phasevar, dampvar, damp_factor = args
 
     # reconstruct correctly ordered parameter vector from
     # active and passive parameters.
@@ -61,7 +62,13 @@ def f_1d(active: np.ndarray, *args: args_type) -> float:
         # also present if not, phases will be between 0 and m
         phases = theta[m:2 * m] if 0 in idx else theta[:m]
         mu = np.einsum('i->', phases) / m
-        func += 0.8 * ((np.einsum('i->', phases ** 2) / m) - mu ** 2) / np.pi
+        func += np.einsum('i->', (phases - mu) ** 2) / (np.pi * m)
+
+    if dampvar:
+        damps = theta[-m:]
+        damps /= nlinalg.norm(damps)
+        mu = np.einsum('i->', damps) / m
+        func += damp_factor * np.einsum('i->', (damps - mu) ** 2) / m
 
     return func
 
@@ -93,7 +100,7 @@ def g_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
         Gradient of cost function, with ``grad.shape = (4 * m,)``.
     """
     # unpack arguments
-    data, tp, m, passive, idx, phasevar = args
+    data, tp, m, passive, idx, phasevar, dampvar, damp_factor = args
 
     # reconstruct correctly ordered parameter vector from
     # active and passive parameters.
@@ -221,6 +228,12 @@ def g_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
         mu = np.einsum('i->', phases) / m
         grad[i * m:(i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
 
+    if dampvar:
+        damps = theta[-m:]
+        damps /= nlinalg.norm(damps)
+        mu = np.einsum('i->', damps) / m
+        grad[-m:] += damp_factor * (2 / m) * (damps - mu)
+
     return grad
 
 
@@ -251,7 +264,7 @@ def h_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
         Hessian of cost function, with ``hess.shape = (4 * m,4 * m)``.
     """
     # unpack arguments
-    data, tp, m, passive, idx, phasevar = args
+    data, tp, m, passive, idx, phasevar, dampvar, damp_factor = args
 
     # reconstruct correctly ordered parameter vector from
     # active and passive parameters.
@@ -442,10 +455,16 @@ def h_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
         # if 0 in idx, phases will be between m and 2m, as amps
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
-        hess[i * m:(i + 1) * m, i * m:(i + 1) * m] -= 0.8 * (2 / (m ** 2 * np.pi))
+        hess[i * m:(i + 1) * m, i * m:(i + 1) * m] -= 2 / (m ** 2 * np.pi)
         hess[main_diagonals[0][i * m:(i + 1) * m],
              main_diagonals[1][i * m:(i + 1) * m]] \
-            += 0.8 * 2 / (np.pi * m)
+            += 2 / (np.pi * m)
+
+    if dampvar:
+        hess[-m:, -m:] -= damp_factor * 2 / (m ** 2)
+        hess[main_diagonals[0][-m:],
+             main_diagonals[1][-m:]] \
+            += damp_factor * 2 / m
 
     return hess
 

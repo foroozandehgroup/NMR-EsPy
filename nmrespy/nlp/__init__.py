@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Oct 2021 17:00:19 BST
+# Last Edited: Tue 09 Nov 2021 14:44:41 GMT
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
@@ -53,7 +53,7 @@ class NonlinearProgramming(FrequencyConverter):
     def __init__(
         self, data: np.ndarray, theta0: np.ndarray, expinfo: ExpInfo, *,
         start_point: Union[Iterable[int], None] = None,
-        phase_variance: bool = True,
+        phase_variance: bool = True, damping_variance: bool = True,
         method: str = 'trust_region',
         bound: bool = False, max_iterations: Union[int, None] = None,
         amp_thold: Union[float, None] = None,
@@ -244,6 +244,7 @@ class NonlinearProgramming(FrequencyConverter):
         checker.stage(
             (theta0, 'theta0', 'parameter'),
             (phase_variance, 'phase_variance', 'bool'),
+            (damping_variance, 'damping_variance', 'bool'),
             (start_point, 'start_point', 'int_iter'),
             (max_iterations, 'max_iterations', 'positive_int'),
             (mode, 'mode', 'optimiser_mode'),  # TODO
@@ -374,6 +375,8 @@ class NonlinearProgramming(FrequencyConverter):
             self.passive,
             self.active_idx,
             self.phase_variance,
+            self.damping_variance,
+            0.1,
         )
 
         # Dermine bounds for optimiser. Could be None (unconstrained), or
