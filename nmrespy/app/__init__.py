@@ -43,7 +43,7 @@ class NMREsPyApp(tk.Tk):
         if topspin:
             # Open window to ask user for data type (fid or pdata)
             # from this, self acquires the attirbutes dtype and path
-            paths = {'pdata': path, 'fid': path.parent.parent}
+            paths = {"pdata": path, "fid": path.parent.parent}
             data_type_window = DataType(self, paths)
             path = data_type_window.path
 
@@ -87,7 +87,7 @@ class NMREsPyApp(tk.Tk):
         self.wait_window(self.result_window)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     app = NMREsPyApp()
     app.mainloop()

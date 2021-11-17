@@ -3,14 +3,19 @@ import datetime
 import pathlib
 from typing import List, Union
 from nmrespy import GRE, END, USE_COLORAMA
+
 if USE_COLORAMA:
     import colorama
+
     colorama.init()
 
 
 def _write_csv(
-    path: pathlib.Path, param_table: List[List[str]],
-    info_table: List[List[str]], description: Union[str, None], fprint: bool
+    path: pathlib.Path,
+    param_table: List[List[str]],
+    info_table: List[List[str]],
+    description: Union[str, None],
+    fprint: bool,
 ) -> None:
     """Writes parameter estimate to a CSV.
 
@@ -31,23 +36,23 @@ def _write_csv(
     fprint
         Specifies whether or not to print output to terminal.
     """
-    with open(path, 'w', encoding='utf-8') as fh:
+    with open(path, "w", encoding="utf-8") as fh:
         writer = csv.writer(fh)
-        writer.writerow([_timestamp().replace('\n', ' ')])
+        writer.writerow([_timestamp().replace("\n", " ")])
         writer.writerow([])
         if description:
-            writer.writerow(['Description:', description])
+            writer.writerow(["Description:", description])
             writer.writerow([])
-        writer.writerow(['Experiment Info:'])
+        writer.writerow(["Experiment Info:"])
         for row in info_table:
             writer.writerow(row)
         writer.writerow([])
-        writer.writerow(['Result:'])
+        writer.writerow(["Result:"])
         for row in param_table:
             writer.writerow(row)
 
     if fprint:
-        print(f'{GRE}Saved result to {path}{END}')
+        print(f"{GRE}Saved result to {path}{END}")
 
 
 def _timestamp() -> str:
@@ -64,8 +69,8 @@ def _timestamp() -> str:
             dd-mm-yy
     """
     now = datetime.datetime.now()
-    d = now.strftime('%d')  # Day
-    m = now.strftime('%m')  # Month
-    y = now.strftime('%Y')  # Year
-    t = now.strftime('%X')  # Time (hh:mm:ss)
-    return f'{t}\n{d}-{m}-{y}'
+    d = now.strftime("%d")  # Day
+    m = now.strftime("%m")  # Month
+    y = now.strftime("%Y")  # Year
+    t = now.strftime("%X")  # Time (hh:mm:ss)
+    return f"{t}\n{d}-{m}-{y}"

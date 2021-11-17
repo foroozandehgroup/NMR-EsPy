@@ -15,8 +15,10 @@ from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
 from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
+
 if USE_COLORAMA:
     import colorama
+
     colorama.init()
 import nmrespy._errors as errors
 from ._misc import ArgumentChecker, start_end_wrapper
@@ -54,9 +56,15 @@ class MatrixPencil:
        55.2 (2007), pp. 718–724.
     """
 
-    def __init__(self, data: np.ndarray, expinfo: ExpInfo, *, M: int = 0,
-                 start_point: Union[Iterable[int], None] = None,
-                 fprint: bool = True) -> None:
+    def __init__(
+        self,
+        data: np.ndarray,
+        expinfo: ExpInfo,
+        *,
+        M: int = 0,
+        start_point: Union[Iterable[int], None] = None,
+        fprint: bool = True,
+    ) -> None:
         """Initialise the class.
 
         Check validity of inputs, and runs the MPM.
@@ -89,32 +97,30 @@ class MatrixPencil:
         """
         self.expinfo = expinfo
         if not isinstance(expinfo, ExpInfo):
-            raise TypeError(f'{RED}Check `expinfo` is valid.{END}')
-        dim = self.expinfo.unpack('dim')
+            raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
+        dim = self.expinfo.unpack("dim")
 
         try:
             if dim != data.ndim:
                 raise ValueError(
-                    f'{RED}The dimension of `expinfo` does not agree with the '
-                    f'number of dimensions in `data`.{END}'
+                    f"{RED}The dimension of `expinfo` does not agree with the "
+                    f"number of dimensions in `data`.{END}"
                 )
             elif dim >= 3:
                 raise errors.MoreThanTwoDimError()
         except AttributeError:
             # data.ndim raised an attribute error
-            raise TypeError(
-                f'{RED}`data` should be a numpy ndarray{END}'
-            )
+            raise TypeError(f"{RED}`data` should be a numpy ndarray{END}")
 
         if start_point is None:
             start_point = [0] * dim
 
         checker = ArgumentChecker(dim=dim)
         checker.stage(
-            (data, 'data', 'ndarray'),
-            (start_point, 'start_point', 'int_iter'),
-            (M, 'M', 'positive_int_or_zero'),
-            (fprint, 'fprint', 'bool'),
+            (data, "data", "ndarray"),
+            (start_point, "start_point", "int_iter"),
+            (M, "M", "positive_int_or_zero"),
+            (fprint, "fprint", "bool"),
         )
         checker.check()
         self.__dict__.update(locals())
@@ -125,7 +131,7 @@ class MatrixPencil:
         else:
             self._mpm_2d()
 
-    def get_result(self, freq_unit: str = 'hz') -> np.ndarray:
+    def get_result(self, freq_unit: str = "hz") -> np.ndarray:
         """Obtain the result of the MPM.
 
         Parameters
@@ -139,15 +145,15 @@ class MatrixPencil:
         result
             Eetimation result from the MPM.
         """
-        if freq_unit == 'hz':
+        if freq_unit == "hz":
             return self.result
 
-        elif freq_unit == 'ppm':
+        elif freq_unit == "ppm":
             if self.expinfo.sfo is None:
                 raise ValueError(
-                    f'{RED}Insufficient information to determine'
-                    f' frequencies in ppm. Did you perhaps forget to specify'
-                    f' `sfo` in `expinfo`?{END}'
+                    f"{RED}Insufficient information to determine"
+                    f" frequencies in ppm. Did you perhaps forget to specify"
+                    f" `sfo` in `expinfo`?{END}"
                 )
 
             result = copy.deepcopy(self.result)
@@ -160,10 +166,10 @@ class MatrixPencil:
             return result
 
         else:
-            raise errors.InvalidUnitError('hz', 'ppm')
+            raise errors.InvalidUnitError("hz", "ppm")
 
     @timer
-    @start_end_wrapper('MPM STARTED', 'MPM COMPLETE')
+    @start_end_wrapper("MPM STARTED", "MPM COMPLETE")
     def _mpm_1d(self) -> None:
         """Perform 1-dimensional Matrix Pencil Method."""
         # Normalise data
@@ -171,87 +177,87 @@ class MatrixPencil:
         normed_data = self.data / norm
 
         # Number of points
-        N = self.expinfo.unpack('pts')[0]
+        N = self.expinfo.unpack("pts")[0]
 
         # Pencil parameter.
         # Optimal when between N/2 and N/3 (see Lin's paper)
         L = int(np.floor(N / 3))
         if self.fprint:
-            print(f'--> Pencil Parameter: {L}')
+            print(f"--> Pencil Parameter: {L}")
 
         # Construct Hankel matrix
-        Y = slinalg.hankel(normed_data[:N - L], normed_data[N - L - 1:])
+        Y = slinalg.hankel(normed_data[: N - L], normed_data[N - L - 1 :])
 
         if self.fprint:
             print("--> Hankel data matrix constructed:")
-            print(f'\tSize:   {Y.shape[0]} x {Y.shape[1]}')
-            gibibytes = Y.nbytes / (2**30)
+            print(f"\tSize:   {Y.shape[0]} x {Y.shape[1]}")
+            gibibytes = Y.nbytes / (2 ** 30)
             if gibibytes >= 0.1:
-                print(f'\tMemory: {round(gibibytes, 4)}GiB')
+                print(f"\tMemory: {round(gibibytes, 4)}GiB")
             else:
-                print(f'\tMemory: {round(gibibytes * (2**10), 4)}MiB')
+                print(f"\tMemory: {round(gibibytes * (2**10), 4)}MiB")
 
         # Singular value decomposition of Y
         # returns singular values: min(N-L, L)-length vector
         # and right singular vectors (LxL size matrix)
         if self.fprint:
-            print('--> Performing Singular Value Decomposition...')
+            print("--> Performing Singular Value Decomposition...")
         sigma, Vh = nlinalg.svd(Y)[1:]
         V = Vh.T
 
         # Compute the MDL in order to estimate the number of oscillators
         if self.fprint:
-            print('--> Computing number of oscillators...')
+            print("--> Computing number of oscillators...")
 
         if self.M == 0:
             if self.fprint:
-                print('\tNumber of oscillators will be estimated using MDL')
+                print("\tNumber of oscillators will be estimated using MDL")
 
             self.mdl = np.zeros(L)
             for k in range(L):
-                self.mdl[k] = \
-                    - N * np.einsum('i->', np.log(sigma[k:L])) + \
-                    N * (L - k) * \
-                    np.log(np.einsum('i->', sigma[k:L]) / (L - k)) + \
-                    k * np.log(N) * (2 * L - k) / 2
+                self.mdl[k] = (
+                    -N * np.einsum("i->", np.log(sigma[k:L]))
+                    + N * (L - k) * np.log(np.einsum("i->", sigma[k:L]) / (L - k))
+                    + k * np.log(N) * (2 * L - k) / 2
+                )
 
             self.M = np.argmin(self.mdl)
 
         else:
             if self.fprint:
-                print('\tNumber of oscillations has been pre-defined')
+                print("\tNumber of oscillations has been pre-defined")
 
         if self.fprint:
-            print(f'\tNumber of oscillations: {self.M}')
+            print(f"\tNumber of oscillations: {self.M}")
 
         # Determine signal poles
         if self.fprint:
-            print('--> Computing signal poles...')
+            print("--> Computing signal poles...")
 
-        Vm = V[:, :self.M]  # Retain M first right singular vectors
+        Vm = V[:, : self.M]  # Retain M first right singular vectors
         V1 = Vm[:-1, :]  # Remove last column
         V2 = Vm[1:, :]  # Remove first column
 
         # Determine first M signal poles (others should be 0)
-        poles = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][:self.M]
+        poles = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][: self.M]
 
         # Compute complex amplitudes
         if self.fprint:
-            print('--> Computing complex amplitudes...')
+            print("--> Computing complex amplitudes...")
 
         # Pseudoinverse of Vandermonde matrix of poles multiplied by
         # vector of complex amplitudes
         sp = self.start_point[0]
-        alpha = nlinalg.pinv(
-            np.power.outer(poles, np.arange(sp, N + sp))
-        ).T @ normed_data
+        alpha = (
+            nlinalg.pinv(np.power.outer(poles, np.arange(sp, N + sp))).T @ normed_data
+        )
 
         params = self._generate_params(alpha, poles.reshape((1, self.M)))
         params[:, 0] *= norm
         self.result, self.M = self._remove_negative_damping(params)
 
     @timer
-    @start_end_wrapper('MMEMP STARTED', 'MMEMP COMPLETE')
+    @start_end_wrapper("MMEMP STARTED", "MMEMP COMPLETE")
     def _mpm_2d(self):
         """Perform 2-dimensional Modified Matrix Enhanced Pencil Method."""
         # Normalise data
@@ -259,55 +265,53 @@ class MatrixPencil:
         normed_data = self.data / norm
 
         # Number of points
-        N1, N2 = self.expinfo.unpack('pts')
+        N1, N2 = self.expinfo.unpack("pts")
 
         # Pencil parameters
         K, L = tuple([int((n + 1) / 2) for n in (N1, N2)])
         if self.fprint:
-            print(f'--> Pencil parameters: {K}, {L}')
+            print(f"--> Pencil parameters: {K}, {L}")
 
         # TODO: MDL for 2D
         if self.M == 0:
             raise ValueError(
-                f'{RED}Model order selection is not yet available for 2D '
-                f'data. Set `M` as greater than 0.{END}'
+                f"{RED}Model order selection is not yet available for 2D "
+                f"data. Set `M` as greater than 0.{END}"
             )
 
         # --- Enhanced Matrix ---
-        X = slinalg.hankel(normed_data[0, :L], normed_data[0, L - 1:N2])
+        X = slinalg.hankel(normed_data[0, :L], normed_data[0, L - 1 : N2])
         for n1 in range(1, N1):
-            blk = slinalg.hankel(
-                normed_data[n1, :L], normed_data[n1, L - 1:N2]
-            )
+            blk = slinalg.hankel(normed_data[n1, :L], normed_data[n1, L - 1 : N2])
             X = np.hstack((X, blk))
 
         # vertically stack rows of block matricies to get Xe
-        Xe = X[:, 0:(N1 - K + 1) * (N2 - L + 1)]
+        Xe = X[:, 0 : (N1 - K + 1) * (N2 - L + 1)]
 
         for k in range(1, K):
             Xe = np.vstack(
-                (Xe, X[:, k * (N2 - L + 1):(k + N1 - K + 1) * (N2 - L + 1)])
+                (Xe, X[:, k * (N2 - L + 1) : (k + N1 - K + 1) * (N2 - L + 1)])
             )
 
         if self.fprint:
-            print('--> Enhanced Block Hankel matrix constructed:')
-            print(f'\tSize: {Xe.shape[0]} x {Xe.shape[1]}')
+            print("--> Enhanced Block Hankel matrix constructed:")
+            print(f"\tSize: {Xe.shape[0]} x {Xe.shape[1]}")
             gibibytes = Xe.nbytes / (2 ** 30)
             if gibibytes >= 0.1:
-                print(f'\tMemory: {round(gibibytes, 4)}GiB')
+                print(f"\tMemory: {round(gibibytes, 4)}GiB")
             else:
-                print(f'\tMemory: {round(gibibytes * (2**10), 4)}MiB')
+                print(f"\tMemory: {round(gibibytes * (2**10), 4)}MiB")
 
         # convert Xe to sparse matrix
         sparse_Xe = sparse.csr_matrix(Xe)
 
         if self.fprint:
-            print('--> Performing Singular Value Decomposition...')
+            print("--> Performing Singular Value Decomposition...")
         U, *_ = splinalg.svds(sparse_Xe, self.M)
 
         # --- Permutation matrix ---
         if self.fprint:
-            print('--> Computing Permutation matrix...')
+            print("--> Computing Permutation matrix...")
 
         # Create first row of matrix: [1, 0, 0, ..., 0]
         fst_row = sparse.lil_matrix((1, K * L))
@@ -318,7 +322,7 @@ class MatrixPencil:
 
         # First block of K rows of permutation matrix
         for k in range(1, K):
-            row = sparse.hstack((fst_row[:, -(k * L):], fst_row[:, :-(k * L)]))
+            row = sparse.hstack((fst_row[:, -(k * L) :], fst_row[:, : -(k * L)]))
             P = sparse.vstack((P, row))
 
         # first K-sized block of matrix
@@ -334,21 +338,21 @@ class MatrixPencil:
         # --- Signal Poles ---
         # retain only M principle left s. vecs
         if self.fprint:
-            print('--> Computing signal poles...')
+            print("--> Computing signal poles...")
 
-        Us = U[:, :self.M]
-        U1 = Us[:Us.shape[0] - L, :]  # last L rows deleted
-        U2 = Us[L:, :]                # first L rows deleted
+        Us = U[:, : self.M]
+        U1 = Us[: Us.shape[0] - L, :]  # last L rows deleted
+        U2 = Us[L:, :]  # first L rows deleted
         eig_y, vec_y = nlinalg.eig(nlinalg.pinv(U1) @ U2)
         Usp = P @ Us
-        U1p = Usp[:Usp.shape[0] - K, :]  # last K rows deleted
-        U2p = Usp[K:, :]                 # first K rows deleted
+        U1p = Usp[: Usp.shape[0] - K, :]  # last K rows deleted
+        U2p = Usp[K:, :]  # first K rows deleted
         eig_z = np.diag(nlinalg.solve(vec_y, nlinalg.pinv(U1p)) @ U2p @ vec_y)
         poles = np.hstack((eig_y, eig_z)).reshape((2, self.M))
 
         # --- Complex Amplitudes ---
         if self.fprint:
-            print('--> Computing complex amplitudes...')
+            print("--> Computing complex amplitudes...")
 
         ZL = np.power.outer(poles[1], np.arange(L)).T
         ZR = np.power.outer(poles[1], np.arange(N2 - L + 1))
@@ -368,9 +372,7 @@ class MatrixPencil:
         params[:, 0] *= norm
         self.result, self.M = self._remove_negative_damping(params)
 
-    def _generate_params(
-        self, alpha: np.ndarray, poles: np.ndarray
-    ) -> np.ndarray:
+    def _generate_params(self, alpha: np.ndarray, poles: np.ndarray) -> np.ndarray:
         """Convert complex amplitudes and signal poles to parameter array.
 
         Parameters
@@ -388,16 +390,19 @@ class MatrixPencil:
             ``M`` is the number of oscillators in the result and ``dim`` is
             the data dimension.
         """
-        sw, offset = self.expinfo.unpack('sw', 'offset')
+        sw, offset = self.expinfo.unpack("sw", "offset")
         amp = np.abs(alpha)
         phase = np.arctan2(np.imag(alpha), np.real(alpha))
         freq = np.vstack(
-            tuple([(sw_ / (2 * np.pi)) * np.imag(np.log(poles_)) + offset_
-                   for sw_, offset_, poles_ in zip(sw, offset, poles)])
+            tuple(
+                [
+                    (sw_ / (2 * np.pi)) * np.imag(np.log(poles_)) + offset_
+                    for sw_, offset_, poles_ in zip(sw, offset, poles)
+                ]
+            )
         )
         damp = np.vstack(
-            tuple([-sw_ * np.real(np.log(poles_))
-                   for sw_, poles_ in zip(sw, poles)])
+            tuple([-sw_ * np.real(np.log(poles_)) for sw_, poles_ in zip(sw, poles)])
         )
 
         result = np.vstack((amp, phase, freq, damp)).T
@@ -419,7 +424,7 @@ class MatrixPencil:
             ``M_new <= param.shape[0]`` and ``dim`` is the data dimension.
         """
         if self.fprint:
-            print('--> Checking for oscillators with negative damping...')
+            print("--> Checking for oscillators with negative damping...")
 
         M_init = params.shape[0]
         # Indices of oscillators with negative damping factors
@@ -431,11 +436,13 @@ class MatrixPencil:
         M = ud_params.shape[0]
 
         if M < M_init and self.fprint:
-            print(f'\t{ORA}WARNING: Oscillations with negative damping\n'
-                  f'\tfactors detected. These have been deleted.\n'
-                  f'\tCorrected number of oscillations: {M}{END}')
+            print(
+                f"\t{ORA}WARNING: Oscillations with negative damping\n"
+                f"\tfactors detected. These have been deleted.\n"
+                f"\tCorrected number of oscillations: {M}{END}"
+            )
 
         elif self.fprint:
-            print('\tNone found')
+            print("\tNone found")
 
         return ud_params, M

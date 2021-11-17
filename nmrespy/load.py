@@ -12,8 +12,10 @@ import numpy as np
 import bruker_utils
 
 from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
+
 if USE_COLORAMA:
     import colorama
+
     colorama.init()
 import nmrespy._errors as errors
 from nmrespy._misc import get_yes_no
@@ -26,25 +28,28 @@ class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
     @property
     def expinfo(self) -> ExpInfo:
         """Extract :py:class:`ExpInfo` from the dataset."""
-        acqusfiles = sorted([f for f in self.valid_parameter_filenames
-                             if 'acqu' in f])
+        acqusfiles = sorted([f for f in self.valid_parameter_filenames if "acqu" in f])
         sw, offset, sfo, nuclei = [[] for _ in range(4)]
         for f in acqusfiles:
             params = self.get_parameters(filenames=f)[f]
-            sw.append(params['SW_h'])
-            offset.append(params['O1'])
-            sfo.append(params['SFO1'])
-            nuclei.append(re.match('^<(.+?)>$', params['NUC1']).group(1))
+            sw.append(params["SW_h"])
+            offset.append(params["O1"])
+            sfo.append(params["SFO1"])
+            nuclei.append(re.match("^<(.+?)>$", params["NUC1"]).group(1))
 
         pts = self.data.shape
 
-        return ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo, nuclei=nuclei,
-                       **{'parameters': self.get_parameters()})
+        return ExpInfo(
+            pts=pts,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            nuclei=nuclei,
+            **{"parameters": self.get_parameters()},
+        )
 
 
-def load_bruker(
-    directory: str, ask_convdta: bool = True
-) -> Tuple[np.ndarray, ExpInfo]:
+def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, ExpInfo]:
     """Load data and experiment information from Bruker format.
 
     Parameters
@@ -204,17 +209,19 @@ def load_bruker(
         dataset = _BrukerDatasetForNmrespy(directory)
 
     except Exception as exc:
-        raise type(exc)(f'{RED}{exc.__str__()}{END}')
+        raise type(exc)(f"{RED}{exc.__str__()}{END}")
 
     if dataset.dim > 2:
         raise errors.MoreThanTwoDimError()
 
-    if dataset.dtype == 'fid' and ask_convdta:
-        msg = (f'{ORA}You should ensure you data has had its group delay '
-               'artefact removed. Prior to dealing with the data in NMR-EsPy, '
-               'you should call the `CONVDTA` command on the dataset. If this '
-               'has already been done, feel free to proceed. If not, quit the '
-               f'program.\nContinue?{END}')
+    if dataset.dtype == "fid" and ask_convdta:
+        msg = (
+            f"{ORA}You should ensure you data has had its group delay "
+            "artefact removed. Prior to dealing with the data in NMR-EsPy, "
+            "you should call the `CONVDTA` command on the dataset. If this "
+            "has already been done, feel free to proceed. If not, quit the "
+            f"program.\nContinue?{END}"
+        )
 
         response = get_yes_no(msg)
         if not response:

@@ -17,8 +17,10 @@ import matplotlib.colors as mcolors
 import numpy as np
 
 from nmrespy import RED, ORA, GRE, END, USE_COLORAMA, ExpInfo
+
 if USE_COLORAMA:
     import colorama
+
     colorama.init()
 
 
@@ -80,64 +82,65 @@ class ArgumentChecker:
         for (obj, name, typ, none_allowed) in self.components:
             if none_allowed and obj is None:
                 test = True
-            elif typ == 'ndarray':
+            elif typ == "ndarray":
                 test = isinstance(obj, np.ndarray)
-            elif typ == 'parameter':
+            elif typ == "parameter":
                 test = self.check_parameter_array(obj)
-            elif typ == 'int_iter':
+            elif typ == "int_iter":
                 test = self.check_iter(obj, int)
-            elif typ == 'float_iter':
+            elif typ == "float_iter":
                 test = self.check_iter(obj, float)
-            elif typ == 'str_iter':
+            elif typ == "str_iter":
                 test = self.check_iter(obj, str)
-            elif typ == 'array_iter':
+            elif typ == "array_iter":
                 test = self.check_iter(obj, np.ndarray)
-            elif typ == 'region_int':
+            elif typ == "region_int":
                 test = self.check_region(obj, int)
-            elif typ == 'region_float':
+            elif typ == "region_float":
                 test = self.check_region(obj, float)
-            elif typ == 'bool':
+            elif typ == "bool":
                 test = isinstance(obj, bool)
-            elif typ == 'int':
+            elif typ == "int":
                 test = isinstance(obj, int)
-            elif typ == 'float':
+            elif typ == "float":
                 test = isinstance(obj, float)
-            elif typ == 'str':
+            elif typ == "str":
                 test = isinstance(obj, str)
-            elif typ == 'list':
+            elif typ == "list":
                 test = isinstance(obj, list)
-            elif typ == 'positive_int':
+            elif typ == "positive_int":
                 test = isinstance(obj, int) and obj > 0
-            elif typ == 'positive_int_or_zero':
+            elif typ == "positive_int_or_zero":
                 test = isinstance(obj, int) and obj >= 0
-            elif typ == 'positive_float':
+            elif typ == "positive_float":
                 test = isinstance(obj, float) and obj > 0
-            elif typ == 'optimiser_mode':
+            elif typ == "optimiser_mode":
                 test = self.check_optimiser_mode(obj)
-            elif typ == 'optimiser_algorithm':
-                test = obj in ['trust_region', 'lbfgs']
-            elif typ == 'zero_to_one':
-                test = isinstance(obj, float) and 0. <= obj < 1.
-            elif typ == 'greater_than_one':
+            elif typ == "optimiser_algorithm":
+                test = obj in ["trust_region", "lbfgs"]
+            elif typ == "zero_to_one":
+                test = isinstance(obj, float) and 0.0 <= obj < 1.0
+            elif typ == "greater_than_one":
                 test = isinstance(obj, float) and obj > 1.0
-            elif typ == 'negative_amplidue':
-                test = obj in ['remove', 'flip_phase']
-            elif typ == 'file_fmt':
-                test = obj in ['txt', 'pdf', 'csv']
-            elif typ == 'pos_neg_tuple':
+            elif typ == "negative_amplidue":
+                test = obj in ["remove", "flip_phase"]
+            elif typ == "file_fmt":
+                test = obj in ["txt", "pdf", "csv"]
+            elif typ == "pos_neg_tuple":
                 test = self.check_pos_neg_tuple(obj)
-            elif typ == 'mpl_color':
+            elif typ == "mpl_color":
                 test = self.check_mpl_color(obj)
-            elif typ == 'osc_cols':
+            elif typ == "osc_cols":
                 test = self.check_oscillator_colors(obj)
-            elif typ == 'generic_int_iter':
-                test = (isinstance(obj, list) and
-                        all(isinstance(item, int) for item in obj))
-            elif typ == 'displacement':
+            elif typ == "generic_int_iter":
+                test = isinstance(obj, list) and all(
+                    isinstance(item, int) for item in obj
+                )
+            elif typ == "displacement":
                 test = self.check_displacement(obj)
-            elif typ == 'modulation':
-                test = obj in ['none', 'amp', 'phase']
-            elif typ == 'start_time':
+            elif typ == "modulation":
+                test = obj in ["none", "amp", "phase"]
+            elif typ == "start_time":
                 test = self.check_start_time(obj)
 
             # Error message to be shown if invalid arguments are found
@@ -145,21 +148,17 @@ class ArgumentChecker:
                 try:
                     # If at least one previous fail has already been found,
                     # append the new fail to the pre-existing errmsg variable
-                    errmsg += f'--> {name}\n'
+                    errmsg += f"--> {name}\n"
                 except NameError:
                     # First fail: errmsg doesn't exist yet, so initialise
                     errmsg = (
-                        f'{RED}The following arguments are invalid:\n'
-                        f'--> {name}\n'
+                        f"{RED}The following arguments are invalid:\n" f"--> {name}\n"
                     )
 
         try:
             # If errmsg exists, it implies that at least one test failed.
             # Add a final remark to the message and raise a TypeError.
-            errmsg += (
-                f'Have a look at the documentation for more info.'
-                f'{END}'
-            )
+            errmsg += f"Have a look at the documentation for more info." f"{END}"
             raise TypeError(errmsg)
 
         except NameError:
@@ -184,12 +183,12 @@ class ArgumentChecker:
 
     def check_dim(f: Callable) -> Callable:
         """Check that the `dim` attribute is an `int`."""
+
         def wrapper(*args, **kwargs):
             if not isinstance(args[0].dim, int):
-                raise ValueError(
-                    f'{RED}---BUG---{END} dim needs to be specified.'
-                )
+                raise ValueError(f"{RED}---BUG---{END} dim needs to be specified.")
             return f(*args, **kwargs)
+
         return wrapper
 
     @check_dim
@@ -252,7 +251,7 @@ class ArgumentChecker:
             return False
 
         # check if mode is empty or contains and invalid character
-        if any(c not in 'apfd' for c in obj) or obj == '':
+        if any(c not in "apfd" for c in obj) or obj == "":
             return False
 
         # check if mode contains a repeated character
@@ -268,9 +267,14 @@ class ArgumentChecker:
     @staticmethod
     def check_pos_neg_tuple(obj: Any) -> bool:
         """Check for tuple with one negative and one positive int."""
-        return (isinstance(obj, tuple) and len(obj) == 2
-                and isinstance(obj[0], int) and obj[0] < 0
-                and isinstance(obj[1], int) and obj[1] > 1)
+        return (
+            isinstance(obj, tuple)
+            and len(obj) == 2
+            and isinstance(obj[0], int)
+            and obj[0] < 0
+            and isinstance(obj[1], int)
+            and obj[1] > 1
+        )
 
     @staticmethod
     def check_mpl_color(obj: Any) -> bool:
@@ -307,7 +311,7 @@ class ArgumentChecker:
     def check_displacement(obj: Any) -> bool:
         """Check for a valid mpl label displacement tuple."""
         if isinstance(obj, tuple) and len(obj) == 2:
-            return all(isinstance(x, float) and abs(x) < 1. for x in obj)
+            return all(isinstance(x, float) and abs(x) < 1.0 for x in obj)
         return False
 
     @check_dim
@@ -315,8 +319,7 @@ class ArgumentChecker:
         """Check whether object is a valid start time specifier for signal."""
         if isinstance(obj, (list, tuple)) and (len(obj) == self.dim):
             return all(
-                isinstance(item, float) or re.match(r'^-?\d+dt$', item)
-                for item in obj
+                isinstance(item, float) or re.match(r"^-?\d+dt$", item) for item in obj
             )
         return False
 
@@ -340,17 +343,18 @@ class FrequencyConverter:
         conversion from/tp ppm is desired.
         """
         try:
-            pts, sw, offset, sfo, dim = \
-                expinfo.unpack('pts', 'sw', 'offset', 'sfo', 'dim')
+            pts, sw, offset, sfo, dim = expinfo.unpack(
+                "pts", "sw", "offset", "sfo", "dim"
+            )
         except Exception:
-            raise TypeError(f'{RED}Check `expinfo` is valid.{END}')
+            raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
 
         checker = ArgumentChecker(dim=dim)
         checker.stage(
-            (pts, 'pts', 'int_iter'),
-            (sw, 'sw', 'float_iter'),
-            (offset, 'offset', 'float_iter'),
-            (sfo, 'sfo', 'float_iter', True)
+            (pts, "pts", "int_iter"),
+            (sw, "sw", "float_iter"),
+            (offset, "offset", "float_iter"),
+            (sfo, "sfo", "float_iter", True),
         )
         checker.check()
         self.__dict__.update(locals())
@@ -385,12 +389,10 @@ class FrequencyConverter:
             An iterable of the same dimensions as `lst`, with converted values.
         """
         if not self._check_valid_conversion(conversion):
-            raise ValueError(f'{RED}convert is not valid.{END}')
+            raise ValueError(f"{RED}convert is not valid.{END}")
 
         if len(self) != len(lst):
-            raise ValueError(
-                f'{RED}lst should be of length {len(self)}.{END}'
-            )
+            raise ValueError(f"{RED}lst should be of length {len(self)}.{END}")
 
         # List for storing final converted contents
         converted_lst = []
@@ -407,7 +409,9 @@ class FrequencyConverter:
                     try:
                         converted_sublst.append(
                             self._convert_value(
-                                next(iterable), dim, conversion,
+                                next(iterable),
+                                dim,
+                                conversion,
                             )
                         )
                     except StopIteration:
@@ -417,15 +421,13 @@ class FrequencyConverter:
 
             except TypeError:
                 # elem is a float/int...
-                converted_lst.append(
-                    self._convert_value(elem, dim, conversion)
-                )
+                converted_lst.append(self._convert_value(elem, dim, conversion))
 
         return type(lst)(converted_lst)
 
     def _check_valid_conversion(self, conversion: str) -> bool:
         """Check that conversion is a valid value."""
-        pattern = r'^(idx|ppm|hz)->(idx|ppm|hz)$'
+        pattern = r"^(idx|ppm|hz)->(idx|ppm|hz)$"
         return bool(re.match(pattern, conversion))
 
     def _convert_value(
@@ -435,36 +437,32 @@ class FrequencyConverter:
         pts = self.pts[dim]
         sw = self.sw[dim]
         off = self.offset[dim]
-        if (self.sfo is None) and ('ppm' in conversion):
+        if (self.sfo is None) and ("ppm" in conversion):
             raise ValueError(
-                f'{RED}WARNING tried to convert to/from ppm, when sfo'
-                f' has not been specified!{END}'
+                f"{RED}WARNING tried to convert to/from ppm, when sfo"
+                f" has not been specified!{END}"
             )
         elif self.sfo is None:
             pass
         else:
             sfo = self.sfo[dim]
 
-        if conversion == 'idx->hz':
+        if conversion == "idx->hz":
             return off + sw * (0.5 - (float(value) / (pts - 1)))
 
-        elif conversion == 'idx->ppm':
+        elif conversion == "idx->ppm":
             return (off + sw * (0.5 - (float(value) / (pts - 1)))) / sfo
 
-        elif conversion == 'ppm->idx':
-            return int(
-                round(
-                    ((pts - 1)) / (2 * sw) * (sw + 2 * (off - (value * sfo)))
-                )
-            )
+        elif conversion == "ppm->idx":
+            return int(round(((pts - 1)) / (2 * sw) * (sw + 2 * (off - (value * sfo)))))
 
-        elif conversion == 'ppm->hz':
+        elif conversion == "ppm->hz":
             return value * sfo
 
-        elif conversion == 'hz->idx':
+        elif conversion == "hz->idx":
             return int(round((pts - 1) / (2 * sw) * (sw + 2 * (off - value))))
 
-        elif conversion == 'hz->ppm':
+        elif conversion == "hz->ppm":
             return value / sfo
 
         else:
@@ -522,15 +520,14 @@ class PathManager:
         if self.path.is_file() and not force_overwrite:
             overwrite = self.ask_overwrite()
             if not overwrite:
-                print(f'{ORA}Overwrite denied{END}')
+                print(f"{ORA}Overwrite denied{END}")
                 return 1
 
         return 0
 
     def ask_overwrite(self) -> bool:
         """Ask the user if the are happy to overwrite `path`."""
-        prompt = (f'{ORA}The file {str(self.path)} already exists. '
-                  f'Overwrite?{END}')
+        prompt = f"{ORA}The file {str(self.path)} already exists. " f"Overwrite?{END}"
         return get_yes_no(prompt)
 
 
@@ -540,19 +537,20 @@ def get_yes_no(prompt: str) -> bool:
     User should provide one of the following: ``'y'``, ``'Y'``, ``'n'``,
     ``'N'``. If an invalid response is given, the user is asked again.
     """
-    print(f'{prompt}\nEnter [y] or [n]')
+    print(f"{prompt}\nEnter [y] or [n]")
     while True:
         response = input().lower()
-        if response == 'y':
+        if response == "y":
             return True
-        elif response == 'n':
+        elif response == "n":
             return False
         else:
-            print(f'{RED}Invalid input. Please enter [y] or [n]:{END}')
+            print(f"{RED}Invalid input. Please enter [y] or [n]:{END}")
 
 
 def start_end_wrapper(start_text: str, end_text: str) -> Callable:
     """Print a message prior to and after a method call."""
+
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         def inner(*args, **kwargs) -> Any:
@@ -561,18 +559,24 @@ def start_end_wrapper(start_text: str, end_text: str) -> Callable:
             if inst.fprint is False:
                 return f(*args, **kwargs)
 
-            print(f"{GRE}{len(start_text) * '='}\n"
-                  f"{start_text}\n"
-                  f"{len(start_text) * '='}{END}")
+            print(
+                f"{GRE}{len(start_text) * '='}\n"
+                f"{start_text}\n"
+                f"{len(start_text) * '='}{END}"
+            )
 
             result = f(*args, **kwargs)
 
-            print(f"{GRE}{len(end_text) * '='}\n"
-                  f"{end_text}\n"
-                  f"{len(end_text) * '='}{END}")
+            print(
+                f"{GRE}{len(end_text) * '='}\n"
+                f"{end_text}\n"
+                f"{len(end_text) * '='}{END}"
+            )
 
             return result
+
         return inner
+
     return decorator
 
 
@@ -597,13 +601,12 @@ def latex_nucleus(nucleus: str) -> str:
     ValueError
         If `nucleus` does not match the regex ``r'^\d+[a-zA-Z]+$'``
     """
-    if re.match(r'\d+[a-zA-Z]+', nucleus):
-        mass = re.search(r'\d+', nucleus).group()
-        sym = re.search(r'[a-zA-Z]+', nucleus).group()
-        return f'$^{{{mass}}}${sym}'
+    if re.match(r"\d+[a-zA-Z]+", nucleus):
+        mass = re.search(r"\d+", nucleus).group()
+        sym = re.search(r"[a-zA-Z]+", nucleus).group()
+        return f"$^{{{mass}}}${sym}"
 
     else:
         raise ValueError(
-            f'{RED}`nucleus` is invalid. Should match the regex '
-            f'\\d+[a-zA-Z]+{END}'
+            f"{RED}`nucleus` is invalid. Should match the regex " f"\\d+[a-zA-Z]+{END}"
         )

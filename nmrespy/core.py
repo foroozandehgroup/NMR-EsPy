@@ -14,12 +14,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from nmrespy import (
-    RED, MAG, END, USE_COLORAMA, _errors, _misc, load, freqfilter as ff,
-    mpm, plot, sig, write, ExpInfo
+    RED,
+    MAG,
+    END,
+    USE_COLORAMA,
+    _errors,
+    _misc,
+    load,
+    freqfilter as ff,
+    mpm,
+    plot,
+    sig,
+    write,
+    ExpInfo,
 )
 from nmrespy.nlp import nlp
+
 if USE_COLORAMA:
     import colorama
+
     colorama.init()
 
 
@@ -79,18 +92,17 @@ class Estimator:
         )
 
         if _origin is not None:
-            self._log += (f" from `{_origin['method']}` with args "
-                          f"{_origin['args']}")
+            self._log += f" from `{_origin['method']}` with args " f"{_origin['args']}"
 
         self._log += "\n"
 
     def __repr__(self):
         return (
-            f'nmrespy.core.Estimator('
-            f'{self.data}, '
-            f'{self.datapath}, '
-            f'{self.expinfo}, '
-            f'{self._origin})'
+            f"nmrespy.core.Estimator("
+            f"{self.data}, "
+            f"{self.datapath}, "
+            f"{self.expinfo}, "
+            f"{self._origin})"
         )
 
     def __str__(self):
@@ -101,18 +113,20 @@ class Estimator:
             f"{hex(id(self))}>{END}\n"
         )
 
-        items = [f'{MAG}{k}{END} : {v}'
-                 for k, v in self.__dict__.items() if k[0] != '_']
-        msg += '\n'.join(items)
+        items = [
+            f"{MAG}{k}{END} : {v}" for k, v in self.__dict__.items() if k[0] != "_"
+        ]
+        msg += "\n".join(items)
         return msg
 
     def logger(f):
         """Decorator for logging :py:class:`Estimator` method calls"""
+
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             # The first arg is the class instance.
             # Append to the log text.
-            args[0]._log += f'--> `{f.__name__}` {args[1:]} {kwargs}\n'
+            args[0]._log += f"--> `{f.__name__}` {args[1:]} {kwargs}\n"
 
             # Run the method...
             return f(*args, **kwargs)
@@ -141,32 +155,36 @@ class Estimator:
         For a more detailed specification of the directory requirements,
         see :py:meth:`nmrespy.load_bruker`."""
 
-        origin = {'method': 'new_bruker', 'args': locals()}
+        origin = {"method": "new_bruker", "args": locals()}
         info = load_bruker(dir, ask_convdta=ask_convdta)
-        data = info['data'][0]
+        data = info["data"][0]
 
-        if info['dtype'] == 'pdata':
+        if info["dtype"] == "pdata":
             # TODO: believe this should be fine for 1D. Need to check for
             # multidim spectra.
-            data = 2 * info['dim'] * sig.ift(data, flip=True)
-            for d in range(info['dim']):
-                data = data[:int(data.shape[d] // 2)]
-            data[0] /= (2 * info['dim'])
+            data = 2 * info["dim"] * sig.ift(data, flip=True)
+            for d in range(info["dim"]):
+                data = data[: int(data.shape[d] // 2)]
+            data[0] /= 2 * info["dim"]
 
         return cls(
             data=data,
-            path=info['path'],
-            sw=info['sw'],
-            off=info['off'],
-            sfo=info['sfo'],
-            nuc=info['nuc'],
-            fmt=info['binfmt'],
-            _origin=origin
+            path=info["path"],
+            sw=info["sw"],
+            off=info["off"],
+            sfo=info["sfo"],
+            nuc=info["nuc"],
+            fmt=info["binfmt"],
+            _origin=origin,
         )
 
     @classmethod
     def new_synthetic_from_parameters(
-        cls, params: np.ndarray, expinfo: ExpInfo, *, snr: float = 30.,
+        cls,
+        params: np.ndarray,
+        expinfo: ExpInfo,
+        *,
+        snr: float = 30.0,
     ):
         """Generate an instance of :py:class:`Estimator` from a
         list of oscillator parameters.
@@ -214,35 +232,28 @@ class Estimator:
                 dim = int((p - 2) / 2)
             else:
                 raise ValueError(
-                    f'{RED}`params` should have a size of 4 or 6 in '
-                    f'axis 1.{END}'
+                    f"{RED}`params` should have a size of 4 or 6 in " f"axis 1.{END}"
                 )
         except AttributeError:
-            raise TypeError(
-                f'{RED}`params` should be a numpy array.{END}'
-            )
+            raise TypeError(f"{RED}`params` should be a numpy array.{END}")
 
         try:
-            if expinfo.unpack('dim') != dim:
+            if expinfo.unpack("dim") != dim:
                 raise ValueError(
-                    f'{RED}The dimension implied by `params` and `expinfo` '
-                    f'do not match!{END}'
+                    f"{RED}The dimension implied by `params` and `expinfo` "
+                    f"do not match!{END}"
                 )
         except AttributeError:
             raise TypeError(
-                f'{RED}`expinfo` should be an instance of '
-                f'nmrespy.ExpInfo{END}'
+                f"{RED}`expinfo` should be an instance of " f"nmrespy.ExpInfo{END}"
             )
 
         checker = _misc.ArgumentChecker(dim=dim)
-        checker.stage(
-            (params, 'params', 'parameter'),
-            (snr, 'snr', 'float', True)
-        )
+        checker.stage((params, "params", "parameter"), (snr, "snr", "float", True))
         checker.check()
 
         data = sig.make_fid(params, expinfo, snr=snr)[0]
-        origin = {'method': 'new_synthetic_from_parameters', 'args': locals()}
+        origin = {"method": "new_synthetic_from_parameters", "args": locals()}
 
         return cls(data=data, datapath=None, expinfo=expinfo, _origin=origin)
 
@@ -279,28 +290,29 @@ class Estimator:
            :py:class:`Estimator`, an error will be raised.
         """
 
-        path = Path(path).with_suffix('.pkl')
+        path = Path(path).with_suffix(".pkl")
         if path.is_file():
-            with open(path, 'rb') as fh:
+            with open(path, "rb") as fh:
                 obj = pickle.load(fh)
             if isinstance(obj, __class__):
                 return obj
             else:
                 raise TypeError(
-                    f'{RED}It is expected that the object opened by'
-                    ' `from_pickle` is an instance of'
-                    f' {__class__.__module__}.{__class__.__qualname__}.'
-                    f' What was loaded didn\'t satisfy this!{END}'
+                    f"{RED}It is expected that the object opened by"
+                    " `from_pickle` is an instance of"
+                    f" {__class__.__module__}.{__class__.__qualname__}."
+                    f" What was loaded didn't satisfy this!{END}"
                 )
 
         else:
-            raise ValueError(
-                f'{RED}Invalid path specified.{END}'
-            )
+            raise ValueError(f"{RED}Invalid path specified.{END}")
 
     @logger
     def to_pickle(
-        self, path='./estimator', force_overwrite=False, fprint=True,
+        self,
+        path="./estimator",
+        force_overwrite=False,
+        fprint=True,
     ):
         """Converts the class instance to a byte stream using Python's
         "Pickling" protocol, and saves it to a .pkl file.
@@ -332,21 +344,19 @@ class Estimator:
 
         checker = ArgumentChecker()
         checker.stage(
-            (path, 'path', 'str'),
-            (force_overwrite, 'force_overwrite', 'bool'),
-            (fprint, 'fprint', 'bool')
+            (path, "path", "str"),
+            (force_overwrite, "force_overwrite", "bool"),
+            (fprint, "fprint", "bool"),
         )
         checker.check()
 
         # Get full path
         path = Path(path).resolve()
         # Append extension to file path
-        path = path.parent / (path.name + '.pkl')
+        path = path.parent / (path.name + ".pkl")
         # Check path is valid (check directory exists, ask user if they are
         # happy overwriting if file already exists).
-        pathres = PathManager(
-            path.name, path.parent
-        ).check_file(force_overwrite)
+        pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
         # Valid path, we are good to proceed
         if pathres == 0:
             pass
@@ -356,15 +366,14 @@ class Estimator:
         # pathres == 2: Directory specified doesn't exist
         else:
             raise ValueError(
-                f'{RED}The directory implied by path does not'
-                f'exist{END}'
+                f"{RED}The directory implied by path does not" f"exist{END}"
             )
 
-        with open(path, 'wb') as fh:
+        with open(path, "wb") as fh:
             pickle.dump(self, fh, pickle.HIGHEST_PROTOCOL)
 
         if fprint:
-            print(f'{GRE}Saved instance of Estimator to {path}{END}')
+            print(f"{GRE}Saved instance of Estimator to {path}{END}")
 
     @property
     def datapath(self) -> Union[Path, None]:
@@ -373,7 +382,7 @@ class Estimator:
 
     @datapath.setter
     def datapath(self, value):
-        raise ValueError(f'{RED}`datapath` is not mutable!{END}')
+        raise ValueError(f"{RED}`datapath` is not mutable!{END}")
 
     @property
     def data(self) -> np.ndarray:
@@ -382,7 +391,7 @@ class Estimator:
 
     @data.setter
     def data(self, value):
-        raise ValueError(f'{RED}`data` is not mutable!{END}')
+        raise ValueError(f"{RED}`data` is not mutable!{END}")
 
     @property
     def dim(self) -> int:
@@ -391,7 +400,7 @@ class Estimator:
 
     @dim.setter
     def dim(self, value):
-        raise ValueError(f'{RED}`dim` is not mutable!{END}')
+        raise ValueError(f"{RED}`dim` is not mutable!{END}")
 
     @property
     def expinfo(self) -> ExpInfo:
@@ -399,9 +408,9 @@ class Estimator:
 
     @expinfo.setter
     def expinfo(self, value):
-        raise ValueError(f'{RED}`expinfo` is not mutable!{END}')
+        raise ValueError(f"{RED}`expinfo` is not mutable!{END}")
 
-    def get_sw(self, unit: str = 'hz') -> Iterable[float]:
+    def get_sw(self, unit: str = "hz") -> Iterable[float]:
         """Return the experiment sweep width in each dimension.
 
         Parameters
@@ -421,17 +430,17 @@ class Estimator:
             specified by ``expinfo``.
         """
         sw = self.expinfo.sw
-        if unit == 'hz':
+        if unit == "hz":
             return sw
-        elif unit == 'ppm':
+        elif unit == "ppm":
             sfo = self.expinfo.sfo
             if sfo is None:
-                raise _errors.InvalidUnitError('hz')
-            return self._converter.convert(sw, 'hz->ppm')
+                raise _errors.InvalidUnitError("hz")
+            return self._converter.convert(sw, "hz->ppm")
         else:
-            raise _errors.InvalidUnitError('hz', 'ppm')
+            raise _errors.InvalidUnitError("hz", "ppm")
 
-    def get_offset(self, unit='hz'):
+    def get_offset(self, unit="hz"):
         """Return the transmitter's offset frequency in each dimesnion.
 
         Parameters
@@ -451,15 +460,15 @@ class Estimator:
             specified by ``expinfo``.
         """
         offset = self.expinfo.offset
-        if unit == 'hz':
+        if unit == "hz":
             return offset
-        elif unit == 'ppm':
+        elif unit == "ppm":
             sfo = self.expinfo.sfo
             if sfo is None:
-                raise _errors.InvalidUnitError('hz')
-            return self._converter.convert(offset, 'hz->ppm')
+                raise _errors.InvalidUnitError("hz")
+            return self._converter.convert(offset, "hz->ppm")
         else:
-            raise _errors.InvalidUnitError('hz', 'ppm')
+            raise _errors.InvalidUnitError("hz", "ppm")
 
     @property
     def sfo(self) -> Union[Iterable[float], None]:
@@ -483,7 +492,7 @@ class Estimator:
         if sfo is None:
             return None
         offset = self.get_offset()
-        return tuple([s - (o / 1E6) for s, o in zip(sfo, offset)])
+        return tuple([s - (o / 1e6) for s, o in zip(sfo, offset)])
 
     @property
     def nuclei(self) -> Union[Iterable[str], None]:
@@ -495,7 +504,7 @@ class Estimator:
         """
         return self.expinfo.nuclei
 
-    def get_shifts(self, *, unit: str = 'hz') -> Iterable[np.ndarray]:
+    def get_shifts(self, *, unit: str = "hz") -> Iterable[np.ndarray]:
         """Return the sampled frequencies.
 
         Parameters
@@ -519,10 +528,10 @@ class Estimator:
         -----
         The shifts are returned in descending order.
         """
-        if unit not in ['ppm', 'hz']:
-            raise _errors.InvalidUnitError('ppm', 'hz')
-        if unit == 'ppm' and self.sfo is None:
-            raise _errors.InvalidUnitError('hz')
+        if unit not in ["ppm", "hz"]:
+            raise _errors.InvalidUnitError("ppm", "hz")
+        if unit == "ppm" and self.sfo is None:
+            raise _errors.InvalidUnitError("hz")
         return sig.get_shifts(self.expinfo, unit=unit)
 
     @property
@@ -536,7 +545,7 @@ class Estimator:
         """
         return sig.get_timepoints(self.expinfo)
 
-    def get_result(self, kill=True, freq_unit='hz'):
+    def get_result(self, kill=True, freq_unit="hz"):
         """Returns the estimation result
 
         Parameters
@@ -550,9 +559,9 @@ class Estimator:
 
         freq_unit : 'hz' or 'ppm', default: 'hz'
         """
-        return self._get_array('result', kill, freq_unit)
+        return self._get_array("result", kill, freq_unit)
 
-    def get_errors(self, kill=True, freq_unit='hz'):
+    def get_errors(self, kill=True, freq_unit="hz"):
         """Returns the errors of the estimation result derived from
         :py:meth:`nonlinear_programming`
 
@@ -567,7 +576,7 @@ class Estimator:
 
         freq_unit : 'hz' or 'ppm', default: 'hz'
         """
-        return self._get_array('errors', kill, freq_unit)
+        return self._get_array("errors", kill, freq_unit)
 
     def _get_array(self, name, kill, freq_unit):
         """Returns an array (result or errors), wioth frequencies in either
@@ -580,17 +589,18 @@ class Estimator:
 
         array = copy.deepcopy(self._check_if_none(name, kill, errmsg))
 
-        if freq_unit == 'hz':
+        if freq_unit == "hz":
             return array
 
-        elif freq_unit == 'ppm':
+        elif freq_unit == "ppm":
             # Get frequencies in Hz, and format to enable input into
             # the frequency converter.
             # Then convert values to ppm and reconvert back to NumPy array
             try:
                 ppm = np.array(
                     self._converter.convert(
-                        [list(array[:, 2])], conversion='hz->ppm',
+                        [list(array[:, 2])],
+                        conversion="hz->ppm",
                     )
                 )
                 array[:, 2] = ppm
@@ -598,13 +608,13 @@ class Estimator:
 
             except Exception:
                 raise TypeError(
-                    f'{RED}Error in trying to convert frequencies to '
-                    f'ppm. Perhaps you didn\'t specify sfo when you made '
-                    f'the Estimator instance?{END}'
+                    f"{RED}Error in trying to convert frequencies to "
+                    f"ppm. Perhaps you didn't specify sfo when you made "
+                    f"the Estimator instance?{END}"
                 )
 
         else:
-            raise InvalidUnitError('hz', 'ppm')
+            raise InvalidUnitError("hz", "ppm")
 
     def _check_if_none(
         self, name: str, kill: bool, method: Union[str, None] = None
@@ -643,8 +653,10 @@ class Estimator:
             return attribute
 
     def view_data(
-        self, domain: str = 'frequency', freq_xunit: str = 'ppm',
-        component: str = 'real'
+        self,
+        domain: str = "frequency",
+        freq_xunit: str = "ppm",
+        component: str = "real",
     ) -> None:
         """Generate a simple, interactive plot of the data using matplotlib.
 
@@ -667,55 +679,55 @@ class Estimator:
         if self.dim != 1:
             raise _errors.TwoDimUnsupportedError()
 
-        if domain == 'time':
-            xlabel = '$t\\ (s)$'
+        if domain == "time":
+            xlabel = "$t\\ (s)$"
             ydata = self.data
             xdata = self.timepoints[0]
 
-        elif domain == 'frequency':
+        elif domain == "frequency":
             # frequency domain treatment
             ydata = sig.ft(self.data)
 
-            if freq_xunit == 'hz':
-                xlabel = '$\\omega\\ (Hz)$'
-                xdata = self.get_shifts(unit='hz')[0]
-            elif freq_xunit == 'ppm':
-                xlabel = '$\\omega\\ (ppm)$'
-                xdata = self.get_shifts(unit='ppm')[0]
+            if freq_xunit == "hz":
+                xlabel = "$\\omega\\ (Hz)$"
+                xdata = self.get_shifts(unit="hz")[0]
+            elif freq_xunit == "ppm":
+                xlabel = "$\\omega\\ (ppm)$"
+                xdata = self.get_shifts(unit="ppm")[0]
             else:
                 raise ValueError(
-                    f'{RED}`freq_xunit` was not given a valid value'
-                    f' (should be \'ppm\' or \'hz\').{END}'
+                    f"{RED}`freq_xunit` was not given a valid value"
+                    f" (should be 'ppm' or 'hz').{END}"
                 )
 
         else:
             raise ValueError(
-                f'{RED}`domain` was not given a valid value'
-                f' (should be \'frequency\' or \'time\').{END}'
+                f"{RED}`domain` was not given a valid value"
+                f" (should be 'frequency' or 'time').{END}"
             )
 
-        if component == 'real':
-            plt.plot(xdata, np.real(ydata), color='k')
-        elif component == 'imag':
-            plt.plot(xdata, np.imag(ydata), color='k')
-        elif component == 'both':
-            plt.plot(xdata, np.real(ydata), color='k', label='Re')
-            plt.plot(xdata, np.imag(ydata), color='#808080', label='Im')
+        if component == "real":
+            plt.plot(xdata, np.real(ydata), color="k")
+        elif component == "imag":
+            plt.plot(xdata, np.imag(ydata), color="k")
+        elif component == "both":
+            plt.plot(xdata, np.real(ydata), color="k", label="Re")
+            plt.plot(xdata, np.imag(ydata), color="#808080", label="Im")
             plt.legend()
         else:
             raise ValueError(
-                f'{RED}`component` was not given a valid value'
-                f' (should be \'real\', \'imag\' or \'both\').{END}'
+                f"{RED}`component` was not given a valid value"
+                f" (should be 'real', 'imag' or 'both').{END}"
             )
 
         plt.xlim(xdata[0], xdata[-1])
         plt.xlabel(xlabel)
         plt.show()
 
-# TODO
-# make_fid:
-# include functionality to write to Bruker files, Varian files,
-# JEOL files etc
+    # TODO
+    # make_fid:
+    # include functionality to write to Bruker files, Varian files,
+    # JEOL files etc
 
     def make_fid(self, n=None, oscillators=None, kill=True):
         """Constructs a synthetic FID using a parameter estimate and
@@ -762,19 +774,19 @@ class Estimator:
             n = self.get_n()
 
         checker = ArgumentChecker(dim=self.get_dim())
-        checker.stage(
-            (n, 'n', 'int_list'),
-            (oscillators, 'oscillators', 'int_list')
-        )
+        checker.stage((n, "n", "int_list"), (oscillators, "oscillators", "int_list"))
         checker.check()
 
-        return sig.make_fid(result[[oscillators]], n, self.get_sw(),
-                            offset=self.get_offset())
+        return sig.make_fid(
+            result[[oscillators]], n, self.get_sw(), offset=self.get_offset()
+        )
 
     @logger
     def phase_data(
-        self, *, p0: Union[Iterable[float], None] = None,
-        p1: Union[Iterable[float], None] = None
+        self,
+        *,
+        p0: Union[Iterable[float], None] = None,
+        p1: Union[Iterable[float], None] = None,
     ) -> None:
         """Phase the data associated with the estimator.
 
@@ -814,7 +826,12 @@ class Estimator:
 
     @logger
     def frequency_filter(
-        self, region, noise_region, cut=True, cut_ratio=3.0, region_unit='ppm',
+        self,
+        region,
+        noise_region,
+        cut=True,
+        cut_ratio=3.0,
+        region_unit="ppm",
     ):
         """Generates frequency-filtered data from `self.data`.
 
@@ -862,9 +879,15 @@ class Estimator:
         spectrum = sig.ft(ve)
 
         self.filter_info = filter_spectrum(
-            spectrum, region, noise_region, self.get_sw(),
-            self.get_offset(), region_unit=region_unit,
-            sfo=self.get_sfo(kill=True), cut=cut, cut_ratio=cut_ratio,
+            spectrum,
+            region,
+            noise_region,
+            self.get_sw(),
+            self.get_offset(),
+            region_unit=region_unit,
+            sfo=self.get_sfo(kill=True),
+            cut=cut,
+            cut_ratio=cut_ratio,
         )
 
     def get_filter_info(self, kill=True):
@@ -887,9 +910,7 @@ class Estimator:
         :py:class:`nmrespy.freqfilter.FilterInfo` for details.
         """
 
-        return self._check_if_none(
-            'filter_info', kill, method='frequency_filter'
-        )
+        return self._check_if_none("filter_info", kill, method="frequency_filter")
 
     def _get_data_sw_offset(self):
         """Retrieve data, sweep width and offset, based on whether
@@ -998,7 +1019,7 @@ class Estimator:
             trim = [s for s in data.shape]
 
         checker = ArgumentChecker(dim=self.get_dim())
-        checker.stage((trim, 'trim', 'int_list'))
+        checker.stage((trim, "trim", "int_list"))
         checker.check()
 
         trim = tuple(np.s_[0:t] for t in trim)
@@ -1081,7 +1102,7 @@ class Estimator:
             trim = list(data.shape)
 
         checker = ArgumentChecker(dim=self.dim)
-        checker.stage((trim, 'trim', 'int_list'))
+        checker.stage((trim, "trim", "int_list"))
         checker.check()
 
         # Slice data
@@ -1089,8 +1110,8 @@ class Estimator:
 
         x0 = self.get_result()
 
-        kwargs['sfo'] = self.get_sfo()
-        kwargs['offset'] = offset
+        kwargs["sfo"] = self.get_sfo()
+        kwargs["offset"] = offset
 
         nlp_info = NonlinearProgramming(data, x0, sw, **kwargs)
 
@@ -1138,14 +1159,14 @@ class Estimator:
 
         if not self._saveable:
             raise ValueError(
-                f'{ORA}The last action to be applied to the estimation '
-                f'result was not `nonlinear_programming`. You should ensure '
-                f'this is so before saving the result.{END}'
+                f"{ORA}The last action to be applied to the estimation "
+                f"result was not `nonlinear_programming`. You should ensure "
+                f"this is so before saving the result.{END}"
             )
 
         # Remove any invalid arguments from kwargs (avoid repetition
         # in call to nmrespy.write.write_result)
-        for key in ['sfo', 'integrals', 'info', 'info_headings']:
+        for key in ["sfo", "integrals", "info", "info_headings"]:
             try:
                 kwargs.pop(key)
             except KeyError:
@@ -1155,17 +1176,17 @@ class Estimator:
 
         # Information for experiment info
         sw_h = self.get_sw()
-        sw_p = self.get_sw(unit='ppm')
+        sw_p = self.get_sw(unit="ppm")
         off_h = self.get_offset()
-        off_p = self.get_offset(unit='ppm')
+        off_p = self.get_offset(unit="ppm")
         sfo = self.get_sfo(kill=False)
         bf = self.get_bf(kill=False)
         nuc = self.get_nucleus(kill=False)
         filter = self.get_filter_info(kill=False)
 
         if filter is not None:
-            region_h = filter.get_region(unit='hz')
-            region_p = filter.get_region(unit='ppm')
+            region_h = filter.get_region(unit="hz")
+            region_p = filter.get_region(unit="ppm")
 
         # Peak integrals
         integrals = [
@@ -1179,33 +1200,33 @@ class Estimator:
         sigfig = 6
         if self.get_dim() == 1:
             # Sweep width
-            info_headings.append('Sweep Width (Hz)')
+            info_headings.append("Sweep Width (Hz)")
             info.append(str(significant_figures(sw_h[0], sigfig)))
             if sw_p is not None:
-                info_headings.append('Sweep Width (ppm)')
+                info_headings.append("Sweep Width (ppm)")
                 info.append(str(significant_figures(sw_p[0], sigfig)))
 
             # Offset
-            info_headings.append('Transmitter Offset (Hz)')
+            info_headings.append("Transmitter Offset (Hz)")
             info.append(str(significant_figures(off_h[0], sigfig)))
             if off_p is not None:
-                info_headings.append('Transmitter Offset (ppm)')
+                info_headings.append("Transmitter Offset (ppm)")
                 info.append(str(significant_figures(off_p[0], sigfig)))
 
             # Transmitter frequency
             if sfo is not None:
-                info_headings.append('Transmitter Frequency (MHz)')
+                info_headings.append("Transmitter Frequency (MHz)")
                 info.append(str(significant_figures(sfo[0], sigfig)))
 
             # Basic frequency
             if bf is not None:
-                info_headings.append('Basic Frequency (MHz)')
+                info_headings.append("Basic Frequency (MHz)")
                 info.append(str(significant_figures(bf[0], sigfig)))
 
             # Nuclei
             if nuc is not None:
-                info_headings.append('Nucleus')
-                if 'fmt' in kwargs.keys() and kwargs['fmt'] == 'pdf':
+                info_headings.append("Nucleus")
+                if "fmt" in kwargs.keys() and kwargs["fmt"] == "pdf":
                     info.append(latex_nucleus(nuc[0]))
                 else:
                     info.append(nuc[0])
@@ -1213,15 +1234,15 @@ class Estimator:
             # Region
             try:
                 info.append(
-                    f'{significant_figures(region_h[0][0], sigfig)} -'
-                    f' {significant_figures(region_h[0][1], sigfig)}'
+                    f"{significant_figures(region_h[0][0], sigfig)} -"
+                    f" {significant_figures(region_h[0][1], sigfig)}"
                 )
                 info.append(
-                    f'{significant_figures(region_p[0][0], sigfig)} -'
-                    f' {significant_figures(region_p[0][1], sigfig)}'
+                    f"{significant_figures(region_p[0][0], sigfig)} -"
+                    f" {significant_figures(region_p[0][1], sigfig)}"
                 )
-                info_headings.append('Filter region (Hz):')
-                info_headings.append('Filter region (ppm):')
+                info_headings.append("Filter region (Hz):")
+                info_headings.append("Filter region (ppm):")
 
             except NameError:
                 pass
@@ -1230,9 +1251,15 @@ class Estimator:
         elif self.get_dim() == 2:
             raise TwoDimUnsupportedError()
 
-        write_result(result, errors=errors, integrals=integrals,
-                     info_headings=info_headings, info=info, sfo=sfo,
-                     **kwargs)
+        write_result(
+            result,
+            errors=errors,
+            integrals=integrals,
+            info_headings=info_headings,
+            info=info,
+            sfo=sfo,
+            **kwargs,
+        )
 
     @logger
     def plot_result(self, **kwargs):
@@ -1277,9 +1304,9 @@ class Estimator:
 
         if not self._saveable:
             raise ValueError(
-                f'{ORA}The last action to be applied to the estimation '
-                f'result was not `nonlinear_programming`. You should ensure '
-                f'this is so before plotting the result.{END}'
+                f"{ORA}The last action to be applied to the estimation "
+                f"result was not `nonlinear_programming`. You should ensure "
+                f"this is so before plotting the result.{END}"
             )
 
         dim = self.get_dim()
@@ -1287,22 +1314,26 @@ class Estimator:
         if dim == 2:
             raise TwoDimUnsupportedError()
 
-        for key in ['sfo', 'nuceleus', 'region']:
+        for key in ["sfo", "nuceleus", "region"]:
             try:
                 kwargs.pop(key)
             except KeyError:
                 pass
 
         try:
-            unit = kwargs['shifts_unit']
+            unit = kwargs["shifts_unit"]
         except KeyError:
-            kwargs['shifts_unit'] = unit = 'ppm'
+            kwargs["shifts_unit"] = unit = "ppm"
 
         return plot_result(
-            self.get_data(), result, self.get_sw(),
-            self.get_offset(), sfo=self.get_sfo(kill=False),
+            self.get_data(),
+            result,
+            self.get_sw(),
+            self.get_offset(),
+            sfo=self.get_sfo(kill=False),
             nucleus=self.get_nucleus(kill=False),
-            region=self.get_filter_info().get_region(unit=unit), **kwargs,
+            region=self.get_filter_info().get_region(unit=unit),
+            **kwargs,
         )
 
     @logger
@@ -1330,7 +1361,7 @@ class Estimator:
         """
 
         checker = ArgumentChecker(dim=self.get_dim())
-        checker.stage((oscillators, 'oscillators', 'parameter'))
+        checker.stage((oscillators, "oscillators", "parameter"))
         checker.check()
 
         result = self.get_result()
@@ -1357,15 +1388,13 @@ class Estimator:
         """
 
         checker = ArgumentChecker()
-        checker.stage((indices, 'indices', 'list'))
+        checker.stage((indices, "indices", "list"))
         checker.check()
 
         result = self.get_result()
         for i in indices:
             if i not in list(range(result.shape[0])):
-                raise ValueError(
-                    f'{RED}Invalid index in `indices`{END}'
-                )
+                raise ValueError(f"{RED}Invalid index in `indices`{END}")
 
         self.result = np.delete(result, indices, axis=0)
         # User has manually edited the result after estimation.
@@ -1404,23 +1433,21 @@ class Estimator:
         """
 
         checker = ArgumentChecker()
-        checker.stage((indices, 'indices', 'list'))
+        checker.stage((indices, "indices", "list"))
         checker.check()
 
         result = self.get_result()
 
         if len(indices) < 2:
             print(
-                f'\n{ORA}`indices` should contain at least two elements.'
-                f'No merging will happen.{END}'
+                f"\n{ORA}`indices` should contain at least two elements."
+                f"No merging will happen.{END}"
             )
             return
 
         for i in indices:
             if i not in list(range(result.shape[0])):
-                raise ValueError(
-                    f'{RED}Invalid index in `indices`{END}'
-                )
+                raise ValueError(f"{RED}Invalid index in `indices`{END}")
 
         to_merge = result[indices]
         # Sum amps, phases, freqs and damping over the oscillators
@@ -1445,7 +1472,11 @@ class Estimator:
     # TODO make 2D compatible
     @logger
     def split_oscillator(
-        self, index, separation_frequency=None, unit='hz', split_number=2,
+        self,
+        index,
+        separation_frequency=None,
+        unit="hz",
+        split_number=2,
         amp_ratio=None,
     ):
         """Splits the oscillator corresponding to `index`.
@@ -1480,8 +1511,8 @@ class Estimator:
         """
 
         # get separation_frequency in correct units
-        if unit not in ['hz', 'ppm']:
-            raise errors.InvalidUnitError('hz', 'ppm')
+        if unit not in ["hz", "ppm"]:
+            raise errors.InvalidUnitError("hz", "ppm")
 
         result = self.get_result(freq_unit=unit)
 
@@ -1490,35 +1521,30 @@ class Estimator:
             osc = result[index]
         except Exception:
             raise ValueError(
-                f'{RED}index should be an int in range('
-                f'{result.shape[0]}){END}'
+                f"{RED}index should be an int in range(" f"{result.shape[0]}){END}"
             )
 
         # --- Determine frequencies --------------------------------------
         if separation_frequency is None:
             separation_frequency = self.get_sw()[0] / self.get_n()[0]
-            if unit == 'ppm':
+            if unit == "ppm":
                 separation_frequency = separation_frequency / self.get_sfo()[0]
 
         # Highest frequency of all the new oscillators
         max_freq = osc[2] + ((split_number - 1) * separation_frequency / 2)
         # Array of all frequencies (lowest to highest)
-        freqs = [max_freq - i * separation_frequency
-                 for i in range(split_number)]
+        freqs = [max_freq - i * separation_frequency for i in range(split_number)]
 
         # --- Determine amplitudes ---------------------------------------
         if amp_ratio is None:
-            amp_ratio = [1.] * split_number
+            amp_ratio = [1.0] * split_number
 
         if not isinstance(amp_ratio, list):
-            raise TypeError(
-                f'{RED}`amp_ratio` should be None or a list{END}'
-            )
+            raise TypeError(f"{RED}`amp_ratio` should be None or a list{END}")
 
         if len(amp_ratio) != split_number:
             raise ValueError(
-                f'{RED}The length of `amp_ratio` should equal'
-                f' `split_number`{END}'
+                f"{RED}The length of `amp_ratio` should equal" f" `split_number`{END}"
             )
 
         # Scale amplitude ratio values such that their sum is 1
@@ -1538,7 +1564,7 @@ class Estimator:
         result = np.delete(result, index, axis=0)
         result = np.append(result, new_oscs, axis=0)
 
-        if unit == 'ppm':
+        if unit == "ppm":
             result[:, 2] = result[:, 2] * self.get_sfo()[0]
 
         self.result = result[np.argsort(result[..., 2])]
@@ -1547,7 +1573,7 @@ class Estimator:
         self._saveable = False
         self.errors = None
 
-    def save_logfile(self, path='./nmrespy_log', force_overwrite=False):
+    def save_logfile(self, path="./nmrespy_log", force_overwrite=False):
         """Saves log file of class instance usage to a specified path.
 
         Parameters
@@ -1567,18 +1593,15 @@ class Estimator:
 
         checker = ArgumentChecker()
         checker.stage(
-            (path, 'path', 'str'),
-            (force_overwrite, 'force_overwrite', 'bool')
+            (path, "path", "str"), (force_overwrite, "force_overwrite", "bool")
         )
         checker.check()
 
         # Get full path and extend .log extension
-        path = Path(path).resolve().with_suffix('.log')
+        path = Path(path).resolve().with_suffix(".log")
         # Check path is valid (check directory exists, ask user if they are
         # happy overwriting if file already exists).
-        pathres = PathManager(
-            path.name, path.parent
-        ).check_file(force_overwrite)
+        pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
         # Valid path, we are good to proceed
         if pathres == 0:
             pass
@@ -1588,17 +1611,13 @@ class Estimator:
         # pathres == 2: Directory specified doesn't exist
         else:
             raise ValueError(
-                f'{RED}The directory implied by path does not'
-                f' exist{END}'
+                f"{RED}The directory implied by path does not" f" exist{END}"
             )
 
         try:
             with open(path, "w") as fh:
                 fh.write(self._log)
-            print(
-                f'{GRE}Log file succesfully saved to'
-                f' {str(path)}{END}'
-            )
+            print(f"{GRE}Log file succesfully saved to" f" {str(path)}{END}")
 
         # trouble writing to file...
         except Exception as e:

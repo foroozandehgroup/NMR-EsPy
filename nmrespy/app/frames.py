@@ -14,39 +14,35 @@ from .custom_widgets import *
 class LogoFrame(MyFrame):
     """Contains the NMR-EsPy and MF groups logos"""
 
-    def __init__(self, master, logos='both', scale=0.6):
+    def __init__(self, master, logos="both", scale=0.6):
 
         super().__init__(master)
 
         column = 0
         padx = 0
 
-        if logos in ['both', 'nmrespy']:
+        if logos in ["both", "nmrespy"]:
             # add NMR-EsPy logo
             self.nmrespy_img = get_PhotoImage(
-                IMAGESPATH / 'nmrespy_full.png', scale / 2.3
+                IMAGESPATH / "nmrespy_full.png", scale / 2.3
             )
-            self.nmrespy_logo = MyLabel(
-                self, image=self.nmrespy_img, cursor='hand1'
-            )
+            self.nmrespy_logo = MyLabel(self, image=self.nmrespy_img, cursor="hand1")
             # provide link to NMR-EsPy docs
             self.nmrespy_logo.bind(
-                '<Button-1>', lambda e: webbrowser.open_new(GITHUBLINK)
+                "<Button-1>", lambda e: webbrowser.open_new(GITHUBLINK)
             )
             self.nmrespy_logo.grid(row=0, column=column)
 
             column += 1
             padx = (40, 0)
 
-        if logos in ['both', 'mfgroup']:
+        if logos in ["both", "mfgroup"]:
             # add MF group logo
             self.mfgroup_img = get_PhotoImage(MFLOGOPATH, scale)
-            self.mfgroup_logo = MyLabel(
-                self, image=self.mfgroup_img, cursor='hand1'
-            )
+            self.mfgroup_logo = MyLabel(self, image=self.mfgroup_img, cursor="hand1")
             # provide link to MF group website
             self.mfgroup_logo.bind(
-                '<Button-1>', lambda e: webbrowser.open_new(MFGROUPLINK)
+                "<Button-1>", lambda e: webbrowser.open_new(MFGROUPLINK)
             )
             self.mfgroup_logo.grid(row=0, column=column, padx=padx)
 
@@ -56,10 +52,10 @@ class WarnWindow(MyToplevel):
 
     def __init__(self, parent, msg):
         super().__init__(parent)
-        self.title('NMR-EsPy - Warning')
+        self.title("NMR-EsPy - Warning")
 
         # warning image
-        self.img = get_PhotoImage((IMAGESPATH / 'warning.png'), 0.08)
+        self.img = get_PhotoImage((IMAGESPATH / "warning.png"), 0.08)
         self.warn_sign = MyLabel(self, image=self.img)
         self.warn_sign.grid(row=0, column=0, padx=(10, 0), pady=10)
 
@@ -69,7 +65,10 @@ class WarnWindow(MyToplevel):
 
         # close button
         close_button = MyButton(
-            self, text='Close', bg='#ff9894', command=self.destroy,
+            self,
+            text="Close",
+            bg="#ff9894",
+            command=self.destroy,
         )
         close_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10))
 
@@ -96,7 +95,7 @@ class DataType(MyToplevel):
 
         # --- Configure frames -------------------------------------------
         # Frame for the NMR-EsPy logo
-        self.logo_frame = LogoFrame(self, logos='nmrespy', scale=0.8)
+        self.logo_frame = LogoFrame(self, logos="nmrespy", scale=0.8)
         # Frame containing path labels and checkboxes
         self.main_frame = MyFrame(self)
         # Frame containing confirm/cancel buttons
@@ -105,31 +104,31 @@ class DataType(MyToplevel):
         self.logo_frame.grid(row=0, column=0, rowspan=2, padx=10, pady=10)
         self.main_frame.grid(row=0, column=1, padx=(0, 10), pady=(10, 0))
         self.button_frame.grid(
-            row=1, column=1, padx=(0, 10), pady=(0, 10), sticky='e',
+            row=1,
+            column=1,
+            padx=(0, 10),
+            pady=(0, 10),
+            sticky="e",
         )
 
         # --- Frame heading ----------------------------------------------
         msg = MyLabel(
-            self.main_frame, text='Which data would you like to analyse?',
-            font=(MAINFONT, '12', 'bold'),
+            self.main_frame,
+            text="Which data would you like to analyse?",
+            font=(MAINFONT, "12", "bold"),
         )
-        msg.grid(
-            column=0, row=0, columnspan=2, padx=10, pady=(10, 0)
-        )
+        msg.grid(column=0, row=0, columnspan=2, padx=10, pady=(10, 0))
 
         # --- Processd data checkbutton and labels -----------------------
-        pdata_label = MyLabel(
-            self.main_frame, text='Processed Data'
-        )
-        pdata_label.grid(
-            column=0, row=1, padx=(10, 0), pady=(10, 0), sticky='w'
-        )
+        pdata_label = MyLabel(self.main_frame, text="Processed Data")
+        pdata_label.grid(column=0, row=1, padx=(10, 0), pady=(10, 0), sticky="w")
 
         pdatapath = MyLabel(
-            self.main_frame, text=f"{str(self.paths['pdata'])}/1r",
-            font=('Courier', 11),
+            self.main_frame,
+            text=f"{str(self.paths['pdata'])}/1r",
+            font=("Courier", 11),
         )
-        pdatapath.grid(column=0, row=2, padx=(10, 0), sticky='w')
+        pdatapath.grid(column=0, row=2, padx=(10, 0), sticky="w")
 
         # `self.pdata` can be 0 and 1. Specifies whether to use pdata or not
         # This is directly dependent on `self.fid`. When one is `1`, the
@@ -137,48 +136,61 @@ class DataType(MyToplevel):
         self.pdata = tk.IntVar()
         self.pdata.set(1)
         self.pdata_box = MyCheckbutton(
-            self.main_frame, variable=self.pdata, command=self.click_pdata,
+            self.main_frame,
+            variable=self.pdata,
+            command=self.click_pdata,
         )
-        self.pdata_box.grid(
-            column=1, row=1, rowspan=2, padx=(10, 0), sticky='nsw'
-        )
+        self.pdata_box.grid(column=1, row=1, rowspan=2, padx=(10, 0), sticky="nsw")
 
         # --- FID checkbutton and labels ---------------------------------
-        fid_label = MyLabel(self.main_frame, text='Raw FID')
+        fid_label = MyLabel(self.main_frame, text="Raw FID")
         fid_label.grid(
-            column=0, row=3, padx=(10, 0), pady=(10, 0), sticky='w',
+            column=0,
+            row=3,
+            padx=(10, 0),
+            pady=(10, 0),
+            sticky="w",
         )
 
         fidpath = MyLabel(
-            self.main_frame, text=f"{str(self.paths['fid'])}/fid",
-            font=('Courier', 11),
+            self.main_frame,
+            text=f"{str(self.paths['fid'])}/fid",
+            font=("Courier", 11),
         )
-        fidpath.grid(column=0, row=4, padx=(10, 0), sticky='w')
+        fidpath.grid(column=0, row=4, padx=(10, 0), sticky="w")
 
         # Initially have set to `0`, i.e. pdata is set to the default.
         self.fid = tk.IntVar()
         self.fid.set(0)
         self.fid_box = MyCheckbutton(
-            self.main_frame, variable=self.fid, command=self.click_fid,
+            self.main_frame,
+            variable=self.fid,
+            command=self.click_fid,
         )
-        self.fid_box.grid(
-            column=1, row=3, rowspan=2, padx=(10, 0), sticky='nsw'
-        )
+        self.fid_box.grid(column=1, row=3, rowspan=2, padx=(10, 0), sticky="nsw")
 
         # --- Confirm and Cancel buttons ---------------------------------
         self.confirmbutton = MyButton(
-            self.button_frame, text='Confirm', command=self.confirm,
+            self.button_frame,
+            text="Confirm",
+            command=self.confirm,
             bg=BUTTONGREEN,
         )
         self.confirmbutton.grid(
-            column=1, row=0, padx=(5, 0), pady=(10, 0), sticky='e',
+            column=1,
+            row=0,
+            padx=(5, 0),
+            pady=(10, 0),
+            sticky="e",
         )
 
         self.cancelbutton = MyButton(
-            self.button_frame, text='Cancel', command=self.ctrl.destroy,
+            self.button_frame,
+            text="Cancel",
+            command=self.ctrl.destroy,
             bg=BUTTONRED,
         )
-        self.cancelbutton.grid(column=0, row=0, pady=(10, 0), sticky='e')
+        self.cancelbutton.grid(column=0, row=0, pady=(10, 0), sticky="e")
         self.ctrl.wait_window(self)
 
     def click_fid(self):
@@ -197,65 +209,90 @@ class DataType(MyToplevel):
 
     def confirm(self):
         if self.fid.get() == 1:
-            self.path = self.paths['fid']
+            self.path = self.paths["fid"]
         else:
-            self.path = self.paths['pdata']
+            self.path = self.paths["pdata"]
         self.destroy()
 
 
 class RootButtonFrame(MyFrame):
-    def __init__(self, master,
-                 cancel_msg="Are you sure you want to close NMR-EsPy?"):
+    def __init__(self, master, cancel_msg="Are you sure you want to close NMR-EsPy?"):
         super().__init__(master)
 
         self.cancel_msg = cancel_msg
 
         self.cancel_button = MyButton(
-            self, text='Cancel', bg=BUTTONRED, command=self.cancel
+            self, text="Cancel", bg=BUTTONRED, command=self.cancel
         )
         self.cancel_button.grid(
-            row=1, column=0, padx=(10, 0), pady=(10, 0), sticky='e',
+            row=1,
+            column=0,
+            padx=(10, 0),
+            pady=(10, 0),
+            sticky="e",
         )
 
         self.help_button = MyButton(
-            self, text='Help', bg=BUTTONORANGE,
-            command=lambda: webbrowser.open_new(DOCSLINK)
+            self,
+            text="Help",
+            bg=BUTTONORANGE,
+            command=lambda: webbrowser.open_new(DOCSLINK),
         )
-        self.help_button.grid(
-            row=1, column=1, padx=(10, 0), pady=(10, 0), sticky='e'
-        )
+        self.help_button.grid(row=1, column=1, padx=(10, 0), pady=(10, 0), sticky="e")
 
         # Command varies - will need to be defined from the class that
         # inherits from this
         # For example, see SetupButtonFrame
         self.green_button = MyButton(self, bg=BUTTONGREEN)
         self.green_button.grid(
-            row=1, column=2, padx=10, pady=(10, 0), sticky='e',
+            row=1,
+            column=2,
+            padx=10,
+            pady=(10, 0),
+            sticky="e",
         )
 
         contact_info_1 = MyLabel(
-            self, text='For queries/feedback, contact',
+            self,
+            text="For queries/feedback, contact",
         )
         contact_info_1.grid(
-            row=2, column=0, columnspan=3, padx=10, pady=(10, 0), sticky='w',
+            row=2,
+            column=0,
+            columnspan=3,
+            padx=10,
+            pady=(10, 0),
+            sticky="w",
         )
 
         contact_info_2 = MyLabel(
-            self, text='simon.hulse@chem.ox.ac.uk', font='Courier', fg='blue',
-            cursor='hand1',
+            self,
+            text="simon.hulse@chem.ox.ac.uk",
+            font="Courier",
+            fg="blue",
+            cursor="hand1",
         )
         contact_info_2.bind(
-            '<Button-1>', lambda e: webbrowser.open_new(MAILTOLINK),
+            "<Button-1>",
+            lambda e: webbrowser.open_new(MAILTOLINK),
         )
 
         contact_info_2.grid(
-            row=3, column=0, columnspan=3, padx=10, pady=(0, 10), sticky='w',
+            row=3,
+            column=0,
+            columnspan=3,
+            padx=10,
+            pady=(0, 10),
+            sticky="w",
         )
 
     def cancel(self):
 
         check = ConfirmWindow(
-            parent=self, msg=self.cancel_msg, yes_text='Yes', no_text='No',
+            parent=self,
+            msg=self.cancel_msg,
+            yes_text="Yes",
+            no_text="No",
         )
         self.wait_window(check)
 
@@ -267,7 +304,7 @@ class RootButtonFrame(MyFrame):
 class ConfirmWindow(MyToplevel):
     """A window to double-check the user wants to do something."""
 
-    def __init__(self, parent, msg, yes_text='Confirm', no_text='Cancel'):
+    def __init__(self, parent, msg, yes_text="Confirm", no_text="Cancel"):
         super().__init__(parent)
 
         self.conf = False
@@ -278,12 +315,18 @@ class ConfirmWindow(MyToplevel):
 
         # close button
         cancel_button = MyButton(
-            self, text=no_text, bg=BUTTONRED, command=self.cancel,
+            self,
+            text=no_text,
+            bg=BUTTONRED,
+            command=self.cancel,
         )
         cancel_button.grid(row=1, column=0, padx=10, pady=(0, 10))
 
         confirm_button = MyButton(
-            self, text=yes_text, bg=BUTTONGREEN, command=self.confirm,
+            self,
+            text=yes_text,
+            bg=BUTTONGREEN,
+            command=self.confirm,
         )
         confirm_button.grid(row=1, column=1, padx=(0, 10), pady=(0, 10))
 

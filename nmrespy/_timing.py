@@ -11,6 +11,7 @@ import time
 
 def timer(f):
     """Time function f, and prints result once completed."""
+
     @functools.wraps(f)
     def timed(*args, **kwargs):
         start = time.time()
@@ -18,8 +19,9 @@ def timer(f):
             return f(*args, **kwargs)
         result = f(*args, **kwargs)
         run_time = convert(time.time() - start)
-        print(f'Time elapsed: {run_time}')
+        print(f"Time elapsed: {run_time}")
         return result
+
     return timed
 
 
@@ -43,4 +45,4 @@ def convert(time: float) -> str:
     ms = int(round(((s - int(s)) * 1000)))
     s = int(s)
 
-    return f'{min} mins, {s} secs, {ms} msecs'
+    return f"{min} mins, {s} secs, {ms} msecs"

@@ -5,8 +5,10 @@ from nmrespy import GRE, END, GITHUBLINK
 
 
 def write(
-    path: pathlib.Path, param_table: List[List[str]],
-    info_table: Union[List[List[str]], None], description: Union[str, None],
+    path: pathlib.Path,
+    param_table: List[List[str]],
+    info_table: Union[List[List[str]], None],
+    description: Union[str, None],
     fprint: bool,
 ) -> None:
     """Write a result textfile.
@@ -36,7 +38,7 @@ def write(
         raise e
 
     if fprint:
-        print(f'{GRE}Saved result to\n{path}{END}')
+        print(f"{GRE}Saved result to\n{path}{END}")
 
 
 def _write_file(path: pathlib.Path, text: str) -> None:
@@ -50,13 +52,14 @@ def _write_file(path: pathlib.Path, text: str) -> None:
     text
         Text to insert.
     """
-    with open(path, 'w', encoding='utf-8') as file:
+    with open(path, "w", encoding="utf-8") as file:
         file.write(text)
 
 
 def _create_contents(
-    param_table: List[List[str]], info_table: Union[List[List[str]], None],
-    description: Union[str, None]
+    param_table: List[List[str]],
+    info_table: Union[List[List[str]], None],
+    description: Union[str, None],
 ) -> str:
     """Create text to be inserted into a file.
 
@@ -67,13 +70,14 @@ def _create_contents(
     contents: str
         Text to insert into file.
     """
-    msg = f'{_timestamp()}\n\n'
+    msg = f"{_timestamp()}\n\n"
     if description:
-        msg += f'Description:\n{description}\n\n'
+        msg += f"Description:\n{description}\n\n"
     if info_table:
-        msg += (f'Experiment Information:\n'
-                f'{_txt_tabular(info_table, titles=True)}\n\n')
-    msg += f'{_txt_tabular(param_table, titles=True)}\n\n'
+        msg += (
+            f"Experiment Information:\n" f"{_txt_tabular(info_table, titles=True)}\n\n"
+        )
+    msg += f"{_txt_tabular(param_table, titles=True)}\n\n"
     msg += _footer()
 
     return msg
@@ -81,11 +85,13 @@ def _create_contents(
 
 def _footer() -> str:
     """Descriptive text for end of file."""
-    return ("Estimation performed using NMR-EsPy\n"
-            "Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk\n"
-            "If used in any publications, please cite:\n"
-            "<no papers yet...>\n"
-            f"For more information, visit the GitHub repo:\n{GITHUBLINK}\n")
+    return (
+        "Estimation performed using NMR-EsPy\n"
+        "Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk\n"
+        "If used in any publications, please cite:\n"
+        "<no papers yet...>\n"
+        f"For more information, visit the GitHub repo:\n{GITHUBLINK}\n"
+    )
 
 
 def _txt_tabular(rows: List[List[str]], titles: bool = False) -> str:
@@ -112,9 +118,9 @@ def _txt_tabular(rows: List[List[str]], titles: bool = False) -> str:
         # as the width
         pads.append(max(len(str(element)) for element in column))
 
-    separator = '│' if titles else ' '
+    separator = "│" if titles else " "
 
-    table = ''
+    table = ""
     for i, row in enumerate(rows):
         # Iterate over each adjacent pair of elements in row
         for j, (pad, e1, e2) in enumerate(zip(pads, row, row[1:])):
@@ -126,7 +132,7 @@ def _txt_tabular(rows: List[List[str]], titles: bool = False) -> str:
                 table += f"{e1}{p * ' '}{separator}{e2}"
             else:
                 table += f"{p * ' '}{separator}{e2}"
-        table += '\n'
+        table += "\n"
 
         # Add a horizontal line underneath the first row to separate the
         # titles from the other contents
@@ -136,7 +142,7 @@ def _txt_tabular(rows: List[List[str]], titles: bool = False) -> str:
                 # Add a bar that looks like this: '────────┼'
                 table += f"{p * '─'}┼"
             # Remove the trailing '┼' and add a newline
-            table = table[:-1] + '\n'
+            table = table[:-1] + "\n"
 
     return table
 
@@ -155,8 +161,8 @@ def _timestamp() -> str:
             dd-mm-yy
     """
     now = datetime.datetime.now()
-    d = now.strftime('%d')  # Day
-    m = now.strftime('%m')  # Month
-    y = now.strftime('%Y')  # Year
-    t = now.strftime('%X')  # Time (hh:mm:ss)
-    return f'{t}\n{d}-{m}-{y}'
+    d = now.strftime("%d")  # Day
+    m = now.strftime("%m")  # Month
+    y = now.strftime("%Y")  # Year
+    t = now.strftime("%X")  # Time (hh:mm:ss)
+    return f"{t}\n{d}-{m}-{y}"

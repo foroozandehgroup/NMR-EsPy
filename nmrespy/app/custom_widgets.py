@@ -23,7 +23,7 @@ class MyFrame(tk.Frame):
 
     def __init__(self, parent, **kwargs):
         super().__init__(parent)
-        generate(self, ('bg',), (BGCOLOR,), kwargs)
+        generate(self, ("bg",), (BGCOLOR,), kwargs)
 
 
 class MyToplevel(tk.Toplevel):
@@ -34,11 +34,11 @@ class MyToplevel(tk.Toplevel):
     def __init__(self, parent, **kwargs):
         super().__init__(parent)
 
-        self.iconbitmap = IMAGESPATH / 'icon.ico'
+        self.iconbitmap = IMAGESPATH / "icon.ico"
 
-        generate(self, ('bg',), (BGCOLOR,), kwargs)
+        generate(self, ("bg",), (BGCOLOR,), kwargs)
 
-        self.title('NMR-EsPy')
+        self.title("NMR-EsPy")
         self.resizable(False, False)
 
 
@@ -47,12 +47,12 @@ class MyLabel(tk.Label):
 
     def __init__(self, parent, bold=False, **kwargs):
         super().__init__(parent)
-        keys = ('bg', 'font')
+        keys = ("bg", "font")
 
         if bold:
-            values = (BGCOLOR, (MAINFONT, '11', 'bold'))
+            values = (BGCOLOR, (MAINFONT, "11", "bold"))
         else:
-            values = (BGCOLOR, (MAINFONT, '11'))
+            values = (BGCOLOR, (MAINFONT, "11"))
 
         generate(self, keys, values, kwargs)
 
@@ -64,10 +64,12 @@ class MyButton(tk.Button):
         super().__init__(parent)
 
         keys = (
-            'width', 'highlightbackground', 'bg',
-            'disabledforeground',
+            "width",
+            "highlightbackground",
+            "bg",
+            "disabledforeground",
         )
-        values = (8, 'black', BUTTONDEFAULT, BUTTONDEFAULT)
+        values = (8, "black", BUTTONDEFAULT, BUTTONDEFAULT)
 
         generate(self, keys, values, kwargs)
 
@@ -78,24 +80,28 @@ class MyCheckbutton(tk.Checkbutton):
     def __init__(self, parent, **kwargs):
         super().__init__(parent)
 
-        keys = ('bg', 'highlightthickness', 'bd')
+        keys = ("bg", "highlightthickness", "bd")
         values = (BGCOLOR, 0, 0)
 
         generate(self, keys, values, kwargs)
 
 
 class MyScale(tk.Scale):
-
     def __init__(self, parent, **kwargs):
         super().__init__(parent)
 
         keys = (
-            'orient', 'showvalue', 'sliderlength', 'bd', 'highlightthickness',
-            'highlightbackground', 'relief', 'bg', 'troughcolor',
+            "orient",
+            "showvalue",
+            "sliderlength",
+            "bd",
+            "highlightthickness",
+            "highlightbackground",
+            "relief",
+            "bg",
+            "troughcolor",
         )
-        values = (
-            tk.HORIZONTAL, 0, 15, 0, 1, 'black', 'flat', BGCOLOR, 'white'
-        )
+        values = (tk.HORIZONTAL, 0, 15, 0, 1, "black", "flat", BGCOLOR, "white")
 
         generate(self, keys, values, kwargs)
 
@@ -112,20 +118,20 @@ class MyEntry(tk.Entry):
     changes since altering the entry widget.
     """
 
-    def __init__(self, parent, return_command=None, return_args=None,
-                 **kwargs):
+    def __init__(self, parent, return_command=None, return_args=None, **kwargs):
         super().__init__(parent)
 
         self.return_command = return_command
         self.return_args = return_args
 
         keys = (
-            'width', 'highlightthickness', 'highlightbackground',
-            'bg', 'readonlybackground'
+            "width",
+            "highlightthickness",
+            "highlightbackground",
+            "bg",
+            "readonlybackground",
         )
-        values = (
-            7, 1, 'black', 'white', READONLYENTRYCOLOR
-        )
+        values = (7, 1, "black", "white", READONLYENTRYCOLOR)
 
         generate(self, keys, values, kwargs)
 
@@ -133,19 +139,19 @@ class MyEntry(tk.Entry):
             self.bind_command()
 
     def bind_command(self):
-        self.bind('<Key>', lambda event: self.key_press())
-        self.bind('<Return>', lambda event: self.return_press())
+        self.bind("<Key>", lambda event: self.key_press())
+        self.bind("<Return>", lambda event: self.return_press())
 
     def key_press(self):
-        if self['state'] == 'normal':
-            self['fg'] = 'red'
-            self['highlightcolor'] = 'red'
-            self['highlightbackground'] = 'red'
+        if self["state"] == "normal":
+            self["fg"] = "red"
+            self["highlightcolor"] = "red"
+            self["highlightbackground"] = "red"
 
     def black_highlight(self):
-        self['fg'] = 'black'
-        self['highlightcolor'] = 'black'
-        self['highlightbackground'] = 'black'
+        self["fg"] = "black"
+        self["highlightcolor"] = "black"
+        self["highlightbackground"] = "black"
 
     def return_press(self):
         self.black_highlight()
@@ -153,63 +159,60 @@ class MyEntry(tk.Entry):
 
 
 class MyOptionMenu(tk.OptionMenu):
-
     def __init__(self, parent, variable, value, *values, **kwargs):
 
         super().__init__(parent, variable, value, values, kwargs)
 
-        keys = ('bg', 'borderwidth', 'width', 'highlightcolor')
-        values = (BGCOLOR, 1, 10, 'black')
+        keys = ("bg", "borderwidth", "width", "highlightcolor")
+        values = (BGCOLOR, 1, 10, "black")
 
         generate(self, keys, values, kwargs)
 
-        if 'bg' in kwargs.keys():
-            self['menu']['bg'] = kwayrgs['bg']
+        if "bg" in kwargs.keys():
+            self["menu"]["bg"] = kwayrgs["bg"]
         else:
-            self['menu']['bg'] = BGCOLOR
+            self["menu"]["bg"] = BGCOLOR
 
 
 class MyText(tk.Text):
-
     def __init__(self, parent, **kwargs):
 
         super().__init__(parent)
 
-        keys = ('bg', 'highlightcolor', 'highlightbackground')
-        values = ('white', 'black', 'black')
+        keys = ("bg", "highlightcolor", "highlightbackground")
+        values = ("white", "black", "black")
 
         generate(self, keys, values, kwargs)
 
 
 class MyNotebook(ttk.Notebook):
-
     def __init__(self, parent):
         style = ttk.Style()
         style.theme_create(
-            'notebook',
-            parent='alt',
+            "notebook",
+            parent="alt",
             settings={
-                'TNotebook': {
-                    'configure': {
-                        'tabmargins': [2, 0, 5, 0],
-                        'background': BGCOLOR,
-                        'bordercolor': 'black',
+                "TNotebook": {
+                    "configure": {
+                        "tabmargins": [2, 0, 5, 0],
+                        "background": BGCOLOR,
+                        "bordercolor": "black",
                     }
                 },
-                'TNotebook.Tab': {
-                    'configure': {
-                        'padding': [10, 3],
-                        'background': NOTEBOOKCOLOR,
-                        'font': (MAINFONT, 11)
+                "TNotebook.Tab": {
+                    "configure": {
+                        "padding": [10, 3],
+                        "background": NOTEBOOKCOLOR,
+                        "font": (MAINFONT, 11),
                     },
-                    'map': {
-                        'background': [('selected', ACTIVETABCOLOR)],
-                        'expand': [("selected", [1, 1, 1, 0])],
-                        'font': [('selected', (MAINFONT, 11, 'bold'))],
-                        'foreground': [('selected', 'white')],
-                    }
-                }
-            }
+                    "map": {
+                        "background": [("selected", ACTIVETABCOLOR)],
+                        "expand": [("selected", [1, 1, 1, 0])],
+                        "font": [("selected", (MAINFONT, 11, "bold"))],
+                        "foreground": [("selected", "white")],
+                    },
+                },
+            },
         )
         style.theme_use("notebook")
 
@@ -229,17 +232,16 @@ class MyNavigationToolbar(NavigationToolbar2Tk):
         super().__init__(canvas, parent, pack_toolbar=False)
 
         # make everything white
-        self['bg'] = color
-        self._message_label['bg'] = color
+        self["bg"] = color
+        self._message_label["bg"] = color
         for button in self.winfo_children():
-            button['bg'] = color
+            button["bg"] = color
 
     def set_message(self, msg):
         pass
 
 
 class MyTable(MyFrame):
-
     def __init__(self, master, contents, titles, region):
 
         super().__init__(master)
@@ -265,7 +267,8 @@ class MyTable(MyFrame):
             for param in osc:
                 if isinstance(param, (int, float)):
                     value_var = value_var_dict(
-                        param, strip_zeros(f"{param:.5f}"),
+                        param,
+                        strip_zeros(f"{param:.5f}"),
                     )
                 else:
                     # The only occasion when this should occur in the program
@@ -283,11 +286,14 @@ class MyTable(MyFrame):
         self.table_frame.grid(row=0, column=0)
 
         # Column titles
-        for column, title in enumerate(['#'] + self.titles):
+        for column, title in enumerate(["#"] + self.titles):
             padx = 0 if column == 0 else (5, 0)
-            sticky = '' if column == 0 else 'w'
+            sticky = "" if column == 0 else "w"
             MyLabel(self.table_frame, text=title).grid(
-                row=0, column=column, padx=padx, sticky=sticky,
+                row=0,
+                column=column,
+                padx=padx,
+                sticky=sticky,
             )
 
         # Store entry widgets and string variables
@@ -295,8 +301,11 @@ class MyTable(MyFrame):
         self.entries = []
         # Get the value_var dictionaries corresponding to oscillators that
         # will be present in the table, based on `top` and `self.max_rows`.
-        value_var_rows = [elem for i, elem in enumerate(self.value_vars)
-                          if (top <= i < top + self.max_rows)]
+        value_var_rows = [
+            elem
+            for i, elem in enumerate(self.value_vars)
+            if (top <= i < top + self.max_rows)
+        ]
 
         for i, value_var_row in enumerate(value_var_rows):
             # Oscillator labels.
@@ -310,7 +319,7 @@ class MyTable(MyFrame):
             # Bind to left mouse click + shift: select oscillator, keep
             # other already selected oscillators still selected.
             label.bind(
-                '<Shift-Button-1>',
+                "<Shift-Button-1>",
                 lambda ev, i=i, top=top: self.shift_left_click(i, top),
             )
             # Add some internal padding to make selection easy.
@@ -322,16 +331,20 @@ class MyTable(MyFrame):
 
             for j, value_var in enumerate(value_var_row):
                 if j == 0:
-                    type_ = 'amp'
+                    type_ = "amp"
                 elif j == 1:
-                    type_ = 'phase'
+                    type_ = "phase"
                 elif j == 2:
-                    type_ = 'freq'
+                    type_ = "freq"
                 elif j == 3:
-                    type_ = 'damp'
+                    type_ = "damp"
 
-                ent = MyEntry(self.table_frame, textvariable=value_var['var'],
-                              state='disabled', width=14)
+                ent = MyEntry(
+                    self.table_frame,
+                    textvariable=value_var["var"],
+                    state="disabled",
+                    width=14,
+                )
                 # Ensure that entry widgets are checked after user input
                 # to ensure valid parameters.
                 ent.return_command = self.check_param
@@ -359,24 +372,28 @@ class MyTable(MyFrame):
             self.down_arrow_img = get_PhotoImage(DOWNARROWPATH, scale=0.5)
 
             self.up_arrow = MyButton(
-                self.navigate_frame, image=self.up_arrow_img, width=30,
+                self.navigate_frame,
+                image=self.up_arrow_img,
+                width=30,
                 command=self.up,
             )
             self.up_arrow.grid(row=0, column=0)
 
             self.down_arrow = MyButton(
-                self.navigate_frame, image=self.down_arrow_img, width=30,
+                self.navigate_frame,
+                image=self.down_arrow_img,
+                width=30,
                 command=self.down,
             )
             self.down_arrow.grid(row=0, column=1, padx=(5, 0))
 
             # Check if oscillator 1 is present. If so disable down arrow.
-            if self.labels[0]['text'] == '1':
-                self.up_arrow['state'] = 'disabled'
+            if self.labels[0]["text"] == "1":
+                self.up_arrow["state"] = "disabled"
 
             # Check if last oscillator is present. If so disable up arrow.
-            if int(self.labels[-1]['text']) == len(self.value_vars):
-                self.down_arrow['state'] = 'disabled'
+            if int(self.labels[-1]["text"]) == len(self.value_vars):
+                self.down_arrow["state"] = "disabled"
 
     def reconstruct(self, contents, top=0):
         """Regenerate table, given a new contents array"""
@@ -435,29 +452,28 @@ class MyTable(MyFrame):
     def activate_rows(self, top):
         for i, (label, entries) in enumerate(zip(self.labels, self.entries)):
             if i + top in self.selected_rows:
-                fg, bg, state = \
-                    TABLESELECTFGCOLOR, TABLESELECTBGCOLOR, 'readonly'
+                fg, bg, state = TABLESELECTFGCOLOR, TABLESELECTBGCOLOR, "readonly"
             else:
-                fg, bg, state = '#000000', BGCOLOR, 'disabled'
+                fg, bg, state = "#000000", BGCOLOR, "disabled"
 
-            label['fg'] = fg
-            label['bg'] = bg
+            label["fg"] = fg
+            label["bg"] = bg
             for entry in entries:
-                entry['state'] = state
+                entry["state"] = state
 
     def check_param(self, value_var, type_, entry):
         """Given a StringVar, ensure the value corresponds to a valid
         parameter value"""
 
         try:
-            value = float(value_var['var'].get())
+            value = float(value_var["var"].get())
 
-            if type_ in ['amp', 'damp'] and value > 0.0:
+            if type_ in ["amp", "damp"] and value > 0.0:
                 pass
-            elif type_ == 'phase':
+            elif type_ == "phase":
                 # Wrap phase
                 value = (value + np.pi) % (2 * np.pi) - np.pi
-            elif type_ == 'freq':
+            elif type_ == "freq":
                 if min(self.region) <= value <= max(self.region):
                     pass
                 else:
@@ -465,19 +481,19 @@ class MyTable(MyFrame):
             else:
                 raise
 
-            value_var['value'] = value
+            value_var["value"] = value
 
         except Exception:
             pass
 
-        if isinstance(value_var['value'], (int, float)):
-            value_var['var'].set(strip_zeros(f"{value_var['value']:.5f}"))
+        if isinstance(value_var["value"], (int, float)):
+            value_var["var"].set(strip_zeros(f"{value_var['value']:.5f}"))
         else:
             # The only time the result shouldn't be a numerical value
             # if when it is an empty string (this crops up in result.AddFrame)
             # In this case, want to re-colour red as the entry widget should
             # not be empty
-            value_var['var'].set(value_var['value'])
+            value_var["var"].set(value_var["value"])
             entry.key_press()
 
     def get_values(self):
@@ -489,7 +505,7 @@ class MyTable(MyFrame):
         for row in value_vars:
             value_row = []
             for element in row:
-                value_row.append(element['value'])
+                value_row.append(element["value"])
             values.append(value_row)
 
         return values
@@ -499,16 +515,16 @@ class MyTable(MyFrame):
         they contain unvalidated contents"""
         for row in self.entries:
             for entry in row:
-                if entry['fg'] == 'red':
+                if entry["fg"] == "red":
                     return True
         return False
 
     def up(self):
         """Scroll down one place in the table"""
-        top = int(self.labels[0]['text']) - 2
+        top = int(self.labels[0]["text"]) - 2
         self.reconstruct(contents=self.get_values(), top=top)
 
     def down(self):
         """Scroll down one place in the table"""
-        top = int(self.labels[0]['text'])
+        top = int(self.labels[0]["text"])
         self.reconstruct(contents=self.get_values(), top=top)

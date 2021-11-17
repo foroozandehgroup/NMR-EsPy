@@ -23,23 +23,25 @@ VIEW_RESULT_PLOTS = True
 def make_stylesheet(path):
     # Ensure entries are alphatically in order, except for axes.prop_cycle
     # which is at the end
-    txt = ('axes.edgecolor: .15\n'
-           'axes.facecolor: white\n'
-           'axes.grid: False\n'
-           'axes.linewidth: 1.25\n'
-           'grid.color: .8\n'
-           'patch.facecolor: 006BA4\n'
-           'xtick.major.size: 0.0\n'
-           'xtick.minor.size: 0.0\n'
-           'ytick.major.size: 0.0\n'
-           'ytick.minor.size: 0.0\n'
-           '# Tableau colorblind 10 palette\n'
-           'axes.prop_cycle: cycler(\'color\', [\'006BA4\', '
-           '\'FF800E\', \'ABABAB\', \'595959\', \'5F9ED1\', '
-           '\'C85200\', \'898989\', \'A2C8EC\', \'FFBC79\', '
-           '\'CFCFCF\'])')
+    txt = (
+        "axes.edgecolor: .15\n"
+        "axes.facecolor: white\n"
+        "axes.grid: False\n"
+        "axes.linewidth: 1.25\n"
+        "grid.color: .8\n"
+        "patch.facecolor: 006BA4\n"
+        "xtick.major.size: 0.0\n"
+        "xtick.minor.size: 0.0\n"
+        "ytick.major.size: 0.0\n"
+        "ytick.minor.size: 0.0\n"
+        "# Tableau colorblind 10 palette\n"
+        "axes.prop_cycle: cycler('color', ['006BA4', "
+        "'FF800E', 'ABABAB', '595959', '5F9ED1', "
+        "'C85200', '898989', 'A2C8EC', 'FFBC79', "
+        "'CFCFCF'])"
+    )
 
-    with open(path, 'w') as fh:
+    with open(path, "w") as fh:
         fh.write(txt)
 
     return txt
@@ -52,47 +54,44 @@ def test_extract_rc():
     # as well as a path to a stylesheet, and ensure the results are
     # identical
     for f in files:
-        name = re.match(r'^(.+?)\.mplstyle$', f.name).group(1)
-        with open(f, 'r') as fh:
+        name = re.match(r"^(.+?)\.mplstyle$", f.name).group(1)
+        with open(f, "r") as fh:
             # Seems as if some stylesheets are empty...
             if not fh.read():
                 continue
         assert nplot._extract_rc(name) == nplot._extract_rc(f)
 
     with pytest.raises(ValueError):
-        nplot._extract_rc('not_a_stylesheet')
+        nplot._extract_rc("not_a_stylesheet")
 
     # Create a file that should raise an error
-    with open('fail.mplstyle', 'w') as fh:
-        fh.write('This is not a valid stylesheet')
+    with open("fail.mplstyle", "w") as fh:
+        fh.write("This is not a valid stylesheet")
     with pytest.raises(ValueError):
-        nplot._extract_rc('fail.mplstyle')
-    os.remove('fail.mplstyle')
+        nplot._extract_rc("fail.mplstyle")
+    os.remove("fail.mplstyle")
 
     # Create a stylesheet that should return a valid rc
-    with open('pass.mplstyle', 'w') as fh:
-        fh.write('# This should pass\n'
-                 'axes.grid: False\n'
-                 'axes.facecolor: white')
+    with open("pass.mplstyle", "w") as fh:
+        fh.write("# This should pass\n" "axes.grid: False\n" "axes.facecolor: white")
     # Note revesal of attribute order. MPL sorts the attributes
     # alphabetically
-    assert nplot._extract_rc('pass.mplstyle') == \
-           'axes.facecolor: white\naxes.grid: False'
-    os.remove('pass.mplstyle')
+    assert (
+        nplot._extract_rc("pass.mplstyle") == "axes.facecolor: white\naxes.grid: False"
+    )
+    os.remove("pass.mplstyle")
 
 
 def test_create_rc():
-    path = 'text.mplstyle'
+    path = "text.mplstyle"
     original_rc = make_stylesheet(path)
     # Should be the same as `original_rc` without the comment lines,
     # and with axes.prop_cycle line edited.
     edited_rc = nplot._create_rc(path, None, 1)
 
     # Convert to lists for each newline, and remove any comment lines
-    original_rc_list = list(filter(
-        lambda ln: ln[0] != '#', original_rc.split('\n')
-    ))
-    edited_rc_list = edited_rc.split('\n')
+    original_rc_list = list(filter(lambda ln: ln[0] != "#", original_rc.split("\n")))
+    edited_rc_list = edited_rc.split("\n")
 
     unmatched = []
     for i, (orig, edit) in enumerate(zip(original_rc_list, edited_rc_list)):
@@ -107,89 +106,83 @@ def test_create_rc():
 def test_configure_oscillator_colors():
     argss = [
         (None, 5),
-        ('viridis', 5),
-        ('inferno', 3),
-        ('tomato', 3),
-        (['forestgreen', '#ff0000', '0.5', (0.7, 0.8, 0.3)], 4)
+        ("viridis", 5),
+        ("inferno", 3),
+        ("tomato", 3),
+        (["forestgreen", "#ff0000", "0.5", (0.7, 0.8, 0.3)], 4),
     ]
 
     results = [
-        ['#1063e0', '#eb9310', '#2bb539', '#d4200c'],
-        ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
-        ['#000004', '#bc3754', '#fcffa4'],
-        ['#ff6347'],
-        ['#228b22', '#ff0000', '#808080', '#b2cc4c'],
+        ["#1063e0", "#eb9310", "#2bb539", "#d4200c"],
+        ["#440154", "#3b528b", "#21918c", "#5ec962", "#fde725"],
+        ["#000004", "#bc3754", "#fcffa4"],
+        ["#ff6347"],
+        ["#228b22", "#ff0000", "#808080", "#b2cc4c"],
     ]
 
     for args, result in zip(argss, results):
         assert nplot._configure_oscillator_colors(*args) == result
 
     with pytest.raises(ValueError) as exc_info:
-        nplot._configure_oscillator_colors(
-            ['blah', 'tomato', (1.2, 0.6, 0.4)], 4
-        )
+        nplot._configure_oscillator_colors(["blah", "tomato", (1.2, 0.6, 0.4)], 4)
 
-    assert str(exc_info.value) == \
-        (f'{RED}The following entries in `oscillator_colors` could '
-         'not be recognised as valid colours in matplotlib:\n'
-         f'--> \'blah\'\n--> (1.2, 0.6, 0.4){END}')
+    assert str(exc_info.value) == (
+        f"{RED}The following entries in `oscillator_colors` could "
+        "not be recognised as valid colours in matplotlib:\n"
+        f"--> 'blah'\n--> (1.2, 0.6, 0.4){END}"
+    )
 
 
 def test_get_region_slice():
     # 1D example
     region_hz = [[3.5, 1.5]]
-    hz_result = slice(1, 4, None),
+    hz_result = (slice(1, 4, None),)
     region_ppm = [[0.05, -0.15]]
-    ppm_result = slice(4, 7, None),
-    expinfo = ExpInfo(pts=10, sw=9., offset=0., sfo=10.)
+    ppm_result = (slice(4, 7, None),)
+    expinfo = ExpInfo(pts=10, sw=9.0, offset=0.0, sfo=10.0)
 
-    assert nplot._get_region_slice('hz', region_hz, expinfo) == \
-           hz_result
+    assert nplot._get_region_slice("hz", region_hz, expinfo) == hz_result
     expinfo._sfo = None
-    assert nplot._get_region_slice('hz', region_hz, expinfo) == \
-           hz_result
-    expinfo._sfo = (10.,)
-    assert nplot._get_region_slice('ppm', region_ppm, expinfo) == \
-           ppm_result
-    assert nplot._get_region_slice('hz', None, expinfo) == \
-           (slice(0, 10, None),)
+    assert nplot._get_region_slice("hz", region_hz, expinfo) == hz_result
+    expinfo._sfo = (10.0,)
+    assert nplot._get_region_slice("ppm", region_ppm, expinfo) == ppm_result
+    assert nplot._get_region_slice("hz", None, expinfo) == (slice(0, 10, None),)
 
     # 2D example
     region_hz = [[3.5, 1.5], [3.5, 1.5]]
     hz_result = (slice(2, 7, None), slice(3, 6, None))
     region_ppm = [[0.2, -0.15], [0.15, -0.15]]
     ppm_result = (slice(5, 14, None), slice(5, 9, None))
-    expinfo = ExpInfo(
-        pts=[20, 10], sw=[9., 9.], offset=[0., 2.], sfo=[10., 10.]
-    )
+    expinfo = ExpInfo(pts=[20, 10], sw=[9.0, 9.0], offset=[0.0, 2.0], sfo=[10.0, 10.0])
 
-    assert nplot._get_region_slice('hz', region_hz, expinfo) == \
-           hz_result
+    assert nplot._get_region_slice("hz", region_hz, expinfo) == hz_result
     expinfo._sfo = None
-    assert nplot._get_region_slice('hz', region_hz, expinfo) == \
-           hz_result
-    expinfo._sfo = (10., 10.)
-    assert nplot._get_region_slice('ppm', region_ppm, expinfo) == \
-           ppm_result
-    assert nplot._get_region_slice('hz', None, expinfo) == \
-           (slice(0, 20, None), slice(0, 10, None))
+    assert nplot._get_region_slice("hz", region_hz, expinfo) == hz_result
+    expinfo._sfo = (10.0, 10.0)
+    assert nplot._get_region_slice("ppm", region_ppm, expinfo) == ppm_result
+    assert nplot._get_region_slice("hz", None, expinfo) == (
+        slice(0, 20, None),
+        slice(0, 10, None),
+    )
 
 
 class Stuff:
     def __init__(self):
-        self.params = np.array([
-            [1, 0, 1000, 50],
-            [3, 0, 1050, 50],
-            [6, 0, 1100, 50],
-            [3, 0, 1150, 50],
-            [1, 0, 1200, 50]
-        ])
+        self.params = np.array(
+            [
+                [1, 0, 1000, 50],
+                [3, 0, 1050, 50],
+                [6, 0, 1100, 50],
+                [3, 0, 1150, 50],
+                [1, 0, 1200, 50],
+            ]
+        )
         pts = 4096
-        sw = 5000.
-        offset = 0.
-        sfo = 500.
+        sw = 5000.0
+        offset = 0.0
+        sfo = 500.0
         self.expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
-        self.region_hz = [[1400., 800.]]
+        self.region_hz = [[1400.0, 800.0]]
         self.converter = _misc.FrequencyConverter(self.expinfo)
 
     def unpack(self):
@@ -203,7 +196,7 @@ class Stuff:
 
 def test_generate_peaks():
     result, expinfo, region_hz, _ = Stuff().unpack()
-    slce = nplot._get_region_slice('hz', region_hz, expinfo)
+    slce = nplot._get_region_slice("hz", region_hz, expinfo)
     peaks = nplot._generate_peaks(result, slce, expinfo)
 
     if VIEW_PEAKS:
@@ -211,45 +204,54 @@ def test_generate_peaks():
         fig, ax = plt.subplots()
         _ = [ax.plot(shifts, peak) for peak in peaks]
         ax.set_xlim(reversed(ax.get_xlim()))
-        ax.set_xlabel(r'$\omega$ (Hz)')
-        ax.set_title('Should have a qunitet with peaks at ' +
-                     ', '.join([str(i) for i in range(1000, 1250, 50)]))
+        ax.set_xlabel(r"$\omega$ (Hz)")
+        ax.set_title(
+            "Should have a qunitet with peaks at "
+            + ", ".join([str(i) for i in range(1000, 1250, 50)])
+        )
         plt.show()
 
 
 def test_plot_result():
     result, expinfo, region_hz, converter = Stuff().unpack()
-    data = sig.make_fid(result, expinfo, snr=30.)[0]
+    data = sig.make_fid(result, expinfo, snr=30.0)[0]
     data[0] /= 2
     spectrum = sig.ft(data)
-    region_ppm = converter.convert(region_hz, 'hz->ppm')
+    region_ppm = converter.convert(region_hz, "hz->ppm")
 
     kwargss = [
         {},
-        {'region': region_ppm},
-        {'region': region_ppm, 'plot_residual': False, 'plot_model': True},
-        {'region': region_ppm, 'residual_shift': -100., 'plot_model': True,
-         'model_shift': 100.},
-        {'region': region_hz, 'shifts_unit': 'hz'},
-        {'region': region_ppm, 'data_color': '#ff0000',
-         'residual_color': '#00ff00', 'model_color': '#0000ff',
-         'plot_model': True},
-        {'region': region_ppm,
-         'oscillator_colors': ['#ff0000', '#00ff00', '#0000ff']},
-        {'region': region_ppm, 'show_labels': False},
-        {'region': region_ppm, 'stylesheet': 'ggplot'}
+        {"region": region_ppm},
+        {"region": region_ppm, "plot_residual": False, "plot_model": True},
+        {
+            "region": region_ppm,
+            "residual_shift": -100.0,
+            "plot_model": True,
+            "model_shift": 100.0,
+        },
+        {"region": region_hz, "shifts_unit": "hz"},
+        {
+            "region": region_ppm,
+            "data_color": "#ff0000",
+            "residual_color": "#00ff00",
+            "model_color": "#0000ff",
+            "plot_model": True,
+        },
+        {"region": region_ppm, "oscillator_colors": ["#ff0000", "#00ff00", "#0000ff"]},
+        {"region": region_ppm, "show_labels": False},
+        {"region": region_ppm, "stylesheet": "ggplot"},
     ]
 
     titles = [
-        'Default format',
-        'Specified region',
-        'Residual hidden, Model shown',
-        'Residual shift -100, Model shift +100',
-        'Region in Hz',
-        'Data colour R, Residual colour G, Model colour B',
-        'Oscillator colours cycle through R, G, B',
-        'No labels',
-        'ggplot stylesheet'
+        "Default format",
+        "Specified region",
+        "Residual hidden, Model shown",
+        "Residual shift -100, Model shift +100",
+        "Region in Hz",
+        "Data colour R, Residual colour G, Model colour B",
+        "Oscillator colours cycle through R, G, B",
+        "No labels",
+        "ggplot stylesheet",
     ]
 
     for kwargs, title in zip(kwargss, titles):
@@ -257,6 +259,6 @@ def test_plot_result():
 
         if VIEW_RESULT_PLOTS:
             plot.ax.set_title(title)
-            plot.fig.savefig('test.pdf', dpi=300)
-            subprocess.run(['evince', 'test.pdf'])
-            os.remove('test.pdf')
+            plot.fig.savefig("test.pdf", dpi=300)
+            subprocess.run(["evince", "test.pdf"])
+            os.remove("test.pdf")

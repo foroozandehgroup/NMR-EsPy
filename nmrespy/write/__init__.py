@@ -14,14 +14,16 @@ import numpy.linalg as nlinalg
 
 from nmrespy import RED, ORA, END, ExpInfo, USE_COLORAMA, _misc, plot, sig
 from . import textfile, pdffile, csvfile
+
 if USE_COLORAMA:
     import colorama
+
     colorama.init()
 
 
 def _append_suffix(path: Path, fmt: str) -> Path:
-    if not path.suffix == f'.{fmt}':
-        path = path.with_suffix(f'.{fmt}')
+    if not path.suffix == f".{fmt}":
+        path = path.with_suffix(f".{fmt}")
     return path
 
 
@@ -57,14 +59,18 @@ def _configure_save_path(
     if path.is_file():
         response = _ask_overwrite(path, force_overwrite)
         if not response:
-            print(f'{RED}Overwrite of file {path} denied. File will not be '
-                  f'overwritten.{END}')
+            print(
+                f"{RED}Overwrite of file {path} denied. File will not be "
+                f"overwritten.{END}"
+            )
             return None
         return path
 
     if not path.parent.is_dir():
-        msg = (f'{RED}The directory specified by `path` does not '
-               f'exist:\n{path.parent}{END}')
+        msg = (
+            f"{RED}The directory specified by `path` does not "
+            f"exist:\n{path.parent}{END}"
+        )
         raise ValueError(msg)
 
     return path
@@ -75,21 +81,26 @@ def _ask_overwrite(path: Path, force: bool) -> bool:
     if force:
         return True
     prompt = (
-        f'{ORA}The file {str(path)} already exists. Overwrite?\n'
-        f'Enter [y] or [n]:{END}'
+        f"{ORA}The file {str(path)} already exists. Overwrite?\n"
+        f"Enter [y] or [n]:{END}"
     )
     return _misc.get_yes_no(prompt)
 
 
 def write_result(
-    expinfo: ExpInfo, params: np.ndarray,
-    errors: Union[np.ndarray, None] = None, *, path: str = './nmrespy_result',
-    fmt: str = 'txt', description: Union[str, None] = None,
+    expinfo: ExpInfo,
+    params: np.ndarray,
+    errors: Union[np.ndarray, None] = None,
+    *,
+    path: str = "./nmrespy_result",
+    fmt: str = "txt",
+    description: Union[str, None] = None,
     sig_figs: Union[int, None] = 5,
     sci_lims: Union[Tuple[int, int], None] = (-2, 3),
-    force_overwrite: bool = False, pdflatex_exe: Union[str, None] = None,
+    force_overwrite: bool = False,
+    pdflatex_exe: Union[str, None] = None,
     pdf_append_figure: Union[plot.NmrespyPlot, None] = None,
-    fprint: bool = True
+    fprint: bool = True,
 ) -> None:
     """Writes an estimation result to a .txt, .pdf or .csv file.
 
@@ -203,42 +214,40 @@ def write_result(
     If a pathname appears, the package is installed to that path.
     """
     if not isinstance(expinfo, ExpInfo):
-        raise TypeError(f'{RED}Check `expinfo` is valid.{END}')
-    dim = expinfo.unpack('dim')
+        raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
+    dim = expinfo.unpack("dim")
 
     try:
         if dim != int(params.shape[1] / 2) - 1:
             raise ValueError(
-                f'{RED}The dimension of `expinfo` does not agree with the '
-                'parameter array. `expinfo.dim == (params.shape[1] / 2) '
-                f'- 1` is not satified.{END}'
+                f"{RED}The dimension of `expinfo` does not agree with the "
+                "parameter array. `expinfo.dim == (params.shape[1] / 2) "
+                f"- 1` is not satified.{END}"
             )
     except AttributeError:
         # params.shape raised an attribute error
-        raise TypeError(
-            f'{RED}`params` should be a numpy array{END}'
-        )
+        raise TypeError(f"{RED}`params` should be a numpy array{END}")
     if dim >= 3:
         raise errors.MoreThanTwoDimError()
 
     checker = _misc.ArgumentChecker(dim=dim)
     checker.stage(
-        (params, 'params', 'parameter'),
-        (errors, 'errors', 'parameter', True),
-        (path, 'path', 'str'),
-        (fmt, 'fmt', 'file_fmt'),
-        (force_overwrite, 'force_overwrite', 'bool'),
-        (fprint, 'fprint', 'bool'),
-        (description, 'description', 'str', True),
-        (sig_figs, 'sig_figs', 'positive_int', True),
-        (sci_lims, 'sci_lims', 'pos_neg_tuple', True),
+        (params, "params", "parameter"),
+        (errors, "errors", "parameter", True),
+        (path, "path", "str"),
+        (fmt, "fmt", "file_fmt"),
+        (force_overwrite, "force_overwrite", "bool"),
+        (fprint, "fprint", "bool"),
+        (description, "description", "str", True),
+        (sig_figs, "sig_figs", "positive_int", True),
+        (sci_lims, "sci_lims", "pos_neg_tuple", True),
         # TODO add checking for pdf_append_figure
     )
     checker.check()
 
     path = _configure_save_path(path, fmt, force_overwrite)
     if not path:
-        print(f'{ORA}Skipping call to `write_result`...{END}')
+        print(f"{ORA}Skipping call to `write_result`...{END}")
         return None
 
     # Short-hand function for value formatting
@@ -248,32 +257,38 @@ def write_result(
     param_table = _construct_paramtable(params, errors, expinfo, fmt, fmtval)
     info_table = _construct_infotable(expinfo)
 
-    if fmt == 'txt':
+    if fmt == "txt":
         textfile.write(path, param_table, info_table, description, fprint)
-    elif fmt == 'pdf':
+    elif fmt == "pdf":
         pdffile.write(
-            path, param_table, info_table, description, pdflatex_exe, fprint,
-            pdf_append_figure
+            path,
+            param_table,
+            info_table,
+            description,
+            pdflatex_exe,
+            fprint,
+            pdf_append_figure,
         )
-    elif fmt == 'csv':
+    elif fmt == "csv":
         csvfile.write(path, param_table, info_table, description, fprint)
 
 
 def _construct_infotable(expinfo: ExpInfo) -> List[List[str]]:
-    dim, sw, offset, sfo, nuclei = \
-        expinfo.unpack('dim', 'sw', 'offset', 'sfo', 'nuclei')
-    titles = ['Parameter'] + [f'F{i}' for i in range(1, dim + 1)]
-    names = deque(['Sweep width (Hz)', 'Transmitter offset (Hz)'])
+    dim, sw, offset, sfo, nuclei = expinfo.unpack(
+        "dim", "sw", "offset", "sfo", "nuclei"
+    )
+    titles = ["Parameter"] + [f"F{i}" for i in range(1, dim + 1)]
+    names = deque(["Sweep width (Hz)", "Transmitter offset (Hz)"])
     values = deque([[str(x) for x in param] for param in (sw, offset)])
     if sfo:
-        names.appendleft('Transmitter frequency (MHz)')
-        names.insert(2, 'Sweep width (ppm)')
-        names.append('Transmitter offset (ppm)')
+        names.appendleft("Transmitter frequency (MHz)")
+        names.insert(2, "Sweep width (ppm)")
+        names.append("Transmitter offset (ppm)")
         values.appendleft([str(x) for x in sfo])
         values.insert(2, [str(x / y) for x, y in zip(sw, sfo)])
         values.append([str(x / y) for x, y in zip(offset, sfo)])
     if nuclei:
-        names.appendleft('Nucleus')
+        names.appendleft("Nucleus")
         values.appendleft([x for x in nuclei])
     infotable = [[name] + value for name, value in zip(names, values)]
     return [titles] + infotable
@@ -288,67 +303,69 @@ def _map_to_latex_titles(titles: List[str]) -> List[str]:
     latex_titles = []
 
     for title in titles:
-        if title == 'Osc.':
-            latex_titles.append('$m$')
-        elif title == 'Amp.':
-            latex_titles.append('$a_m$')
-        elif title == 'Phase (rad)':
-            latex_titles.append('$\\phi_m\\ (\\text{rad})$')
-        elif title == 'Freq. (Hz)':
-            latex_titles.append('$f_m\\ (\\text{Hz})$')
-        elif title == 'Freq. (ppm)':
-            latex_titles.append('$f_m\\ (\\text{ppm})$')
-        elif title == 'Freq. 1 (Hz)':
-            latex_titles.append('$f_{1,m}\\ (\\text{Hz})$')
-        elif title == 'Freq. 1 (ppm)':
-            latex_titles.append('$f_{1,m}\\ (\\text{ppm})$')
-        elif title == 'Freq. 2 (Hz)':
-            latex_titles.append('$f_{2,m}\\ (\\text{Hz})$')
-        elif title == 'Freq. 2 (ppm)':
-            latex_titles.append('$f_{2,m}\\ (\\text{ppm})$')
-        elif title == 'Damp. (s⁻¹)':
-            latex_titles.append('$\\eta_m\\ (\\text{s}^{-1})$')
-        elif title == 'Damp. 1 (s⁻¹)':
-            latex_titles.append('$\\eta_{1,m}\\ (\\text{s}^{-1})$')
-        elif title == 'Damp. 2 (s⁻¹)':
-            latex_titles.append('$\\eta_{2,m}\\ (\\text{s}^{-1})$')
-        elif title == 'Integral':
-            latex_titles.append('$\\int$')
-        elif title == 'Norm. Integral':
-            latex_titles.append(
-                '$\\nicefrac{\\int}{\\left\\lVert\\int\\right\\rVert}$'
-            )
+        if title == "Osc.":
+            latex_titles.append("$m$")
+        elif title == "Amp.":
+            latex_titles.append("$a_m$")
+        elif title == "Phase (rad)":
+            latex_titles.append("$\\phi_m\\ (\\text{rad})$")
+        elif title == "Freq. (Hz)":
+            latex_titles.append("$f_m\\ (\\text{Hz})$")
+        elif title == "Freq. (ppm)":
+            latex_titles.append("$f_m\\ (\\text{ppm})$")
+        elif title == "Freq. 1 (Hz)":
+            latex_titles.append("$f_{1,m}\\ (\\text{Hz})$")
+        elif title == "Freq. 1 (ppm)":
+            latex_titles.append("$f_{1,m}\\ (\\text{ppm})$")
+        elif title == "Freq. 2 (Hz)":
+            latex_titles.append("$f_{2,m}\\ (\\text{Hz})$")
+        elif title == "Freq. 2 (ppm)":
+            latex_titles.append("$f_{2,m}\\ (\\text{ppm})$")
+        elif title == "Damp. (s⁻¹)":
+            latex_titles.append("$\\eta_m\\ (\\text{s}^{-1})$")
+        elif title == "Damp. 1 (s⁻¹)":
+            latex_titles.append("$\\eta_{1,m}\\ (\\text{s}^{-1})$")
+        elif title == "Damp. 2 (s⁻¹)":
+            latex_titles.append("$\\eta_{2,m}\\ (\\text{s}^{-1})$")
+        elif title == "Integral":
+            latex_titles.append("$\\int$")
+        elif title == "Norm. Integral":
+            latex_titles.append("$\\nicefrac{\\int}{\\left\\lVert\\int\\right\\rVert}$")
         else:
-            raise ValueError(f'{RED}BUG!!! Unrecognised argument in'
-                             f'_map_to_latex_titles{END}')
+            raise ValueError(
+                f"{RED}BUG!!! Unrecognised argument in" f"_map_to_latex_titles{END}"
+            )
 
     return latex_titles
 
 
 def _make_titles(expinfo: ExpInfo, fmt: str) -> List[str]:
     """Create titles for the parameter table."""
-    dim, sfo = expinfo.unpack('dim', 'sfo')
+    dim, sfo = expinfo.unpack("dim", "sfo")
     inc_ppm = sfo is not None
-    titles = ['Osc.', 'Amp.', 'Phase (rad)']
+    titles = ["Osc.", "Amp.", "Phase (rad)"]
     if dim == 1:
-        titles += ['Freq. (Hz)']
+        titles += ["Freq. (Hz)"]
         if inc_ppm:
-            titles += ['Freq. (ppm)']
-        titles += ['Damp. (s⁻¹)']
+            titles += ["Freq. (ppm)"]
+        titles += ["Damp. (s⁻¹)"]
 
     else:
-        titles += ['Freq. 1 (Hz)', 'Freq. 2 (Hz)']
+        titles += ["Freq. 1 (Hz)", "Freq. 2 (Hz)"]
         if inc_ppm:
-            titles += ['Freq. 1 (ppm)', 'Freq. 2 (ppm)']
-        titles += ['Damp. 1 (s⁻¹)', 'Damp. 2 (s⁻¹)']
+            titles += ["Freq. 1 (ppm)", "Freq. 2 (ppm)"]
+        titles += ["Damp. 1 (s⁻¹)", "Damp. 2 (s⁻¹)"]
 
-    titles += ['Integral', 'Norm. Integral']
-    return titles if fmt != 'pdf' else _map_to_latex_titles(titles)
+    titles += ["Integral", "Norm. Integral"]
+    return titles if fmt != "pdf" else _map_to_latex_titles(titles)
 
 
 def _construct_paramtable(
-    params: np.ndarray, errors: Union[np.ndarray, None],
-    expinfo: ExpInfo, fmt: str, fmtval: Callable[[float], str]
+    params: np.ndarray,
+    errors: Union[np.ndarray, None],
+    expinfo: ExpInfo,
+    fmt: str,
+    fmtval: Callable[[float], str],
 ) -> List[List[str]]:
     """Make a nested list of values for parameter table.
 
@@ -392,7 +409,7 @@ def _construct_paramtable(
 
 
 def _make_parameter_table(params: np.ndarray, expinfo: ExpInfo) -> np.ndarray:
-    dim, sfo = expinfo.unpack('dim', 'sfo')
+    dim, sfo = expinfo.unpack("dim", "sfo")
     inc_ppm = sfo is not None
     m = params.shape[0]
     integrals = _compute_integrals(expinfo, params)
@@ -402,22 +419,22 @@ def _make_parameter_table(params: np.ndarray, expinfo: ExpInfo) -> np.ndarray:
     else:
         table = np.zeros((m, 5 + 2 * dim))
 
-    table[:, 0] = np.arange(1, m + 1)          # Oscillator labels
-    table[:, 1:3 + dim] = params[:, :2 + dim]  # Amplitude, phase, freq (Hz)
+    table[:, 0] = np.arange(1, m + 1)  # Oscillator labels
+    table[:, 1 : 3 + dim] = params[:, : 2 + dim]  # Amplitude, phase, freq (Hz)
 
     # Freq (ppm)
     if inc_ppm:
-        table[:, 3 + dim: 3 + 2 * dim] = params[:, 2: 2 + dim] / np.array(sfo)
+        table[:, 3 + dim : 3 + 2 * dim] = params[:, 2 : 2 + dim] / np.array(sfo)
 
-    table[:, -2 - dim: -2] = params[:, 2 + dim:]  # Damping
-    table[:, -2] = integrals                      # Integrals
-    table[:, -1] = integrals / integral_norm      # Normalised integrals
+    table[:, -2 - dim : -2] = params[:, 2 + dim :]  # Damping
+    table[:, -2] = integrals  # Integrals
+    table[:, -1] = integrals / integral_norm  # Normalised integrals
 
     return table
 
 
 def _make_error_table(errors: np.ndarray, expinfo: ExpInfo) -> np.ndarray:
-    dim, sfo = expinfo.unpack('dim', 'sfo')
+    dim, sfo = expinfo.unpack("dim", "sfo")
     inc_ppm = sfo is not None
     m = errors.shape[0]
     if inc_ppm:
@@ -425,15 +442,15 @@ def _make_error_table(errors: np.ndarray, expinfo: ExpInfo) -> np.ndarray:
     else:
         table = np.zeros((m, 5 + 2 * dim))
 
-    table[:, 0] = np.full((m,), np.nan)         # Oscillator labels (blank)
-    table[:, 1:3 + dim] = errors[:, :2 + dim]  # Amplitude, phase, freq (Hz)
+    table[:, 0] = np.full((m,), np.nan)  # Oscillator labels (blank)
+    table[:, 1 : 3 + dim] = errors[:, : 2 + dim]  # Amplitude, phase, freq (Hz)
 
     # Freq (ppm)
     if inc_ppm:
-        table[:, 3 + dim: 3 + 2 * dim] = errors[:, 2: 2 + dim] / np.array(sfo)
+        table[:, 3 + dim : 3 + 2 * dim] = errors[:, 2 : 2 + dim] / np.array(sfo)
 
-    table[:, -2 - dim: -2] = errors[:, 2 + dim:]  # Damping
-    table[:, -2:] = np.full((m, 2), np.nan)       # Integrals (blank)
+    table[:, -2 - dim : -2] = errors[:, 2 + dim :]  # Damping
+    table[:, -2:] = np.full((m, 2), np.nan)  # Integrals (blank)
 
     return table
 
@@ -447,8 +464,9 @@ def _format_parameter_table(
 def _format_error_table(
     errortable: np.ndarray, fmtval: Callable[[float], str]
 ) -> List[str]:
-    return [[f'±{fmtval(x)}' if not np.isnan(x) else '-' for x in row]
-            for row in errortable]
+    return [
+        [f"±{fmtval(x)}" if not np.isnan(x) else "-" for x in row] for row in errortable
+    ]
 
 
 def _compute_integrals(expinfo: ExpInfo, params: np.ndarray) -> np.ndarray:
@@ -456,8 +474,10 @@ def _compute_integrals(expinfo: ExpInfo, params: np.ndarray) -> np.ndarray:
 
 
 def _format_value(
-    value: float, sig_figs: Union[int, None],
-    sci_lims: Union[Tuple[int, int], None], fmt: str
+    value: float,
+    sig_figs: Union[int, None],
+    sci_lims: Union[Tuple[int, int], None],
+    fmt: str,
 ) -> str:
     """Convert float to formatted string.
 
@@ -483,21 +503,25 @@ def _format_value(
     if isinstance(sig_figs, int):
         value = _significant_figures(value, sig_figs)
 
-    if (sci_lims is None) or (value == 0) or (fmt == 'csv'):
+    if (sci_lims is None) or (value == 0) or (fmt == "csv"):
         return str(value)
 
     # Determine the value of the exponent to check whether the value should
     # be expressed in scientific or normal notation.
-    exp_search = re.search(r'e(\+|-)(\d+)', f'{value:e}')
+    exp_search = re.search(r"e(\+|-)(\d+)", f"{value:e}")
     exp_sign = exp_search.group(1)
     exp_mag = int(exp_search.group(2))
 
-    if (exp_sign == '+' and exp_mag < sci_lims[1] or
-            exp_sign == '-' and exp_mag < -sci_lims[0]):
+    if (
+        exp_sign == "+"
+        and exp_mag < sci_lims[1]
+        or exp_sign == "-"
+        and exp_mag < -sci_lims[0]
+    ):
         return str(value)
 
     value = _scientific_notation(value)
-    return value if fmt == 'txt' else f"\\num{{{value}}}"
+    return value if fmt == "txt" else f"\\num{{{value}}}"
 
 
 def _significant_figures(value: float, s: int) -> Union[int, float]:
@@ -541,4 +565,4 @@ def _scientific_notation(value: float) -> str:
     sci_value
         String denoting ``value`` in scientific notation.
     """
-    return re.sub(r'\.?0+e(\+|-)0?', r'e\1', f'{value:e}')
+    return re.sub(r"\.?0+e(\+|-)0?", r"e\1", f"{value:e}")

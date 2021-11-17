@@ -15,44 +15,44 @@ from ._version import __version__  # noqa: F401
 
 # Paths and links
 NMRESPYPATH = Path(__file__).parent
-IMAGESPATH = NMRESPYPATH / 'images'
-MFLOGOPATH = IMAGESPATH / 'mf_logo.png'
-NMRESPYLOGOPATH = IMAGESPATH / 'nmrespy_full.png'
-BOOKICONPATH = IMAGESPATH / 'book_icon.png'
-GITHUBLOGOPATH = IMAGESPATH / 'github.png'
-EMAILICONPATH = IMAGESPATH / 'email_icon.png'
-TOPSPINPATH = NMRESPYPATH / 'app/_topspin.py'
-GITHUBLINK = 'https://github.com/foroozandehgroup/NMR-EsPy'
-MFGROUPLINK = 'http://foroozandeh.chem.ox.ac.uk/home'
-DOCSLINK = 'https://foroozandehgroup.github.io/NMR-EsPy'
-MAILTOLINK = r'mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query'
+IMAGESPATH = NMRESPYPATH / "images"
+MFLOGOPATH = IMAGESPATH / "mf_logo.png"
+NMRESPYLOGOPATH = IMAGESPATH / "nmrespy_full.png"
+BOOKICONPATH = IMAGESPATH / "book_icon.png"
+GITHUBLOGOPATH = IMAGESPATH / "github.png"
+EMAILICONPATH = IMAGESPATH / "email_icon.png"
+TOPSPINPATH = NMRESPYPATH / "app/_topspin.py"
+GITHUBLINK = "https://github.com/foroozandehgroup/NMR-EsPy"
+MFGROUPLINK = "http://foroozandeh.chem.ox.ac.uk/home"
+DOCSLINK = "https://foroozandehgroup.github.io/NMR-EsPy"
+MAILTOLINK = r"mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query"
 
 # Coloured terminal output
-END = '\033[0m'  # end editing
-RED = '\033[31m'  # red
-GRE = '\033[32m'  # green
-ORA = '\033[33m'  # orange
-BLU = '\033[34m'  # blue
-MAG = '\033[35m'  # magenta
-CYA = '\033[96m'  # cyan
+END = "\033[0m"  # end editing
+RED = "\033[31m"  # red
+GRE = "\033[32m"  # green
+ORA = "\033[33m"  # orange
+BLU = "\033[34m"  # blue
+MAG = "\033[35m"  # magenta
+CYA = "\033[96m"  # cyan
 
 USE_COLORAMA = False
 
 # If on windows, enable ANSI colour escape sequences if colorama
 # is installed
-if system() == 'Windows':
+if system() == "Windows":
     if find_spec("colorama"):
         USE_COLORAMA = True
     # If colorama not installed, make color attributes empty to prevent
     # bizzare outputs
     else:
-        END = ''
-        RED = ''
-        GRE = ''
-        ORA = ''
-        BLU = ''
-        MAG = ''
-        CYA = ''
+        END = ""
+        RED = ""
+        GRE = ""
+        ORA = ""
+        BLU = ""
+        MAG = ""
+        CYA = ""
 
 
 class ExpInfo:
@@ -66,7 +66,7 @@ class ExpInfo:
         sfo: Union[int, float, Iterable[Union[int, float]], None] = None,
         nuclei: Union[str, Iterable[str], None] = None,
         dim: Union[int, None] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Create an ExpInfo instance.
 
@@ -137,20 +137,19 @@ class ExpInfo:
         for kwkey, kwvalue in kwargs.items():
             self.__dict__.update({kwkey: kwvalue})
 
-        names = ['_pts', '_sw', '_offset', '_sfo', '_nuclei']
+        names = ["_pts", "_sw", "_offset", "_sfo", "_nuclei"]
         locs = locals()
-        values = [locs[name.replace('_', '')] for name in names]
+        values = [locs[name.replace("_", "")] for name in names]
         test_types = [int, Number, Number, Number, str]
 
         # Filter out any optional arguments that are None
-        rm_idx = [i for i, value in enumerate(values[2:], start=2)
-                  if value is None]
+        rm_idx = [i for i, value in enumerate(values[2:], start=2) if value is None]
         names = [x for i, x in enumerate(names) if i not in rm_idx]
         values = [x for i, x in enumerate(values) if i not in rm_idx]
         test_types = [x for i, x in enumerate(test_types) if i not in rm_idx]
 
         for name, value, test_type in zip(names, values, test_types):
-            errmsg = ("f{RED}Unable to process input{END}")
+            errmsg = "f{RED}Unable to process input{END}"
             # If single value (not in list/tuple/etc.) is given, pack into
             # a list (values will be converted to tuples at the end)
             if isinstance(value, test_type):
@@ -183,12 +182,12 @@ class ExpInfo:
                 raise ValueError(errmsg)
 
         if not isinstance(self._dim, int):
-            raise ValueError(f'{RED}Invalid value for `dim`{END}')
-        if locs['offset'] is None:
-            self._offset = tuple([0.] * self._dim)
-        if locs['sfo'] is None:
+            raise ValueError(f"{RED}Invalid value for `dim`{END}")
+        if locs["offset"] is None:
+            self._offset = tuple([0.0] * self._dim)
+        if locs["sfo"] is None:
             self._sfo = None
-        if locs['nuclei'] is None:
+        if locs["nuclei"] is None:
             self._nuclei = None
         for name in names:
             self.__dict__[name] = tuple(self.__dict__[name])
@@ -200,7 +199,7 @@ class ExpInfo:
 
     @pts.setter
     def pts(self, new_value: Any) -> None:
-        pts = self._validate('pts', new_value, int)
+        pts = self._validate("pts", new_value, int)
         # Error will have been raised if new_value is invalid
         self._pts = pts
 
@@ -211,7 +210,7 @@ class ExpInfo:
 
     @sw.setter
     def sw(self, new_value: Any) -> None:
-        sw = self._validate('sw', new_value, Number, float)
+        sw = self._validate("sw", new_value, Number, float)
         # Error will have been raised if new_value is invalid
         self._sw = sw
 
@@ -222,7 +221,7 @@ class ExpInfo:
 
     @offset.setter
     def offset(self, new_value: Any) -> None:
-        offset = self._validate('offset', new_value, Number, float)
+        offset = self._validate("offset", new_value, Number, float)
         # Error will have been raised if new_value is invalid
         self._offset = offset
 
@@ -233,7 +232,7 @@ class ExpInfo:
 
     @sfo.setter
     def sfo(self, new_value: Any) -> None:
-        sfo = self._validate('sfo', new_value, Number, float)
+        sfo = self._validate("sfo", new_value, Number, float)
         # Error will have been raised if new_value is invalid
         self._sfo = sfo
 
@@ -244,7 +243,7 @@ class ExpInfo:
 
     @nuclei.setter
     def nuclei(self, new_value: Any) -> None:
-        nuclei = self._validate('nuclei', new_value, str)
+        nuclei = self._validate("nuclei", new_value, str)
         # Error will have been raised if new_value is invalid
         self._nuclei = nuclei
 
@@ -255,13 +254,16 @@ class ExpInfo:
 
     @dim.setter
     def dim(self, new_value):
-        raise ValueError(f'{RED}`dim` cannot be mutated.{END}')
+        raise ValueError(f"{RED}`dim` cannot be mutated.{END}")
 
     def _validate(
-        self, name: str, value: Any, test_type: Type[Any],
-        final_type: Union[Type[Any], None] = None
+        self,
+        name: str,
+        value: Any,
+        test_type: Type[Any],
+        final_type: Union[Type[Any], None] = None,
     ) -> None:
-        errmsg = f'{RED}Invalid value supplied to {name}: {repr(value)}{END}'
+        errmsg = f"{RED}Invalid value supplied to {name}: {repr(value)}{END}"
 
         if isinstance(value, test_type):
             if self._dim == 1:
@@ -269,8 +271,9 @@ class ExpInfo:
             else:
                 value = self._dim * [value]
 
-        elif (isinstance(value, Iterable) and
-              all(isinstance(v, test_type) for v in value)):
+        elif isinstance(value, Iterable) and all(
+            isinstance(v, test_type) for v in value
+        ):
             value = list(value)
             diff = self._dim - len(value)
             if diff < 0:
@@ -290,8 +293,8 @@ class ExpInfo:
 
         `args` should be strings with names that match attribute names.
         """
-        to_underscore = ['pts', 'sw', 'offset', 'sfo', 'nuclei', 'dim']
-        ud_args = [f'_{a}' if a in to_underscore else a for a in args]
+        to_underscore = ["pts", "sw", "offset", "sfo", "nuclei", "dim"]
+        ud_args = [f"_{a}" if a in to_underscore else a for a in args]
         if len(args) == 1:
             return self.__dict__[ud_args[0]]
         else:

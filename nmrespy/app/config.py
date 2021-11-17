@@ -5,41 +5,41 @@ import numpy as np
 from .. import *
 
 # useful paths
-APPPATH = NMRESPYPATH / 'app'
-TMPPATH = APPPATH / 'tmp'
+APPPATH = NMRESPYPATH / "app"
+TMPPATH = APPPATH / "tmp"
 
 # GUI font
-MAINFONT = 'Helvetica'
+MAINFONT = "Helvetica"
 
 # colors related to plot
-BGCOLOR = '#e4eaef'
-PLOTCOLOR = '#ffffff'  # plot background
-REGIONCOLOR = '#7fd47f'  # region rectangle patch
-NOISEREGIONCOLOR = '#66b3ff'  # noise region rectange patch
-PIVOTCOLOR = '#ff0000'  # pivot line plot
-NOTEBOOKCOLOR = '#c4d1dc'
-ACTIVETABCOLOR = '#648ba4'
-BUTTONGREEN = '#9eda88'
-BUTTONORANGE = '#ffb861'
-BUTTONRED = '#ff9894'
-BUTTONDEFAULT = '#6699cc'
-READONLYENTRYCOLOR = '#cde6ff'
-TABLESELECTBGCOLOR = '#0000ff'
-TABLESELECTFGCOLOR = '#ffffff'
+BGCOLOR = "#e4eaef"
+PLOTCOLOR = "#ffffff"  # plot background
+REGIONCOLOR = "#7fd47f"  # region rectangle patch
+NOISEREGIONCOLOR = "#66b3ff"  # noise region rectange patch
+PIVOTCOLOR = "#ff0000"  # pivot line plot
+NOTEBOOKCOLOR = "#c4d1dc"
+ACTIVETABCOLOR = "#648ba4"
+BUTTONGREEN = "#9eda88"
+BUTTONORANGE = "#ffb861"
+BUTTONRED = "#ff9894"
+BUTTONDEFAULT = "#6699cc"
+READONLYENTRYCOLOR = "#cde6ff"
+TABLESELECTBGCOLOR = "#0000ff"
+TABLESELECTFGCOLOR = "#ffffff"
 FIDCOLORS = [
-    '#e6261f',
-    '#eb7532',
-    '#f7d038',
-    '#a3e048',
-    '#49da9a',
-    '#34bbe6',
-    '#4355db',
-    '#d23be7',
+    "#e6261f",
+    "#eb7532",
+    "#f7d038",
+    "#a3e048",
+    "#49da9a",
+    "#34bbe6",
+    "#4355db",
+    "#d23be7",
 ]
 
 # Image paths
-UPARROWPATH = NMRESPYPATH / 'images/up_arrow.png'
-DOWNARROWPATH = NMRESPYPATH / 'images/down_arrow.png'
+UPARROWPATH = NMRESPYPATH / "images/up_arrow.png"
+DOWNARROWPATH = NMRESPYPATH / "images/down_arrow.png"
 
 
 def get_PhotoImage(path, scale=1.0):
@@ -61,7 +61,7 @@ def get_PhotoImage(path, scale=1.0):
         tk.Label(parent, image=img)
     """
 
-    image = Image.open(path).convert('RGBA')
+    image = Image.open(path).convert("RGBA")
     [w, h] = image.size
     new_w = int(w * scale)
     new_h = int(h * scale)
@@ -93,11 +93,12 @@ def value_var_dict(value, var_object):
         var = tk.IntVar()
 
     var.set(var_object)
-    return {'value': value, 'var': var}
+    return {"value": value, "var": var}
 
 
 class AutoVivification(dict):
     """Implementation of perl's autovivification feature."""
+
     def __getitem__(self, item):
         try:
             return dict.__getitem__(self, item)
@@ -106,7 +107,7 @@ class AutoVivification(dict):
             return value
 
 
-class Restrictor():
+class Restrictor:
     """Resict naivgation within a defined range (used to prevent
     panning/zooming) outside spectral window on x-axis.
     Inspiration from
@@ -118,12 +119,8 @@ class Restrictor():
         self.res = [x, y]
         self.ax = ax
         self.limits = self.get_lim()
-        self.ax.callbacks.connect(
-            'xlim_changed', lambda evt: self.lims_change(axis=0)
-        )
-        self.ax.callbacks.connect(
-            'ylim_changed', lambda evt: self.lims_change(axis=1)
-        )
+        self.ax.callbacks.connect("xlim_changed", lambda evt: self.lims_change(axis=0))
+        self.ax.callbacks.connect("ylim_changed", lambda evt: self.lims_change(axis=1))
 
     def get_lim(self):
         return [self.ax.get_xlim(), self.ax.get_ylim()]
@@ -175,7 +172,7 @@ def check_float(value):
 
 
 def strip_zeros(number):
-    return number.rstrip('0').rstrip('.')
+    return number.rstrip("0").rstrip(".")
 
 
 def check_invalid_entries(master):
@@ -195,7 +192,7 @@ def check_invalid_entries(master):
         return widgets
 
     for widget in list(get_widgets(master)):
-        if widget.winfo_class() == 'Entry' and widget['fg'] == 'red':
+        if widget.winfo_class() == "Entry" and widget["fg"] == "red":
             return False
 
     return True

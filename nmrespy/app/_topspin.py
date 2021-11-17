@@ -50,8 +50,8 @@ pdflatex_exe = None
 
 if py_exe is None:
     ERRMSG(
-        'The Python 3 binary has not been specified. See the NMR-EsPy GUI '
-        'documentation for help.',
+        "The Python 3 binary has not been specified. See the NMR-EsPy GUI "
+        "documentation for help.",
         modal=1,
     )
     EXIT()
@@ -59,10 +59,10 @@ if py_exe is None:
 # Check whether nmrespy exists by importing
 # If it exists, $? = 0
 # If it does not exist, $? = int > 0
-checknmrespy = Popen([py_exe, "-c", "\"import nmrespy\""], stdout=PIPE)
+checknmrespy = Popen([py_exe, "-c", '"import nmrespy"'], stdout=PIPE)
 checknmrespy.communicate()[0]
 if checknmrespy.returncode != 0:
-    ERRMSG('Could not find NMR-EsPy in your Python 3 path!', modal=1)
+    ERRMSG("Could not find NMR-EsPy in your Python 3 path!", modal=1)
     EXIT()
 
 # get path
@@ -75,9 +75,17 @@ if curdata is None:
     EXIT()
 
 # Full path to the pdata directory
-path = os.path.join(curdata[3], curdata[0], curdata[1], 'pdata', curdata[2])
+path = os.path.join(curdata[3], curdata[0], curdata[1], "pdata", curdata[2])
 
 Popen(
-    [py_exe, "-m", "nmrespy", "--estimate", path, "--topspin", "--pdflatex",
-     pdflatex_exe]
+    [
+        py_exe,
+        "-m",
+        "nmrespy",
+        "--estimate",
+        path,
+        "--topspin",
+        "--pdflatex",
+        pdflatex_exe,
+    ]
 )
