@@ -30,19 +30,12 @@ def obj_grad_hess_1d(active: np.ndarray, *args):
     model_per_osc = Z * (theta[:m] * np.exp(1j * theta[m : 2 * m]))
 
     p = len(idx)
-
-    # First derivatives
-    # Gives array of:
-    # --> nx4m if all parameters are to be optimised
-    # --> nx3m if one type is passive
-    # --> nx2m if two types are passive
-    # --> nxm if three types are passive
+    # first derivative components
     d1 = np.zeros((*data.shape, m * p), dtype="complex")
 
-    # Second derivatives
     # int((p * (p + 1)) / 2) --> p-th triangle number
     # gives array of:
-    # --> nx10m if all parameters are to be optimised
+    # --> nx10m if all oscs are to be optimised
     # --> nx6m if one type is passive
     # --> nx3m if two types are passive
     # --> nxm if three types are passive
@@ -225,10 +218,6 @@ def obj_grad_hess_1d(active: np.ndarray, *args):
         ] += 2 / (np.pi * m)
 
     return obj, grad, hess
-
-
-
-
 
 
 def first_derivatives_1d(theta: np.ndarray, tp: np.ndarray, idx: list) -> np.ndarray:
@@ -420,8 +409,100 @@ def g_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
     # active and passive parameters.
     theta = _construct_parameters(active, passive, m, idx)
 
-    # Jacobian
-    d1 = first_derivatives_1d(theta, tp[0], idx)
+    # signal pole matrix
+    Z = np.exp(
+        np.outer(tp[0], (1j * 2 * np.pi * theta[2 * m : 3 * m] - theta[3 * m :]))
+    )
+
+    # N x M array comprising M N-length vectors
+    # each vector is the model produced by a single oscillator
+    model_per_osc = Z * (theta[:m] * np.exp(1j * theta[m : 2 * m]))
+
+    # first derivative components
+    d1 = np.zeros((tp[0].size, m * len(idx)), dtype="complex")
+
+    def ad(arr):
+        """Differentiate wrt amplitude."""
+        return arr / theta[:m]
+
+    def pd(arr):
+        """Differentiate wrt phase."""
+        return 1j * arr
+
+    def fd(arr):
+        """Differentiate wrt frequency."""
+        return np.einsum("ij,i->ij", arr, (1j * 2 * np.pi * tp[0]))
+
+    def dd(arr):
+        """Differentiate wrt damping factor."""
+        return np.einsum("ij,i->ij", arr, -tp[0])
+
+    if 0 in idx:
+        d1[:, :m] = ad(model_per_osc)  # a
+
+        if 1 in idx:
+            d1[:, m : 2 * m] = pd(model_per_osc)  # φ
+
+            if 2 in idx:
+                d1[:, 2 * m : 3 * m] = fd(model_per_osc)  # f
+
+                if 3 in idx:
+                    # ---a φ f η--- (all parameters)
+                    d1[:, 3 * m :] = dd(model_per_osc)  # η
+
+                # ---a φ f---
+
+            elif 3 in idx:
+                # ---a φ η---
+                d1[:, 2 * m :] = dd(model_per_osc)  # η
+
+            # ---a φ---
+
+        elif 2 in idx:
+            d1[:, m : 2 * m] = fd(model_per_osc)  # f
+
+            if 3 in idx:
+                # ---a f η---
+                d1[:, 2 * m :] = dd(model_per_osc)  # η
+
+            # ---a f---
+
+        elif 3 in idx:
+            # ---a η---
+            d1[:, m:] = dd(model_per_osc)  # η
+
+        # ---a only---
+
+    elif 1 in idx:
+        d1[:, :m] = pd(model_per_osc)  # φ
+
+        if 2 in idx:
+            d1[:, m : 2 * m] = fd(model_per_osc)  # f
+
+            if 3 in idx:
+                # ---φ f η---
+                d1[:, 2 * m :] = dd(model_per_osc)  # η
+
+            # ---φ f---
+
+        elif 3 in idx:
+            # ---φ η---
+            d1[:, m:] = dd(model_per_osc)  # η
+
+        # ---φ only---
+
+    elif 2 in idx:
+        d1[:, :m] = fd(model_per_osc)  # f
+
+        if 3 in idx:
+            # ---f η---
+            d1[:, m:] = dd(model_per_osc)  # η
+
+        # ---f only---
+
+    else:
+        # ---η only---
+        d1[:, :] = dd(model_per_osc)  # η
 
     # sum model_per_osc to generate data-length vector,
     # and take residual

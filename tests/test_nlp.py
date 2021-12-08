@@ -6,8 +6,49 @@
 import numpy as np
 from context import nmrespy  # noqa: F401
 from nmrespy import ExpInfo
-from nmrespy.nlp import NonlinearProgramming
-from nmrespy.sig import make_fid
+from nmrespy.nlp import NonlinearProgramming, _funcs
+from nmrespy.sig import make_fid, get_timepoints
+
+
+def test_funcs():
+    params = np.array(
+        [
+            [4, 0, -4.5, 1],
+            [3, 0, -2.5, 2],
+            [1, 0, 2.5, 1],
+            [2, 0, 5.5, 2],
+        ]
+    )
+    expinfo = ExpInfo(pts=1024, sw=20)
+    fid = make_fid(params, expinfo)[0]
+    x0 = np.array(
+        [
+            [3.9, 0.1, -4.3, 1.1],
+            [4.2, -0.1, -2.3, 1.8],
+            [1.1, 0.05, 2.6, 0.9],
+            [1.8, -0.1, 5.3, 2.2],
+        ]
+    ).flatten(order="F")
+    args = (
+        fid,
+        get_timepoints(expinfo),
+        params.shape[0],
+        np.array([]),
+        list(range(4)),
+        True,
+    )
+    old = (
+        _funcs.f_1d(x0, *args),
+        _funcs.g_1d(x0, *args),
+        _funcs.h_1d(x0, *args),
+    )
+    new = _funcs.obj_grad_hess_1d(x0, *args)
+    assert all(
+        [
+            np.array_equal(a, b)
+            for a, b in zip(old, new)
+        ]
+    )
 
 
 def test_nlp_1d():

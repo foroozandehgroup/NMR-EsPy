@@ -124,7 +124,7 @@ class FilterInfo:
         self,
         *,
         cut_ratio: Union[float, None] = 1.1,
-        fix_baseline: bool = True,
+        fix_baseline: bool = False,
     ) -> Tuple[np.ndarray, ExpInfo]:
         """Get filtered spectrum."""
         if isinstance(cut_ratio, float):
@@ -139,6 +139,9 @@ class FilterInfo:
         if fix_baseline:
             filtered_spectrum += self._baseline_fix(filtered_spectrum)
         filtered_spectrum = filtered_spectrum[cut_slice]
+        if isinstance(cut_ratio, float):
+            scaling_factor = 0.5 * self._cut_scaling_factor(cut_ratio)
+            filtered_spectrum *= scaling_factor
 
         pts = filtered_spectrum.shape
         cut_hz = self._converter.convert(cut_idx, "idx->hz")
@@ -155,16 +158,12 @@ class FilterInfo:
         return filtered_spectrum, expinfo
 
     def get_filtered_fid(
-        self, cut_ratio: Union[float, None] = 1.1, fix_baseline: bool = True
+        self, cut_ratio: Union[float, None] = 1.1, fix_baseline: bool = False,
     ) -> Tuple[np.ndarray, ExpInfo]:
         filtered_spectrum, expinfo = self.get_filtered_spectrum(
             cut_ratio=cut_ratio, fix_baseline=fix_baseline
         )
         filtered_fid = self._ift_and_slice(filtered_spectrum)
-        if isinstance(cut_ratio, float):
-            scaling_factor = self._cut_scaling_factor(cut_ratio)
-            filtered_fid *= scaling_factor
-        expinfo._pts = filtered_fid.shape
         return filtered_fid, expinfo
 
     def _cut_indices(self, cut_ratio: float):

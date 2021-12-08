@@ -118,7 +118,7 @@ class TestFilterPerformance:
     def test_uncut(self):
         expected = np.array([[10, 0, 350, 10]])
         finfo = self.make_filter()
-        fid, expinfo = finfo.get_filtered_fid(cut_ratio=None, fix_baseline=False)
+        fid, expinfo = finfo.get_filtered_fid(cut_ratio=None)
         mpm_object = mpm.MatrixPencil(fid, expinfo)
         mpm_result = mpm_object.get_result()
         assert np.allclose(expected, mpm_result, rtol=0, atol=1e-2)
