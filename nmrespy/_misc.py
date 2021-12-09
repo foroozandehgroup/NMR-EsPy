@@ -1,7 +1,7 @@
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 25 Oct 2021 17:08:57 BST
+# Last Edited: Thu 09 Dec 2021 20:20:03 GMT
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
@@ -142,6 +142,8 @@ class ArgumentChecker:
                 test = obj in ["none", "amp", "phase"]
             elif typ == "start_time":
                 test = self.check_start_time(obj)
+            elif typ == "hessian":
+                test = obj in ["exact", "gauss-newton"]
 
             # Error message to be shown if invalid arguments are found
             if test is False:
