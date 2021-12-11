@@ -1,9 +1,10 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 09 Dec 2021 20:32:49 GMT
+# Last Edited: Thu 09 Dec 2021 22:46:32 GMT
 """Definitions of fidelities, gradients, and Hessians."""
 
+import time
 from typing import Dict, Tuple
 import numpy as np
 
@@ -18,10 +19,19 @@ class ObjGrad:
         self.theta = None
         self.obj = None
         self.grad = None
+        self.history = []
 
     def _compute_if_needed(self, theta, *args):
         if not np.all(theta == self.theta) or self.obj is None or self.grad is None:
-            self.obj, self.grad = self.fun(theta, *args)
+            self.obj, self.grad, start, finish = self.fun(theta, *args)
+            self.history.append(
+                {
+                    "obj": self.obj,
+                    "grad": self.grad,
+                    "start": start,
+                    "finish": finish,
+                }
+            )
 
     def objective(self, theta, *args):
         self._compute_if_needed(theta, *args)
@@ -43,7 +53,16 @@ class ObjGradHess(ObjGrad):
             not np.all(theta == self.theta) or self.obj is None or
             self.grad is None or self.hess is None
         ):
-            self.obj, self.grad, self.hess = self.fun(theta, *args)
+            self.obj, self.grad, self.hess, start, finish = self.fun(theta, *args)
+            self.history.append(
+                {
+                    "obj": self.obj,
+                    "grad": self.grad,
+                    "hess": self.hess,
+                    "start": start,
+                    "finish": finish,
+                }
+            )
 
     def hessian(self, theta, *args):
         self._compute_if_needed(theta, *args)
@@ -220,6 +239,7 @@ def second_derivatives_1d(
 
 
 def obj_grad_1d(active: np.ndarray, *args):
+    start = time.time()
     data, tp, m, passive, idx, phasevar = args
 
     # reconstruct correctly ordered parameter vector from
@@ -262,11 +282,12 @@ def obj_grad_1d(active: np.ndarray, *args):
         obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
         # ∂Var(φ)/∂φᵢ
         grad[i * m : (i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
-
-    return obj, grad
+    finish = time.time()
+    return obj, grad, start, finish
 
 
 def obj_grad_gauss_newton_hess_1d(active: np.ndarray, *args):
+    start = time.time()
     data, tp, m, passive, idx, phasevar = args
 
     # reconstruct correctly ordered parameter vector from
@@ -300,9 +321,12 @@ def obj_grad_gauss_newton_hess_1d(active: np.ndarray, *args):
     # --- ∇²ℱ(θ) ---
     hess = 2 * np.real(jac.conj().T @ jac)
 
-    return obj, grad, hess
+    finish = time.time()
+    return obj, grad, hess, start, finish
+
 
 def obj_grad_true_hess_1d(active: np.ndarray, *args):
+    start = time.time()
     data, tp, m, passive, idx, phasevar = args
 
     # reconstruct correctly ordered parameter vector from
@@ -377,7 +401,8 @@ def obj_grad_true_hess_1d(active: np.ndarray, *args):
             main_diagonals[1][i * m : (i + 1) * m],
         ] += 2 / (np.pi * m)
 
-    return obj, grad, hess
+    finish = time.time()
+    return obj, grad, hess, start, finish
 
 
 def obj_grad_true_hess_2d(active: np.ndarray, *args):

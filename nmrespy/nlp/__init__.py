@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 09 Dec 2021 20:24:43 GMT
+# Last Edited: Fri 10 Dec 2021 00:24:56 GMT
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
@@ -16,8 +16,7 @@ import scipy.optimize as optimize
 
 from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
 import nmrespy._errors as errors
-from nmrespy._misc import start_end_wrapper, ArgumentChecker, FrequencyConverter
-from nmrespy._timing import timer
+from nmrespy._misc import ArgumentChecker, FrequencyConverter
 from . import _funcs as funcs
 from nmrespy.sig import get_timepoints
 
@@ -351,6 +350,9 @@ class NonlinearProgramming(FrequencyConverter):
         """
         return self._get_array("errors", freq_unit)
 
+    def get_iteration_info(self):
+        return self.function_factory.history
+
     def _get_array(self, name: str, freq_unit: str) -> np.ndarray:
         if freq_unit == "hz":
             return self.__dict__[name]
@@ -515,19 +517,23 @@ class NonlinearProgramming(FrequencyConverter):
         if self.method == "trust_region":
             if self.dim == 1:
                 if self.hessian == "exact":
-                    function_factory = funcs.ObjGradHess(funcs.obj_grad_true_hess_1d)
+                    self.function_factory = funcs.ObjGradHess(
+                        funcs.obj_grad_true_hess_1d
+                    )
                 else:
-                    function_factory = funcs.ObjGradHess(
+                    self.function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_gauss_newton_hess_1d
                     )
             elif self.dim == 2:
                 if self.hessian == "exact":
-                    function_factory = funcs.ObjGradHess(funcs.obj_grad_true_hess_2d)
+                    self.function_factory = funcs.ObjGradHess(
+                        funcs.obj_grad_true_hess_2d
+                    )
                 else:
                     raise ValueError("TODO: 2D Gauss-Newton")
-            objective = function_factory.objective
-            gradient = function_factory.gradient
-            hessian = function_factory.hessian
+            objective = self.function_factory.objective
+            gradient = self.function_factory.gradient
+            hessian = self.function_factory.hessian
 
         if self.method == "lbfgs":
             # Need to compute the Hessian once, at the end of the optimisation,
@@ -683,9 +689,9 @@ class NonlinearProgramming(FrequencyConverter):
 
         # See newton_meets_ockham, Eq. (22)
         errors = np.sqrt(
-            self.objective(self.active, *args)
-            * np.abs(np.diag(nlinalg.inv(self.hessian(self.active, *args))))
-            / functools.reduce(operator.mul, [n - 1 for n in self.expinfo.pts])
+            self.objective(self.active, *args) *
+            np.abs(np.diag(nlinalg.inv(self.hessian(self.active, *args)))) /
+            functools.reduce(operator.mul, [n - 1 for n in self.expinfo.pts])
         )
 
         # Re-scale amplitude errors
