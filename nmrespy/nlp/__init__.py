@@ -350,9 +350,6 @@ class NonlinearProgramming(FrequencyConverter):
         """
         return self._get_array("errors", freq_unit)
 
-    def get_iteration_info(self):
-        return self.function_factory.history
-
     def _get_array(self, name: str, freq_unit: str) -> np.ndarray:
         if freq_unit == "hz":
             return self.__dict__[name]
@@ -517,23 +514,23 @@ class NonlinearProgramming(FrequencyConverter):
         if self.method == "trust_region":
             if self.dim == 1:
                 if self.hessian == "exact":
-                    self.function_factory = funcs.ObjGradHess(
+                    function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_true_hess_1d
                     )
                 else:
-                    self.function_factory = funcs.ObjGradHess(
+                    function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_gauss_newton_hess_1d
                     )
             elif self.dim == 2:
                 if self.hessian == "exact":
-                    self.function_factory = funcs.ObjGradHess(
+                    function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_true_hess_2d
                     )
                 else:
                     raise ValueError("TODO: 2D Gauss-Newton")
-            objective = self.function_factory.objective
-            gradient = self.function_factory.gradient
-            hessian = self.function_factory.hessian
+            objective = function_factory.objective
+            gradient = function_factory.gradient
+            hessian = function_factory.hessian
 
         if self.method == "lbfgs":
             # Need to compute the Hessian once, at the end of the optimisation,

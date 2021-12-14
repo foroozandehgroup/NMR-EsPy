@@ -1,16 +1,14 @@
 # test_nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 09 Dec 2021 20:33:09 GMT
+# Last Edited: Tue 14 Dec 2021 19:09:19 GMT
 
 import pytest
-import timeit
 
 import numpy as np
 from context import nmrespy  # noqa: F401
-from nmrespy import ExpInfo
-from nmrespy.nlp import NonlinearProgramming, _funcs
-from nmrespy.sig import make_fid, get_timepoints
+from nmrespy import ExpInfo, sig
+from nmrespy.nlp import NonlinearProgramming
 
 
 def test_nlp_1d():
@@ -23,7 +21,7 @@ def test_nlp_1d():
         ]
     )
     expinfo = ExpInfo(pts=1024, sw=20)
-    fid = make_fid(params, expinfo)[0]
+    fid = sig.make_fid(params, expinfo)[0]
     x0 = np.array(
         [
             [3.9, 0.1, -4.3, 1.1],
@@ -33,39 +31,27 @@ def test_nlp_1d():
         ]
     )
 
-    args = (
-        fid,
-        get_timepoints(expinfo),
-        4,
-        np.array([]),
-        list(range(4)),
-        False,
+    nlp = NonlinearProgramming(
+        fid, x0, expinfo, hessian="gauss-newton", phase_variance=False
     )
+    result = nlp.get_result()
+    assert np.allclose(result, params, rtol=0, atol=1e-4)
 
-    def run1():
-        nlp = NonlinearProgramming(fid, x0, expinfo, hessian="gauss-newton", phase_variance=False)
-        result = nlp.get_result()
-        assert np.allclose(result, params, rtol=0, atol=1e-4)
+    nlp = NonlinearProgramming(
+        fid, x0, expinfo, hessian="exact", phase_variance=False
+    )
+    result = nlp.get_result()
+    assert np.allclose(result, params, rtol=0, atol=1e-4)
 
-    def run2():
-        nlp = NonlinearProgramming(fid, x0, expinfo, hessian="exact", phase_variance=False)
-        result = nlp.get_result()
-        assert np.allclose(result, params, rtol=0, atol=1e-4)
-
-    print(timeit.timeit(lambda: run1(), number=10))
-    print(timeit.timeit(lambda: run2(), number=10))
-    exit()
-    nlp = NonlinearProgramming(fid, x0, expinfo, phase_variance=False, method="lbfgs")
+    nlp = NonlinearProgramming(
+        fid, x0, expinfo, phase_variance=False, method="lbfgs"
+    )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-2)
 
     # test with FID not starting at t=0
     nlp = NonlinearProgramming(
-        fid[20:],
-        x0,
-        expinfo,
-        phase_variance=False,
-        start_point=[20],
+        fid[20:], x0, expinfo, phase_variance=False, start_point=[20],
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-4)
@@ -81,7 +67,7 @@ def test_nlp_2d():
         ]
     )
     expinfo = ExpInfo(pts=128, sw=20, dim=2)
-    fid = make_fid(params, expinfo)[0]
+    fid = sig.make_fid(params, expinfo)[0]
     x0 = np.array(
         [
             [3.9, 0.1, -4.3, 4.7, 0.9, 1.1],
@@ -90,14 +76,14 @@ def test_nlp_2d():
             [1.8, -0.1, 5.3, -0.3, 1.8, 2.2],
         ]
     )
-    with pytest.raises(ValueError):
-        nlp = NonlinearProgramming(fid, x0, expinfo, phase_variance=False)
-        result = nlp.get_result()
-        assert np.allclose(result, params, rtol=0, atol=1e-4)
 
-    # nlp = NonlinearProgramming(
-    #     fid[10:, 5:], x0, sw, offset=offset, phase_variance=False,
-    #     start_point=[10, 5],
-    # )
-    # result = nlp.get_result()
-    # assert np.allclose(result, params, rtol=0, atol=1E-4)
+    nlp = NonlinearProgramming(fid, x0, expinfo, phase_variance=False)
+    result = nlp.get_result()
+    assert np.allclose(result, params, rtol=0, atol=1e-4)
+
+    nlp = NonlinearProgramming(
+        fid[10:, 5:], x0, expinfo, phase_variance=False,
+        start_point=[10, 5],
+    )
+    result = nlp.get_result()
+    assert np.allclose(result, params, rtol=0, atol=1E-4)
