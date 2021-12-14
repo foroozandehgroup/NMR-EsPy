@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 10 Dec 2021 00:24:56 GMT
+# Last Edited: Tue 14 Dec 2021 19:22:49 GMT
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
@@ -527,7 +527,10 @@ class NonlinearProgramming(FrequencyConverter):
                         funcs.obj_grad_true_hess_2d
                     )
                 else:
-                    raise ValueError("TODO: 2D Gauss-Newton")
+                    function_factory = funcs.ObjGradHess(
+                        funcs.obj_grad_gauss_newton_hess_2d
+                    )
+
             objective = function_factory.objective
             gradient = function_factory.gradient
             hessian = function_factory.hessian

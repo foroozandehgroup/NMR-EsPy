@@ -1,7 +1,7 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Dec 2021 19:09:21 GMT
+# Last Edited: Tue 14 Dec 2021 19:27:25 GMT
 
 """Definitions of fidelities, gradients, and Hessians."""
 
@@ -455,7 +455,6 @@ def first_derivatives_2d(
         d1[..., :m] = d1d(model_per_osc)  # η1
         d1[..., m:] = d2d(model_per_osc)  # η2
 
-    print(d1.shape)
     return d1
 
 
@@ -494,10 +493,7 @@ def second_derivatives_2d(
     """
     p = len(idx)
     n1, n2 = d1.shape[:2]
-    print(d1.shape)
-    print(p)
     m = d1.shape[-1] // p
-    print(m)
     # int((p * (p + 1)) / 2) --> p-th triangle number
     # gives array of:
     # --> nx21m if all oscs are to be optimised
@@ -507,7 +503,6 @@ def second_derivatives_2d(
     # --> nx3m if four types are passive
     # --> nxm if five types are passive
     d2 = np.zeros((n1, n2, m * (p * (p + 1) // 2)), dtype="complex")
-    print(d2.shape)
 
     ad = deriv_functions["a"]
     pd = deriv_functions["p"]
@@ -922,6 +917,198 @@ def obj_grad_true_hess_1d(active: np.ndarray, *args):
     return obj, grad, hess
 
 
+def obj_grad_2d(active: np.ndarray, *args: args_type) -> Tuple[float, np.ndarray]:
+    """Compute the objective and gradient for 2D data.
+
+    Parameters
+    ----------
+    active
+        Array of active parameters (parameters to be optimised).
+
+    args : list_iterator
+        Contains elements in the following order:
+
+        * **data:** Array of the original FID data.
+        * **tp:** The time-points the signal was sampled at
+        * **m:** Number of oscillators
+        * **passive:** Passive parameters (not to be optimised).
+        * **idx:** Indicates the types of parameters that are
+          active:
+
+              + ``0`` - amplitudes.
+              + ``1`` - phases.
+              + ``2`` and ``3`` - frequencies 1 and 2.
+              + ``3`` and ``4`` - damping factors 1 and 2.
+
+        * **phase_variance:** If ``True``, include the oscillator phase
+          variance to the cost function.
+
+    Returns
+    -------
+    obj: float
+        Value of the objective.
+
+    grad: numpy.ndarray
+        Gradient of the objective.
+    """
+    data, tp, m, passive, idx, phasevar = args
+
+    # reconstruct correctly ordered parameter vector from
+    # active and passive parameters.
+    theta = _construct_parameters(active, passive, m, idx)
+
+    model_per_osc = np.einsum(
+        "ik,kj->ijk",
+        # Y
+        np.exp(
+            np.outer(
+                tp[0],
+                2j * np.pi * theta[2 * m : 3 * m] - theta[4 * m : 5 * m]
+            ),
+        ),
+        np.einsum(
+            "ij,i->ij",
+            # Z
+            np.exp(
+                np.outer(
+                    2j * np.pi * theta[3 * m : 4 * m] - theta[5 * m : 6 * m],
+                    tp[1],
+                )
+            ),
+            # α
+            theta[:m] * np.exp(1j * theta[m : 2 * m])
+        ),
+    )
+
+    deriv_functions = {
+        "a": lambda x: x / theta[:m],
+        "p": lambda x: 1j * x,
+        "f1": lambda x: np.einsum("ijk,i->ijk", x, 2j * np.pi * tp[0]),
+        "f2": lambda x: np.einsum("ijk,j->ijk", x, 2j * np.pi * tp[1]),
+        "d1": lambda x: np.einsum("ijk,i->ijk", x, -tp[0]),
+        "d2": lambda x: np.einsum("ijk,j->ijk", x, -tp[1]),
+    }
+
+    d1 = first_derivatives_2d(model_per_osc, idx, deriv_functions)
+
+    model = np.einsum("ijk->ij", model_per_osc)
+    diff = data - model
+
+    # --- ℱ(θ) ---
+    # Tr(AB) = Σᵢⱼ aᵢⱼbⱼᵢ
+    obj = np.real(np.einsum("ij,ij->", diff.conj(), diff))
+    # --- ∇ℱ(θ) ---
+    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1))
+
+    if phasevar:
+        # If 0 in idx, phases will be between m and 2m, as amps
+        # also present if not, phases will be between 0 and m
+        i = 1 if 0 in idx else 0
+        phases = theta[i * m : (i + 1) * m]
+        mu = np.einsum("i->", phases) / m
+        # Var(φ)
+        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
+        # ∂Var(φ)/∂φᵢ
+        grad[i * m : (i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
+
+    return obj, grad
+
+
+def obj_grad_gauss_newton_hess_2d(
+    active: np.ndarray, *args: args_type
+) -> Tuple[float, np.ndarray, np.ndarray]:
+    """Compute the objective, gradient and hessian for 2D data.
+
+    The Hessian is computed using the Gauss-Newton technique.
+
+    Parameters
+    ----------
+    active
+        Array of active parameters (parameters to be optimised).
+
+    args : list_iterator
+        Contains elements in the following order:
+
+        * **data:** Array of the original FID data.
+        * **tp:** The time-points the signal was sampled at
+        * **m:** Number of oscillators
+        * **passive:** Passive parameters (not to be optimised).
+        * **idx:** Indicates the types of parameters that are
+          active:
+
+              + ``0`` - amplitudes.
+              + ``1`` - phases.
+              + ``2`` and ``3`` - frequencies 1 and 2.
+              + ``3`` and ``4`` - damping factors 1 and 2.
+
+        * **phase_variance:** If ``True``, include the oscillator phase
+          variance to the cost function.
+
+    Returns
+    -------
+    obj: float
+        Value of the objective.
+
+    grad: numpy.ndarray
+        Gradient of the objective.
+
+    hess: numpy.ndarray
+        Gauss-Newton Hessian of the objective.
+    """
+    data, tp, m, passive, idx, phasevar = args
+
+    # reconstruct correctly ordered parameter vector from
+    # active and passive parameters.
+    theta = _construct_parameters(active, passive, m, idx)
+
+    model_per_osc = np.einsum(
+        "ik,kj->ijk",
+        # Y
+        np.exp(
+            np.outer(
+                tp[0],
+                2j * np.pi * theta[2 * m : 3 * m] - theta[4 * m : 5 * m]
+            ),
+        ),
+        np.einsum(
+            "ij,i->ij",
+            # Z
+            np.exp(
+                np.outer(
+                    2j * np.pi * theta[3 * m : 4 * m] - theta[5 * m : 6 * m],
+                    tp[1],
+                )
+            ),
+            # α
+            theta[:m] * np.exp(1j * theta[m : 2 * m])
+        ),
+    )
+
+    deriv_functions = {
+        "a": lambda x: x / theta[:m],
+        "p": lambda x: 1j * x,
+        "f1": lambda x: np.einsum("ijk,i->ijk", x, 2j * np.pi * tp[0]),
+        "f2": lambda x: np.einsum("ijk,j->ijk", x, 2j * np.pi * tp[1]),
+        "d1": lambda x: np.einsum("ijk,i->ijk", x, -tp[0]),
+        "d2": lambda x: np.einsum("ijk,j->ijk", x, -tp[1]),
+    }
+
+    d1 = first_derivatives_2d(model_per_osc, idx, deriv_functions)
+
+    model = np.einsum("ijk->ij", model_per_osc)
+    diff = data - model
+
+    # --- ℱ(θ) ---
+    # Tr(AB) = Σᵢⱼ aᵢⱼbⱼᵢ
+    obj = np.real(np.einsum("ij,ij->", diff.conj(), diff))
+    # --- ∇ℱ(θ) ---
+    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1))
+    # --- ∇²ℱ(θ) ---
+    hess = 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1))
+
+    return obj, grad, hess
+
+
 def obj_grad_true_hess_2d(active: np.ndarray, *args):
     """Compute the objective, gradient and hessian for 2D data.
 
@@ -1007,7 +1194,7 @@ def obj_grad_true_hess_2d(active: np.ndarray, *args):
 
     # --- ℱ(θ) ---
     # Tr(AB) = Σᵢⱼ aᵢⱼbⱼᵢ
-    obj = np.real(np.einsum("ij,ij->", (data - model).conj(), (data - model)))
+    obj = np.real(np.einsum("ij,ij->", diff.conj(), diff))
     # --- ∇ℱ(θ) ---
     grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1))
     # --- ∇²ℱ(θ) ---

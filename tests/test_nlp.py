@@ -1,7 +1,7 @@
 # test_nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Dec 2021 19:09:19 GMT
+# Last Edited: Tue 14 Dec 2021 19:30:31 GMT
 
 import pytest
 
@@ -76,10 +76,24 @@ def test_nlp_2d():
             [1.8, -0.1, 5.3, -0.3, 1.8, 2.2],
         ]
     )
-
-    nlp = NonlinearProgramming(fid, x0, expinfo, phase_variance=False)
+    nlp = NonlinearProgramming(
+        fid, x0, expinfo, hessian="gauss-newton", phase_variance=False
+    )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-4)
+
+    nlp = NonlinearProgramming(
+        fid, x0, expinfo, hessian="exact", phase_variance=False
+    )
+    result = nlp.get_result()
+    assert np.allclose(result, params, rtol=0, atol=1e-4)
+
+    nlp = NonlinearProgramming(
+        fid, x0, expinfo, phase_variance=False, method="lbfgs"
+    )
+
+    result = nlp.get_result()
+    assert np.allclose(result, params, rtol=0, atol=1e-2)
 
     nlp = NonlinearProgramming(
         fid[10:, 5:], x0, expinfo, phase_variance=False,
