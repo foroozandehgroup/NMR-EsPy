@@ -139,9 +139,11 @@ class FilterInfo:
         if fix_baseline:
             filtered_spectrum += self._baseline_fix(filtered_spectrum)
         filtered_spectrum = filtered_spectrum[cut_slice]
+
+        scaling_factor = 0.5
         if isinstance(cut_ratio, float):
-            scaling_factor = 0.5 * self._cut_scaling_factor(cut_ratio)
-            filtered_spectrum *= scaling_factor
+            scaling_factor *= self._cut_scaling_factor(cut_ratio)
+        filtered_spectrum *= scaling_factor
 
         pts = filtered_spectrum.shape
         cut_hz = self._converter.convert(cut_idx, "idx->hz")

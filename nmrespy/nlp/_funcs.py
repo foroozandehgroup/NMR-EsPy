@@ -5,7 +5,7 @@
 
 """Definitions of fidelities, gradients, and Hessians."""
 
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Tuple
 import numpy as np
 
 

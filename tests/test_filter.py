@@ -4,6 +4,8 @@ import numpy as np
 from scipy.optimize import minimize
 from context import nmrespy
 from nmrespy import ExpInfo, _misc, mpm, sig, freqfilter as ff
+import matplotlib as mpl
+mpl.use("tkAgg")
 
 
 def round_tuple(tup, x=3):
@@ -130,33 +132,3 @@ class TestFilterPerformance:
         mpm_object = mpm.MatrixPencil(fid, expinfo)
         mpm_result = mpm_object.get_result()
         assert np.allclose(expected, mpm_result, rtol=0, atol=1e-1)
-
-
-def test_fix_baseline():
-    p = np.array(
-        [
-            [10, 0, 350, 10],
-            [20, 0, 340, 10],
-            [10, 0, 330, 10],
-            [10, 0, -100, 10],
-            [30, 0, -90, 10],
-            [30, 0, -80, 10],
-            [10, 0, -70, 10],
-        ]
-    )
-    sw = 1000.0
-    offset = 0.0
-    sfo = 500.0
-    pts = 4096
-    expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
-    region = ((300.0, 380.0),)
-    noise_region = ((-225.0, -250.0),)
-    fid = sig.make_fid(p, expinfo, snr=20.0)[0]
-    spectrum = sig.ft(fid)
-    finfo = ff.filter_spectrum(spectrum, expinfo, region, noise_region)
-    import matplotlib.pyplot as plt
-
-    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
-    ax1.plot(spectrum)
-    ax2.plot(finfo.get_filtered_spectrum()[0])
-    plt.show()
