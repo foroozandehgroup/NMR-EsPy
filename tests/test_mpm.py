@@ -1,3 +1,8 @@
+# test_mpm.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Fri 28 Jan 2022 18:09:11 GMT
+
 """Test the nmrespy.mpm module."""
 
 import copy
@@ -18,8 +23,9 @@ def test_mpm_1d():
             [2, 0, 5.5, 2],
         ]
     )
-    expinfo = ExpInfo(pts=1024, sw=20, sfo=10)
-    fid = make_fid(params, expinfo)[0]
+    pts = [2048]
+    expinfo = ExpInfo(sw=20, sfo=10)
+    fid = make_fid(params, expinfo, pts)[0]
     mpm = MatrixPencil(fid, expinfo, M=4)
     result = mpm.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-8)
@@ -43,9 +49,10 @@ def test_mpm_2d():
             [0.5, 0, 8, 1, 1, 1],
         ]
     )
-    expinfo = ExpInfo(pts=128, sw=20, sfo=10, dim=2)
+    pts = [128, 128]
+    expinfo = ExpInfo(sw=20, sfo=10, dim=2)
 
-    fid = make_fid(params, expinfo)[0]
+    fid = make_fid(params, expinfo, pts)[0]
     mpm = MatrixPencil(fid, expinfo, M=4)
     assert np.allclose(mpm.get_result(), params, rtol=0, atol=1e-8)
     ppm_params = copy.deepcopy(params)

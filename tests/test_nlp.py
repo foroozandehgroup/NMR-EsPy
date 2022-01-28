@@ -1,7 +1,7 @@
 # test_nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Dec 2021 19:30:31 GMT
+# Last Edited: Fri 28 Jan 2022 18:24:36 GMT
 
 import numpy as np
 from nmrespy import ExpInfo, sig
@@ -17,8 +17,9 @@ def test_nlp_1d():
             [2, 0, 5.5, 2],
         ]
     )
-    expinfo = ExpInfo(pts=1024, sw=20)
-    fid = sig.make_fid(params, expinfo)[0]
+    pts = [1024]
+    expinfo = ExpInfo(sw=20)
+    fid = sig.make_fid(params, expinfo, pts)[0]
     x0 = np.array(
         [
             [3.9, 0.1, -4.3, 1.1],
@@ -48,7 +49,7 @@ def test_nlp_1d():
 
     # test with FID not starting at t=0
     nlp = NonlinearProgramming(
-        fid[20:], x0, expinfo, phase_variance=False, start_point=[20],
+        fid[20:], x0, expinfo, phase_variance=False, start_time=["20dt"],
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-4)
@@ -63,8 +64,9 @@ def test_nlp_2d():
             [2, 0, 5.5, -0.5, 2, 2],
         ]
     )
-    expinfo = ExpInfo(pts=128, sw=20, dim=2)
-    fid = sig.make_fid(params, expinfo)[0]
+    pts = [128, 128]
+    expinfo = ExpInfo(sw=20, dim=2)
+    fid = sig.make_fid(params, expinfo, pts)[0]
     x0 = np.array(
         [
             [3.9, 0.1, -4.3, 4.7, 0.9, 1.1],
@@ -94,7 +96,7 @@ def test_nlp_2d():
 
     nlp = NonlinearProgramming(
         fid[10:, 5:], x0, expinfo, phase_variance=False,
-        start_point=[10, 5],
+        start_time=["10dt", "5dt"],
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1E-4)

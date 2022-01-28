@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Dec 2021 19:22:49 GMT
+# Last Edited: Fri 28 Jan 2022 18:22:02 GMT
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
@@ -54,7 +54,7 @@ class NonlinearProgramming(FrequencyConverter):
         theta0: np.ndarray,
         expinfo: ExpInfo,
         *,
-        start_point: Union[Iterable[int], None] = None,
+        start_time: Union[Iterable[int], None] = None,
         phase_variance: bool = True,
         method: str = "trust_region",
         hessian: str = "exact",
@@ -106,9 +106,14 @@ class NonlinearProgramming(FrequencyConverter):
             determine the sweep width, transmitter offset and (optionally) the
             transmitter freqency.
 
-        start_point
-            The first timepoint sampled in each dimnesion, in units of
-            :math:`\Delta t = 1 / f_{\mathrm{sw}}`
+        start_time
+            The start time in each dimension. If set to `None`, the initial
+            point in each dimension with be ``0.0``. To set non-zero start times,
+            a list of floats or strings can be used. If floats are used, they
+            specify the first value in each dimension in seconds. Alternatively,
+            strings of the form ``f'{N}dt'``, where ``N`` is an integer, may be
+            used, which indicates a cetain multiple of the difference in time
+            between two adjacent points.
 
         phase_variance
             Specifies whether or not to include the variance of oscillator
@@ -227,10 +232,9 @@ class NonlinearProgramming(FrequencyConverter):
 
         self.p = 2 * self.dim + 2
         self.m = int(self.theta0.size / self.p)
-        self.expinfo.pts = self.data.shape
 
-        if self.start_point is None:
-            self.start_point = [0] * self.dim
+        if self.start_time is None:
+            self.start_time = [0.0] * self.dim
         if self.max_iterations is None:
             self.max_iterations = 100 if self.method == "trust_region" else 500
         if self.amp_thold is None:
@@ -238,12 +242,12 @@ class NonlinearProgramming(FrequencyConverter):
             self.amp_thold = self.amp_thold * nlinalg.norm(self.theta0[:, 0])
         # TODO freq-thold?
 
+        self.pts = self.data.shape
         self.norm = nlinalg.norm(self.data)
         self.normed_data = self.data / self.norm
-        self.tp = [
-            tp + (sp / sw) for tp, sp, sw in
-            zip(get_timepoints(self.expinfo), self.start_point, self.expinfo.sw)
-        ]
+        self.tp = get_timepoints(
+            self.expinfo, self.pts, start_time=self.start_time, meshgrid_2d=False,
+        )
 
         # Active parameters: parameters that are going to actually be
         # optimised.
@@ -277,7 +281,7 @@ class NonlinearProgramming(FrequencyConverter):
         checker.stage(
             (self.theta0, "theta0", "parameter"),
             (self.phase_variance, "phase_variance", "bool"),
-            (self.start_point, "start_point", "int_iter", True),
+            (self.start_time, "start_time", "start_time", True),
             (self.max_iterations, "max_iterations", "positive_int", True),
             (self.mode, "mode", "optimiser_mode"),  # TODO
             (self.negative_amps, "negative_amps", "negative_amplidue"),
@@ -691,7 +695,7 @@ class NonlinearProgramming(FrequencyConverter):
         errors = np.sqrt(
             self.objective(self.active, *args) *
             np.abs(np.diag(nlinalg.inv(self.hessian(self.active, *args)))) /
-            functools.reduce(operator.mul, [n - 1 for n in self.expinfo.pts])
+            functools.reduce(operator.mul, [n - 1 for n in self.pts])
         )
 
         # Re-scale amplitude errors
