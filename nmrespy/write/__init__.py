@@ -1,7 +1,7 @@
-# write.py
+# __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-
+# Last Edited: Fri 28 Jan 2022 18:36:48 GMT
 """Writing estimation results to .txt, .pdf and .csv files"""
 
 from collections import deque
@@ -470,7 +470,10 @@ def _format_error_table(
 
 
 def _compute_integrals(expinfo: ExpInfo, params: np.ndarray) -> np.ndarray:
-    return np.array([sig.oscillator_integral(osc, expinfo) for osc in params])
+    dim = int(params.shape[1] / 2) - 1
+    return np.array(
+        [sig.oscillator_integral(osc, expinfo, dim * [512]) for osc in params]
+    )
 
 
 def _format_value(

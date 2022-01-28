@@ -1,3 +1,8 @@
+# test_write.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Fri 28 Jan 2022 18:36:32 GMT
+
 from pathlib import Path
 import pytest
 import subprocess
@@ -22,16 +27,14 @@ class Stuff:
         for i in range(2 + dim, 2 + 2 * dim):
             self.params[:, i] = 50 * np.ones(5)
         self.errors = self.params / 100
-        pts = 1024
+        pts = dim * [512]
         sw = 5000.0
         offset = 0.0
         sfo = 500.0 if inc_sfo else None
         nuclei = "1H" if inc_nuc else None
-        self.expinfo = ExpInfo(
-            pts=pts, sw=sw, offset=offset, sfo=sfo, nuclei=nuclei, dim=dim
-        )
+        self.expinfo = ExpInfo(sw=sw, offset=offset, sfo=sfo, nuclei=nuclei, dim=dim)
         self.integrals = np.array(
-            [sig.oscillator_integral(osc, self.expinfo) for osc in self.params]
+            [sig.oscillator_integral(osc, self.expinfo, pts) for osc in self.params]
         )
 
     def unpack(self, *attrs):
