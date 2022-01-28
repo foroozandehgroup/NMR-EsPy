@@ -1,9 +1,10 @@
-#!/usr/bin/python3
+# test_filter.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Fri 28 Jan 2022 18:28:40 GMT
 
 import numpy as np
-from scipy.optimize import minimize
-from context import nmrespy
-from nmrespy import ExpInfo, _misc, mpm, sig, freqfilter as ff
+from nmrespy import ExpInfo, mpm, sig, freqfilter as ff
 import matplotlib as mpl
 mpl.use("tkAgg")
 
@@ -30,9 +31,9 @@ class TestFilterParameters:
         sw = 9.0
         offset = 1.0
         sfo = 2.0
-        pts = 10
-        expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
-        fid = sig.make_fid(params, expinfo)[0]
+        pts = [10]
+        expinfo = ExpInfo(sw=sw, offset=offset, sfo=sfo)
+        fid = sig.make_fid(params, expinfo, pts)[0]
         region = ((4, 6),)
         noise_region = ((1, 2),)  # Doesn't matter
         spectrum = sig.ft(fid)
@@ -105,13 +106,13 @@ class TestFilterPerformance:
         sw = 1000.0
         offset = 0.0
         sfo = 500.0
-        pts = 4096
-        expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
+        pts = [4096]
+        expinfo = ExpInfo(sw=sw, offset=offset, sfo=sfo)
         region = ((300.0, 400.0),)
         noise_region = ((-225.0, -250.0),)
 
         # make spectrum from virtual echo signal
-        fid = sig.make_fid(params, expinfo, snr=40.0)[0]
+        fid = sig.make_fid(params, expinfo, pts, snr=40.0)[0]
         ve = sig.make_virtual_echo([fid])
         spectrum = sig.ft(ve)
         expinfo._pts = spectrum.shape
