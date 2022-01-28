@@ -1,7 +1,6 @@
 from pathlib import Path
 import pytest
 from bruker_utils import parse_jcampdx
-from context import nmrespy
 from nmrespy import load
 
 

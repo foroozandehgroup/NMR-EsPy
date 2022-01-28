@@ -1,7 +1,6 @@
 """Test :py:mod:`nmrespy.__init__`."""
 
 import pytest
-from context import nmrespy
 from nmrespy import ExpInfo, RED, END
 
 
@@ -84,8 +83,8 @@ def test_expinfo():
         with pytest.raises(ValueError) as exc_info:
             expinfo.pts = input_
         assert (
-            str(exc_info.value)
-            == f"{RED}Invalid value supplied to pts: {repr(input_)}{END}"
+            str(exc_info.value) ==
+            f"{RED}Invalid value supplied to pts: {repr(input_)}{END}"
         )
     expinfo.pts = [1024, 1024]
     assert expinfo.pts == (1024, 1024)
@@ -94,8 +93,8 @@ def test_expinfo():
         with pytest.raises(ValueError) as exc_info:
             expinfo.sw = input_
         assert (
-            str(exc_info.value)
-            == f"{RED}Invalid value supplied to sw: {repr(input_)}{END}"
+            str(exc_info.value) ==
+            f"{RED}Invalid value supplied to sw: {repr(input_)}{END}"
         )
     expinfo.sw = [8000, 8000.0]
     assert expinfo.sw == (8000.0, 8000.0)
@@ -104,8 +103,8 @@ def test_expinfo():
         with pytest.raises(ValueError) as exc_info:
             expinfo.nuclei = input_
         assert (
-            str(exc_info.value)
-            == f"{RED}Invalid value supplied to nuclei: {repr(input_)}{END}"
+            str(exc_info.value) ==
+            f"{RED}Invalid value supplied to nuclei: {repr(input_)}{END}"
         )
     expinfo.nuclei = "205Pb"
     assert expinfo.nuclei == ("205Pb", "205Pb")

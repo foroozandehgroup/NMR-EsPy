@@ -3,7 +3,6 @@
 import pytest
 
 import numpy as np
-from context import nmrespy
 from nmrespy import RED, END, ExpInfo
 from nmrespy._misc import FrequencyConverter, ArgumentChecker
 

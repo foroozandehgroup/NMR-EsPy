@@ -8,7 +8,6 @@ import pytest
 import numpy as np
 from numpy import random as nrandom
 
-from context import nmrespy
 from nmrespy import RED, END, ExpInfo, _errors, sig
 from nmrespy.core import Estimator
 

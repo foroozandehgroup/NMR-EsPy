@@ -91,7 +91,7 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
     **Directory Requirements**
 
     There are certain file paths expected to be found relative to ``directory``
-    which contain the data and parameter files. The is an extensive list of
+    which contain the data and parameter files. Here is an extensive list of
     the paths expected to exist, for different data dimensions, and
     data types (raw time-domain data or processed data):
 
@@ -129,7 +129,7 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
 
     If you are importing raw FID data, make sure the path
     specified corresponds to an ``fid`` or ``ser`` file which has had its
-    group delay artefact. To do this, open the data you wish to analyse in
+    group delay artefact removed. To do this, open the data you wish to analyse in
     TopSpin, and enter ``convdta`` in the bottom-left command line. You will be
     prompted to enter a value for the new data directory. It is this value you
     should use in ``directory``, not the one corresponding to the original

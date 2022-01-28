@@ -3,7 +3,6 @@
 import copy
 
 import numpy as np
-from context import nmrespy
 from nmrespy import ExpInfo
 from nmrespy.mpm import MatrixPencil
 from nmrespy.sig import make_fid

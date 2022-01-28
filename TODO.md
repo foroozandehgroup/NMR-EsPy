@@ -2,7 +2,8 @@
 
 ## Features To Add
 
-- [ ] Filering by automated spanning of the frequency space.
+- [ ] 2DJ Module
+- [ ] Filtering by automated spanning of the frequency space.
 - [ ] Visualisation of the optimisation as it runs.
 - [ ] Investigate different filtering approaches (FIR filters, interpolation/decimation etc).
 
@@ -10,3 +11,4 @@
 
 - [ ] `ArgumentChecker`: Specify callables explicitly
 - [ ] `ExpInfo`: Take number of points out.
+- [ ] `plot.py`: Residual is very far from spectrum in examples in `test_plot.py`. Look into this.

@@ -1,10 +1,10 @@
-import functools
 from pathlib import Path
 import pytest
 import subprocess
-from context import nmrespy
+
 import numpy as np
 import numpy.linalg as nlinalg
+
 from nmrespy import RED, END, ExpInfo, sig, write as nwrite
 
 USER_INPUT = True
@@ -217,13 +217,6 @@ def test_format_string():
 
 class TestConfigureSavePath:
     filepath = Path(__file__).resolve().parent / "file.pdf"
-
-    def mk_rm_file(method):
-        @functools.wraps(method)
-        def inner():
-            subprocess.run(["touch", "file.pdf"])
-            method()
-            subprocess.run(["rm", "file.pdf"])
 
     def test_file_doesnt_exist(self):
         assert nwrite._configure_save_path("file", "pdf", True) == self.filepath

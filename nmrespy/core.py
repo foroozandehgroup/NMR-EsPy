@@ -23,16 +23,15 @@ from nmrespy import (
     load,
     freqfilter as ff,
     mpm,
+    nlp,
     plot,
     sig,
     write,
     ExpInfo,
 )
-from nmrespy.nlp import nlp
 
 if USE_COLORAMA:
     import colorama
-
     colorama.init()
 
 

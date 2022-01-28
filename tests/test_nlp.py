@@ -3,10 +3,7 @@
 # simon.hulse@chem.ox.ac.uk
 # Last Edited: Tue 14 Dec 2021 19:30:31 GMT
 
-import pytest
-
 import numpy as np
-from context import nmrespy  # noqa: F401
 from nmrespy import ExpInfo, sig
 from nmrespy.nlp import NonlinearProgramming
 

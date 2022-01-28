@@ -13,8 +13,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from context import nmrespy
 from nmrespy import RED, END, ExpInfo, plot as nplot, sig, _misc
+
+mpl.use("tkAgg")
 
 VIEW_PEAKS = True
 VIEW_RESULT_PLOTS = True

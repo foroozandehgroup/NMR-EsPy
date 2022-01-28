@@ -6,7 +6,6 @@
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 from scipy.signal import argrelextrema
-from context import nmrespy  # noqa: F401
 from nmrespy import ExpInfo, sig
 
 
