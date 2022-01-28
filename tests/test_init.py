@@ -1,13 +1,17 @@
+# test_init.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Fri 28 Jan 2022 16:38:38 GMT
+
 """Test :py:mod:`nmrespy.__init__`."""
 
 import pytest
 from nmrespy import ExpInfo, RED, END
 
 
-def check_expinfo_correct(expinfo, pts, sw, offset, sfo, nuclei, dim, kwargs=None):
+def check_expinfo_correct(expinfo, sw, offset, sfo, nuclei, dim, kwargs=None):
     """Ensure expinfo attributes match the function args."""
     checks = [
-        expinfo.pts == pts,
         expinfo.sw == sw,
         expinfo.offset == offset,
         expinfo.sfo == sfo,
@@ -24,15 +28,13 @@ def check_expinfo_correct(expinfo, pts, sw, offset, sfo, nuclei, dim, kwargs=Non
 
 def test_expinfo():
     """Test :py:class:`nmrespy.ExpInfo`."""
-    pts = 2048
     sw = 5000
     offset = [2000.0]
     sfo = 500
     nuclei = "13C"
-    expinfo = ExpInfo(pts, sw, offset, sfo=sfo, nuclei=nuclei)
+    expinfo = ExpInfo(sw, offset, sfo=sfo, nuclei=nuclei)
     assert check_expinfo_correct(
         expinfo,
-        (2048.0,),
         (5000.0,),
         (2000.0,),
         (500.0,),
@@ -40,10 +42,9 @@ def test_expinfo():
         1,
     )
 
-    expinfo = ExpInfo(pts, sw, offset, sfo=sfo, nuclei=nuclei, dim=2)
+    expinfo = ExpInfo(sw, offset, sfo=sfo, nuclei=nuclei, dim=2)
     assert check_expinfo_correct(
         expinfo,
-        (2048, 2048),
         (5000.0, 5000.0),
         (2000.0, 2000.0),
         (500.0, 500.0),
@@ -52,7 +53,6 @@ def test_expinfo():
     )
 
     expinfo = ExpInfo(
-        pts,
         sw,
         offset,
         sfo=sfo,
@@ -63,7 +63,6 @@ def test_expinfo():
     )
     assert check_expinfo_correct(
         expinfo,
-        (2048, 2048),
         (5000.0, 5000.0),
         (2000.0, 2000.0),
         (500.0, 500.0),
@@ -79,23 +78,6 @@ def test_expinfo():
         (500.0, 500.0),
     )
 
-    for input_ in ["fail", [1024.0, 1024]]:
-        with pytest.raises(ValueError) as exc_info:
-            expinfo.pts = input_
-        assert (
-            str(exc_info.value) ==
-            f"{RED}Invalid value supplied to pts: {repr(input_)}{END}"
-        )
-    expinfo.pts = [1024, 1024]
-    assert expinfo.pts == (1024, 1024)
-
-    for input_ in ["fail", ["fail", 1024]]:
-        with pytest.raises(ValueError) as exc_info:
-            expinfo.sw = input_
-        assert (
-            str(exc_info.value) ==
-            f"{RED}Invalid value supplied to sw: {repr(input_)}{END}"
-        )
     expinfo.sw = [8000, 8000.0]
     assert expinfo.sw == (8000.0, 8000.0)
 

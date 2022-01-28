@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:09:33 BST
+# Last Edited: Fri 28 Jan 2022 17:21:04 GMT
 
 """NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
 
@@ -60,7 +60,6 @@ class ExpInfo:
 
     def __init__(
         self,
-        pts: Union[int, Iterable[int]],
         sw: Union[int, float, Iterable[Union[int, float]]],
         offset: Union[int, float, Iterable[Union[int, float]], None] = None,
         sfo: Union[int, float, Iterable[Union[int, float]], None] = None,
@@ -72,9 +71,6 @@ class ExpInfo:
 
         Parameters
         ----------
-        pts
-            The number of points the signal is composed of.
-
         sw
             The sweep width (spectral window) (Hz).
 
@@ -95,9 +91,9 @@ class ExpInfo:
 
         Notes
         -----
-        If `dim` is not specified, you must be explicit about the identites
-        of inputs in each dimensions. If the arguments `sw`, `offset`,
-        `sfo` and `nuclei` do not all have the same number of associated
+        If ``dim`` is not specified, you must be explicit about the identites
+        of inputs in each dimension. If the arguments ``sw``, ``offset``,
+        ``sfo`` and ``nuclei`` do not all have the same number of associated
         parameters, and error will be thrown, as the dimension of the
         experiment is ambiguous. For example, even if you have a 2D experiment
         where the sweep width, offset, nucleus, etc are identical in both
@@ -105,12 +101,10 @@ class ExpInfo:
 
         .. code:: python
 
-            >>> expinfo = ExpInfo(pts=(1024, 128), sw=(5000, 5000),
-            ...                   offset=(1000, 1000))
+            >>> expinfo = ExpInfo(sw=(5000, 5000), offset=(1000, 1000))
             >>> expinfo.__dict__
-            {'pts': (1024, 128), 'sw': (5000.0, 5000.0),
-             'offset': (1000.0, 1000.0), 'sfo': None, 'nuclei': None,
-             'dim': 2, 'kwargs': {},
+            {'sw': (5000.0, 5000.0), 'offset': (1000.0, 1000.0),
+             'sfo': None, 'nuclei': None, 'dim': 2, 'kwargs': {},
              'self': <nmrespy.ExpInfo object at 0x7f788ea22310>}
 
         Alternatively, you can set ``dim`` manually, and then any
@@ -118,14 +112,11 @@ class ExpInfo:
 
         .. code:: python
 
-            >>> expinfo = ExpInfo(pts=(1024, 128), sw=5000, offset=1000,
-            ...                   dim=2)
+            >>> expinfo = ExpInfo(sw=5000, offset=1000, dim=2)
             >>> expinfo.__dict__
-            {'pts': (1024, 128), 'sw': (5000.0, 5000.0),
-             'offset': (1000.0, 1000.0), 'sfo': None, 'nuclei': None,
-             'dim': 2, 'kwargs': {},
+            {'sw': (5000.0, 5000.0), 'offset': (1000.0, 1000.0),
+             'sfo': None, 'nuclei': None, 'dim': 2, 'kwargs': {},
              'self': <nmrespy.ExpInfo object at 0x7f788ebc2cd0>}
-
         """
         # Be leinient with parameter specfiication.
         # Most of nmrespy expects parameters to be lists with either
@@ -137,13 +128,13 @@ class ExpInfo:
         for kwkey, kwvalue in kwargs.items():
             self.__dict__.update({kwkey: kwvalue})
 
-        names = ["_pts", "_sw", "_offset", "_sfo", "_nuclei"]
+        names = ["_sw", "_offset", "_sfo", "_nuclei"]
         locs = locals()
         values = [locs[name.replace("_", "")] for name in names]
-        test_types = [int, Number, Number, Number, str]
+        test_types = [Number, Number, Number, str]
 
         # Filter out any optional arguments that are None
-        rm_idx = [i for i, value in enumerate(values[2:], start=2) if value is None]
+        rm_idx = [i for i, value in enumerate(values[1:], start=1) if value is None]
         names = [x for i, x in enumerate(names) if i not in rm_idx]
         values = [x for i, x in enumerate(values) if i not in rm_idx]
         test_types = [x for i, x in enumerate(test_types) if i not in rm_idx]
@@ -177,7 +168,7 @@ class ExpInfo:
             # Check all lists are of the same length
             length_set = {len(self.__dict__[name]) for name in names}
             if len(length_set) == 1:
-                self._dim = len(self._pts)
+                self._dim = len(self._sw)
             else:
                 raise ValueError(errmsg)
 
@@ -191,17 +182,6 @@ class ExpInfo:
             self._nuclei = None
         for name in names:
             self.__dict__[name] = tuple(self.__dict__[name])
-
-    @property
-    def pts(self) -> Iterable[int]:
-        """Get number of points in the data."""
-        return self._pts
-
-    @pts.setter
-    def pts(self, new_value: Any) -> None:
-        pts = self._validate("pts", new_value, int)
-        # Error will have been raised if new_value is invalid
-        self._pts = pts
 
     @property
     def sw(self) -> Iterable[float]:
@@ -293,7 +273,7 @@ class ExpInfo:
 
         `args` should be strings with names that match attribute names.
         """
-        to_underscore = ["pts", "sw", "offset", "sfo", "nuclei", "dim"]
+        to_underscore = ["sw", "offset", "sfo", "nuclei", "dim"]
         ud_args = [f"_{a}" if a in to_underscore else a for a in args]
         if len(args) == 1:
             return self.__dict__[ud_args[0]]
