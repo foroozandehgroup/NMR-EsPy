@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:13:38 BST
+# Last Edited: Fri 28 Jan 2022 16:41:45 GMT
 
 """Computation of signal estimates using the Matrix Pencil Method."""
 
@@ -124,7 +124,6 @@ class MatrixPencil:
         )
         checker.check()
         self.__dict__.update(locals())
-        self.expinfo.pts = self.data.shape
 
         if dim == 1:
             self._mpm_1d()
@@ -177,7 +176,7 @@ class MatrixPencil:
         normed_data = self.data / norm
 
         # Number of points
-        N = self.expinfo.unpack("pts")[0]
+        N = self.data.size
 
         # Pencil parameter.
         # Optimal when between N/2 and N/3 (see Lin's paper)
@@ -216,9 +215,9 @@ class MatrixPencil:
             self.mdl = np.zeros(L)
             for k in range(L):
                 self.mdl[k] = (
-                    -N * np.einsum("i->", np.log(sigma[k:L]))
-                    + N * (L - k) * np.log(np.einsum("i->", sigma[k:L]) / (L - k))
-                    + k * np.log(N) * (2 * L - k) / 2
+                    -N * np.einsum("i->", np.log(sigma[k:L])) +
+                    N * (L - k) * np.log(np.einsum("i->", sigma[k:L]) / (L - k)) +
+                    k * np.log(N) * (2 * L - k) / 2
                 )
 
             self.M = np.argmin(self.mdl)
@@ -265,7 +264,7 @@ class MatrixPencil:
         normed_data = self.data / norm
 
         # Number of points
-        N1, N2 = self.expinfo.unpack("pts")
+        N1, N2 = self.data.shape
 
         # Pencil parameters
         K, L = tuple([int((n + 1) / 2) for n in (N1, N2)])
