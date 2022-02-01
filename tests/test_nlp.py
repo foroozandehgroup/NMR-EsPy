@@ -1,11 +1,13 @@
 # test_nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Jan 2022 18:24:36 GMT
+# Last Edited: Tue 01 Feb 2022 12:18:32 GMT
 
+import copy
 import numpy as np
+import numpy.linalg as nlinalg
 from nmrespy import ExpInfo, sig
-from nmrespy.nlp import NonlinearProgramming
+from nmrespy.nlp import NonlinearProgramming, _funcs
 
 
 def test_nlp_1d():
@@ -100,3 +102,34 @@ def test_nlp_2d():
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1E-4)
+
+
+def test_analytic_grad_hess():
+    # Compare analytic and finite difference grad and hessian and check they
+    # all closely match.
+    params = np.array([[1.0, 0.0, 5.0, 1.0]])
+    x0 = np.array([[0.9, 0.4, 6, 1.2]])
+    pts = [4048]
+    expinfo = ExpInfo(sw=100)
+
+    fid, tp = sig.make_fid(params, expinfo, pts)
+    norm = nlinalg.norm(fid)
+    fid /= norm
+    params[0, 0] /= norm
+    x0[0, 0] /= norm
+
+    x0 = x0.flatten(order='F')
+    params = params.flatten(order='F')
+
+    h = 0.000001
+    args = (fid, tp, x0.size // 4, np.array([]), [0, 1, 2, 3], False)
+
+    obj_fd, grad_fd, hess_fd = _funcs.obj_finite_diff_grad_hess_1d(x0, h, *args)
+    obj_ex, grad_ex, hess_ex = _funcs.obj_grad_true_hess_1d(x0, *args)
+
+    for fd, ex in zip(grad_fd, grad_ex):
+        assert np.allclose(fd, ex, rtol=0, atol=0.01)
+
+    for row_fd, row_ex in zip(hess_fd, hess_ex):
+        for fd, ex in zip(row_fd, row_ex):
+            assert np.allclose(fd, ex, rtol=0, atol=0.01)
