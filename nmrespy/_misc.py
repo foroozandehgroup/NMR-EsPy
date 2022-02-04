@@ -1,7 +1,7 @@
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 09 Dec 2021 20:20:03 GMT
+# Last Edited: Fri 04 Feb 2022 14:03:37 GMT
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
@@ -329,7 +329,7 @@ class ArgumentChecker:
 class FrequencyConverter:
     """Handle frequency unit conversion."""
 
-    def __init__(self, expinfo: ExpInfo) -> None:
+    def __init__(self, expinfo: ExpInfo, pts: Iterable[int]) -> None:
         """Initialise the converter.
 
         Parameters
@@ -345,8 +345,8 @@ class FrequencyConverter:
         conversion from/tp ppm is desired.
         """
         try:
-            pts, sw, offset, sfo, dim = expinfo.unpack(
-                "pts", "sw", "offset", "sfo", "dim"
+            sw, offset, sfo, dim = expinfo.unpack(
+                "sw", "offset", "sfo", "dim"
             )
         except Exception:
             raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
@@ -359,7 +359,11 @@ class FrequencyConverter:
             (sfo, "sfo", "float_iter", True),
         )
         checker.check()
-        self.__dict__.update(locals())
+        self.pts = pts
+        self.sw = sw
+        self.offset = offset
+        self.sfo = sfo
+        self.dim = dim
 
     def __len__(self):
         """Return number of experiment dimensions."""
