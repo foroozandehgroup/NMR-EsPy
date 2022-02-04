@@ -1,7 +1,7 @@
 # test_nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 04 Feb 2022 12:00:21 GMT
+# Last Edited: Fri 04 Feb 2022 12:04:01 GMT
 
 from itertools import combinations
 import numpy as np
@@ -155,7 +155,7 @@ def test_analytic_grad_hess():
     for i in range(1, 7):
         idxs.extend([list(c) for c in combinations(range(6), i)])
 
-    for i, idx in enumerate(idxs):
+    for idx in idxs:
         # Filter away combinations that are not feasible.
         # 2 and 3 will always exist together (f1 and f2).
         # 4 and 5 will always exist together (η1 and η2).
