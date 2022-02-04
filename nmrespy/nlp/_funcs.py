@@ -1,7 +1,7 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 01 Feb 2022 12:08:20 GMT
+# Last Edited: Fri 04 Feb 2022 11:55:47 GMT
 
 """Definitions of fidelities, gradients, and Hessians."""
 
@@ -288,13 +288,13 @@ def second_derivatives_1d(
                     d2[:, 9 * m :] = dd(d1[:, 3 * m :])  # η-η
                 else:
                     # ---a φ f---
-                    d2[:, 3 * m : 4 * m] = pd(d1[:, :m])  # φ-φ
+                    d2[:, 3 * m : 4 * m] = pd(d1[:, m : 2 * m])  # φ-φ
                     d2[:, 4 * m : 5 * m] = pd(d1[:, 2 * m :])  # φ-f
                     d2[:, 5 * m :] = fd(d1[:, 2 * m :])  # f-f
             elif 3 in idx:
                 # ---a φ η---
                 d2[:, 2 * m : 3 * m] = ad(d1[:, 2 * m :])  # a-η
-                d2[:, 3 * m : 4 * m] = pd(d1[:, :m])  # φ-φ
+                d2[:, 3 * m : 4 * m] = pd(d1[:, m : 2 * m])  # φ-φ
                 d2[:, 4 * m : 5 * m] = pd(d1[:, 2 * m :])  # φ-η
                 d2[:, 5 * m :] = dd(d1[:, 2 * m :])  # η-η
             else:
@@ -313,6 +313,7 @@ def second_derivatives_1d(
                 d2[:, 2 * m :] = fd(d1[:, m:])  # f-f
         elif 3 in idx:
             # ---a η---
+            d2[:, m :] = dd(d1[:, :m])  # a-η
             d2[:, 2 * m :] = dd(d1[:, m:])  # η-η
         # ---a only---
     elif 1 in idx:
