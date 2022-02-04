@@ -1,14 +1,15 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Jan 2022 18:05:43 GMT
+# Last Edited: Fri 04 Feb 2022 16:13:29 GMT
 
 """Constructing and processing NMR signals."""
 
 import copy
+import inspect
 import re
 import tkinter as tk
-from typing import Dict, Iterable, Tuple, Union
+from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
@@ -26,6 +27,7 @@ if USE_COLORAMA:
     colorama.init()
 import nmrespy._errors as errors
 from nmrespy._misc import ArgumentChecker
+from nmrespy._sanity import sanity_check, funcs as sfuncs
 
 """Provides functionality for constructing synthetic FIDs"""
 
@@ -43,7 +45,7 @@ def make_fid(
     *,
     snr: Union[float, None] = None,
     decibels: bool = True,
-    modulation: str = "none",
+    modulation: Optional[str] = None,
 ) -> return_type:
     r"""Construct a FID, as a summation of damped complex sinusoids.
 
@@ -125,12 +127,17 @@ def make_fid(
 
           .. math::
 
+
+             y_{\mathrm{P}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
+             \exp \left[ \left( 2 \pi \mathrm{i} f_1 - \eta_1 \right)
              y_{\mathrm{P}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
              \exp \left[ \left( 2 \pi \mathrm{i} f_1 - \eta_1 \right)
              t_1 \right]
              \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
              t_2 \right]
-
+             t_1 \right]
+             \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
+             t_2 \right]
              y_{\mathrm{N}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
              \exp \left[ \left( - 2 \pi \mathrm{i} f_1 - \eta_1 \right)
              t_1 \right]
@@ -167,25 +174,21 @@ def make_fid(
     oscillators, and :math:`\Delta t_d = 1 / f_{\mathrm{sw}, d}`.
     """
     # --- Check validity of inputs ---------------------------------------
-    try:
-        dim, offset = expinfo.unpack("dim", "offset")
-    except Exception:
-        raise TypeError(
-            f"{RED}Check `expinfo` is an instance of " f"nmrespy.ExpInfo{END}"
-        )
+    func_name = inspect.getframeinfo(inspect.currentframe()).function,
+    sanity_check(func_name, ("expinfo", expinfo, sfuncs.check_expinfo))
 
-    checker = ArgumentChecker(dim=dim)
-    checker.stage(
-        (pts, "pts", "int_iter"),
-        (params, "params", "parameter"),
-        (offset, "offset", "float_iter"),
-        (decibels, "decibels", "bool"),
-        (modulation, "modulation", "modulation"),
-        (snr, "snr", "float", True),
+    dim = expinfo.unpack("dim")
+    sanity_check(
+        func_name,
+        ("params", params, sfuncs.check_parameter_array, (dim,)),
+        ("pts", pts, sfuncs.check_points, (dim,)),
+        ("decibels", decibels, sfuncs.check_bool),
+        ("modulation", modulation, sfuncs.check_modulation, (), True),
+        ("snr", snr, sfuncs.check_positive_float, (), True),
     )
-    checker.check()
 
     # --- Extract amplitudes, phases, frequencies and damping ------------
+    offset = expinfo.unpack("offset")
     amp = params[:, 0]
     phase = params[:, 1]
     # Center frequencies at 0 based on offset
@@ -205,18 +208,17 @@ def make_fid(
         fid = Z @ alpha
 
     if dim == 2:
-        if modulation in ["none", "amp"]:
-            Z1 = np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0])))
-            if modulation == "none":
-                Z1 = [Z1]
-
-            elif modulation == "amp":
-                Z1 = [np.real(Z1), np.imag(Z1)]
-        elif modulation == "phase":
+        if modulation == "phase":
             Z1 = [
                 np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0]))),
                 np.exp(np.outer(tp[0], (-1j * 2 * np.pi * freq[0] - damp[0]))),
             ]
+        else:
+            Z1 = np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0])))
+            if modulation == "amp":
+                Z1 = [np.real(Z1), np.imag(Z1)]
+            else:
+                Z1 = [Z1]
 
         Z2T = np.exp(np.outer((1j * 2 * np.pi * freq[1] - damp[1]), tp[1]))
         # TODO: Support for constructing negative time signals
