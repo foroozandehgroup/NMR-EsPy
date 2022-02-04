@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 18 Oct 2021 11:17:37 BST
+# Last Edited: Fri 28 Jan 2022 18:05:43 GMT
 
 """Constructing and processing NMR signals."""
 
@@ -39,6 +39,7 @@ return_type = Tuple[
 def make_fid(
     params: np.ndarray,
     expinfo: ExpInfo,
+    pts: Iterable[int],
     *,
     snr: Union[float, None] = None,
     decibels: bool = True,
@@ -76,6 +77,9 @@ def make_fid(
     expinfo
         Information on the experiment. Used to determine the number of points,
         sweep width and transmitter offset.
+
+    pts
+        The number of points the signal comprises in each dimension.
 
     snr
         The signal-to-noise ratio. If `None` then no noise will be added
@@ -172,6 +176,7 @@ def make_fid(
 
     checker = ArgumentChecker(dim=dim)
     checker.stage(
+        (pts, "pts", "int_iter"),
         (params, "params", "parameter"),
         (offset, "offset", "float_iter"),
         (decibels, "decibels", "bool"),
@@ -188,7 +193,7 @@ def make_fid(
     damp = [params[:, dim + 2 + i] for i in range(dim)]
 
     # Time points in each dimension
-    tp = get_timepoints(expinfo)
+    tp = get_timepoints(expinfo, pts, meshgrid_2d=False)
 
     # --- Generate noiseless FID -----------------------------------------
     if dim == 1:
@@ -372,7 +377,6 @@ def zf(data: np.ndarray) -> np.ndarray:
         Zero-filled data.
     """
     zf_data = copy.deepcopy(data)
-    # Zero-fill to nearest power of 2
     for i, n in enumerate(zf_data.shape):
         if n & (n - 1) == 0:
             pass
@@ -389,9 +393,10 @@ def zf(data: np.ndarray) -> np.ndarray:
 
 def get_timepoints(
     expinfo: ExpInfo,
+    pts: Iterable[int],
     *,
     start_time: Union[Iterable[Union[float, str]], None] = None,
-    meshgrid_2d: bool = False,
+    meshgrid_2d: bool = True,
 ) -> Iterable[np.ndarray]:
     r"""Generate the timepoints at which an FID was sampled at.
 
@@ -400,6 +405,9 @@ def get_timepoints(
     expinfo
         Information on the experiment. Used to determine the number of points,
         and sweep width.
+
+    pts
+        The number of points the signal comprises in each dimension.
 
     start_time
         The start time in each dimension. If set to `None`, the initial
@@ -427,7 +435,7 @@ def get_timepoints(
     following regular expression: ``r'^-?\d+dt$'``
     """
     try:
-        dim, pts, sw = expinfo.unpack("dim", "pts", "sw")
+        dim, sw = expinfo.unpack("dim", "sw")
     except Exception:
         raise TypeError(
             f"{RED}Check `expinfo` is an instance of " f"nmrespy.ExpInfo{END}"
@@ -439,7 +447,6 @@ def get_timepoints(
     checker = ArgumentChecker(dim=dim)
     checker.stage(
         (pts, "pts", "int_iter"),
-        (sw, "sw", "float_iter"),
         (start_time, "start_time", "start_time"),
         (meshgrid_2d, "meshgrid_2d", "bool"),
     )
@@ -463,7 +470,8 @@ def get_timepoints(
 
 
 def get_shifts(
-    expinfo: ExpInfo, *, unit: str = "hz", flip: bool = True
+    expinfo: ExpInfo, pts: Iterable[int], *, unit: str = "hz", flip: bool = True,
+    meshgrid_2d: bool = True,
 ) -> Iterable[np.ndarray]:
     """Generate the frequencies a spectrum is sampled at.
 
@@ -474,6 +482,9 @@ def get_shifts(
         sweep width, offset, and transmitter frequency. Note that if
         ``expinfo.sfo`` is ``None``, shifts can only be obtained in Hz.
 
+    pts
+        The number of points the signal comprises in each dimension.
+
     unit
         The unit of the chemical shifts. One of ``'hz'``, ``'ppm'``.
 
@@ -481,20 +492,26 @@ def get_shifts(
         If `True`, the shifts will be returned in descending order, as is
         conventional in NMR. If `False`, the shifts will be in ascending order.
 
+    meshgrid_2d
+        If shifts are being derived for a two-dimensional signal, setting
+        this argument to ``True`` will return two two-dimensional arrays
+        corresponding to all pairs of x and y values to construct a 3D
+        plot/contour plot.
+
     Returns
     -------
     shifts: Iterable[numpy.ndarray]
         The chemical shift values sampled in each dimension.
     """
     try:
-        pts, sw, offset, sfo, dim = expinfo.unpack("pts", "sw", "offset", "sfo", "dim")
+        sw, offset, sfo, dim = expinfo.unpack("sw", "offset", "sfo", "dim")
     except Exception:
         raise TypeError(
             f"{RED}Check `expinfo` is an instance of " f"nmrespy.ExpInfo{END}"
         )
 
     if unit not in ["hz", "ppm"]:
-        raise ValueError(f"{RED}`unit` should be either 'hz' or " f"'ppm'.{END}")
+        raise ValueError(f"{RED}`unit` should be either 'hz' or 'ppm'.{END}")
 
     if sfo is None and unit == "ppm":
         print(
@@ -506,9 +523,6 @@ def get_shifts(
     checker = ArgumentChecker(dim=dim)
     checker.stage(
         (pts, "pts", "int_iter"),
-        (sw, "sw", "float_iter"),
-        (offset, "offset", "float_iter"),
-        (sfo, "sfo", "float_iter", True),
         (flip, "flip", "bool"),
     )
     checker.check()
@@ -519,6 +533,9 @@ def get_shifts(
     ]
     if unit == "ppm":
         shifts = [s / sfo_ for s, sfo_ in zip(shifts, sfo)]
+
+    if dim == 2 and meshgrid_2d:
+        shifts = tuple(np.meshgrid(*shifts, indexing="ij"))
 
     return tuple([np.flip(s) for s in shifts]) if flip else tuple(shifts)
 
@@ -537,7 +554,7 @@ def ft(fid: np.ndarray, *, flip: bool = True) -> np.ndarray:
         Time-domain data.
 
     flip
-        Whether or not to flip the Fourier Trnasform of `fid` in each
+        Whether or not to flip the Fourier Transform of `fid` in each
         dimension.
 
     Returns
@@ -1031,7 +1048,7 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
 
 
 def _generate_random_signal(
-    m: int, expinfo: ExpInfo, *, snr: Union[float, None] = None
+    m: int, expinfo: ExpInfo, pts: Iterable[int], *, snr: Union[float, None] = None
 ) -> Tuple[np.ndarray, Iterable[np.ndarray], np.ndarray]:
     """Convienince function to generate a random synthetic FID.
 
@@ -1043,6 +1060,9 @@ def _generate_random_signal(
     expinfo
         Information on the experiment. Used to determine the number of points,
         sweep width, and transmitter offset.
+
+    pts
+        The number of points the signal comprises in each dimension.
 
     snr
         Signal-to-noise ratio (dB).
@@ -1059,7 +1079,7 @@ def _generate_random_signal(
         Parameters used to construct the signal
     """
     try:
-        pts, sw, offset, dim = expinfo.unpack("pts", "sw", "offset", "dim")
+        sw, offset, dim = expinfo.unpack("sw", "offset", "dim")
     except Exception:
         raise TypeError(
             f"{RED}Check `expinfo` is an instance of " f"nmrespy.ExpInfo{END}"
@@ -1069,8 +1089,6 @@ def _generate_random_signal(
     checker.stage(
         (m, "m", "positive_int"),
         (pts, "pts", "int_iter"),
-        (offset, "offset", "float_iter"),
-        (sw, "sw", "float_iter"),
         (snr, "snr", "positive_float", True),
     )
 
@@ -1090,11 +1108,11 @@ def _generate_random_signal(
     para = np.hstack((para, *eta))
     para = para.reshape((m, 2 * (dim + 1)), order="F")
 
-    return (*make_fid(para, expinfo, snr=snr), para)
+    return (*make_fid(para, expinfo, pts, snr=snr), para)
 
 
 def oscillator_integral(
-    params: np.ndarray, expinfo: ExpInfo, *, abs_: bool = True
+    params: np.ndarray, expinfo: ExpInfo, pts: Iterable[int], *, abs_: bool = True
 ) -> float:
     """Determine the integral of the FT of an oscillator.
 
@@ -1119,6 +1137,9 @@ def oscillator_integral(
         Information on the experiment. Used to determine the number of points,
         sweep width, and transmitter offset.
 
+    pts
+        The number of points the signal comprises in each dimension.
+
     abs_
         Whether or not to take the absolute value of the spectrum before
         integrating.
@@ -1138,7 +1159,7 @@ def oscillator_integral(
     """
     # integral is the spectrum initally. It is mutated and converted
     # into the integral during the for loop.
-    integral = np.real(ft(make_fid(np.expand_dims(params, axis=0), expinfo)[0]))
+    integral = np.real(ft(make_fid(np.expand_dims(params, axis=0), expinfo, pts)[0]))
     integral = np.absolute(integral) if abs_ else integral
 
     for axis in reversed(range(integral.ndim)):

@@ -1,7 +1,7 @@
 # load.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:13:14 BST
+# Last Edited: Fri 28 Jan 2022 16:39:41 GMT
 
 """Provides functionality for importing NMR data."""
 
@@ -37,10 +37,7 @@ class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
             sfo.append(params["SFO1"])
             nuclei.append(re.match("^<(.+?)>$", params["NUC1"]).group(1))
 
-        pts = self.data.shape
-
         return ExpInfo(
-            pts=pts,
             sw=sw,
             offset=offset,
             sfo=sfo,
