@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 04 Feb 2022 16:13:29 GMT
+# Last Edited: Fri 04 Feb 2022 16:17:57 GMT
 
 """Constructing and processing NMR signals."""
 
