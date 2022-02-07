@@ -2,9 +2,8 @@ numpy
 matplotlib
 scipy
 scikit-learn
-Sphinx
+bruker_utils
 pytest
 flake8
-pydocstyle
-bruker_utils
+Sphinx
 sphinx-nameko-theme

@@ -1,3 +1,8 @@
+# setup.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Mon 07 Feb 2022 12:54:47 GMT
+
 from setuptools import setup, find_packages
 
 with open("README.rst", "r") as fh:
@@ -15,10 +20,10 @@ setup(
     long_description=long_description,
     long_description_content_type="text/x-rst",
     classifiers=[
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering",
@@ -30,7 +35,7 @@ setup(
         "bruker_utils",
         "colorama; platform_system == 'Windows'",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     include_package_data=True,
     packages=find_packages(),
 )
