@@ -1,21 +1,29 @@
 # core.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 07 Feb 2022 13:45:41 GMT
+# Last Edited: Fri 11 Feb 2022 15:52:50 GMT
 
 from __future__ import annotations
+from dataclasses import dataclass
 import datetime
 import functools
-import inspect
 from pathlib import Path
-from typing import Iterable
+import pickle
+from typing import Iterable, Optional, Union
 
 import numpy as np
 
-from nmrespy import ExpInfo
+from nmrespy import ExpInfo, GRE, ORA, RED, END, USE_COLORAMA
 from nmrespy._misc import FrequencyConverter
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-from nmrespy.sig import make_fid
+from nmrespy.freqfilter import RegionIntFloatType, filter_spectrum
+from nmrespy.mpm import MatrixPencil
+from nmrespy.nlp import NonlinearProgramming
+from nmrespy.sig import ft, make_fid, make_virtual_echo
+
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
 
 
 class Estimator:
@@ -49,6 +57,7 @@ class Estimator:
         self._datapath = datapath
         self._expinfo = expinfo
         self._converter = FrequencyConverter(self._expinfo, data.shape)
+        self._dim = self._expinfo.unpack("dim")
         now = datetime.datetime.now()
         self._log = (
             "==============================\n"
@@ -66,6 +75,10 @@ class Estimator:
             args[0]._log += f"--> `{f.__name__}` {args[1:]} {kwargs}\n"
             return f(*args, **kwargs)
         return wrapper
+
+    @property
+    def dim(self):
+        return self._dim
 
     @classmethod
     def new_synthetic_from_parameters(
@@ -115,7 +128,7 @@ class Estimator:
         Returns
         -------
         estimator: :py:class:`Estimator`"""
-        func_name = inspect.getframeinfo(inspect.currentframe()).function
+        func_name = "Estimator.new_synthetic_from_parameters",
         sanity_check(func_name, ("expinfo", expinfo, sfuncs.check_expinfo))
 
         dim = expinfo.unpack("dim")
@@ -127,68 +140,243 @@ class Estimator:
         )
 
         data = make_fid(parameters, expinfo, pts, snr=snr)[0]
+        return cls(data, None, expinfo)
 
     @logger
-    def to_pickle(self, path="./estimator", force_overwrite=False, fprint=True):
-        """Converts the class instance to a byte stream using Python's
-        "Pickling" protocol, and saves it to a .pkl file.
+    def to_pickle(
+        self, path: Optional[Union[Path, str]] = None, force_overwrite: bool = False,
+        fprint: bool = True
+    ) -> None:
+        """Save the estimator to a byte stream using Python's pickling protocol.
 
         Parameters
         ----------
-        path : str, default: './estimator'
-            Path of file to save the byte stream to. **DO NOT INCLUDE A
-            `'.pkl'` EXTENSION!** `'.pkl'` is added to the end of the path
-            automatically.
+        path
+            Path of file to save the byte stream to. `'.pkl'` is added to the end of
+            the path if this is not given by the user. If ``None``,
+            ``./estimator_<x>.pkl`` will be used, where ``<x>`` is the first number
+            that doesn't cause a clash with an already existent file.
 
-        force_overwrite : bool, default: False
-            Defines behaviour if ``f'{path}.pkl'`` already exists:
+        force_overwrite
+            Defines behaviour if the specified path already exists:
 
-            * If `force_overwrite` is set to `False`, the user will be prompted
+            * If ``force_overwrite`` is set to ``False``, the user will be prompted
               if they are happy overwriting the current file.
-            * If `force_overwrite` is set to `True`, the current file will be
+            * If ``force_overwrite`` is set to ``True``, the current file will be
               overwritten without prompt.
 
-        fprint : bool, default: True
+        fprint
             Specifies whether or not to print infomation to the terminal.
 
-        Notes
-        -----
-        This method complements :py:meth:`from_pickle`, in that
-        an instance saved using :py:meth:`to_pickle` can be recovered by
-        :py:func:`~nmrespy.load.pickle_load`.
+        See Also
+        --------
+        :py:meth:`from_pickle`
         """
-
-        checker = ArgumentChecker()
-        checker.stage(
-            (path, "path", "str"),
-            (force_overwrite, "force_overwrite", "bool"),
-            (fprint, "fprint", "bool"),
+        sanity_check(
+            "Estimator.to_pickle",
+            ("path", path, sfuncs.check_path, (), True),
+            ("force_overwrite", force_overwrite, sfuncs.check_bool),
+            ("fprint", fprint, sfuncs.check_bool),
         )
-        checker.check()
 
-        # Get full path
+        if path is None:
+            x = 1
+            while True:
+                path = Path(f"estimator_{x}.pkl").resolve()
+                if path.is_file():
+                    x += 1
+                else:
+                    break
+
         path = Path(path).resolve()
         # Append extension to file path
-        path = path.parent / (path.name + ".pkl")
-        # Check path is valid (check directory exists, ask user if they are
-        # happy overwriting if file already exists).
-        pathres = PathManager(path.name, path.parent).check_file(force_overwrite)
-        # Valid path, we are good to proceed
-        if pathres == 0:
-            pass
-        # Overwrite denied by the user. Exit the program
-        elif pathres == 1:
-            exit()
-        # pathres == 2: Directory specified doesn't exist
-        else:
-            raise ValueError(
-                f"{RED}The directory implied by path does not" f"exist{END}"
+        if path.suffix != ".pkl":
+            path = path.with_suffix(".pkl")
+        if path.is_file() and not force_overwrite:
+            print(
+                f"{ORA}to_pickle: `path` {path} already exists, and you have not "
+                f"given permission to overwrite with `force_overwrite`. Skipping{END}."
             )
+            return
 
         with open(path, "wb") as fh:
             pickle.dump(self, fh, pickle.HIGHEST_PROTOCOL)
 
         if fprint:
-            print(f"{GRE}Saved instance of Estimator to {path}{END}")
+            print(f"{GRE}Saved estimator to {path}{END}")
 
-       return cls(data=data, datapath=None, expinfo=expinfo)
+    @classmethod
+    def from_pickle(cls, path: Union[str, Path]) -> Estimator:
+        """Load a pickled estimator instance.
+
+        Parameters
+        ----------
+        path
+            The path to the pickle file.
+
+        Returns
+        -------
+        estimator : :py:class:`Estimator`
+
+        Notes
+        -----
+        .. warning::
+           `From the Python docs:`
+
+           *"The pickle module is not secure. Only unpickle data you trust.
+           It is possible to construct malicious pickle data which will
+           execute arbitrary code during unpickling. Never unpickle data
+           that could have come from an untrusted source, or that could have
+           been tampered with."*
+
+           You should only use :py:meth:`from_pickle` on files that
+           you are 100% certain were generated using
+           :py:meth:`to_pickle`. If you load pickled data from a .pkl file,
+           and the resulting output is not an instance of
+           :py:class:`Estimator`, an error will be raised.
+
+        See Also
+        --------
+        py:meth:`Estimator.to_pickle`
+        """
+        path = Path(path).resolve()
+        if path.suffix != ".pkl":
+            path = path.with_suffix(".pkl")
+        if not path.is_file():
+            raise ValueError(f"{RED}Invalid path specified.{END}")
+
+        with open(path, "rb") as fh:
+            obj = pickle.load(fh)
+        if isinstance(obj, __class__):
+            return obj
+        else:
+            raise TypeError(
+                f"{RED}It is expected that the object loaded by"
+                " `from_pickle` is an instance of"
+                f" {__class__.__module__}.{__class__.__qualname__}."
+                f" What was loaded didn't satisfy this!{END}"
+            )
+
+    @logger
+    def estimate(
+        self,
+        region: RegionIntFloatType,
+        noise_region: RegionIntFloatType,
+        *,
+        region_unit: str = "ppm",
+        initial_guess: Optional[np.ndarray, int] = None,
+        hessian: str = "gauss-newton",
+        phase_variance: bool = False,
+        max_iterations: Optional[int] = None,
+    ):
+        """Estimate a specified region of the signal.
+
+        The basic steps that this method carries out are:
+
+        * Generate a frequency-filtered signal corresponding to the specified region.
+        * (Optional) Generate an inital guess using the Matrix Pencil Method (MPM).
+        * Apply numerical optimisation to determine a final estimate of the signal
+          parameters
+
+        Parameters
+        ----------
+        region
+            The frequency range of interest.
+
+        noise_region
+            A frequency range where no noticeable signals reside, i.e. only noise
+            exists.
+
+        region_unit
+            One of ``"hz"``, ``"ppm"``, ``"idx"``, corresponding to Hertz, parts per
+            million, and array indices, respecitvely. Specifies the units that
+            ``region`` and ``noise_region`` have been given as.
+
+        initial_guess
+            If ``None``, an initial guess will be generated using the MPM,
+            with the Minimum Descritpion Length being used to estimate the
+            number of oscilltors present. If and int, the MPM will be used to
+            compute the initial guess with the value given being the number of
+            oscillators. If a NumPy array, this array will be used as the initial
+            guess.
+
+        hessian
+            Specifies how to compute the Hessian.
+
+            * ``"exact"`` - the exact analytical Hessian will be computed.
+            * ``"gauss-newton"`` - the Hessian will be approximated as per the
+              Guass-Newton method.
+
+        phase_variance
+            Whether or not to include the variance of oscillator phases in the cost
+            function. This should be included in cases where the signal being
+            considered is derived from phased data.
+
+        max_iterations
+            The greatest number of iterations to allow the optimiser to run before
+            terminating. If ``None``, this number will be set to a default, depending
+            on the identity of ``hessian``.
+        """
+        func_name = "Estimator.estimate"
+        sanity_check(
+            func_name,
+            ("region_unit", region_unit, sfuncs.check_one_of, ("hz", "ppm", "idx")),
+            (
+                "initial_guess", initial_guess, sfuncs.check_initial_guess,
+                (self.dim,), True
+            ),
+            ("hessian", hessian, sfuncs.check_one_of, ("gauss-newton", "exact")),
+            ("phase_variance", phase_variance, sfuncs.check_bool),
+            ("max_iterations", max_iterations, sfuncs.check_positive_int, (), True),
+        )
+
+        if region_unit == "hz":
+            region_check = sfuncs.check_region_hz
+        elif region_unit == "ppm":
+            if self._expinfo.unpack("sfo") is None:
+                raise ValueError(
+                    f"{RED}Cannot specify region in ppm. No information on "
+                    f"transmitter frequency exists.{END}"
+                )
+            region_check = sfuncs.check_region_ppm
+        else:
+            region_check = sfuncs.check_region_idx
+
+        sanity_check(
+            func_name,
+            ("region", region, region_check, (self._expinfo,)),
+            ("noise_region", noise_region, region_check, (self._expinfo,)),
+        )
+
+        timestamp = datetime.datetime.now()
+        filter_info = filter_spectrum(
+            ft(make_virtual_echo([self._data])),
+            self._expinfo,
+            region,
+            noise_region,
+            region_unit=region_unit,
+        )
+        signal, expinfo = filter_info.get_filtered_fid()
+        if isinstance(initial_guess, np.ndarray):
+            x0 = initial_guess
+        else:
+            M = initial_guess if isinstance(initial_guess, int) else 0
+            x0 = MatrixPencil(signal, expinfo, M=M).get_result()
+
+        nlp_result = NonlinearProgramming(
+            signal, x0, expinfo, phase_variance=phase_variance, hessian=hessian,
+            max_iterations=max_iterations,
+        )
+        result, errors = nlp_result.get_result(), nlp_result.get_errors()
+        self._results.append(
+            Result(timestamp, signal, expinfo, result, errors)
+        )
+
+
+@dataclass
+class Result:
+    timestamp: datetime.datetime
+    signal: np.ndarray
+    expinfo: ExpInfo
+    result: np.ndarray
+    error: np.ndarray

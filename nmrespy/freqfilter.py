@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 13 Oct 2021 17:43:02 BST
+# Last Edited: Fri 11 Feb 2022 14:57:21 GMT
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
 import functools
@@ -17,8 +17,8 @@ from nmrespy import RED, END, USE_COLORAMA, ExpInfo
 
 if USE_COLORAMA:
     import colorama
-
     colorama.init()
+
 from nmrespy._misc import ArgumentChecker, FrequencyConverter
 import nmrespy._errors as errors
 from nmrespy import sig
@@ -44,8 +44,6 @@ RegionIntFloatType = NewType(
 )
 
 
-# Used to have this as a dataclass but as the chemistry Linux machines
-# cannot have Python > 3.6, I have resorted back to a vanilla class.
 class FilterInfo:
     """Object describing filtration proceedure.
 
@@ -598,9 +596,8 @@ def filter_spectrum(
 
     checker.check()
 
-    expinfo.pts = spectrum.shape
     # Convert region from hz or ppm to array indices
-    converter = FrequencyConverter(expinfo)
+    converter = FrequencyConverter(expinfo, spectrum.shape)
     region_idx = converter.convert(region, f"{region_unit}->idx")
     noise_region_idx = converter.convert(noise_region, f"{region_unit}->idx")
     region_idx = tuple([tuple(sorted(r)) for r in region_idx])
