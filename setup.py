@@ -1,7 +1,7 @@
 # setup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 07 Feb 2022 12:54:47 GMT
+# Last Edited: Mon 14 Feb 2022 13:41:02 GMT
 
 from setuptools import setup, find_packages
 
@@ -33,6 +33,7 @@ setup(
         "scipy",
         "matplotlib",
         "bruker_utils",
+        "nmr_sims",
         "colorama; platform_system == 'Windows'",
     ],
     python_requires=">=3.7",

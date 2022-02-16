@@ -1,3 +1,8 @@
+# conf.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Tue 15 Feb 2022 14:10:39 GMT
+
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -12,10 +17,12 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
-sys.path.append(os.path.abspath('exts'))
 import nmrespy
 import sphinx_nameko_theme
+
+
+sys.path.append(os.path.abspath('exts'))
+sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 project = 'NMR-EsPy'

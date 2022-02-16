@@ -1,7 +1,7 @@
 # core.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 11 Feb 2022 15:52:50 GMT
+# Last Edited: Mon 14 Feb 2022 10:15:05 GMT
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -14,7 +14,6 @@ from typing import Iterable, Optional, Union
 import numpy as np
 
 from nmrespy import ExpInfo, GRE, ORA, RED, END, USE_COLORAMA
-from nmrespy._misc import FrequencyConverter
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy.freqfilter import RegionIntFloatType, filter_spectrum
 from nmrespy.mpm import MatrixPencil
@@ -51,13 +50,13 @@ class Estimator:
     """
 
     def __init__(
-        self, data: np.ndarray, datapath: Path, expinfo: ExpInfo,
+        self, data: np.ndarray, datapath: Optional[Path], expinfo: ExpInfo,
     ) -> None:
         self._data = data
         self._datapath = datapath
         self._expinfo = expinfo
-        self._converter = FrequencyConverter(self._expinfo, data.shape)
         self._dim = self._expinfo.unpack("dim")
+        self._results = []
         now = datetime.datetime.now()
         self._log = (
             "==============================\n"
