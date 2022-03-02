@@ -1,7 +1,7 @@
 # core.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 14 Feb 2022 10:15:05 GMT
+# Last Edited: Wed 02 Mar 2022 16:38:23 GMT
 
 from __future__ import annotations
 from dataclasses import dataclass
@@ -15,7 +15,7 @@ import numpy as np
 
 from nmrespy import ExpInfo, GRE, ORA, RED, END, USE_COLORAMA
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-from nmrespy.freqfilter import RegionIntFloatType, filter_spectrum
+from nmrespy.freqfilter import Region, filter_spectrum
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
 from nmrespy.sig import ft, make_fid, make_virtual_echo
@@ -59,10 +59,10 @@ class Estimator:
         self._results = []
         now = datetime.datetime.now()
         self._log = (
-            "==============================\n"
-            "Logfile for Estimator instance\n"
-            "==============================\n"
-            f"--> Instance created @ {now.strftime('%d-%m-%y %H:%M:%S')}\n"
+            "=====================\n"
+            "Logfile for Estimator\n"
+            "=====================\n"
+            f"--> Created @ {now.strftime('%d-%m-%y %H:%M:%S')}\n"
         )
 
     def logger(f: callable) -> callable:
@@ -126,7 +126,8 @@ class Estimator:
 
         Returns
         -------
-        estimator: :py:class:`Estimator`"""
+        estimator: :py:class:`Estimator`
+        """
         func_name = "Estimator.new_synthetic_from_parameters",
         sanity_check(func_name, ("expinfo", expinfo, sfuncs.check_expinfo))
 
@@ -259,11 +260,11 @@ class Estimator:
     @logger
     def estimate(
         self,
-        region: RegionIntFloatType,
-        noise_region: RegionIntFloatType,
+        region: Optional[Region] = None,
+        noise_region: Optional[Region] = None,
         *,
         region_unit: str = "ppm",
-        initial_guess: Optional[np.ndarray, int] = None,
+        initial_guess: Optional[Union[np.ndarray, int]] = None,
         hessian: str = "gauss-newton",
         phase_variance: bool = False,
         max_iterations: Optional[int] = None,
@@ -272,7 +273,8 @@ class Estimator:
 
         The basic steps that this method carries out are:
 
-        * Generate a frequency-filtered signal corresponding to the specified region.
+        * (Optional, but highly advised) Generate a frequency-filtered signal
+          corresponding to the specified region.
         * (Optional) Generate an inital guess using the Matrix Pencil Method (MPM).
         * Apply numerical optimisation to determine a final estimate of the signal
           parameters

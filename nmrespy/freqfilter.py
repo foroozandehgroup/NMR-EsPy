@@ -1,12 +1,12 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 11 Feb 2022 14:57:21 GMT
+# Last Edited: Wed 02 Mar 2022 15:37:44 GMT
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
 import functools
 import operator
-from typing import Iterable, NewType, Tuple, Union
+from typing import Iterable, Tuple, Union
 
 import numpy as np
 import numpy.random as nrandom
@@ -24,24 +24,9 @@ import nmrespy._errors as errors
 from nmrespy import sig
 
 
-RegionIntType = NewType(
-    "RegionIntType",
-    Union[Union[Tuple[int, int], Tuple[Tuple[int, int], Tuple[int, int]]], None],
-)
-
-RegionIntFloatType = NewType(
-    "RegionIntFloatType",
-    Union[
-        Union[
-            Tuple[Union[int, float], Union[int, float]],
-            Tuple[
-                Tuple[Union[int, float], Union[int, float]],
-                Tuple[Union[int, float], Union[int, float]],
-            ],
-        ],
-        None,
-    ],
-)
+RegionFloat = Iterable[Tuple[float, float]]
+RegionInt = Iterable[Tuple[int, int]]
+Region = Union[RegionInt, RegionFloat]
 
 
 class FilterInfo:
@@ -77,8 +62,8 @@ class FilterInfo:
         self,
         _spectrum: np.ndarray,
         _expinfo: ExpInfo,
-        _region: RegionIntType,
-        _noise_region: RegionIntType,
+        _region: RegionInt,
+        _noise_region: RegionInt,
         _sg_power: float,
         _converter: FrequencyConverter,
     ) -> None:
@@ -199,9 +184,9 @@ class FilterInfo:
                     return f(*args, **kwargs)
                 else:
                     raise ValueError(
-                        f"{RED}`unit` should be one of: {{"
-                        + ", ".join(["'" + v + "'" for v in valid_units])
-                        + f"}}{END}"
+                        f"{RED}`unit` should be one of: {{" +
+                        ", ".join(["'" + v + "'" for v in valid_units]) +
+                        f"}}{END}"
                     )
 
             return checker
@@ -234,7 +219,7 @@ class FilterInfo:
         return tuple([abs(r[1] - r[0]) for r in region])
 
     @_check_unit(["idx", "hz", "ppm"])
-    def get_region(self, unit: str = "hz") -> RegionIntFloatType:
+    def get_region(self, unit: str = "hz") -> RegionFloat:
         """Get selected spectral region for filtration.
 
         Parameters
@@ -245,7 +230,7 @@ class FilterInfo:
         return self._converter.convert(self._region, f"idx->{unit}")
 
     @_check_unit(["idx", "hz", "ppm"])
-    def get_noise_region(self, unit: str = "hz") -> RegionIntFloatType:
+    def get_noise_region(self, unit: str = "hz") -> RegionFloat:
         """Get selected spectral noise region for filtration.
 
         Parameters
@@ -301,9 +286,9 @@ class FilterInfo:
                     shift += 1
                 boundaries.append(
                     tuple(
-                        dim * [slice(None, None, None)]
-                        + [slice(lcutoff, rcutoff)]
-                        + (ndim - dim - 1) * [slice(None, None, None)]
+                        dim * [slice(None, None, None)] +
+                        [slice(lcutoff, rcutoff)] +
+                        (ndim - dim - 1) * [slice(None, None, None)]
                     )
                 )
 
@@ -398,7 +383,7 @@ class FilterInfo:
         return cf
 
 
-def superg(region: RegionIntType, shape: Iterable[int], p: float = 40.0) -> np.ndarray:
+def superg(region: RegionInt, shape: Iterable[int], p: float = 40.0) -> np.ndarray:
     r"""Generate a super-Gaussian for filtration of frequency-domian data.
 
     The super-Gaussian is described by the following expression:
@@ -446,7 +431,7 @@ def superg(region: RegionIntType, shape: Iterable[int], p: float = 40.0) -> np.n
 
 
 def superg_noise(
-    spectrum: np.ndarray, noise_region: RegionIntType, sg: np.ndarray
+    spectrum: np.ndarray, noise_region: RegionInt, sg: np.ndarray,
 ) -> np.ndarray:
     """Construct a synthetic noise sequence to add to the filtered spectrum.
 
@@ -486,8 +471,8 @@ def superg_noise(
 def filter_spectrum(
     spectrum: np.ndarray,
     expinfo: ExpInfo,
-    region: RegionIntFloatType,
-    noise_region: RegionIntFloatType,
+    region: RegionFloat,
+    noise_region: RegionFloat,
     *,
     region_unit: str = "hz",
     sg_power: float = 40.0,
