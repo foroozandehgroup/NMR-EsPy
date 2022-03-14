@@ -1,8 +1,9 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 04 Feb 2022 16:14:28 GMT
+# Last Edited: Tue 08 Mar 2022 17:54:57 GMT
 
+import inspect
 from typing import Any, Iterable
 from nmrespy import RED, END, USE_COLORAMA
 
@@ -25,15 +26,11 @@ class CheckItem:
             self.msg = func(obj, *funcargs)
 
 
-def sanity_check(func_name: str, *param_sets: Iterable[Iterable[Any]]) -> None:
+def sanity_check(*param_sets: Iterable[Iterable[Any]]) -> None:
     """Handles checking of inputs.
 
     Parameters
     ----------
-    func_name
-        The name of the function/class that is being called, within which sanity
-        checking is taking place.
-
     param_sets
         Iterable of information regarding the objects to check:
 
@@ -54,6 +51,7 @@ def sanity_check(func_name: str, *param_sets: Iterable[Iterable[Any]]) -> None:
     TypeError
         If an argument does not pass it's sanity check.
     """
+    func_name = inspect.stack()[1][3]
     for param_set in param_sets:
         check_item = CheckItem(*param_set)
         if isinstance(check_item.msg, str):

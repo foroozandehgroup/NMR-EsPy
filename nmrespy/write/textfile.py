@@ -1,3 +1,8 @@
+# textfile.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Tue 08 Mar 2022 16:49:11 GMT
+
 import datetime
 import pathlib
 from typing import List, Union
@@ -31,29 +36,18 @@ def write(
         Specifies whether or not to print output to terminal.
     """
     text = _create_contents(param_table, info_table, description)
+    _write_txt(path, text, fprint)
 
+
+def _write_txt(path: pathlib.Path, text: str, fprint: bool) -> None:
     try:
-        _write_file(path, text)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
     except Exception as e:
         raise e
 
     if fprint:
         print(f"{GRE}Saved result to\n{path}{END}")
-
-
-def _write_file(path: pathlib.Path, text: str) -> None:
-    """Write ``text`` to ``path``.
-
-    Parameters
-    ----------
-    path
-        Path to file.
-
-    text
-        Text to insert.
-    """
-    with open(path, "w", encoding="utf-8") as file:
-        file.write(text)
 
 
 def _create_contents(

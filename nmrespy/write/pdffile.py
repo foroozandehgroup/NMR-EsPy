@@ -1,10 +1,15 @@
+# pdffile.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Tue 08 Mar 2022 15:33:31 GMT
+
 import datetime
 import os
 import pathlib
 import shutil
 import subprocess
 import tempfile
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 from nmrespy import (
     GRE,
     END,
@@ -82,6 +87,12 @@ def write(
     text = _append_param_table(text, param_table)
     text = _append_figure(text, figure)
 
+    _write_pdf(path, text, pdflatex_exe, fprint)
+
+
+def _write_pdf(
+    path: pathlib.Path, text: str, pdflatex_exe: Optional[str], fprint: bool
+) -> None:
     texpaths = _get_texpaths(path)
     with open(texpaths["tmp"]["tex"], "w", encoding="utf-8") as fh:
         fh.write(text)

@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 09 Nov 2021 12:19:53 GMT
+# Last Edited: Wed 09 Mar 2022 17:54:23 GMT
 
 """Support for plotting estimation results"""
 
@@ -98,9 +98,9 @@ def _configure_oscillator_colors(oscillator_colors: Any, m: int) -> str:
     if nones:
         msg = (
             f"{RED}The following entries in `oscillator_colors` could "
-            f"not be recognised as valid colours in matplotlib:\n"
-            + "\n".join([f"--> {repr(oscillator_colors[i])}" for i in nones])
-            + END
+            f"not be recognised as valid matplotlib colors:\n" +
+            "\n".join([f"--> {repr(oscillator_colors[i])}" for i in nones]) +
+            END
         )
         raise ValueError(msg)
 
@@ -170,9 +170,9 @@ def _extract_rc(stylesheet: Union[Path, None]) -> str:
     paths = [
         stylesheet,
         (
-            Path(mpl.__file__).resolve().parent
-            / "mpl-data/stylelib"
-            / f"{stylesheet}.mplstyle"
+            Path(mpl.__file__).resolve().parent /
+            "mpl-data/stylelib" /
+            f"{stylesheet}.mplstyle"
         ),
     ]
 
@@ -315,6 +315,7 @@ def _get_region_slice(
     shifts_unit: str,
     region: Union[Iterable[Tuple[float, float]], None],
     expinfo: ExpInfo,
+    pts: Iterable[int],
 ) -> Iterable[slice]:
     """Determine the slice for the specified spectral region.
 
@@ -329,22 +330,28 @@ def _get_region_slice(
     expinfo
         Experiment information.
 
+    pts
+        Number of points in the spectrum.
+
     Returns
     -------
     region_slice: Iterable[slice]
         Slice for the region of interest.
     """
     if region is None:
-        return tuple(slice(0, p, None) for p in expinfo.pts)
+        return tuple(slice(0, p, None) for p in pts)
 
-    converter = FrequencyConverter(expinfo)
+    converter = FrequencyConverter(expinfo, pts)
     int_region = converter.convert(region, f"{shifts_unit}->idx")
 
     return tuple(slice(x[0], x[1] + 1, None) for x in int_region)
 
 
 def _generate_peaks(
-    result: np.ndarray, region_slice: Iterable[slice], expinfo: ExpInfo
+    result: np.ndarray,
+    region_slice: Iterable[slice],
+    expinfo: ExpInfo,
+    pts: Iterable[int],
 ) -> Iterable[np.ndarray]:
     """Create a list of peaks for inidivdual oscillators.
 
@@ -359,6 +366,9 @@ def _generate_peaks(
     expinfo
         Experiment information.
 
+    pts
+        Number of points the signal is made of.
+
     Returns
     -------
     peaks: Iterable[numpy.ndarray]
@@ -370,6 +380,7 @@ def _generate_peaks(
                 sig.make_fid(
                     np.expand_dims(oscillator, axis=0),
                     expinfo,
+                    pts,
                 )[0]
             )
         )[region_slice]
@@ -799,8 +810,8 @@ def plot_result(
         ``expinfo``, it will revert to ``'hz'``.
 
     region
-        Boundaries specifying the region to show. **N.B. the units
-        ``region`` is given in should match ``shifts_unit``.**
+        Boundaries specifying the region to show. **N.B. the units**
+        ``region`` **is given in should match** ``shifts_unit`` **.**
 
     plot_residual
         If ``True``, plot a difference between the FT of ``spectrum`` and the
@@ -827,8 +838,8 @@ def plot_result(
         discussion of valid colors.
         Any value that is
         recognised by matplotlib as a color is permitted. See
-        `<here https://matplotlib.org/3.1.0/tutorials/colors/\
-        colors.html>`_ for a full description of valid values.
+        `here <https://matplotlib.org/stable/tutorials/colors/colors.html>`_
+        for a full description of valid values.
 
     residual_color
         The colour used to plot the residual. See `Notes` for a discussion of
@@ -847,7 +858,7 @@ def plot_result(
         * If a string corresponding to a matplotlib colormap is given,
           the oscillators will be consecutively shaded by linear increments
           of this colormap. For all valid colormaps, see
-          `<here https://matplotlib.org/stable/tutorials/colors/\
+          `here <https://matplotlib.org/stable/tutorials/colors/\
           colormaps.html>`__
         * If an iterable object containing valid matplotlib colors is
           given, these colors will be cycled.
@@ -879,15 +890,6 @@ def plot_result(
     -------
     plot: :py:class:`NmrespyPlot`
         The result plot.
-
-    Notes
-    -----
-    **Valid matplotlib colors**
-
-    Any argument which can be converted to a hexadecimal RGB value by
-    matpotlib is be specified as a color. A complete list of all valid
-    color arguments can be found `here <https://matplotlib.org/stable/
-    tutorials/colors/colors.html#sphx-glr-tutorials-colors-colors-py>`_
     """
     if not isinstance(expinfo, ExpInfo):
         raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
@@ -930,18 +932,18 @@ def plot_result(
     stylepath = _create_stylesheet(rc)
     plt.style.use(stylepath)
 
-    expinfo._pts = spectrum.shape
+    pts = spectrum.shape
     shifts_unit = _configure_shifts_unit(shifts_unit, expinfo)
-    region_slice = _get_region_slice(shifts_unit, region, expinfo)
+    region_slice = _get_region_slice(shifts_unit, region, expinfo, pts)
     shifts = [
         shifts[slice_]
         for shifts, slice_ in zip(
-            sig.get_shifts(expinfo, unit=shifts_unit), region_slice
+            sig.get_shifts(expinfo, pts, unit=shifts_unit), region_slice
         )
     ][0]
     # TODO should replicate that way the spectrum was created (ve for example)
     spectrum = spectrum[region_slice]
-    peaks = _generate_peaks(result, region_slice, expinfo)
+    peaks = _generate_peaks(result, region_slice, expinfo, pts)
     model, residual = _generate_model_and_residual(peaks, spectrum)
 
     # Generate figure and axis
@@ -951,9 +953,7 @@ def plot_result(
     # Plot oscillator peaks
     _plot_oscillators(lines, labels, ax, shifts, peaks, show_labels)
     # Plot spectrum
-    print("BEFORE")
     _plot_spectrum(lines, "data", ax, shifts, spectrum, color=data_color)
-    print("AFTER")
     # Plot model
     model += _process_yshift(model, model_shift, 0.1)
     _plot_spectrum(

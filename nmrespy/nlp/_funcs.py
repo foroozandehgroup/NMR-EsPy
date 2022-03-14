@@ -1,7 +1,7 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 04 Feb 2022 11:55:47 GMT
+# Last Edited: Mon 14 Mar 2022 14:39:24 GMT
 
 """Definitions of fidelities, gradients, and Hessians."""
 
@@ -697,6 +697,24 @@ def obj_grad_gauss_newton_hess_1d(
     grad = -2 * np.real(diff.conj().T @ jac)
     # --- ∇²ℱ(θ) ---
     hess = 2 * np.real(jac.conj().T @ jac)
+
+    if phasevar:
+        # If 0 in idx, phases will be between m and 2m, as amps
+        # also present if not, phases will be between 0 and m
+        i = 1 if 0 in idx else 0
+        phases = theta[i * m : (i + 1) * m]
+        mu = np.einsum("i->", phases) / m
+        # Var(φ)
+        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
+        # ∂Var(φ)/∂φᵢ
+        grad[i * m : (i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
+        # ∂²Var(φ)/∂φᵢ∂φⱼ
+        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] -= 2 / (m ** 2 * np.pi)
+        main_diagonals = _diagonal_indices(hess.shape[0], k=0)
+        hess[
+            main_diagonals[0][i * m : (i + 1) * m],
+            main_diagonals[1][i * m : (i + 1) * m],
+        ] += 2 / (np.pi * m)
 
     return obj, grad, hess
 

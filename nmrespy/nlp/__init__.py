@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Jan 2022 18:22:02 GMT
+# Last Edited: Mon 14 Mar 2022 12:35:11 GMT
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
@@ -63,7 +63,7 @@ class NonlinearProgramming(FrequencyConverter):
         mode: str = "apfd",
         amp_thold: Union[float, None] = None,
         freq_thold: Union[float, None] = None,
-        negative_amps: str = "flip_phase",
+        negative_amps: str = "remove",
         fprint: bool = True,
         # mode: Pattern[str] = 'apfd'
     ) -> None:

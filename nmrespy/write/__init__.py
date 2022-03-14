@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Jan 2022 18:36:48 GMT
+# Last Edited: Tue 08 Mar 2022 18:11:29 GMT
 """Writing estimation results to .txt, .pdf and .csv files"""
 
 from collections import deque
@@ -60,7 +60,7 @@ def _configure_save_path(
         response = _ask_overwrite(path, force_overwrite)
         if not response:
             print(
-                f"{RED}Overwrite of file {path} denied. File will not be "
+                f"{ORA}Overwrite of file {str(path)} denied. File will not be "
                 f"overwritten.{END}"
             )
             return None
@@ -80,11 +80,7 @@ def _ask_overwrite(path: Path, force: bool) -> bool:
     """Determine whether the user is happy to overwrite an existing file."""
     if force:
         return True
-    prompt = (
-        f"{ORA}The file {str(path)} already exists. Overwrite?\n"
-        f"Enter [y] or [n]:{END}"
-    )
-    return _misc.get_yes_no(prompt)
+    return _misc.get_yes_no(f"The file {str(path)} already exists. Overwrite?")
 
 
 def write_result(
@@ -516,10 +512,10 @@ def _format_value(
     exp_mag = int(exp_search.group(2))
 
     if (
-        exp_sign == "+"
-        and exp_mag < sci_lims[1]
-        or exp_sign == "-"
-        and exp_mag < -sci_lims[0]
+        exp_sign == "+" and
+        exp_mag < sci_lims[1] or
+        exp_sign == "-" and
+        exp_mag < -sci_lims[0]
     ):
         return str(value)
 

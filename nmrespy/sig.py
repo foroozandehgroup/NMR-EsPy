@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 07 Feb 2022 13:09:25 GMT
+# Last Edited: Tue 08 Mar 2022 17:51:18 GMT
 
 """Constructing and processing NMR signals."""
 
@@ -174,12 +174,10 @@ def make_fid(
     oscillators, and :math:`\Delta t_d = 1 / f_{\mathrm{sw}, d}`.
     """
     # --- Check validity of inputs ---------------------------------------
-    func_name = inspect.getframeinfo(inspect.currentframe()).function,
-    sanity_check(func_name, ("expinfo", expinfo, sfuncs.check_expinfo))
+    sanity_check(("expinfo", expinfo, sfuncs.check_expinfo),)
 
     dim = expinfo.unpack("dim")
     sanity_check(
-        func_name,
         ("params", params, sfuncs.check_parameter_array, (dim,)),
         ("pts", pts, sfuncs.check_points, (dim,)),
         ("decibels", decibels, sfuncs.check_bool),

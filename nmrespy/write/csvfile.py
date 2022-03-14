@@ -1,3 +1,8 @@
+# csvfile.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Tue 08 Mar 2022 16:43:42 GMT
+
 import csv
 import datetime
 import pathlib
@@ -10,7 +15,7 @@ if USE_COLORAMA:
     colorama.init()
 
 
-def _write_csv(
+def write(
     path: pathlib.Path,
     param_table: List[List[str]],
     info_table: List[List[str]],
