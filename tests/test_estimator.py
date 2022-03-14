@@ -1,7 +1,7 @@
 # test_estimator.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 14 Feb 2022 10:10:05 GMT
+# Last Edited: Mon 14 Mar 2022 21:36:21 GMT
 
 import os
 from pathlib import Path
@@ -15,79 +15,43 @@ from nmrespy import ExpInfo
 from nmrespy.core import Estimator
 
 
-def basic_estimator():
-    return Estimator.new_synthetic_from_parameters(
-        np.array([[random.uniform(1, 10), 0, 5, 1]]), ExpInfo(50), [4048],
-    )
-
-
-class TestSyntheticEstimator:
-    pts_1d = [4048]
-    params_1d = np.array(
-        [
-            [1, 0, 3000, 10],
-            [3, 0, 3050, 10],
-            [3, 0, 3100, 10],
-            [1, 0, 3150, 10],
-            [2, 0, 150, 10],
-            [4, 0, 100, 10],
-            [2, 0, 50, 10],
-        ]
-    )
-    expinfo_1d = ExpInfo(sw=5000, offset=2000, sfo=500, nuclei="1H")
-    expinfo_1d_no_nuc = ExpInfo(sw=5000, offset=2000, sfo=500)
-    expinfo_1d_no_sfo = ExpInfo(sw=5000, offset=2000, nuclei="1H")
-    expinfo_1d_no_sfo_no_nuc = ExpInfo(sw=5000, offset=2000)
-
-    pts_2d = [512, 512]
-    params_2d = np.array(
-        [
-            [1, 0, 3000, 3000, 10, 10],
-            [3, 0, 3050, 3050, 10, 10],
-            [3, 0, 3100, 3100, 10, 10],
-            [1, 0, 3150, 3150, 10, 10],
-            [2, 0, 150, 150, 10, 10],
-            [4, 0, 100, 100, 10, 10],
-            [2, 0, 50, 50, 10, 10],
-        ]
-    )
-    expinfo_2d = ExpInfo(sw=5000, offset=2000, sfo=500, nuclei="1H", dim=2)
-    expinfo_2d_no_nuc = ExpInfo(sw=5000, offset=2000, sfo=500, dim=2)
-    expinfo_2d_no_sfo = ExpInfo(sw=5000, offset=2000, nuclei="1H", dim=2)
-    expinfo_2d_no_sfo_no_nuc = ExpInfo(sw=5000, offset=2000, dim=2)
-
-    def test_init(self):
-        # Create with valid parameters
-        estimator = Estimator.new_synthetic_from_parameters(
-            self.params_1d, self.expinfo_1d, self.pts_1d,
+def basic_estimator(dim: int = 1, with_sfo: bool = True) -> Estimator:
+    if dim == 1:
+        pts = [4048]
+        params = np.array(
+            [
+                [1, 0, 3000, 10],
+                [3, 0, 3050, 10],
+                [3, 0, 3100, 10],
+                [1, 0, 3150, 10],
+                [2, 0, 150, 10],
+                [4, 0, 100, 10],
+                [2, 0, 50, 10],
+            ]
         )
-        print(estimator)
-
-        # Try to create with list instead of np array of parameters.
-        with pytest.raises(TypeError) as exc_info:
-            Estimator.new_synthetic_from_parameters(
-                self.params_1d.tolist(), self.expinfo_1d, self.pts_1d,
-            )
-        assert (
-            "`parameters` is invalid:\nShould be a numpy array." in
-            str(exc_info.value)
+        if with_sfo:
+            expinfo = ExpInfo(sw=5000, offset=2000, sfo=500, nuclei="1H")
+        else:
+            expinfo = ExpInfo(sw=5000, offset=2000, nuclei="1H")
+    else:
+        pts = [512, 512]
+        params = np.array(
+            [
+                [1, 0, 3000, 3000, 10, 10],
+                [3, 0, 3050, 3050, 10, 10],
+                [3, 0, 3100, 3100, 10, 10],
+                [1, 0, 3150, 3150, 10, 10],
+                [2, 0, 150, 150, 10, 10],
+                [4, 0, 100, 100, 10, 10],
+                [2, 0, 50, 50, 10, 10],
+            ]
         )
+        if with_sfo:
+            expinfo = ExpInfo(sw=5000, offset=2000, sfo=500, nuclei="1H", dim=2)
+        else:
+            expinfo = ExpInfo(sw=5000, offset=2000, nuclei="1H", dim=2)
 
-        # Try to create with 1D parameter array but 2D expinfo and pts.
-        with pytest.raises(TypeError) as exc_info:
-            Estimator.new_synthetic_from_parameters(
-                self.params_1d, self.expinfo_2d, self.pts_2d,
-            )
-        assert (
-            "`parameters` is invalid:\nShould be a 2-dimensional array with "
-            "shape (M, 6)." in str(exc_info.value)
-        )
-
-    def test_estimate(self):
-        estimator = Estimator.new_synthetic_from_parameters(
-            self.params_1d, self.expinfo_1d, self.pts_1d,
-        )
-        estimator.estimate([[3350., 2800.]], [[1200., 1000.]], region_unit="hz")
+    return Estimator.new_synthetic_from_parameters(params, expinfo, pts, snr=25.0)
 
 
 class TestPickle:
@@ -140,3 +104,17 @@ class TestPickle:
             Estimator.from_pickle(path)
         assert "It is expected that the object loaded by" in str(exc_info.value)
         os.remove("estimator.pkl")
+
+
+class TestWrite:
+    def test_txt(self):
+        estimator = basic_estimator()
+        estimator.estimate([[3350., 2800.]], [[1200., 1000.]], region_unit="hz")
+        estimator.estimate([[300., -50.]], [[1200., 1000.]], region_unit="hz")
+        estimator.write_results(force_overwrite=True)
+        estimator.write_results(fmt="pdf", force_overwrite=True, sci_lims=(-5, 6))
+        estimator.view_log
+        estimator.save_log()
+
+        plots = estimator.plot_results()
+        plots[0].fig.savefig("figure.pdf")

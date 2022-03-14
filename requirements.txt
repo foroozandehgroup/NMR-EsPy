@@ -4,7 +4,3 @@ scipy
 scikit-learn
 bruker_utils
 nmr_sims
-pytest
-flake8
-Sphinx
-sphinx-nameko-theme
