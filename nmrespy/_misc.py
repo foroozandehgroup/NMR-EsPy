@@ -1,7 +1,7 @@
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 04 Feb 2022 14:03:37 GMT
+# Last Edited: Fri 18 Mar 2022 13:04:40 GMT
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
@@ -9,7 +9,7 @@ from collections.abc import Callable
 import functools
 from pathlib import Path
 import re
-from typing import Any, Iterable, Union
+from typing import Any, Iterable, Optional, Union
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -17,6 +17,7 @@ import matplotlib.colors as mcolors
 import numpy as np
 
 from nmrespy import RED, ORA, GRE, END, USE_COLORAMA, ExpInfo
+from nmrespy._sanity import sanity_check, funcs as sfuncs
 
 if USE_COLORAMA:
     import colorama
@@ -344,33 +345,17 @@ class FrequencyConverter:
         It is necessary for `expinfo` to have `sfo` not set to `None` if
         conversion from/tp ppm is desired.
         """
-        try:
-            sw, offset, sfo, dim = expinfo.unpack(
-                "sw", "offset", "sfo", "dim"
-            )
-        except Exception:
-            raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
-
-        checker = ArgumentChecker(dim=dim)
-        checker.stage(
-            (pts, "pts", "int_iter"),
-            (sw, "sw", "float_iter"),
-            (offset, "offset", "float_iter"),
-            (sfo, "sfo", "float_iter", True),
-        )
-        checker.check()
+        sanity_check(("expinfo", expinfo, sfuncs.check_expinfo))
+        sanity_check(("pts", pts, sfuncs.check_points, (expinfo.dim,)))
+        self.expinfo = expinfo
+        self.dim = self.expinfo.dim
         self.pts = pts
-        self.sw = sw
-        self.offset = offset
-        self.sfo = sfo
-        self.dim = dim
-
-    def __len__(self):
-        """Return number of experiment dimensions."""
-        return self.dim
+        self.ppm_valid = self.expinfo.sfo is not None
 
     def convert(
-        self, lst: Iterable[Union[int, float]], conversion: str
+        self,
+        lst: Iterable[Optional[Union[Iterable[Union[float, int]], float, int]]],
+        conversion: str,
     ) -> Iterable[Union[int, float]]:
         """Convert quantities contained within an iterable.
 
@@ -381,77 +366,52 @@ class FrequencyConverter:
             ``len(self)``.
 
         conversion
-            A string denoting the coversion to be applied. The form of
-            `conversion` should be ``f'{from}->{to}'``, where ``from`` and
-            ``to`` are each one of the following:
+            A string denoting the coversion to be applied. Its form should be
+            ``f"{from}->{to}"``, where ``"from"`` and ``"to"`` are each one of the
+            following:
 
-            * `'idx'`: array index
-            * `'hz'`: Hertz
-            * `'ppm'`: parts per million
+            * ``"idx"``: array index
+            * ``"hz"``: Hertz
+            * ``"ppm"``: parts per million
 
         Returns
         -------
         converted_lst
-            An iterable of the same dimensions as `lst`, with converted values.
+            An iterable of the same structure as ``lst``, with converted values.
         """
-        if not self._check_valid_conversion(conversion):
-            raise ValueError(f"{RED}convert is not valid.{END}")
+        sanity_check(
+            ("lst", lst, sfuncs.check_convertible_list, (self.dim,)),
+            (
+                "conversion", conversion, sfuncs.check_frequency_conversion,
+                (self.ppm_valid,),
+            )
+        )
 
-        if len(self) != len(lst):
-            raise ValueError(f"{RED}lst should be of length {len(self)}.{END}")
-
-        # List for storing final converted contents
         converted_lst = []
         for dim, elem in enumerate(lst):
-            # try/except block enables code to work with both lists and
-            # lists of lists
-            try:
-                # Test whether element is an iterable
-                iterable = iter(elem)
-                # Create sublist
-                converted_sublst = []
-
-                while True:
-                    try:
-                        converted_sublst.append(
-                            self._convert_value(
-                                next(iterable),
-                                dim,
-                                conversion,
-                            )
-                        )
-                    except StopIteration:
-                        break
-
-                converted_lst.append(type(elem)((converted_sublst)))
-
-            except TypeError:
+            if elem is None:
+                converted_lst.append(None)
+            elif isinstance(elem, (tuple, list)):
+                converted_lst.append(
+                    type(elem)([
+                        self._convert_value(x, dim, conversion) for x in elem
+                    ])
+                )
+            else:
                 # elem is a float/int...
                 converted_lst.append(self._convert_value(elem, dim, conversion))
 
         return type(lst)(converted_lst)
-
-    def _check_valid_conversion(self, conversion: str) -> bool:
-        """Check that conversion is a valid value."""
-        pattern = r"^(idx|ppm|hz)->(idx|ppm|hz)$"
-        return bool(re.match(pattern, conversion))
 
     def _convert_value(
         self, value: Union[int, float], dim: int, conversion: str
     ) -> Union[int, float]:
         """Convert frequency."""
         pts = self.pts[dim]
-        sw = self.sw[dim]
-        off = self.offset[dim]
-        if (self.sfo is None) and ("ppm" in conversion):
-            raise ValueError(
-                f"{RED}WARNING tried to convert to/from ppm, when sfo"
-                f" has not been specified!{END}"
-            )
-        elif self.sfo is None:
-            pass
-        else:
-            sfo = self.sfo[dim]
+        sw = self.expinfo.sw[dim]
+        off = self.expinfo.offset[dim]
+        if self.ppm_valid:
+            sfo = self.expinfo.sfo[dim]
 
         if conversion == "idx->hz":
             return off + sw * (0.5 - (float(value) / (pts - 1)))

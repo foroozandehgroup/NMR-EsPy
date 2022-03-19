@@ -1,10 +1,10 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 08 Mar 2022 17:54:57 GMT
+# Last Edited: Fri 18 Mar 2022 12:59:15 GMT
 
 import inspect
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 from nmrespy import RED, END, USE_COLORAMA
 
 if USE_COLORAMA:
@@ -51,13 +51,27 @@ def sanity_check(*param_sets: Iterable[Iterable[Any]]) -> None:
     TypeError
         If an argument does not pass it's sanity check.
     """
-    func_name = inspect.stack()[1][3]
+    funcname = get_name(inspect.currentframe())
     for param_set in param_sets:
         check_item = CheckItem(*param_set)
         if isinstance(check_item.msg, str):
             errmsg = (
-                f"{RED}{func_name}:\n"
+                f"{RED}{funcname}:\n"
                 f"`{check_item.name}` is invalid:\n"
                 f"{check_item.msg}{END}."
             )
             raise TypeError(errmsg)
+
+
+def get_name(frame: inspect.types.FrameType) -> Optional[str]:
+    # https://stackoverflow.com/questions/2654113/how-to-get-the-callers-method-name-in-the-called-method
+    funcname = inspect.getouterframes(frame, 2)[1][3]
+    try:
+        try:
+            self_obj = frame.f_back.f_locals["self"]
+        except KeyError:
+            classname = None
+        classname = type(self_obj).__name__
+    finally:
+        del frame
+    return f"{classname}.{funcname}" if classname is not None else funcname

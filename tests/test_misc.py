@@ -1,7 +1,7 @@
 # test_misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 04 Feb 2022 14:02:42 GMT
+# Last Edited: Fri 18 Mar 2022 13:03:30 GMT
 
 """Test functionality in the nmrespy._misc module."""
 
@@ -58,9 +58,8 @@ def test_converter():
     expinfo = ExpInfo(sw=sw, offset=offset, sfo=sfo)
 
     # Argument to FrequencyCOnverter is not an instance of nmrespy.ExpInfo
-    with pytest.raises(TypeError) as exc_info:
+    with pytest.raises(TypeError):
         FrequencyConverter("not_expinfo", pts)
-    assert str(exc_info.value) == f"{RED}Check `expinfo` is valid.{END}"
 
     converter = FrequencyConverter(expinfo, pts)
 
@@ -114,3 +113,4 @@ def test_converter():
         [2.5, 0.0],
         [25.0, 0.0],
     ]
+    assert converter.convert([[25, 50], None], "idx->hz") == [[2.5, 0.0], None]

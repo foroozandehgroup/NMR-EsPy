@@ -1,7 +1,7 @@
 # core.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 14 Mar 2022 16:06:26 GMT
+# Last Edited: Tue 15 Mar 2022 13:45:02 GMT
 
 from __future__ import annotations
 import copy
@@ -270,6 +270,7 @@ class Estimator:
             data += sig._make_noise(data, snr)
 
         expinfo._nucleus = (channel,)
+        expinfo._sfo = (spin_system.field)
 
         return cls(data, None, expinfo)
 
@@ -389,6 +390,27 @@ class Estimator:
                 f" What was loaded didn't satisfy this!{END}"
             )
 
+    def _extract_region(
+        self, region: Region, noise_region: Region, region_unit: str,
+    ) -> Tuple[Region, Region]:
+        if region_unit == "hz":
+            region_check = sfuncs.check_region_hz
+        elif region_unit == "ppm":
+            region_check = sfuncs.check_region_ppm
+
+        sanity_check(
+            ("region", region, region_check, (self._expinfo,)),
+            ("noise_region", noise_region, region_check, (self._expinfo,)),
+        )
+
+        region = self.converter.convert(region, f"{region_unit}->hz")
+        noise_region = self.converter.convert(noise_region, f"{region_unit}->hz")
+
+        return region, noise_region
+
+    def _make_spectrum(self) -> np.ndarray:
+        return sig.ft(sig.make_virtual_echo([self._data])),
+
     @logger
     def estimate(
         self,
@@ -451,7 +473,7 @@ class Estimator:
             on the identity of ``hessian``.
         """
         sanity_check(
-            ("region_unit", region_unit, sfuncs.check_one_of, ("hz", "ppm", "idx")),
+            ("region_unit", region_unit, sfuncs.check_one_of, ("hz", "ppm")),
             (
                 "initial_guess", initial_guess, sfuncs.check_initial_guess,
                 (self.dim,), True
@@ -461,29 +483,12 @@ class Estimator:
             ("max_iterations", max_iterations, sfuncs.check_positive_int, (), True),
         )
 
-        if region_unit == "hz":
-            region_check = sfuncs.check_region_hz
-        elif region_unit == "ppm":
-            if self._expinfo.unpack("sfo") is None:
-                raise ValueError(
-                    f"{RED}Cannot specify region in ppm. No information on "
-                    f"transmitter frequency exists.{END}"
-                )
-            region_check = sfuncs.check_region_ppm
-        else:
-            region_check = sfuncs.check_region_idx
-
-        sanity_check(
-            ("region", region, region_check, (self._expinfo,)),
-            ("noise_region", noise_region, region_check, (self._expinfo,)),
-        )
-
-        region = self.converter.convert(region, f"{region_unit}->hz")
-        noise_region = self.converter.convert(noise_region, f"{region_unit}->hz")
+        region, noise_region = self._extract_region(region, noise_region, region_unit)
+        spectrum = self._make_spectrum()
 
         timestamp = datetime.datetime.now()
         filter_info = filter_spectrum(
-            sig.ft(sig.make_virtual_echo([self._data])),
+            spectrum,
             self._expinfo,
             region,
             noise_region,
@@ -523,7 +528,7 @@ class Estimator:
         """
         sanity_check(
             (
-                "indices", indices, sfuncs.check_list_with_ints_less_than_n,
+                "indices", indices, sfuncs.check_ints_less_than_n,
                 (len(self._results),), True,
             ),
         )
@@ -591,7 +596,7 @@ class Estimator:
         """
         sanity_check(
             (
-                "indices", indices, sfuncs.check_list_with_ints_less_than_n,
+                "indices", indices, sfuncs.check_ints_less_than_n,
                 (len(self._results),), True,
             ),
             ("path", path, sfuncs.check_str),
@@ -804,7 +809,7 @@ class Estimator:
             The result plot.
         """
         sanity_check(
-            ("indices", indices, sfuncs.check_list_with_ints_less_than_n, (), True),
+            ("indices", indices, sfuncs.check_ints_less_than_n, (), True),
             ("plot_residual", plot_residual, sfuncs.check_bool),
             ("plot_model", plot_model, sfuncs.check_bool),
             ("residual_shift", residual_shift, sfuncs.check_float, (), True),
@@ -1005,7 +1010,7 @@ class Result:
         sanity_check(
             ("pts", pts, sfuncs.check_points, (self.dim,), True),
             (
-                "oscillators", oscillators, sfuncs.check_list_with_ints_less_than_n,
+                "oscillators", oscillators, sfuncs.check_ints_less_than_n,
                 (self.osc_number,), True,
             ),
         )

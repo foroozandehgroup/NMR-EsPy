@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 08 Mar 2022 17:51:18 GMT
+# Last Edited: Fri 18 Mar 2022 15:16:02 GMT
 
 """Constructing and processing NMR signals."""
 
@@ -249,7 +249,8 @@ def make_fid(
 
 
 def make_virtual_echo(
-    data: Iterable[np.ndarray], modulation: str = "amp"
+    data: np.ndarray,
+    twodim_dtype: Optional[str] = None,
 ) -> np.ndarray:
     """Generate a virtual echo [#]_ from a time-domain signal.
 
@@ -259,25 +260,25 @@ def make_virtual_echo(
     Parameters
     ----------
     data
-        The data to construct the virtual echo from. This should be a list of
-        NumPy arrays, with ``len(data) == d`` where ``d`` is the dimension
-        of the signal.
+        The data to construct the virtual echo from. If the data comprises a pair
+        of amplitude/phase modulated signals, these should be stored in a single
+        3D array with ``shape[2] == 2``, such that ``data[:, :, 0]`` if the cos/p
+        signal, and ``data[:, :, 1]`` is the sin/n signal.
 
-    modulation
-        If the data is 2D, this parameter specifies the type of modulation
-        present in the indirect dimension of the dataset.
+    twodim_dtype
+        If the data is 2D, this parameter specifies the way to process the data.
+        Allowed options are:
 
-        * If set to `'amp'`, the two signals in the `data` should be an
+        * ``"jres"``: The data should be derived from a J-Resolved (2DJ) experiment.
+        * ``"amp"``: the two signals in axis 2 of ``data`` should be an
           amplitude modulated pair.
-        * If set to `'phase'`, the two signals in the `data` should be a phase
+        * ``"phase"``: the two signals in axis 2 of ``data`` should be a phase
           modulated pair.
-
-        See the docs for :py:func:`make_fid` for more info on `modulation`.
 
     Returns
     -------
     virtual_echo
-        The virtual echo signal assocaited with `data`.
+        The virtual echo signal associated with ``data``.
 
     References
     ----------
@@ -285,80 +286,83 @@ def make_virtual_echo(
            in the reconstruction of sparse nmr spectra, Chem. Commun. 50 (64)
            (2014) 8947–8950.
     """
-    try:
-        dim = len(data)
-    except Exception:
-        raise TypeError(f"{RED}n should be iterable.{END}")
+    sanity_check(("data", data, sfuncs.check_ndarray))
+    if data.ndim == 2:
+        sanity_check(
+            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("jres",))
+        )
+    elif data.ndim == 3:
+        sanity_check(
+            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase"))
+        )
 
-    if dim > 2:
-        raise errors.MoreThanTwoDimError()
-
-    checker = ArgumentChecker(dim=dim)
-    checker.stage(
-        (data, "data", "array_iter"), (modulation, "modulation", "modulation")
-    )
-    checker.check()
-
-    if dim == 1:
-        data = data[0]
+    if data.ndim == 1:
         pts = data.size
         ve = np.zeros((2 * pts - 1), dtype="complex")
         ve[0] = np.real(data[0])
         ve[1:pts] = data[1:]
         ve[pts:] = data[1:][::-1].conj()
+        return ve
 
-    elif dim == 2:
+    if twodim_dtype == "jres":
+        pts = data.shape
+        ve = np.zeros((pts[0], 2 * pts[1] - 1), dtype="complex")
+        ve[:, 0] = np.real(data[:, 0])
+        ve[:, 1 : pts[1]] = data[:, 1:]
+        ve[:, pts[1]:] = data[:, 1:][:, ::-1].conj()
+        return ve
+
+    if twodim_dtype == "amp":
         # TODO NEEDS FIXING
-        if modulation == "amp":
-            c = data[0]
-            s = data[1]
-        else:
-            # Phase modulated (P and N) signals
-            c = 0.5 * (data[0] + data[1])
-            s = -1j * 0.5 * (data[0] - data[1])
+        cos = data[:, :, 0]
+        sin = data[:, :, 1]
 
-        # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
-        # where: Re(c) -> R₁R₂, Im(c) -> R₁I₂, Re(s) -> I₁R₂, Im(s) -> I₁I₂
-        r1r2 = np.real(c)
-        r1i2 = np.imag(c)
-        i1r2 = np.real(s)
-        i1i2 = np.imag(s)
+    elif twodim_dtype == "phase":
+        cos = 0.5 * (data[:, :, 0] + data[:, :, 1])
+        sin = -1j * 0.5 * (data[:, :, 0] - data[:, :, 1])
 
-        # S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)
-        pp = r1r2 - i1i2 + 1j * (r1i2 + i1r2)
-        # S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)
-        pm = r1r2 + i1i2 + 1j * (i1r2 - r1i2)
-        # S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)
-        mp = r1r2 + i1i2 + 1j * (r1i2 - i1r2)
-        # S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)
-        mm = r1r2 - i1i2 - 1j * (r1i2 + i1r2)
+    # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
+    # where: Re(cos) -> R₁R₂, Im(cos) -> R₁I₂, Re(sin) -> I₁R₂, Im(sin) -> I₁I₂
+    r1r2 = np.real(cos)
+    r1i2 = np.imag(cos)
+    i1r2 = np.real(sin)
+    i1i2 = np.imag(sin)
 
-        pts = s.shape
+    # S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)
+    pp = r1r2 - i1i2 + 1j * (r1i2 + i1r2)
+    # S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)
+    pm = r1r2 + i1i2 + 1j * (i1r2 - r1i2)
+    # S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)
+    mp = r1r2 + i1i2 + 1j * (r1i2 - i1r2)
+    # S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)
+    mm = r1r2 - i1i2 - 1j * (r1i2 + i1r2)
 
-        tmp1 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-        tmp1[: pts[0], : pts[1]] = pp
-        tmp1[0] /= 2
-        tmp1[:, 0] /= 2
+    pts = data.shape[:2]
 
-        tmp2 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-        tmp2[: pts[0], pts[1] - 1 :] = pm[:, ::-1]
-        tmp2[0] /= 2
-        tmp2[:, -1] /= 2
-        tmp2 = np.roll(tmp2, 1, axis=1)
+    tmp1 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
+    tmp1[: pts[0], : pts[1]] = pp
+    tmp1[0] /= 2
+    tmp1[:, 0] /= 2
 
-        tmp3 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-        tmp3[pts[0] - 1 :, : pts[1]] = mp[::-1]
-        tmp3[-1] /= 2
-        tmp3[:, 0] /= 2
-        tmp3 = np.roll(tmp3, 1, axis=0)
+    tmp2 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
+    tmp2[: pts[0], pts[1] - 1 :] = pm[:, ::-1]
+    tmp2[0] /= 2
+    tmp2[:, -1] /= 2
+    tmp2 = np.roll(tmp2, 1, axis=1)
 
-        tmp4 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-        tmp4[pts[0] - 1 :, pts[1] - 1 :] = mm[::-1, ::-1]
-        tmp4[-1] /= 2
-        tmp4[:, -1] /= 2
-        tmp4 = np.roll(tmp4, 1, axis=(0, 1))
+    tmp3 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
+    tmp3[pts[0] - 1 :, : pts[1]] = mp[::-1]
+    tmp3[-1] /= 2
+    tmp3[:, 0] /= 2
+    tmp3 = np.roll(tmp3, 1, axis=0)
 
-        ve = tmp1 + tmp2 + tmp3 + tmp4
+    tmp4 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
+    tmp4[pts[0] - 1 :, pts[1] - 1 :] = mm[::-1, ::-1]
+    tmp4[-1] /= 2
+    tmp4[:, -1] /= 2
+    tmp4 = np.roll(tmp4, 1, axis=(0, 1))
+
+    ve = tmp1 + tmp2 + tmp3 + tmp4
 
     return ve
 
@@ -434,27 +438,24 @@ def get_timepoints(
     If strings are used in the ``start_time`` argument, they must match the
     following regular expression: ``r'^-?\d+dt$'``
     """
-    try:
-        dim, sw = expinfo.unpack("dim", "sw")
-    except Exception:
-        raise TypeError(
-            f"{RED}Check `expinfo` is an instance of " f"nmrespy.ExpInfo{END}"
-        )
+    sanity_check(("expinfo", expinfo, sfuncs.check_expinfo))
+    dim = expinfo.dim
+    sanity_check(
+        ("pts", pts, sfuncs.check_points, (dim,)),
+        ("start_time", start_time, sfuncs.check_start_time, (dim,), True),
+    )
+    if dim == 2:
+        sanity_check(("meshgrid_2d", meshgrid_2d, sfuncs.check_bool))
 
     if start_time is None:
         start_time = [0.0] * dim
 
-    checker = ArgumentChecker(dim=dim)
-    checker.stage(
-        (pts, "pts", "int_iter"),
-        (start_time, "start_time", "start_time"),
-        (meshgrid_2d, "meshgrid_2d", "bool"),
-    )
-    checker.check()
-
-    for i, (st, sw_) in enumerate(zip(start_time, sw)):
-        if isinstance(st, str):
-            start_time[i] = float(re.match(r"^(-?\d+)dt$", st).group(1)) / sw_
+    sw = expinfo.sw
+    start_time = [
+        float(re.match(r"^(-?\d+)dt$", st).group(1)) / sw_ if isinstance(st, str)
+        else st
+        for st, sw_ in zip(start_time, sw)
+    ]
 
     tp = tuple(
         [
@@ -503,29 +504,15 @@ def get_shifts(
     shifts: Iterable[numpy.ndarray]
         The chemical shift values sampled in each dimension.
     """
-    try:
-        sw, offset, sfo, dim = expinfo.unpack("sw", "offset", "sfo", "dim")
-    except Exception:
-        raise TypeError(
-            f"{RED}Check `expinfo` is an instance of " f"nmrespy.ExpInfo{END}"
-        )
-
-    if unit not in ["hz", "ppm"]:
-        raise ValueError(f"{RED}`unit` should be either 'hz' or 'ppm'.{END}")
-
-    if sfo is None and unit == "ppm":
-        print(
-            f"{ORA}You need to specify `sfo` if you want chemical"
-            f" shifts in ppm! Falling back to Hz...{END}"
-        )
-        unit = "hz"
-
-    checker = ArgumentChecker(dim=dim)
-    checker.stage(
-        (pts, "pts", "int_iter"),
-        (flip, "flip", "bool"),
+    sanity_check(("expinfo", expinfo, sfuncs.check_expinfo))
+    sw, offset, sfo, dim = expinfo.unpack("sw", "offset", "sfo", "dim")
+    sanity_check(
+        ("pts", pts, sfuncs.check_points, (dim,)),
+        ("unit", unit, sfuncs.check_frequency_unit, ((sfo is not None),), True),
+        ("flip", flip, sfuncs.check_bool)
     )
-    checker.check()
+    if dim == 2:
+        sanity_check(("meshgrid_2d", meshgrid_2d, sfuncs.check_bool))
 
     shifts = [
         np.linspace((-sw_ / 2) + offset_, (sw_ / 2) + offset_, pts_)
@@ -535,12 +522,16 @@ def get_shifts(
         shifts = [s / sfo_ for s, sfo_ in zip(shifts, sfo)]
 
     if dim == 2 and meshgrid_2d:
-        shifts = tuple(np.meshgrid(*shifts, indexing="ij"))
+        shifts = np.meshgrid(*shifts, indexing="ij")
 
     return tuple([np.flip(s) for s in shifts]) if flip else tuple(shifts)
 
 
-def ft(fid: np.ndarray, *, flip: bool = True) -> np.ndarray:
+def ft(
+    fid: np.ndarray,
+    axes: Optional[Union[Iterable[int], int]] = None,
+    flip: bool = True,
+) -> np.ndarray:
     """Fourier transformation with optional spectrum flipping.
 
     It is conventional in NMR to plot spectra from high to low going
@@ -553,6 +544,11 @@ def ft(fid: np.ndarray, *, flip: bool = True) -> np.ndarray:
     fid
         Time-domain data.
 
+    axes
+        The axes to apply Fourier Transformation to. By default (``None``), FT is
+        applied to all axes. If an int, FT will only be applied to the relevant axis.
+        If a list of ints, FT will be applied to this subset of axes.
+
     flip
         Whether or not to flip the Fourier Transform of `fid` in each
         dimension.
@@ -563,22 +559,32 @@ def ft(fid: np.ndarray, *, flip: bool = True) -> np.ndarray:
         Fourier transform of the data, (optionally) flipped in each
         dimension.
     """
-    checker = ArgumentChecker()
-    checker.stage(
-        (fid, "fid", "ndarray"),
-        (flip, "flip", "bool"),
+    sanity_check(
+        ("fid", fid, sfuncs.check_ndarray),
+        ("flip", flip, sfuncs.check_bool),
     )
-    checker.check()
+    dim = fid.ndim
+    sanity_check(
+        ("axes", axes, sfuncs.check_ints_less_than_n, (dim,), True),
+    )
+    if axes is None:
+        axes = list(range(dim))
+    if isinstance(axes, int):
+        axes = [axes]
 
     spectrum = copy.deepcopy(fid)
-    for axis in range(fid.ndim):
+    for axis in axes:
         spectrum = fftshift(fft(spectrum, axis=axis), axes=axis)
 
-    return np.flip(spectrum) if flip else spectrum
+    return np.flip(spectrum, axis=axes) if flip else spectrum
 
 
-def ift(spectrum, flip=True):
-    """Optionally Flip and Inverse Fourier Transform a spectrum.
+def ift(
+    spectrum: np.ndarray,
+    axes: Optional[Union[Iterable[int], int]] = None,
+    flip: bool = True
+) -> np.ndarray:
+    """Inverse Fourier Transform a spectrum.
 
     This function utilises the
     `numpy.fft <https://numpy.org/doc/stable/reference/routines.fft.html>`_
@@ -589,58 +595,62 @@ def ift(spectrum, flip=True):
     spectrum : numpy.ndarray
         Spectrum
 
+    axes
+        The axes to apply IFT to. By default (``None``), IFT is
+        applied to all axes. If an int, IFT will only be applied to the relevant axis.
+        If a list of ints, IFT will be applied to this subset of axes.
+
     flip : bool, default: True
-        Whether or not to flip `spectrum` in each dimension prior to Inverse
+        Whether or not to flip ``spectrum`` in each dimension prior to Inverse
         Fourier Transform.
 
     Returns
     -------
     fid : numpy.ndarray
-        Inverse Fourier transform of the spectrum.
+        IFT of the spectrum.
     """
-    checker = ArgumentChecker()
-    checker.stage(
-        (spectrum, "spectrum", "ndarray"),
-        (flip, "flip", "bool"),
+    sanity_check(
+        ("spectrum", spectrum, sfuncs.check_ndarray),
+        ("flip", flip, sfuncs.check_bool),
     )
-    checker.check()
+    dim = spectrum.ndim
+    sanity_check(
+        ("axes", axes, sfuncs.check_ints_less_than_n, (dim,), True),
+    )
+    if axes is None:
+        axes = list(range(dim))
+    if isinstance(axes, int):
+        axes = [axes]
 
-    spectrum = ifftshift(np.flip(spectrum) if flip else spectrum)
     fid = copy.deepcopy(spectrum)
-
-    for axis in range(spectrum.ndim):
-        fid = ifft(fid, axis=axis)
+    fid = np.flip(fid, axis=axes) if flip else fid
+    for axis in axes:
+        fid = ifft(ifftshift(fid, axes=axis), axis=axis)
 
     return fid
 
 
-def proc_amp_modulated(data: Tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+def proc_amp_modulated(data: np.ndarray) -> np.ndarray:
     """Generate a frequency-dscrimiated signal from amp-modulated 2D FIDs.
 
     Parameters
     ----------
     data
-        cos-modulated signal and sin-modulated signal
+        cos-modulated signal and sin-modulated signal, stored in a 3D numpy array,
+        such that ``data[:, :, 0]`` is the the cos signal and ``data[:, :, 1]``
+        is the sin signal.
 
     Returns
     -------
     spectrum: np.ndarray
         Frequency-dsicrimiated spectrum.
     """
-    checker = ArgumentChecker(dim=2)
-    checker.stage((data, "data", "array_iter"))
-    checker.check()
-
-    c = data[0]
-    s = data[1]
-
-    c_t1_f2 = fftshift(fft(c, axis=1), axes=1)
-    s_t1_f2 = fftshift(fft(s, axis=1), axes=1)
-
-    return fftshift(fft(np.real(c_t1_f2) + 1j * np.real(s_t1_f2), axis=0), axes=0)
+    sanity_check(("data", data, sfuncs.check_ndarray, (3, [(2, 2)])))
+    cos_t1_f2, sin_t1_f2 = [ft(x, axes=1).real for x in (data[..., 0], data[..., 1])]
+    return ft(cos_t1_f2 + 1j * sin_t1_f2, axes=0)
 
 
-def proc_phase_modulated(data: Tuple[np.ndarray, np.ndarray]) -> Dict[str, np.ndarray]:
+def proc_phase_modulated(data: np.ndarray) -> np.ndarray:
     """Process phase modulated 2D FIDs.
 
     This function generates the set of spectra corresponding to the
@@ -649,12 +659,20 @@ def proc_phase_modulated(data: Tuple[np.ndarray, np.ndarray]) -> Dict[str, np.nd
     Parameters
     ----------
     data
-        P-type signal and N-type signal
+        P-type signal and N-type signal, stored in a 3D numpy array,
+        such that ``data[:, :, 0]`` is the the P signal and ``data[:, :, 1]``
+        is the N signal.
 
     Returns
     -------
-    spectra: Dict[str, numpy.ndarray]
-        Dictionary of four elements: ``rr``, ``ri``, ``ir``, and ``ii``.
+    spectra
+        3D array with ``spectra.shape[2] == 4``. The sub-arrays in axis 2 correspond
+        to the following signals:
+
+        * ``spectra[:, :, 0]``: RR
+        * ``spectra[:, :, 1]``: RI
+        * ``spectra[:, :, 2]``: IR
+        * ``spectra[:, :, 3]``: II
 
     References
     ----------
@@ -663,41 +681,28 @@ def proc_phase_modulated(data: Tuple[np.ndarray, np.ndarray]) -> Dict[str, np.nd
            pulsed field gradients,” Journal of Magnetic Resonance (1969),
            vol. 98, no. 1, pp. 207–216, 1992.
     """
-    checker = ArgumentChecker(dim=2)
-    checker.stage((data, "data", "array_iter"))
-    checker.check()
+    sanity_check(("data", data, sfuncs.check_ndarray, (3, [(2, 2)])))
+    p_t1_f2, n_t1_f2 = [ft(x, axes=1) for x in (data[..., 0], data[..., 1])]
 
-    p = data[0]
-    n = data[1]
+    spectra = np.zeros((*data.shape[:2], 4))
 
-    p_t1_f2 = fftshift(fft(p, axis=1), axes=1)  # Sₚ(t₁,f₂)
-    n_t1_f2 = fftshift(fft(n, axis=1), axes=1)  # Sₙ(t₁,f₂)
+    # Generating RR and IR
+    plus_f1_f2 = ft(0.5 * (p_t1_f2 + n_t1_f2.conj()), axes=0)  # S⁺(f₁,f₂)
+    spectra[..., 0], spectra[..., 2] = plus_f1_f2.real, plus_f1_f2.imag
 
-    # Generating rr and ir
-    plus_t1_f2 = 0.5 * (p_t1_f2 + n_t1_f2.conj())  # S⁺(t₁,f₂)
-    plus_f1_f2 = fftshift(fft(plus_t1_f2, axis=0), axes=0)  # S⁺(f₁,f₂)
-    rr = np.real(plus_f1_f2)  # A₁A₂
-    ir = np.imag(plus_f1_f2)  # D₁A₂
+    # Generating RI and II
+    minus_f1_f2 = ft(-0.5 * 1j * (p_t1_f2 - n_t1_f2.conj()), axes=0)  # S⁻(f₁,f₂)
+    spectra[..., 1], spectra[..., 3] = minus_f1_f2.real, minus_f1_f2.imag
 
-    # Generating ri and ii
-    minus_t1_f2 = -0.5 * 1j * (p_t1_f2 - n_t1_f2.conj())  # S⁻(t₁,f₂)
-    minus_f1_f2 = fftshift(fft(minus_t1_f2, axis=0), axes=0)  # S⁻(f₁,f₂)
-    ri = np.real(minus_f1_f2)  # A₁D₂
-    ii = np.imag(minus_f1_f2)  # D₁D₂
-
-    return {
-        "rr": rr,
-        "ri": ri,
-        "ir": ir,
-        "ii": ii,
-    }
+    return spectra
 
 
 def phase(
     data: np.ndarray,
     p0: Iterable[float],
     p1: Iterable[float],
-    pivot: Union[Iterable[float], None] = None,
+    pivot: Optional[Iterable[Union[float, int]]] = None,
+    pivot_unit: str = "idx",
 ) -> np.ndarray:
     """Apply a linear phase correction to a signal.
 
@@ -716,14 +721,30 @@ def phase(
         Index of the pivot in each dimension. If None, the pivot will be `0`
         in each dimension.
 
+    pivot_unit
+        The units that the pivot is given in. Should be one of ``"idx"``, ``"hz"``,
+        ``"ppm"``.
+
     Returns
     -------
     phased_data : numpy.ndarray
     """
-    try:
-        dim = data.ndim
-    except AttributeError:
-        raise TypeError(f"{RED}`data` should be a NumPy array.{END}")
+    sanity_check(("data", data, sfuncs.check_ndarray))
+    dim = data.ndim
+    sanity_check(
+        ("p0", p0, sfuncs.check_float_list, (dim,)),
+        ("p1", p1, sfuncs.check_float_list, (dim,)),
+        ("pivot_unit", pivot_unit, sfuncs.check_one_of, ("idx", "hz", "ppm")),
+    )
+
+    if pivot_unit == "idx":
+        pivot_check = sfuncs.check_int_list
+    else:
+        pivot_check = sfuncs.check_float_list
+
+    # TODO
+    sanity_check(("pivot", pivot, sfuncs.check_
+
 
     if pivot is None:
         pivot = dim * [0]

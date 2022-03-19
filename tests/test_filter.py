@@ -1,10 +1,11 @@
 # test_filter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Jan 2022 18:28:40 GMT
+# Last Edited: Thu 17 Mar 2022 16:28:25 GMT
 
 import numpy as np
 from nmrespy import ExpInfo, mpm, sig, freqfilter as ff
+from nmrespy.freqfilter import Filter
 import matplotlib as mpl
 mpl.use("tkAgg")
 
@@ -17,7 +18,7 @@ def round_region(region, x=3):
     return tuple([(round(r[0], x), round(r[1], x)) for r in region])
 
 
-class TestFilterParameters:
+class TestFilterParameters1D:
     def make_filter(self):
         #  |----|----|----|----|----|----|----|----|----|
         #  0    1    2    3    4    5    6    7    8    9  idx
@@ -36,10 +37,9 @@ class TestFilterParameters:
         fid = sig.make_fid(params, expinfo, pts)[0]
         region = ((4, 6),)
         noise_region = ((1, 2),)  # Doesn't matter
-        spectrum = sig.ft(fid)
 
-        return ff.filter_spectrum(
-            spectrum,
+        return Filter(
+            fid,
             expinfo,
             region,
             noise_region,
@@ -86,7 +86,8 @@ class TestFilterParameters:
 
     def test_shape(self):
         finfo = self.make_filter()
-        assert finfo.shape == (10,)
+        # 10 * 2 - 1
+        assert finfo.shape == (19,)
 
     def test_sg_power(self):
         finfo = self.make_filter()
@@ -110,13 +111,8 @@ class TestFilterPerformance:
         expinfo = ExpInfo(sw=sw, offset=offset, sfo=sfo)
         region = ((300.0, 400.0),)
         noise_region = ((-225.0, -250.0),)
-
-        # make spectrum from virtual echo signal
         fid = sig.make_fid(params, expinfo, pts, snr=40.0)[0]
-        ve = sig.make_virtual_echo([fid])
-        spectrum = sig.ft(ve)
-        expinfo._pts = spectrum.shape
-        return ff.filter_spectrum(spectrum, expinfo, region, noise_region)
+        return Filter(fid, expinfo, region, noise_region)
 
     def test_uncut(self):
         expected = np.array([[10, 0, 350, 10]])
@@ -129,7 +125,53 @@ class TestFilterPerformance:
     def test_cut(self):
         expected = np.array([[10, 0, 350, 10]])
         finfo = self.make_filter()
-        fid, expinfo = finfo.get_filtered_fid(cut_ratio=1.000001, fix_baseline=False)
+        fid, expinfo = finfo.get_filtered_fid(cut_ratio=1.000001)
         mpm_object = mpm.MatrixPencil(fid, expinfo)
         mpm_result = mpm_object.get_result()
         assert np.allclose(expected, mpm_result, rtol=0, atol=1e-1)
+
+
+# def test_linear_fit():
+#     from functools import reduce
+#     from numpy.random import normal
+
+#     model = np.array([2, 3, 4])
+#     shape = (16, 32)
+#     dim = len(shape)
+#     prod = reduce(lambda x, y: x * y, shape)
+
+#     xs = (np.indices(shape).reshape(dim, prod)).T
+#     X = np.ones((prod, dim + 1))
+#     X[:, :-1] = xs
+
+#     noise = normal(scale=2, size=shape)
+#     y = (X @ model).reshape(shape) + noise
+#     n = ff.superg_noise(y, [None, None], np.zeros(shape))
+#     x1, x2 = np.meshgrid(*[np.arange(x) for x in shape], indexing="ij")
+#     import matplotlib as mpl
+#     mpl.use("tkAgg")
+#     import matplotlib.pyplot as plt
+#     fig = plt.figure()
+#     ax = fig.add_subplot(projection='3d')
+
+#     ax.plot_wireframe(x1, x2, y, lw=0.5)
+#     ax.plot_wireframe(x1, x2, n, lw=0.5)
+
+#     plt.show()
+
+#     model = np.array([2, 4])
+#     shape = (128,)
+#     dim = 1
+#     prod = 128
+
+#     xs = (np.indices(shape).reshape(dim, prod)).T
+#     X = np.ones((prod, dim + 1))
+#     X[:, :-1] = xs
+
+#     noise = normal(scale=2, size=shape)
+#     y = (X @ model).reshape(shape) + noise
+#     n = ff.superg_noise(y, [None], np.zeros(shape))
+
+#     plt.plot(y)
+#     plt.plot(n)
+#     plt.show()

@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 07 Mar 2022 17:46:07 GMT
+# Last Edited: Tue 15 Mar 2022 09:29:48 GMT
 
 """NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
 
@@ -140,7 +140,7 @@ class ExpInfo:
         test_types = [x for i, x in enumerate(test_types) if i not in rm_idx]
 
         for name, value, test_type in zip(names, values, test_types):
-            errmsg = "f{RED}Unable to process input{END}"
+            errmsg = f"{RED}Unable to process input{END}"
             # If single value (not in list/tuple/etc.) is given, pack into
             # a list (values will be converted to tuples at the end)
             if isinstance(value, test_type):
