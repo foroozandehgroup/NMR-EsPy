@@ -29,6 +29,10 @@ def isfloat(x: Any) -> bool:
     return isinstance(x, float)
 
 
+def isint(x: Any) -> bool:
+    return isinstance(x, int)
+
+
 def check_bool(obj: Any):
     if not isinstance(obj, bool):
         return "Should be a bool."
@@ -49,6 +53,13 @@ def check_float_list(obj: Any, dim: Optional[int] = None) -> Optional[str]:
         return "Should be a list or tuple."
     if not all([isfloat(x for x in obj)]):
         return "All elements should be floats."
+
+
+def check_int_list(obj: Any, dim: Optional[int] = None) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a list or tuple."
+    if not all([isint(x for x in obj)]):
+        return "All elements should be ints."
 
 
 def check_positive_float(obj: Any):

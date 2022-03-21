@@ -742,25 +742,12 @@ def phase(
     else:
         pivot_check = sfuncs.check_float_list
 
-    # TODO
-    sanity_check(("pivot", pivot, sfuncs.check_
-
+    sanity_check(("pivot", pivot, pivot_check, (dim,), True))
 
     if pivot is None:
         pivot = dim * [0]
 
-    checker = ArgumentChecker(dim=dim)
-    checker.stage(
-        (data, "data", "ndarray"),
-        (p0, "p0", "float_iter"),
-        (p1, "p1", "float_iter"),
-        (pivot, "pivot", "int_iter"),
-    )
-    checker.check()
-
-    # Indices for einsum
-    # For 1D: 'i'
-    # For 2D: 'ij'
+    # Indices for einsum... For 1D: 'i', For 2D: 'ij'
     idx = "".join([chr(i + 105) for i in range(dim)])
 
     for axis, (piv, p0_, p1_) in enumerate(zip(pivot, p0, p1)):
@@ -1035,13 +1022,11 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
        \rho = \frac{\sum_{n=0}^{N-1} \left(x_n - \mu_x\right)^2}
        {N \cdot 20 \log_10 \left(\mathrm{SNR}_{\mathrm{dB}}\right)}
     """
-    checker = ArgumentChecker()
-    checker.stage(
-        (fid, "fid", "ndarray"), (snr, "snr", "float"), (decibels, "decibels", "bool")
+    sanity_check(
+        ("fid", fid, sfuncs.check_ndarray),
+        ("snr", snr, sfuncs.check_float),
+        ("decibels", decibels, sfuncs.check_bool),
     )
-    checker.check()
-
-    shape = fid.shape
 
     # Compute the variance of the noise
     if decibels:
@@ -1055,7 +1040,7 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
     instances = []
     std_discrepancies = []
     for _ in range(100):
-        instance = nrandom.normal(loc=0, scale=std, size=shape)
+        instance = nrandom.normal(loc=0, scale=std, size=fid.shape)
         instances.append(instance)
         std_discrepancies.append(np.std(np.abs(instance)) - std)
 
@@ -1099,6 +1084,7 @@ def _generate_random_signal(
     parameters
         Parameters used to construct the signal
     """
+    # TODO
     try:
         sw, offset, dim = expinfo.unpack("sw", "offset", "dim")
     except Exception:
