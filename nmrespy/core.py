@@ -1,7 +1,7 @@
 # core.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 15 Mar 2022 13:45:02 GMT
+# Last Edited: Thu 24 Mar 2022 12:10:56 GMT
 
 from __future__ import annotations
 import copy
@@ -23,7 +23,7 @@ from nmr_sims.spin_system import SpinSystem
 from nmrespy import ExpInfo, GRE, ORA, RED, END, USE_COLORAMA, sig
 import nmrespy._errors as errors
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-from nmrespy._misc import FrequencyConverter
+from nmrespy._freqconverter import FrequencyConverter
 from nmrespy.freqfilter import Region, filter_spectrum
 from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
@@ -401,6 +401,7 @@ class Estimator:
         sanity_check(
             ("region", region, region_check, (self._expinfo,)),
             ("noise_region", noise_region, region_check, (self._expinfo,)),
+            ("region_unit"
         )
 
         region = self.converter.convert(region, f"{region_unit}->hz")
@@ -409,7 +410,7 @@ class Estimator:
         return region, noise_region
 
     def _make_spectrum(self) -> np.ndarray:
-        return sig.ft(sig.make_virtual_echo([self._data])),
+        return sig.ft(sig.make_virtual_echo(self._data))
 
     @logger
     def estimate(
@@ -473,7 +474,6 @@ class Estimator:
             on the identity of ``hessian``.
         """
         sanity_check(
-            ("region_unit", region_unit, sfuncs.check_one_of, ("hz", "ppm")),
             (
                 "initial_guess", initial_guess, sfuncs.check_initial_guess,
                 (self.dim,), True

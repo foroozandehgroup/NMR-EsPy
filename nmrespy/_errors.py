@@ -1,11 +1,12 @@
 # _errors.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:11:29 BST
+# Last Edited: Thu 24 Mar 2022 10:49:22 GMT
 
 """NMR-EsPy-specific errors."""
 
-from nmrespy import RED, CYA, END, USE_COLORAMA, GITHUBLINK
+from nmrespy._colors import RED, CYA, END, USE_COLORAMA
+from nmrespy._paths_and_links import GITHUBLINK
 
 if USE_COLORAMA:
     import colorama

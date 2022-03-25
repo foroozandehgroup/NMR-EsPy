@@ -1,23 +1,24 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 14 Mar 2022 12:35:11 GMT
+# Last Edited: Fri 25 Mar 2022 11:45:50 GMT
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
 import copy
 import functools
 import operator
-from typing import Iterable, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
 import scipy.optimize as optimize
 
-from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
-import nmrespy._errors as errors
-from nmrespy._misc import ArgumentChecker, FrequencyConverter
+from nmrespy import ExpInfo
+from nmrespy._colors import ORA, END, USE_COLORAMA
 from . import _funcs as funcs
+from nmrespy._sanity import sanity_check, funcs as sfuncs
+from nmrespy._result import ResultFetcher
 from nmrespy.sig import get_timepoints
 
 if USE_COLORAMA:
@@ -42,7 +43,7 @@ if USE_COLORAMA:
 #     * `'d'`: Damping factors are optimised
 
 
-class NonlinearProgramming(FrequencyConverter):
+class NonlinearProgramming(ResultFetcher):
     """Nonlinear programming for time-domain NMR signal estimation."""
 
     start_txt = "NONLINEAR PROGRAMMING STARTED"
@@ -54,15 +55,15 @@ class NonlinearProgramming(FrequencyConverter):
         theta0: np.ndarray,
         expinfo: ExpInfo,
         *,
-        start_time: Union[Iterable[int], None] = None,
+        start_time: Optional[Iterable[int]] = None,
         phase_variance: bool = True,
         method: str = "trust_region",
         hessian: str = "exact",
         bound: bool = False,
-        max_iterations: Union[int, None] = None,
+        max_iterations: Optional[int] = None,
         mode: str = "apfd",
-        amp_thold: Union[float, None] = None,
-        freq_thold: Union[float, None] = None,
+        amp_thold: Optional[float] = None,
+        freq_thold: Optional[float] = None,
         negative_amps: str = "remove",
         fprint: bool = True,
         # mode: Pattern[str] = 'apfd'
@@ -229,7 +230,6 @@ class NonlinearProgramming(FrequencyConverter):
         """
         self.__dict__.update(locals())
         self._sanity_check()
-
         self.p = 2 * self.dim + 2
         self.m = int(self.theta0.size / self.p)
 
@@ -260,37 +260,39 @@ class NonlinearProgramming(FrequencyConverter):
         self.result = self._merge_final()
         self.errors = self._get_errors()
 
+        super().__init__(self.expinfo, self.pts)
+
     def _sanity_check(self):
-        if not isinstance(self.expinfo, ExpInfo):
-            raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
-        self.dim = self.expinfo.unpack("dim")
-
-        try:
-            if self.dim != self.data.ndim:
-                raise ValueError(
-                    f"{RED}The dimension of `expinfo` does not agree with the "
-                    f"number of dimensions in `data`.{END}"
-                )
-            elif self.dim >= 3:
-                raise errors.MoreThanTwoDimError()
-        except AttributeError:
-            # data.ndim raised an attribute error
-            raise TypeError(f"{RED}`data` should be a numpy ndarray{END}")
-
-        checker = ArgumentChecker(dim=self.dim)
-        checker.stage(
-            (self.theta0, "theta0", "parameter"),
-            (self.phase_variance, "phase_variance", "bool"),
-            (self.start_time, "start_time", "start_time", True),
-            (self.max_iterations, "max_iterations", "positive_int", True),
-            (self.mode, "mode", "optimiser_mode"),  # TODO
-            (self.negative_amps, "negative_amps", "negative_amplidue"),
-            (self.hessian, "hessian", "hessian"),
-            (self.fprint, "fprint", "bool"),
-            (self.amp_thold, "amp_thold", "zero_to_one", True),
-            (self.freq_thold, "freq_thold", "positive_float", True),
+        sanity_check(
+            ("expinfo", self.expinfo, sfuncs.check_expinfo),
+            ("phase_variance", self.phase_variance, sfuncs.check_bool),
+            ("method", self.method, sfuncs.check_one_of, ("lbfgs", "trust_region")),
+            (
+                "hessian", self.hessian, sfuncs.check_one_of,
+                ("exact", "gauss-newton"), True
+            ),
+            ("bound", self.bound, sfuncs.check_bool),
+            (
+                "max_iterations", self.max_iterations, sfuncs.check_positive_int, (),
+                True
+            ),
+            ("mode", self.mode, sfuncs.check_optimiser_mode),
+            ("amp_thold", self.amp_thold, sfuncs.check_positive_float, (), True),
+            ("freq_thold", self.freq_thold, sfuncs.check_positive_float, (), True),
+            (
+                "negative_amps", self.negative_amps, sfuncs.check_one_of,
+                ("remove", "flip_phase"),
+            ),
+            ("fprint", self.fprint, sfuncs.check_bool),
         )
-        checker.check()
+        sanity_check(
+            ("data", self.data, sfuncs.check_ndarray, (self.expinfo.dim,)),
+            ("theta0", self.theta0, sfuncs.check_parameter_array, (self.expinfo.dim,)),
+            (
+                "start_time", self.start_time, sfuncs.check_start_time,
+                (self.expinfo.dim,), True,
+            )
+        )
 
     def _recursive_optimise(self) -> None:
         """Recursive optimisation until array is unchanged after checks."""
@@ -322,62 +324,6 @@ class NonlinearProgramming(FrequencyConverter):
         terminate_statuses = [check() for check in checks]
         if not all(terminate_statuses):
             return self._recursive_optimise()
-
-    def get_result(self, freq_unit: str = "hz") -> np.ndarray:
-        """Obtain the result of nonlinear programming.
-
-        Parameters
-        ----------
-        freq_unit
-            The unit of the oscillator frequencies. Should be ``'hz'`` or
-            ``'ppm'``.
-
-        Returns
-        -------
-        result
-        """
-        return self._get_array("result", freq_unit)
-
-    def get_errors(self, freq_unit: str = "hz") -> np.ndarray:
-        """Obtain errors of parameters estimates.
-
-        Parameters
-        ----------
-        freq_unit
-            The unit of the oscillator frequencies. Should be ``'hz'`` or
-            ``'ppm'``.
-
-
-        Returns
-        -------
-        errors
-        """
-        return self._get_array("errors", freq_unit)
-
-    def _get_array(self, name: str, freq_unit: str) -> np.ndarray:
-        if freq_unit == "hz":
-            return self.__dict__[name]
-
-        elif freq_unit == "ppm":
-            sfo = self.expinfo.unpack("sfo")
-            if sfo is None:
-                raise ValueError(
-                    f"{RED}Insufficient information to determine"
-                    f" frequencies in ppm. Did you perhaps forget to specify"
-                    f" `sfo` in `expinfo`?{END}"
-                )
-
-            result = copy.deepcopy(self.__dict__[name])
-
-            if self.dim == 1:
-                result[:, 2] /= sfo[0]
-            elif self.dim == 2:
-                result[:, 2] /= sfo[0]
-                result[:, 3] /= sfo[1]
-            return result
-
-        else:
-            raise errors.InvalidUnitError("hz", "ppm")
 
     def _shift_offset(self, params: np.ndarray, direction: str) -> np.ndarray:
         """Shift frequencies to center to or displace from 0.
@@ -521,7 +467,7 @@ class NonlinearProgramming(FrequencyConverter):
                     function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_true_hess_1d
                     )
-                else:
+                elif self.hessian == "gauss-newton":
                     function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_gauss_newton_hess_1d
                     )
@@ -530,7 +476,7 @@ class NonlinearProgramming(FrequencyConverter):
                     function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_true_hess_2d
                     )
-                else:
+                elif self.hessian == "gauss-newton":
                     function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_gauss_newton_hess_2d
                     )
@@ -593,7 +539,6 @@ class NonlinearProgramming(FrequencyConverter):
 
     def _run_optimiser(self) -> np.ndarray:
         """Run the optimisation algorithm."""
-        fprint = 3 if self.fprint else 0
         if self.method == "trust_region":
             result = optimize.minimize(
                 fun=self.objective,
@@ -605,7 +550,7 @@ class NonlinearProgramming(FrequencyConverter):
                 bounds=self.bounds,
                 options={
                     "maxiter": self.max_iterations,
-                    "verbose": fprint,
+                    "verbose": 3 if self.fprint else 0,
                 },
             )
 
@@ -619,7 +564,7 @@ class NonlinearProgramming(FrequencyConverter):
                 bounds=self.bounds,
                 options={
                     "maxiter": self.max_iterations,
-                    "iprint": fprint // 3,
+                    "iprint": 1 if self.fprint else -1,
                     "disp": True,
                 },
             )

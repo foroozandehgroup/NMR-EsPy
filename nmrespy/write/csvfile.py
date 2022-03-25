@@ -1,17 +1,16 @@
 # csvfile.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 08 Mar 2022 16:43:42 GMT
+# Last Edited: Thu 24 Mar 2022 12:19:51 GMT
 
 import csv
 import datetime
 import pathlib
 from typing import List, Union
-from nmrespy import GRE, END, USE_COLORAMA
+from nmrespy._colors import GRE, END, USE_COLORAMA
 
 if USE_COLORAMA:
     import colorama
-
     colorama.init()
 
 

@@ -1,11 +1,12 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 18 Mar 2022 12:59:15 GMT
+# Last Edited: Thu 24 Mar 2022 12:23:17 GMT
 
 import inspect
 from typing import Any, Iterable, Optional
-from nmrespy import RED, END, USE_COLORAMA
+
+from nmrespy._colors import RED, END, USE_COLORAMA
 
 if USE_COLORAMA:
     import colorama
@@ -68,10 +69,9 @@ def get_name(frame: inspect.types.FrameType) -> Optional[str]:
     funcname = inspect.getouterframes(frame, 2)[1][3]
     try:
         try:
-            self_obj = frame.f_back.f_locals["self"]
+            classname = type(frame.f_back.f_locals["self"]).__name__
         except KeyError:
             classname = None
-        classname = type(self_obj).__name__
     finally:
         del frame
     return f"{classname}.{funcname}" if classname is not None else funcname

@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 09 Mar 2022 17:54:23 GMT
+# Last Edited: Thu 24 Mar 2022 14:13:37 GMT
 
 """Support for plotting estimation results"""
 
@@ -17,14 +17,16 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
-from nmrespy import RED, END, ORA, USE_COLORAMA, NMRESPYPATH, ExpInfo
+from nmrespy import ExpInfo, sig
+from nmrespy._colors import RED, END, USE_COLORAMA
+from nmrespy._paths_and_links import STYLESHEETPATH
 import nmrespy._errors as errors
-from nmrespy._misc import ArgumentChecker, FrequencyConverter, latex_nucleus
-from nmrespy import sig
+from nmrespy._freqconverter import FrequencyConverter
+from nmrespy._misc import latex_nucleus
+from nmrespy._sanity import sanity_check, funcs as sfuncs
 
 if USE_COLORAMA:
     import colorama
-
     colorama.init()
 
 
@@ -88,22 +90,7 @@ def _configure_oscillator_colors(oscillator_colors: Any, m: int) -> str:
         ]
     if isinstance(oscillator_colors, str):
         oscillator_colors = [oscillator_colors]
-
-    try:
-        color_list = [_to_hex(c) for c in oscillator_colors]
-    except TypeError:
-        raise TypeError(f"{RED}`oscillator_colors` has an invalid type.{END}")
-
-    nones = [i for i, c in enumerate(color_list) if c is None]
-    if nones:
-        msg = (
-            f"{RED}The following entries in `oscillator_colors` could "
-            f"not be recognised as valid matplotlib colors:\n" +
-            "\n".join([f"--> {repr(oscillator_colors[i])}" for i in nones]) +
-            END
-        )
-        raise ValueError(msg)
-
+    color_list = [_to_hex(c) for c in oscillator_colors]
     return color_list
 
 
@@ -158,10 +145,6 @@ def _extract_rc(stylesheet: Union[Path, None]) -> str:
     ValueError
         If an appropriate file could not be found.
     """
-    # Default style sheet if one isn't explicitly given
-    if stylesheet is None:
-        stylesheet = NMRESPYPATH / "config/nmrespy_custom.mplstyle"
-
     # Check two possible paths.
     # First one is simply the user input:
     # This will be valid if a full path to a stylesheet has been given.
@@ -169,23 +152,12 @@ def _extract_rc(stylesheet: Union[Path, None]) -> str:
     # the provided stylesheets that ship with matplotlib.
     paths = [
         stylesheet,
-        (
-            Path(mpl.__file__).resolve().parent /
-            "mpl-data/stylelib" /
-            f"{stylesheet}.mplstyle"
-        ),
+        Path(mpl.__file__).resolve().parent / f"mpl-data/stylelib/{stylesheet}.mplstyle",  # noqa: E501
     ]
-
     for path in paths:
         rc = _get_rc_from_file(path)
         if rc:
             return rc
-
-    raise ValueError(
-        f"{RED}Error in loading the stylesheet. Check you gave "
-        "a valid path or name for the stylesheet, and that the "
-        f"stylesheet is formatted correctly.{END}"
-    )
 
 
 def _create_rc(stylesheet: Union[Path, None], oscillator_colors: Any, m: int) -> str:
@@ -278,39 +250,6 @@ def _create_stylesheet(rc: str) -> Path:
     return tmp_path
 
 
-def _configure_shifts_unit(shifts_unit: str, expinfo: ExpInfo):
-    """Dermine the unit to set chemical shifts as.
-
-    Parameters
-    ----------
-    shifts_unit
-        The shift unit specification.
-
-    expinfo
-        Experiment information.
-
-    Returns
-    -------
-    ud_shifts_unit: str
-        Configured shifts unit.
-
-    Raises
-    ------
-    InvalidUnitError
-        If ``shifts_unit`` is not ``'hz'`` or ``'ppm'``.
-    """
-    if shifts_unit not in ["hz", "ppm"]:
-        raise errors.InvalidUnitError("hz", "ppm")
-    # If user specifies ppm, but sfo isn;t specified, fall back to Hz
-    if shifts_unit == "ppm" and expinfo.sfo is None:
-        shifts_unit = "hz"
-        print(
-            f"{ORA}You need to specify `sfo` in `expinfo` if you want chemical"
-            f" shifts in ppm! Falling back to Hz...{END}"
-        )
-    return shifts_unit
-
-
 def _get_region_slice(
     shifts_unit: str,
     region: Union[Iterable[Tuple[float, float]], None],
@@ -377,13 +316,15 @@ def _generate_peaks(
     return [
         np.real(
             sig.ft(
-                sig.make_fid(
-                    np.expand_dims(oscillator, axis=0),
-                    expinfo,
-                    pts,
-                )[0]
+                sig.make_virtual_echo(
+                    sig.make_fid(
+                        np.expand_dims(oscillator, axis=0),
+                        expinfo,
+                        pts,
+                    )[0]
+                )
             )
-        )[region_slice]
+        )[region_slice] / 2  # TODO: Quick fix for 1D data
         for oscillator in result
     ]
 
@@ -648,22 +589,13 @@ class NmrespyPlot:
             tutorials/advanced/transforms_tutorial.html#axes-coordinates>`_.
             Both values provided should be less than `1.0`.
         """
-
-        checker = ArgumentChecker()
-        checker.stage(
-            (values, "values", "generic_int_list"),
-            (displacement, "displacement", "displacement"),
+        sanity_check(
+            (
+                "values", values, sfuncs.check_ints_less_than_n,
+                (max(self.labels.keys()) + 1,)
+            ),
+            ("displacement", displacement, sfuncs.check_float_list, (2,)),
         )
-        checker.check()
-
-        # Check that all values given are between 1 and number of oscillators
-        max_value = max(self.labels.keys())
-        if not all(0 < value <= max_value for value in values):
-            raise ValueError(
-                f"{RED}At least one element in `values` is "
-                "invalid. Ensure that all elements are ints "
-                f"between 1 and {max_value}.{END}"
-            )
 
         for value in values:
             # Get initial position (this is in data coordinates)
@@ -744,7 +676,7 @@ class NmrespyPlot:
 
 
 def plot_result(
-    spectrum: np.ndarray,
+    data: np.ndarray,
     result: np.ndarray,
     expinfo: ExpInfo,
     *,
@@ -773,8 +705,8 @@ def plot_result(
 
     Parameters
     ----------
-    spectrum
-        Spectral data of interest.
+    data
+        Time-domain data.
 
     result
         Parameter estimate, of form:
@@ -891,59 +823,60 @@ def plot_result(
     plot: :py:class:`NmrespyPlot`
         The result plot.
     """
-    if not isinstance(expinfo, ExpInfo):
-        raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
-    dim = expinfo.unpack("dim")
-
-    try:
-        if dim != spectrum.ndim:
-            raise ValueError(
-                f"{RED}The dimension of `expinfo` does not agree with the "
-                f"number of dimensions in `spectrum`.{END}"
-            )
-        elif dim == 2:
-            raise errors.TwoDimUnsupportedError()
-        elif dim >= 3:
-            raise errors.MoreThanTwoDimError()
-    except AttributeError:
-        # spectrum.ndim raised an attribute error
-        raise TypeError(f"{RED}`spectrum` should be a numpy array{END}")
-
-    checker = ArgumentChecker(dim=dim)
-    checker.stage(
-        (spectrum, "spectrum", "ndarray"),
-        (result, "result", "parameter"),
-        (data_color, "data_color", "mpl_color"),
-        (residual_color, "residual_color", "mpl_color"),
-        (model_color, "model_color", "mpl_color"),
-        (show_labels, "labels", "bool"),
-        (plot_residual, "plot_residual", "bool"),
-        (plot_model, "plot_model", "bool"),
-        (region, "region", "region_float", True),
-        (residual_shift, "residual_shift", "float", True),
-        (model_shift, "model_shift", "float", True),
-        (oscillator_colors, "oscillator_colors", "osc_cols", True),
-        (stylesheet, "stylesheet", "str", True),
+    sanity_check(
+        ("expinfo", expinfo, sfuncs.check_expinfo),
+        ("plot_residual", plot_residual, sfuncs.check_bool),
+        ("plot_model", plot_model, sfuncs.check_bool),
+        ("residual_shift", residual_shift, sfuncs.check_float, (), True),
+        ("model_shift", model_shift, sfuncs.check_float, (), True),
+        ("shifts_unit", shifts_unit, sfuncs.check_frequency_unit),
+        ("data_color", data_color, sfuncs.check_mpl_color),
+        ("residual_color", residual_color, sfuncs.check_mpl_color),
+        ("model_color", model_color, sfuncs.check_mpl_color),
+        ("oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors, (), True),  # noqa: E501
+        ("show_labels", show_labels, sfuncs.check_bool),
+        ("stylesheet", stylesheet, sfuncs.check_stylesheet, (), True),
     )
-    checker.check()
+    sanity_check(
+        ("data", data, sfuncs.check_ndarray, (expinfo.dim,)),
+        ("result", result, sfuncs.check_parameter_array, (expinfo.dim,)),
+    )
+
+    if shifts_unit == "hz":
+        region_check = sfuncs.check_region_hz
+    elif shifts_unit == "ppm":
+        region_check = sfuncs.check_region_ppm
+
+    sanity_check(
+        ("region", region, region_check, (expinfo,), True),
+    )
+
+    if expinfo.dim == 2:
+        raise errors.TwoDimUnsupportedError()
+    elif expinfo.dim >= 3:
+        raise errors.MoreThanTwoDimError()
+
+    if stylesheet is None:
+        stylesheet = STYLESHEETPATH
 
     # Setup the stylesheet
     rc = _create_rc(stylesheet, oscillator_colors, result.shape[0])
     stylepath = _create_stylesheet(rc)
     plt.style.use(stylepath)
 
-    pts = spectrum.shape
-    shifts_unit = _configure_shifts_unit(shifts_unit, expinfo)
-    region_slice = _get_region_slice(shifts_unit, region, expinfo, pts)
+    spectrum = sig.ft(sig.make_virtual_echo(data))
+    data_pts = data.shape
+    spec_pts = spectrum.shape
+    region_slice = _get_region_slice(shifts_unit, region, expinfo, spec_pts)
     shifts = [
         shifts[slice_]
         for shifts, slice_ in zip(
-            sig.get_shifts(expinfo, pts, unit=shifts_unit), region_slice
+            sig.get_shifts(expinfo, spec_pts, unit=shifts_unit), region_slice
         )
     ][0]
     # TODO should replicate that way the spectrum was created (ve for example)
     spectrum = spectrum[region_slice]
-    peaks = _generate_peaks(result, region_slice, expinfo, pts)
+    peaks = _generate_peaks(result, region_slice, expinfo, data_pts)
     model, residual = _generate_model_and_residual(peaks, spectrum)
 
     # Generate figure and axis

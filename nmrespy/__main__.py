@@ -1,7 +1,7 @@
 # __main__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:10:55 BST
+# Last Edited: Thu 24 Mar 2022 10:35:00 GMT
 
 """Run when the user calls the nmrespy module from a command line.
 
@@ -18,7 +18,7 @@ Provides access to the following functionality:
 import argparse
 import pathlib
 
-from nmrespy import RED, END, USE_COLORAMA
+from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._install_to_topspin import main as install_to_topspin
 
 if USE_COLORAMA:

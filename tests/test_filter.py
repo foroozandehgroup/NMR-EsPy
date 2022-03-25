@@ -1,12 +1,15 @@
 # test_filter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 17 Mar 2022 16:28:25 GMT
+# Last Edited: Fri 25 Mar 2022 10:57:33 GMT
 
-import numpy as np
-from nmrespy import ExpInfo, mpm, sig, freqfilter as ff
-from nmrespy.freqfilter import Filter
 import matplotlib as mpl
+import numpy as np
+
+from nmrespy import ExpInfo, sig
+from nmrespy.freqfilter import Filter
+from nmrespy.mpm import MatrixPencil
+
 mpl.use("tkAgg")
 
 
@@ -33,7 +36,7 @@ class TestFilterParameters1D:
         offset = 1.0
         sfo = 2.0
         pts = [10]
-        expinfo = ExpInfo(sw=sw, offset=offset, sfo=sfo)
+        expinfo = ExpInfo(1, sw=sw, offset=offset, sfo=sfo)
         fid = sig.make_fid(params, expinfo, pts)[0]
         region = ((4, 6),)
         noise_region = ((1, 2),)  # Doesn't matter
@@ -108,7 +111,7 @@ class TestFilterPerformance:
         offset = 0.0
         sfo = 500.0
         pts = [4096]
-        expinfo = ExpInfo(sw=sw, offset=offset, sfo=sfo)
+        expinfo = ExpInfo(dim=1, sw=sw, offset=offset, sfo=sfo)
         region = ((300.0, 400.0),)
         noise_region = ((-225.0, -250.0),)
         fid = sig.make_fid(params, expinfo, pts, snr=40.0)[0]
@@ -118,7 +121,7 @@ class TestFilterPerformance:
         expected = np.array([[10, 0, 350, 10]])
         finfo = self.make_filter()
         fid, expinfo = finfo.get_filtered_fid(cut_ratio=None)
-        mpm_object = mpm.MatrixPencil(fid, expinfo)
+        mpm_object = MatrixPencil(fid, expinfo)
         mpm_result = mpm_object.get_result()
         assert np.allclose(expected, mpm_result, rtol=0, atol=1e-2)
 
@@ -126,7 +129,7 @@ class TestFilterPerformance:
         expected = np.array([[10, 0, 350, 10]])
         finfo = self.make_filter()
         fid, expinfo = finfo.get_filtered_fid(cut_ratio=1.000001)
-        mpm_object = mpm.MatrixPencil(fid, expinfo)
+        mpm_object = MatrixPencil(fid, expinfo)
         mpm_result = mpm_object.get_result()
         assert np.allclose(expected, mpm_result, rtol=0, atol=1e-1)
 

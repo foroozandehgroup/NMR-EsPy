@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 17 Mar 2022 17:41:50 GMT
+# Last Edited: Fri 25 Mar 2022 11:43:08 GMT
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
 
@@ -21,26 +21,26 @@ import numpy.random as nrandom
 # from scipy.optimize import minimize
 
 from nmrespy import ExpInfo
-from nmrespy._misc import FrequencyConverter
+from nmrespy._freqconverter import FrequencyConverter
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy import sig
 
 
 # Long-winded region types
-RegionFloat = Iterable[Optional[Tuple[float, float]]]
-RegionInt = Iterable[Optional[Tuple[int, int]]]
+RegionFloat = Union[Iterable[Optional[Tuple[float, float]]], Tuple[float, float]]
+RegionInt = Union[Iterable[Optional[Tuple[int, int]]], Tuple[int, int]]
 Region = Union[RegionInt, RegionFloat]
 
 
-class Filter:
+class Filter(FrequencyConverter):
     """Object with tools to generate frequency-filtered NMR data."""
 
     def __init__(
         self,
         fid: np.ndarray,
         expinfo: ExpInfo,
-        region: RegionInt,
-        noise_region: RegionInt,
+        region: Region,
+        noise_region: Region,
         region_unit: str = "hz",
         sg_power: float = 40.0,
         twodim_dtype: Optional[str] = None,
@@ -64,7 +64,7 @@ class Filter:
 
         region_unit
             The units which the boundaries in `region` and `noise_region` are
-            given in. Should be one of ``"idx"``, ``"hz"`` or ``"ppm"``.
+            given in. Should be one of ``"hz"`` or ``"ppm"``.
 
         sg_power
             Power of the super-Gaussian. The greater the value, the more box-like
@@ -91,69 +91,63 @@ class Filter:
         sanity_check(
             ("expinfo", expinfo, sfuncs.check_expinfo),
             ("sg_power", sg_power, sfuncs.check_positive_float),
-            ("region_unit", region_unit, sfuncs.check_one_of, ("idx", "hz", "ppm")),
+            ("region_unit", region_unit, sfuncs.check_frequency_unit),
         )
 
-        dim = expinfo.unpack("dim")
-
-        sanity_check(("fid", fid, sfuncs.check_ndarray, (dim,)))
-
-        if region_unit == "hz":
-            region_check = sfuncs.check_region_hz
-            check_arg = (expinfo,)
-        elif region_unit == "ppm":
-            region_check = sfuncs.check_region_ppm
-            check_arg = (expinfo,)
-        elif region_unit == "idx":
-            region_check = sfuncs.check_region_idx
-            check_arg = (fid.shape,)
+        sanity_check(("fid", fid, sfuncs.check_ndarray, (expinfo.dim,)))
 
         if fid.ndim == 2:
             sanity_check(
-                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("jres",))
+                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("jres",)),
             )
         elif fid.ndim == 3:
             sanity_check(
-                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase"))
+                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase")),
             )
 
+        if region_unit == "hz":
+            region_check = sfuncs.check_region_hz
+        elif region_unit == "ppm":
+            region_check = sfuncs.check_region_ppm
+
         sanity_check(
-            ("region", region, region_check, check_arg),
-            ("noise_region", noise_region, region_check, check_arg),
+            ("region", region, region_check, (expinfo,)),
+            ("noise_region", noise_region, region_check, (expinfo,)),
         )
 
         self._fid = fid
-        self._expinfo = expinfo
+        self._expinfo = copy.deepcopy(expinfo)
         self._sg_power = sg_power
+
+        ve = sig.make_virtual_echo(self._fid, twodim_dtype)
+        # Convert region from hz or ppm to array indices
+        self._expinfo.default_pts = ve.shape
+        super().__init__(self._expinfo)
+
+        def process_region(reg):
+            if fid.ndim == 1 and len(reg) == 2:
+                reg = [reg]
+            return tuple(
+                [tuple(sorted(r)) if r is not None else None
+                 for r in self.convert(reg, f"{region_unit}->idx")]
+            )
+
+        self._region = process_region(region)
+        self._noise_region = process_region(noise_region)
+
         self._axes = list(
             filter(
                 lambda x: x is not None,
-                [i if r is not None else None for i, r in enumerate(region)],
+                [i if r is not None else None for i, r in enumerate(self._region)],
             )
         )
-        self._spectrum = sig.ft(
-            sig.make_virtual_echo(self._fid, twodim_dtype),
-            axes=self._axes,
-        )
 
-        # Convert region from hz or ppm to array indices
-        self._converter = FrequencyConverter(self._expinfo, self._spectrum.shape)
-        process_region = lambda reg: tuple(
-            [tuple(sorted(r)) if r is not None else None
-             for r in self._converter.convert(reg, f"{region_unit}->idx")]
-        )
-        self._region = process_region(region)
-        self._noise_region = process_region(noise_region)
+        self._spectrum = sig.ft(ve, axes=self._axes)
 
     @property
     def spectrum(self) -> np.ndarray:
         """Get unfiltered spectrum."""
         return self._spectrum
-
-    @property
-    def dim(self) -> int:
-        """Get number of dimensions in the spectrum."""
-        return self.spectrum.ndim
 
     @property
     def sg(self) -> np.ndarray:
@@ -168,10 +162,6 @@ class Filter:
         if getattr(self, "_sg_noise", None) is None:
             self._sg_noise = self._superg_noise()
         return self._sg_noise
-
-    @property
-    def converter(self) -> FrequencyConverter:
-        return self._converter
 
     @property
     def shape(self) -> Iterable[int]:
@@ -224,17 +214,19 @@ class Filter:
             scaling_factor = self._cut_scaling_factor(cut_ratio)
             filtered_spectrum *= scaling_factor
 
-            cut_hz = self._converter.convert(
+            cut_hz = self.convert(
                 self._cut_indices(cut_ratio), "idx->hz"
             )
             sw = tuple([abs(lft - rgt) for lft, rgt in cut_hz])
             offset = tuple([(lft + rgt) / 2 for lft, rgt in cut_hz])
             sfo, nuclei = self._expinfo.unpack("sfo", "nuclei")
             expinfo = ExpInfo(
+                dim=self.dim,
                 sw=sw,
                 offset=offset,
                 sfo=sfo,
                 nuceli=nuclei,
+                default_pts=filtered_spectrum.shape,
             )
         else:
             expinfo = self._expinfo
@@ -262,6 +254,7 @@ class Filter:
             cut_ratio=cut_ratio,  # fix_baseline=fix_baseline
         )
         filtered_fid = self._ift_and_slice(filtered_spectrum)
+        expinfo.default_pts = filtered_fid.shape
         return filtered_fid, expinfo
 
     def _superg(self) -> np.ndarray:
@@ -391,7 +384,7 @@ class Filter:
             [int((r[0] + r[1]) // 2) if r is not None else None
              for r in region_idx]
         )
-        return self._converter.convert(center_idx, f"idx->{unit}")
+        return self.convert(center_idx, f"idx->{unit}")
 
     def get_bw(self, unit: str = "hz") -> Iterable[Optional[Union[int, float]]]:
         """Get the bandwidth of the super-Gaussian filter.
@@ -418,7 +411,7 @@ class Filter:
         sanity_check(
             ("unit", unit, sfuncs.check_one_of, ("idx", "hz", "ppm")),
         )
-        return self._converter.convert(self._region, f"idx->{unit}")
+        return self.convert(self._region, f"idx->{unit}")
 
     def get_noise_region(self, unit: str = "hz") -> Region:
         """Get selected spectral noise region for filtration.
@@ -431,7 +424,7 @@ class Filter:
         sanity_check(
             ("unit", unit, sfuncs.check_one_of, ("idx", "hz", "ppm")),
         )
-        return self._converter.convert(self._noise_region, f"idx->{unit}")
+        return self.convert(self._noise_region, f"idx->{unit}")
 
     def _ift_and_slice(self, filtered_spectrum: np.ndarray) -> np.ndarray:
         """Inverse Fourier Transform and slice a filtered spectrum.
@@ -447,7 +440,7 @@ class Filter:
              for i in range(self.dim)]
         )
 
-        return filtered_spectrum  # factor * sig.ift(filtered_spectrum, axes=self._axes)[fid_slice]
+        return factor * sig.ift(filtered_spectrum, axes=self._axes)[fid_slice]
 
     # ================
     # Commented stuff below is related to baseline fixing.

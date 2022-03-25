@@ -1,23 +1,25 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 08 Mar 2022 18:11:29 GMT
+# Last Edited: Thu 24 Mar 2022 13:01:31 GMT
 """Writing estimation results to .txt, .pdf and .csv files"""
 
 from collections import deque
 from pathlib import Path
 import re
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
 
-from nmrespy import RED, ORA, END, ExpInfo, USE_COLORAMA, _misc, plot, sig
+from nmrespy import ExpInfo, _misc, plot, sig
+from nmrespy._colors import RED, ORA, END, USE_COLORAMA
+from nmrespy._files import check_existent_path, check_saveable_path
+from nmrespy._sanity import sanity_check, funcs as sfuncs
 from . import textfile, pdffile, csvfile
 
 if USE_COLORAMA:
     import colorama
-
     colorama.init()
 
 
@@ -86,16 +88,16 @@ def _ask_overwrite(path: Path, force: bool) -> bool:
 def write_result(
     expinfo: ExpInfo,
     params: np.ndarray,
-    errors: Union[np.ndarray, None] = None,
+    errors: Optional[np.ndarray] = None,
     *,
     path: str = "./nmrespy_result",
     fmt: str = "txt",
-    description: Union[str, None] = None,
-    sig_figs: Union[int, None] = 5,
-    sci_lims: Union[Tuple[int, int], None] = (-2, 3),
+    description: Optional[str] = None,
+    sig_figs: Optional[int] = 5,
+    sci_lims: Optional[Tuple[int, int]] = (-2, 3),
     force_overwrite: bool = False,
-    pdflatex_exe: Union[str, None] = None,
-    pdf_append_figure: Union[plot.NmrespyPlot, None] = None,
+    pdflatex_exe: Optional[str] = None,
+    pdf_append_figure: Optional[plot.NmrespyPlot] = None,
     fprint: bool = True,
 ) -> None:
     """Writes an estimation result to a .txt, .pdf or .csv file.
@@ -209,37 +211,22 @@ def write_result(
 
     If a pathname appears, the package is installed to that path.
     """
-    if not isinstance(expinfo, ExpInfo):
-        raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
-    dim = expinfo.unpack("dim")
-
-    try:
-        if dim != int(params.shape[1] / 2) - 1:
-            raise ValueError(
-                f"{RED}The dimension of `expinfo` does not agree with the "
-                "parameter array. `expinfo.dim == (params.shape[1] / 2) "
-                f"- 1` is not satified.{END}"
-            )
-    except AttributeError:
-        # params.shape raised an attribute error
-        raise TypeError(f"{RED}`params` should be a numpy array{END}")
-    if dim >= 3:
-        raise errors.MoreThanTwoDimError()
-
-    checker = _misc.ArgumentChecker(dim=dim)
-    checker.stage(
-        (params, "params", "parameter"),
-        (errors, "errors", "parameter", True),
-        (path, "path", "str"),
-        (fmt, "fmt", "file_fmt"),
-        (force_overwrite, "force_overwrite", "bool"),
-        (fprint, "fprint", "bool"),
-        (description, "description", "str", True),
-        (sig_figs, "sig_figs", "positive_int", True),
-        (sci_lims, "sci_lims", "pos_neg_tuple", True),
-        # TODO add checking for pdf_append_figure
+    sanity_check(
+        ("expinfo", expinfo, sfuncs.check_expinfo),
+        ("fmt", fmt, sfuncs.check_one_of, ("pdf", "txt", "csv")),
+        ("description", description, sfuncs.check_str, (), True),
+        ("sig_figs", sig_figs, sfuncs.check_positive_int, (), True),
+        ("sci_lims", sci_lims, sfuncs.check_sci_lims, (), True),
+        ("force_overwrite", force_overwrite, sfuncs.check_bool),
+        ("pdflatex_exe", pdflatex_exe, check_existent_path, (), True),
+        ("pdf_append_figure", pdf_append_figure, sfuncs.check_nmrespyplot, (), True),
+        ("fprint", fprint, sfuncs.check_bool),
     )
-    checker.check()
+    sanity_check(
+        ("path", path, check_saveable_path, (fmt, force_overwrite)),
+        ("params", params, sfuncs.check_parameter_array, (expinfo.dim,)),
+        ("errors", errors, sfuncs.check_parameter_array, (expinfo.dim,), True),
+    )
 
     path = _configure_save_path(path, fmt, force_overwrite)
     if not path:
@@ -275,14 +262,14 @@ def _construct_infotable(expinfo: ExpInfo) -> List[List[str]]:
     )
     titles = ["Parameter"] + [f"F{i}" for i in range(1, dim + 1)]
     names = deque(["Sweep width (Hz)", "Transmitter offset (Hz)"])
-    values = deque([[str(x) for x in param] for param in (sw, offset)])
+    values = deque([[f"{x:.2f}" for x in param] for param in (sw, offset)])
     if sfo:
         names.appendleft("Transmitter frequency (MHz)")
         names.insert(2, "Sweep width (ppm)")
         names.append("Transmitter offset (ppm)")
-        values.appendleft([str(x) for x in sfo])
-        values.insert(2, [str(x / y) for x, y in zip(sw, sfo)])
-        values.append([str(x / y) for x, y in zip(offset, sfo)])
+        values.appendleft([f"{x:.2f}" for x in sfo])
+        values.insert(2, [f"{x / y:.4f}" for x, y in zip(sw, sfo)])
+        values.append([f"{x / y:.4f}" for x, y in zip(offset, sfo)])
     if nuclei:
         names.appendleft("Nucleus")
         values.appendleft([x for x in nuclei])

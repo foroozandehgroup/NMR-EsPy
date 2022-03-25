@@ -1,7 +1,7 @@
 # pdffile.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 08 Mar 2022 15:33:31 GMT
+# Last Edited: Thu 24 Mar 2022 12:20:16 GMT
 
 import datetime
 import os
@@ -10,23 +10,16 @@ import shutil
 import subprocess
 import tempfile
 from typing import Dict, List, Optional, Union
-from nmrespy import (
-    GRE,
-    END,
-    NMRESPYPATH,
-    MFLOGOPATH,
-    NMRESPYLOGOPATH,
-    DOCSLINK,
-    MFGROUPLINK,
-    BOOKICONPATH,
-    GITHUBLINK,
-    GITHUBLOGOPATH,
-    MAILTOLINK,
-    EMAILICONPATH,
-    USE_COLORAMA,
-    _errors,
-    plot,
-)
+
+from nmrespy._colors import GRE, END, USE_COLORAMA
+import nmrespy._paths_and_links as pl
+
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
+
+from nmrespy._errors import LaTeXFailedError
+from nmrespy.plot import NmrespyPlot
 
 if USE_COLORAMA:
     import colorama
@@ -43,7 +36,7 @@ def write(
     description: Union[str, None],
     pdflatex_exe: Union[str, None],
     fprint: bool,
-    figure: Union[plot.NmrespyPlot, None],
+    figure: Union[NmrespyPlot, None],
 ):
     """Writes parameter estimate to a PDF using ``pdflatex``.
 
@@ -112,7 +105,7 @@ def _write_pdf(
 
 def _read_template() -> str:
     """Extract LaTeX template text."""
-    with open(NMRESPYPATH / "config/latex_template.txt", "r") as fh:
+    with open(pl.NMRESPYPATH / "config/latex_template.txt", "r") as fh:
         text = fh.read()
     return text
 
@@ -121,15 +114,15 @@ def _append_links_and_paths(template: str) -> str:
     """Inputs web links and image paths into the text."""
     # Add image paths and weblinks to TeX document
     stuff = {
-        "<MFLOGOPATH>": MFLOGOPATH,
-        "<NMRESPYLOGOPATH>": NMRESPYLOGOPATH,
-        "<DOCSLINK>": DOCSLINK,
-        "<MFGROUPLINK>": MFGROUPLINK,
-        "<BOOKICONPATH>": BOOKICONPATH,
-        "<GITHUBLINK>": GITHUBLINK,
-        "<GITHUBLOGOPATH>": GITHUBLOGOPATH,
-        "<MAILTOLINK>": MAILTOLINK,
-        "<EMAILICONPATH>": EMAILICONPATH,
+        "<MFLOGOPATH>": pl.MFLOGOPATH,
+        "<NMRESPYLOGOPATH>": pl.NMRESPYLOGOPATH,
+        "<DOCSLINK>": pl.DOCSLINK,
+        "<MFGROUPLINK>": pl.MFGROUPLINK,
+        "<BOOKICONPATH>": pl.BOOKICONPATH,
+        "<GITHUBLINK>": pl.GITHUBLINK,
+        "<GITHUBLOGOPATH>": pl.GITHUBLOGOPATH,
+        "<MAILTOLINK>": pl.MAILTOLINK,
+        "<EMAILICONPATH>": pl.EMAILICONPATH,
     }
 
     for before, after in stuff.items():
@@ -189,8 +182,8 @@ def _latex_longtable(rows: List[List[str]]) -> str:
     return table
 
 
-def _append_figure(text: str, figure: Union[plot.NmrespyPlot, None]):
-    if isinstance(figure, plot.NmrespyPlot):
+def _append_figure(text: str, figure: Union[NmrespyPlot, None]):
+    if isinstance(figure, NmrespyPlot):
         path = TMPDIR / "figure.pdf"
         figure.fig.savefig(path, dpi=600, format="pdf")
         text = text.replace(
@@ -252,7 +245,7 @@ def _compile_tex(
 
     except Exception or subprocess.SubprocessError:
         shutil.move(src, dst)
-        raise _errors.LaTeXFailedError(dst)
+        raise LaTeXFailedError(dst)
 
 
 def _cleanup(texpaths: Dict[str, Dict[str, pathlib.Path]]) -> None:

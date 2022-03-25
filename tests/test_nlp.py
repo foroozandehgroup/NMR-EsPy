@@ -1,7 +1,7 @@
 # test_nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 04 Feb 2022 12:04:01 GMT
+# Last Edited: Fri 25 Mar 2022 09:41:33 GMT
 
 from itertools import combinations
 import numpy as np
@@ -20,7 +20,7 @@ def test_nlp_1d():
         ]
     )
     pts = [1024]
-    expinfo = ExpInfo(sw=20)
+    expinfo = ExpInfo(dim=1, sw=20.)
     fid = sig.make_fid(params, expinfo, pts)[0]
     x0 = np.array(
         [
@@ -32,19 +32,21 @@ def test_nlp_1d():
     )
 
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, hessian="gauss-newton", phase_variance=False
+        fid, x0, expinfo, hessian="gauss-newton", phase_variance=False,
+        fprint=False,
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-4)
 
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, hessian="exact", phase_variance=False
+        fid, x0, expinfo, hessian="exact", phase_variance=False,
+        fprint=False,
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-4)
 
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, phase_variance=False, method="lbfgs"
+        fid, x0, expinfo, phase_variance=False, method="lbfgs", fprint=False,
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-2)
@@ -67,7 +69,7 @@ def test_nlp_2d():
         ]
     )
     pts = [128, 128]
-    expinfo = ExpInfo(sw=20, dim=2)
+    expinfo = ExpInfo(dim=2, sw=(20., 20.))
     fid = sig.make_fid(params, expinfo, pts)[0]
     x0 = np.array(
         [
@@ -78,27 +80,27 @@ def test_nlp_2d():
         ]
     )
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, hessian="gauss-newton", phase_variance=False
+        fid, x0, expinfo, hessian="gauss-newton", phase_variance=False, fprint=False,
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-4)
 
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, hessian="exact", phase_variance=False
+        fid, x0, expinfo, hessian="exact", phase_variance=False, fprint=False,
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-4)
 
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, phase_variance=False, method="lbfgs"
+        fid, x0, expinfo, phase_variance=False, method="lbfgs", fprint=False,
     )
 
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1e-2)
 
     nlp = NonlinearProgramming(
-        fid[10:, 5:], x0, expinfo, phase_variance=False,
-        start_time=["10dt", "5dt"],
+        fid[10:, 5:], x0, expinfo, phase_variance=False, start_time=["10dt", "5dt"],
+        negative_amps="flip_phase",
     )
     result = nlp.get_result()
     assert np.allclose(result, params, rtol=0, atol=1E-4)
@@ -107,14 +109,13 @@ def test_nlp_2d():
 def test_analytic_grad_hess():
     # Compare analytic and finite difference grad and hessian and check they
     # all closely match.
-
     h = 0.000001
 
     # --- 1D ---
     params = np.array([[1.0, 0.0, 5.0, 1.0]])
     x0 = np.array([[0.9, 0.4, 6, 1.2]])
     pts = [4048]
-    expinfo = ExpInfo(sw=100)
+    expinfo = ExpInfo(dim=1, sw=100.)
 
     fid, tp = sig.make_fid(params, expinfo, pts)
     norm = nlinalg.norm(fid)
@@ -142,7 +143,7 @@ def test_analytic_grad_hess():
     params = np.array([[1.0, 0.0, 5.0, -7.0, 2.0, 1.0]])
     x0 = np.array([[0.9, 0.4, 6, -8.0, 1.8, 1.2]])
     pts = [128, 128]
-    expinfo = ExpInfo(sw=100, dim=2)
+    expinfo = ExpInfo(dim=2, sw=(100., 100.))
 
     fid, tp = sig.make_fid(params, expinfo, pts)
     norm = nlinalg.norm(fid)

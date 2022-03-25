@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Jan 2022 16:41:45 GMT
+# Last Edited: Fri 25 Mar 2022 11:44:36 GMT
 
 """Computation of signal estimates using the Matrix Pencil Method."""
 
@@ -14,18 +14,20 @@ import scipy.linalg as slinalg
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
 
-from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
+from nmrespy import ExpInfo
+from nmrespy._colors import RED, ORA, END, USE_COLORAMA
+import nmrespy._errors as errors
+from nmrespy._result import ResultFetcher
+from nmrespy._sanity import sanity_check, funcs as sfuncs
+from ._misc import start_end_wrapper
+from ._timing import timer
 
 if USE_COLORAMA:
     import colorama
-
     colorama.init()
-import nmrespy._errors as errors
-from ._misc import ArgumentChecker, start_end_wrapper
-from ._timing import timer
 
 
-class MatrixPencil:
+class MatrixPencil(ResultFetcher):
     """Matrix Pencil Method with model order selection.
 
     Model order selection achieved using the Minimum Description Length
@@ -61,7 +63,7 @@ class MatrixPencil:
         data: np.ndarray,
         expinfo: ExpInfo,
         *,
-        M: int = 0,
+        oscillators: int = 0,
         start_point: Union[Iterable[int], None] = None,
         fprint: bool = True,
     ) -> None:
@@ -72,7 +74,7 @@ class MatrixPencil:
         Parameters
         ----------
         data
-            Signal to be considered (unnormalised).
+            Signal to be considered.
 
         expinfo
             Information on the experiment. Used to determine the sweep width,
@@ -80,7 +82,7 @@ class MatrixPencil:
             Transmitter offset is optional, however if it set it `None`, no
             conversion of result frequencies from Hz to ppm will be possible.
 
-        M
+        oscillators
             The number of oscillators. If ``0``, the number of oscilators will
             be estimated using the MDL.
 
@@ -95,77 +97,34 @@ class MatrixPencil:
             Flag specifiying whether to print infomation to the terminal as
             the method runs.
         """
-        self.expinfo = expinfo
-        if not isinstance(expinfo, ExpInfo):
-            raise TypeError(f"{RED}Check `expinfo` is valid.{END}")
-        dim = self.expinfo.unpack("dim")
-
-        try:
-            if dim != data.ndim:
-                raise ValueError(
-                    f"{RED}The dimension of `expinfo` does not agree with the "
-                    f"number of dimensions in `data`.{END}"
-                )
-            elif dim >= 3:
-                raise errors.MoreThanTwoDimError()
-        except AttributeError:
-            # data.ndim raised an attribute error
-            raise TypeError(f"{RED}`data` should be a numpy ndarray{END}")
-
-        if start_point is None:
-            start_point = [0] * dim
-
-        checker = ArgumentChecker(dim=dim)
-        checker.stage(
-            (data, "data", "ndarray"),
-            (start_point, "start_point", "int_iter"),
-            (M, "M", "positive_int_or_zero"),
-            (fprint, "fprint", "bool"),
-        )
-        checker.check()
         self.__dict__.update(locals())
+        self._sanity_check()
+        super().__init__(self.expinfo, self.data.shape)
 
-        if dim == 1:
+        if self.expinfo.dim > 2:
+            raise errors.MoreThanTwoDimError()
+
+        if self.start_point is None:
+            self.start_point = [0] * self.dim
+
+        if self.expinfo.dim == 1:
             self._mpm_1d()
-        else:
+        elif self.expinfo.dim == 2:
             self._mpm_2d()
 
-    def get_result(self, freq_unit: str = "hz") -> np.ndarray:
-        """Obtain the result of the MPM.
-
-        Parameters
-        ----------
-        freq_unit
-            The unit of the oscillator frequencies. Should be one of
-            ``'hz'``, ``'ppm'``.
-
-        Returns
-        -------
-        result
-            Eetimation result from the MPM.
-        """
-        if freq_unit == "hz":
-            return self.result
-
-        elif freq_unit == "ppm":
-            if self.expinfo.sfo is None:
-                raise ValueError(
-                    f"{RED}Insufficient information to determine"
-                    f" frequencies in ppm. Did you perhaps forget to specify"
-                    f" `sfo` in `expinfo`?{END}"
-                )
-
-            result = copy.deepcopy(self.result)
-
-            if self.dim == 1:
-                result[:, 2] /= self.expinfo.sfo[0]
-            elif self.dim == 2:
-                result[:, 2] /= self.expinfo.sfo[0]
-                result[:, 3] /= self.expinfo.sfo[1]
-            return result
-
-        else:
-            raise errors.InvalidUnitError("hz", "ppm")
+    def _sanity_check(self) -> None:
+        sanity_check(
+            ("expinfo", self.expinfo, sfuncs.check_expinfo),
+            ("oscillators", self.oscillators, sfuncs.check_positive_int, (True,)),
+            ("fprint", self.fprint, sfuncs.check_bool),
+        )
+        sanity_check(
+            ("data", self.data, sfuncs.check_ndarray, (self.expinfo.dim,)),
+            (
+                "start_point", self.start_point, sfuncs.check_positive_int_list,
+                (self.expinfo.dim, True), True
+            ),
+        )
 
     @timer
     @start_end_wrapper("MPM STARTED", "MPM COMPLETE")
@@ -208,7 +167,7 @@ class MatrixPencil:
         if self.fprint:
             print("--> Computing number of oscillators...")
 
-        if self.M == 0:
+        if self.oscillators == 0:
             if self.fprint:
                 print("\tNumber of oscillators will be estimated using MDL")
 
@@ -220,25 +179,25 @@ class MatrixPencil:
                     k * np.log(N) * (2 * L - k) / 2
                 )
 
-            self.M = np.argmin(self.mdl)
+            self.oscillators = np.argmin(self.mdl)
 
         else:
             if self.fprint:
                 print("\tNumber of oscillations has been pre-defined")
 
         if self.fprint:
-            print(f"\tNumber of oscillations: {self.M}")
+            print(f"\tNumber of oscillations: {self.oscillators}")
 
         # Determine signal poles
         if self.fprint:
             print("--> Computing signal poles...")
 
-        Vm = V[:, : self.M]  # Retain M first right singular vectors
+        Vm = V[:, : self.oscillators]  # Retain M first right singular vectors
         V1 = Vm[:-1, :]  # Remove last column
         V2 = Vm[1:, :]  # Remove first column
 
         # Determine first M signal poles (others should be 0)
-        poles = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][: self.M]
+        poles = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][: self.oscillators]
 
         # Compute complex amplitudes
         if self.fprint:
@@ -251,9 +210,9 @@ class MatrixPencil:
             nlinalg.pinv(np.power.outer(poles, np.arange(sp, N + sp))).T @ normed_data
         )
 
-        params = self._generate_params(alpha, poles.reshape((1, self.M)))
+        params = self._generate_params(alpha, poles.reshape((1, self.oscillators)))
         params[:, 0] *= norm
-        self.result, self.M = self._remove_negative_damping(params)
+        self.result, self.oscillators = self._remove_negative_damping(params)
 
     @timer
     @start_end_wrapper("MMEMP STARTED", "MMEMP COMPLETE")
@@ -272,7 +231,7 @@ class MatrixPencil:
             print(f"--> Pencil parameters: {K}, {L}")
 
         # TODO: MDL for 2D
-        if self.M == 0:
+        if self.oscillators == 0:
             raise ValueError(
                 f"{RED}Model order selection is not yet available for 2D "
                 f"data. Set `M` as greater than 0.{END}"
@@ -306,7 +265,7 @@ class MatrixPencil:
 
         if self.fprint:
             print("--> Performing Singular Value Decomposition...")
-        U, *_ = splinalg.svds(sparse_Xe, self.M)
+        U, *_ = splinalg.svds(sparse_Xe, self.oscillators)
 
         # --- Permutation matrix ---
         if self.fprint:
@@ -339,7 +298,7 @@ class MatrixPencil:
         if self.fprint:
             print("--> Computing signal poles...")
 
-        Us = U[:, : self.M]
+        Us = U[:, : self.oscillators]
         U1 = Us[: Us.shape[0] - L, :]  # last L rows deleted
         U2 = Us[L:, :]  # first L rows deleted
         eig_y, vec_y = nlinalg.eig(nlinalg.pinv(U1) @ U2)
@@ -347,7 +306,7 @@ class MatrixPencil:
         U1p = Usp[: Usp.shape[0] - K, :]  # last K rows deleted
         U2p = Usp[K:, :]  # first K rows deleted
         eig_z = np.diag(nlinalg.solve(vec_y, nlinalg.pinv(U1p)) @ U2p @ vec_y)
-        poles = np.hstack((eig_y, eig_z)).reshape((2, self.M))
+        poles = np.hstack((eig_y, eig_z)).reshape((2, self.oscillators))
 
         # --- Complex Amplitudes ---
         if self.fprint:
@@ -369,7 +328,7 @@ class MatrixPencil:
 
         params = self._generate_params(alpha, poles)
         params[:, 0] *= norm
-        self.result, self.M = self._remove_negative_damping(params)
+        self.result, self.oscillators = self._remove_negative_damping(params)
 
     def _generate_params(self, alpha: np.ndarray, poles: np.ndarray) -> np.ndarray:
         """Convert complex amplitudes and signal poles to parameter array.
@@ -377,10 +336,10 @@ class MatrixPencil:
         Parameters
         ----------
         alpha
-            Complex amplitude array, of shape``(self.M,)``
+            Complex amplitude array, of shape``(self.oscillators,)``
 
         poles
-            Signal pole array, of shape ``(self.dim, self.M)``
+            Signal pole array, of shape ``(dim, self.oscillators)``
 
         Returns
         -------
@@ -413,7 +372,7 @@ class MatrixPencil:
         Parameters
         ----------
         params
-            Parameter array, with shape ``(self.M, 2 * self.dim + 2)``
+            Parameter array, with shape ``(self.oscillators, 2 * dim + 2)``
 
         Returns
         -------
@@ -428,7 +387,7 @@ class MatrixPencil:
         M_init = params.shape[0]
         # Indices of oscillators with negative damping factors
         neg_dmp_idx = set()
-        for i in range(2 + self.dim, 2 * (self.dim + 1)):
+        for i in range(2 + self.expinfo.dim, 2 * (self.expinfo.dim + 1)):
             neg_dmp_idx = neg_dmp_idx | set(np.nonzero(params[:, i] < 0.0)[0])
 
         ud_params = np.delete(params, list(neg_dmp_idx), axis=0)

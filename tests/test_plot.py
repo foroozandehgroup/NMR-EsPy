@@ -1,7 +1,7 @@
 # test_plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 13 Oct 2021 16:13:26 BST
+# Last Edited: Tue 22 Mar 2022 10:27:38 GMT
 
 import os
 from pathlib import Path
@@ -140,28 +140,30 @@ def test_get_region_slice():
     hz_result = (slice(1, 4, None),)
     region_ppm = [[0.05, -0.15]]
     ppm_result = (slice(4, 7, None),)
-    expinfo = ExpInfo(pts=10, sw=9.0, offset=0.0, sfo=10.0)
+    expinfo = ExpInfo(sw=9.0, offset=0.0, sfo=10.0)
+    pts = [10]
 
-    assert nplot._get_region_slice("hz", region_hz, expinfo) == hz_result
+    assert nplot._get_region_slice("hz", region_hz, expinfo, pts) == hz_result
     expinfo._sfo = None
-    assert nplot._get_region_slice("hz", region_hz, expinfo) == hz_result
+    assert nplot._get_region_slice("hz", region_hz, expinfo, pts) == hz_result
     expinfo._sfo = (10.0,)
-    assert nplot._get_region_slice("ppm", region_ppm, expinfo) == ppm_result
-    assert nplot._get_region_slice("hz", None, expinfo) == (slice(0, 10, None),)
+    assert nplot._get_region_slice("ppm", region_ppm, expinfo, pts) == ppm_result
+    assert nplot._get_region_slice("hz", None, expinfo, pts) == (slice(0, 10, None),)
 
     # 2D example
     region_hz = [[3.5, 1.5], [3.5, 1.5]]
     hz_result = (slice(2, 7, None), slice(3, 6, None))
     region_ppm = [[0.2, -0.15], [0.15, -0.15]]
     ppm_result = (slice(5, 14, None), slice(5, 9, None))
-    expinfo = ExpInfo(pts=[20, 10], sw=[9.0, 9.0], offset=[0.0, 2.0], sfo=[10.0, 10.0])
+    expinfo = ExpInfo(sw=[9.0, 9.0], offset=[0.0, 2.0], sfo=[10.0, 10.0])
+    pts = [20, 10]
 
-    assert nplot._get_region_slice("hz", region_hz, expinfo) == hz_result
+    assert nplot._get_region_slice("hz", region_hz, expinfo, pts) == hz_result
     expinfo._sfo = None
-    assert nplot._get_region_slice("hz", region_hz, expinfo) == hz_result
+    assert nplot._get_region_slice("hz", region_hz, expinfo, pts) == hz_result
     expinfo._sfo = (10.0, 10.0)
-    assert nplot._get_region_slice("ppm", region_ppm, expinfo) == ppm_result
-    assert nplot._get_region_slice("hz", None, expinfo) == (
+    assert nplot._get_region_slice("ppm", region_ppm, expinfo, pts) == ppm_result
+    assert nplot._get_region_slice("hz", None, expinfo, pts) == (
         slice(0, 20, None),
         slice(0, 10, None),
     )
@@ -178,13 +180,13 @@ class Stuff:
                 [1, 0, 1200, 50],
             ]
         )
-        pts = 4096
+        self.pts = [4096]
         sw = 5000.0
         offset = 0.0
         sfo = 500.0
-        self.expinfo = ExpInfo(pts=pts, sw=sw, offset=offset, sfo=sfo)
+        self.expinfo = ExpInfo(sw=sw, offset=offset, sfo=sfo)
         self.region_hz = [[1400.0, 800.0]]
-        self.converter = _misc.FrequencyConverter(self.expinfo)
+        self.converter = _misc.FrequencyConverter(self.expinfo, self.pts)
 
     def unpack(self):
         return (
@@ -192,11 +194,12 @@ class Stuff:
             self.expinfo,
             self.region_hz,
             self.converter,
+            self.pts,
         )
 
 
 def test_generate_peaks():
-    result, expinfo, region_hz, _ = Stuff().unpack()
+    result, expinfo, region_hz, _, pts = Stuff().unpack()
     slce = nplot._get_region_slice("hz", region_hz, expinfo)
     peaks = nplot._generate_peaks(result, slce, expinfo)
 
@@ -214,8 +217,8 @@ def test_generate_peaks():
 
 
 def test_plot_result():
-    result, expinfo, region_hz, converter = Stuff().unpack()
-    data = sig.make_fid(result, expinfo, snr=30.0)[0]
+    result, expinfo, region_hz, converter, pts = Stuff().unpack()
+    data = sig.make_fid(result, expinfo, pts, snr=30.0)[0]
     data[0] /= 2
     spectrum = sig.ft(data)
     region_ppm = converter.convert(region_hz, "hz->ppm")

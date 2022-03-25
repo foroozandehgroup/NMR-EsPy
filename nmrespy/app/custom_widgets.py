@@ -1,11 +1,19 @@
+# custom_widgets.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 24 Mar 2022 11:26:47 GMT
+
 """
 Customised widgets for NMR-EsPy GUI.
 """
 
 import tkinter as tk
 from tkinter import ttk
+
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
-from .config import *
+import numpy as np
+
+import nmrespy.app.config as cf
 
 
 def generate(cls_, keys, values, kwargs):
@@ -23,7 +31,7 @@ class MyFrame(tk.Frame):
 
     def __init__(self, parent, **kwargs):
         super().__init__(parent)
-        generate(self, ("bg",), (BGCOLOR,), kwargs)
+        generate(self, ("bg",), (cf.BGCOLOR,), kwargs)
 
 
 class MyToplevel(tk.Toplevel):
@@ -34,9 +42,9 @@ class MyToplevel(tk.Toplevel):
     def __init__(self, parent, **kwargs):
         super().__init__(parent)
 
-        self.iconbitmap = IMAGESPATH / "icon.ico"
+        self.iconbitmap = cf.ICONPATH
 
-        generate(self, ("bg",), (BGCOLOR,), kwargs)
+        generate(self, ("bg",), (cf.BGCOLOR,), kwargs)
 
         self.title("NMR-EsPy")
         self.resizable(False, False)
@@ -50,9 +58,9 @@ class MyLabel(tk.Label):
         keys = ("bg", "font")
 
         if bold:
-            values = (BGCOLOR, (MAINFONT, "11", "bold"))
+            values = (cf.BGCOLOR, (cf.MAINFONT, "11", "bold"))
         else:
-            values = (BGCOLOR, (MAINFONT, "11"))
+            values = (cf.BGCOLOR, (cf.MAINFONT, "11"))
 
         generate(self, keys, values, kwargs)
 
@@ -69,7 +77,7 @@ class MyButton(tk.Button):
             "bg",
             "disabledforeground",
         )
-        values = (8, "black", BUTTONDEFAULT, BUTTONDEFAULT)
+        values = (8, "black", cf.BUTTONDEFAULT, cf.BUTTONDEFAULT)
 
         generate(self, keys, values, kwargs)
 
@@ -81,7 +89,7 @@ class MyCheckbutton(tk.Checkbutton):
         super().__init__(parent)
 
         keys = ("bg", "highlightthickness", "bd")
-        values = (BGCOLOR, 0, 0)
+        values = (cf.BGCOLOR, 0, 0)
 
         generate(self, keys, values, kwargs)
 
@@ -101,7 +109,7 @@ class MyScale(tk.Scale):
             "bg",
             "troughcolor",
         )
-        values = (tk.HORIZONTAL, 0, 15, 0, 1, "black", "flat", BGCOLOR, "white")
+        values = (tk.HORIZONTAL, 0, 15, 0, 1, "black", "flat", cf.BGCOLOR, "white")
 
         generate(self, keys, values, kwargs)
 
@@ -131,7 +139,7 @@ class MyEntry(tk.Entry):
             "bg",
             "readonlybackground",
         )
-        values = (7, 1, "black", "white", READONLYENTRYCOLOR)
+        values = (7, 1, "black", "white", cf.READONLYENTRYCOLOR)
 
         generate(self, keys, values, kwargs)
 
@@ -164,14 +172,14 @@ class MyOptionMenu(tk.OptionMenu):
         super().__init__(parent, variable, value, values, kwargs)
 
         keys = ("bg", "borderwidth", "width", "highlightcolor")
-        values = (BGCOLOR, 1, 10, "black")
+        values = (cf.BGCOLOR, 1, 10, "black")
 
         generate(self, keys, values, kwargs)
 
         if "bg" in kwargs.keys():
-            self["menu"]["bg"] = kwayrgs["bg"]
+            self["menu"]["bg"] = kwargs["bg"]
         else:
-            self["menu"]["bg"] = BGCOLOR
+            self["menu"]["bg"] = cf.BGCOLOR
 
 
 class MyText(tk.Text):
@@ -195,20 +203,20 @@ class MyNotebook(ttk.Notebook):
                 "TNotebook": {
                     "configure": {
                         "tabmargins": [2, 0, 5, 0],
-                        "background": BGCOLOR,
+                        "background": cf.BGCOLOR,
                         "bordercolor": "black",
                     }
                 },
                 "TNotebook.Tab": {
                     "configure": {
                         "padding": [10, 3],
-                        "background": NOTEBOOKCOLOR,
-                        "font": (MAINFONT, 11),
+                        "background": cf.NOTEBOOKCOLOR,
+                        "font": (cf.MAINFONT, 11),
                     },
                     "map": {
-                        "background": [("selected", ACTIVETABCOLOR)],
+                        "background": [("selected", cf.ACTIVETABCOLOR)],
                         "expand": [("selected", [1, 1, 1, 0])],
-                        "font": [("selected", (MAINFONT, 11, "bold"))],
+                        "font": [("selected", (cf.MAINFONT, 11, "bold"))],
                         "foreground": [("selected", "white")],
                     },
                 },
@@ -224,7 +232,7 @@ class MyNavigationToolbar(NavigationToolbar2Tk):
     and save buttons. Also dialogues as cursor goes over plot, and bar
     is set to be white"""
 
-    def __init__(self, canvas, parent, color=BGCOLOR):
+    def __init__(self, canvas, parent, color=cf.BGCOLOR):
 
         # slice toolitems (this gets rid of the unwanted buttons)
         self.toolitems = self.toolitems[:6]
@@ -266,15 +274,15 @@ class MyTable(MyFrame):
             value_var_row = []
             for param in osc:
                 if isinstance(param, (int, float)):
-                    value_var = value_var_dict(
+                    value_var = cf.value_var_dict(
                         param,
-                        strip_zeros(f"{param:.5f}"),
+                        cf.strip_zeros(f"{param:.5f}"),
                     )
                 else:
                     # The only occasion when this should occur in the program
                     # is when param is an empty string. This occurs when
                     # oscillators are added in the AddFrame widget.
-                    value_var = value_var_dict(param, param)
+                    value_var = cf.value_var_dict(param, param)
                 value_var_row.append(value_var)
             self.value_vars.append(value_var_row)
 
@@ -368,8 +376,8 @@ class MyTable(MyFrame):
             self.navigate_frame = MyFrame(self)
             self.navigate_frame.grid(row=1, column=0, pady=(10, 0))
 
-            self.up_arrow_img = get_PhotoImage(UPARROWPATH, scale=0.5)
-            self.down_arrow_img = get_PhotoImage(DOWNARROWPATH, scale=0.5)
+            self.up_arrow_img = cf.get_PhotoImage(cf.UPARROWPATH, scale=0.5)
+            self.down_arrow_img = cf.get_PhotoImage(cf.DOWNARROWPATH, scale=0.5)
 
             self.up_arrow = MyButton(
                 self.navigate_frame,
@@ -452,9 +460,9 @@ class MyTable(MyFrame):
     def activate_rows(self, top):
         for i, (label, entries) in enumerate(zip(self.labels, self.entries)):
             if i + top in self.selected_rows:
-                fg, bg, state = TABLESELECTFGCOLOR, TABLESELECTBGCOLOR, "readonly"
+                fg, bg, state = cf.TABLESELECTFGCOLOR, cf.TABLESELECTBGCOLOR, "readonly"
             else:
-                fg, bg, state = "#000000", BGCOLOR, "disabled"
+                fg, bg, state = "#000000", cf.BGCOLOR, "disabled"
 
             label["fg"] = fg
             label["bg"] = bg
@@ -487,7 +495,7 @@ class MyTable(MyFrame):
             pass
 
         if isinstance(value_var["value"], (int, float)):
-            value_var["var"].set(strip_zeros(f"{value_var['value']:.5f}"))
+            value_var["var"].set(cf.strip_zeros(f"{value_var['value']:.5f}"))
         else:
             # The only time the result shouldn't be a numerical value
             # if when it is an empty string (this crops up in result.AddFrame)

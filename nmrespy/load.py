@@ -1,7 +1,7 @@
 # load.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Jan 2022 16:39:41 GMT
+# Last Edited: Thu 24 Mar 2022 18:02:41 GMT
 
 """Provides functionality for importing NMR data."""
 
@@ -11,14 +11,14 @@ from typing import Tuple
 import numpy as np
 import bruker_utils
 
-from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
+from nmrespy import ExpInfo
+from nmrespy._colors import RED, ORA, END, USE_COLORAMA
+from nmrespy._errors import MoreThanTwoDimError
+from nmrespy._misc import get_yes_no
 
 if USE_COLORAMA:
     import colorama
-
     colorama.init()
-import nmrespy._errors as errors
-from nmrespy._misc import get_yes_no
 
 
 class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
@@ -38,6 +38,7 @@ class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
             nuclei.append(re.match("^<(.+?)>$", params["NUC1"]).group(1))
 
         return ExpInfo(
+            dim=len(acqusfiles),
             sw=sw,
             offset=offset,
             sfo=sfo,
@@ -209,7 +210,7 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
         raise type(exc)(f"{RED}{exc.__str__()}{END}")
 
     if dataset.dim > 2:
-        raise errors.MoreThanTwoDimError()
+        raise MoreThanTwoDimError()
 
     if dataset.dtype == "fid" and ask_convdta:
         msg = (

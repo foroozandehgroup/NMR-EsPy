@@ -1,20 +1,19 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 18 Mar 2022 14:11:02 GMT
+# Last Edited: Fri 25 Mar 2022 11:07:07 GMT
 
 from pathlib import Path
 import re
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple, Union
 
+import matplotlib as mpl
 from matplotlib import colors as mcolors
 import matplotlib.pyplot as plt
 
 import numpy as np
 from nmr_sims.nuclei import Nucleus, supported_nuclei
 from nmr_sims.spin_system import SpinSystem
-
-from nmrespy import ExpInfo
 
 
 def isiter(x: Any) -> bool:
@@ -48,11 +47,31 @@ def check_float_greater_that_one(obj: Any) -> Optional[str]:
         return "Should be a float greater than 1."
 
 
-def check_float_list(obj: Any, dim: Optional[int] = None) -> Optional[str]:
+def check_float_list(
+    obj: Any,
+    length: Optional[int] = None,
+    len_one_can_be_listless: bool = False,
+    must_be_positive: bool = False,
+    allow_none: bool = False,
+) -> Optional[str]:
+    if length == 1 and len_one_can_be_listless:
+        if isfloat(obj):
+            return
     if not isiter(obj):
-        return "Should be a list or tuple."
-    if not all([isfloat(x for x in obj)]):
+        return "Should be a tuple or list."
+    if (length is not None) and (len(obj) != length):
+        return f"Should be of length {length}."
+    if not all([isfloat(x) for x in obj]) and not allow_none:
         return "All elements should be floats."
+    if not all([(isfloat(x) or x is None) for x in obj]) and allow_none:
+        return "All elements should be floats or Nones."
+    if (
+        not all([x > 0.0 for x in filter(lambda y: y is not None, obj)]) and
+        must_be_positive
+    ):
+        return "All elements should be positive."
+    if not any([isfloat(x) for x in obj]):
+        return "At least one element must be a float, all Nones not allowed."
 
 
 def check_int_list(obj: Any, dim: Optional[int] = None) -> Optional[str]:
@@ -62,14 +81,19 @@ def check_int_list(obj: Any, dim: Optional[int] = None) -> Optional[str]:
         return "All elements should be ints."
 
 
-def check_positive_float(obj: Any):
-    if not isinstance(obj, float) and obj > 0:
+def check_positive_float(obj: Any, allow_zero: bool = False) -> Optional[str]:
+    if not (isfloat(obj) and obj > 0):
         return "Should be a positive float."
 
 
-def check_positive_int(obj: Any):
-    if not isinstance(obj, int) and obj > 0:
-        return "Should be a positive int."
+def check_positive_int(obj: Any, zero_allowed: bool = False) -> Optional[str]:
+    msg = "Should be a positive int."
+    if not isint(obj):
+        return msg
+    if zero_allowed and obj < 0:
+        return msg
+    elif not zero_allowed and obj <= 0:
+        return msg
 
 
 def check_parameter_array(obj: Any, dim: int) -> Optional[str]:
@@ -80,14 +104,41 @@ def check_parameter_array(obj: Any, dim: int) -> Optional[str]:
         return f"Should be a 2-dimensional array with shape (M, {p})."
 
 
-def check_positive_float_list(obj: Any, length: Optional[int] = None) -> Optional[str]:
-    if not isinstance(obj, (tuple, list)):
-        return f"Should be a tuple or list of length {length}."
+# TODO: deprecate
+def check_positive_float_list(
+    obj: Any,
+    length: Optional[int] = None,
+    allow_none: bool = False,
+) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a tuple or list."
     if (length is not None) and (len(obj) != length):
         return f"Should be of length {length}."
-    if not all([isinstance(x, float) for x in obj]):
+    if not all([isfloat(x) for x in obj]) and not allow_none:
         return "All elements should be floats."
-    if not all([x > 0 for x in obj]):
+    if not all([(isfloat(x) or x is None) for x in obj]) and allow_none:
+        return "All elements should be floats or None."
+    if not all([x > 0 for x in filter(lambda y: y is not None, obj)]):
+        return "All elements should be positive."
+    if not any([isfloat(x) for x in obj]):
+        return "At least one element must be a float, all Nones not allowed."
+
+
+# TODO: deprecate
+def check_positive_int_list(
+    obj: Any,
+    length: Optional[int] = None,
+    allow_zero: bool = False
+) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a tuple or list."
+    if (length is not None) and (len(obj) != length):
+        return f"Should be of length {length}."
+    if not all([isint(x) for x in obj]):
+        return "All elements should be ints."
+    if allow_zero and (not all([x >= 0 for x in obj])):
+        return "All elements should be positive or 0."
+    elif (not allow_zero) and (not all([x > 0 for x in obj])):
         return "All elements should be positive."
 
 
@@ -107,7 +158,7 @@ def check_ndarray(
 
 
 def check_expinfo(obj: Any, dim: Optional[int] = None) -> Optional[str]:
-    if not isinstance(obj, ExpInfo):
+    if not type(obj).__name__ == "ExpInfo":
         return "Should be an instance of nmrespy.ExpInfo."
     if isinstance(dim, int):
         if not obj.unpack("dim") == dim:
@@ -146,23 +197,6 @@ def check_str(obj: Any) -> Optional[str]:
         return "Should be a str."
 
 
-def check_path(obj: Any) -> Optional[str]:
-    if isinstance(obj, Path):
-        directory = obj.resolve().parent
-    elif isinstance(obj, str):
-        directory = Path(obj).resolve().parent
-    else:
-        return "Should be a pathlib.Path object or a string specifying a path."
-    if not directory.is_dir():
-        return f"The parent directory {directory} doesn't exist."
-
-
-def check_is_path(obj: Any) -> Optional[str]:
-    check_path(obj)
-    if not Path(obj).resolve().is_file():
-        return f"The file {obj} does not exist."
-
-
 def check_initial_guess(obj: Any, dim: int) -> Optional[str]:
     if isinstance(obj, int):
         return check_positive_int(obj)
@@ -172,91 +206,105 @@ def check_initial_guess(obj: Any, dim: int) -> Optional[str]:
         return "Should be an int, a NumPy array, or None."
 
 
-def check_region_float(obj: Any, full_region: Iterable[Tuple[float, float]]):
-    dim = len(full_region)
-    if not isinstance(obj, (list, tuple)):
+# --- Frequency regions ---
+def _check_region(
+    obj: Any,
+    full_region: Iterable[Tuple[float, float]],
+    type_: type,
+) -> Optional[str]:
+    if not isiter(obj):
         return "Should be a list or tuple."
-    if len(obj) != dim:
+
+    dim = len(full_region)
+    # 1D signals: user has given (left, right) instead of ((left, right),)
+    if dim == 1 and len(obj) == 2:
+        return _check_region_dim(obj, full_region[0], type_, 0)
+    elif len(obj) != dim:
         return f"Should be of length {dim}."
 
-    msg = "Each element should be a list or tuple of 2 floats or None."
-    for axis, full in zip(obj, full_region):
-        if axis is None:
-            continue
-        if not isinstance(axis, (list, tuple)):
-            return msg
-        if len(axis) != 2:
-            return msg
-        if not all([isinstance(x, float) for x in axis]):
-            return msg
-        if not all([full[0] >= x >= full[1] for x in axis]):
-            return "At least one specified value lies outside the spectral window."
+    for i, (axis, full) in enumerate(zip(obj, full_region)):
+        result = _check_region_dim(axis, full, type_, i)
+        if isinstance(result, str):
+            return result
 
     if all([axis is None for axis in obj]):
         return "Should not have all elements as None."
 
 
-def check_region_hz(obj: Any, expinfo: ExpInfo) -> Optional[str]:
+def _check_region_dim(
+    axis: Any,
+    full: Tuple[Union[float, int], Union[float, int]],
+    type_: type,
+    i: int,
+) -> Optional[str]:
+    msg = (
+        f"Issue with element {i}: should be a list or tuple of 2 {type_.__name__}s "
+        "within the spectral window or None."
+    )
+    if axis is None:
+        return
+    if not isiter(axis):
+        return msg
+    if len(axis) != 2:
+        return msg
+    if not all([isinstance(x, type_) for x in axis]):
+        return msg
+    if not all([min(full) <= x <= max(full) for x in axis]):
+        return msg
+
+
+def check_region_hz(obj: Any, expinfo) -> Optional[str]:
     full_region = [[sw / 2 + off, -sw / 2 + off]
                    for sw, off in zip(expinfo._sw, expinfo._offset)]
-    return check_region_float(obj, full_region)
+    return _check_region(obj, full_region, float)
 
 
-def check_region_ppm(obj: Any, expinfo: ExpInfo) -> Optional[str]:
+def check_region_ppm(obj: Any, expinfo) -> Optional[str]:
     if expinfo._sfo is None:
         return "Cannot specify region in ppm. sfo is not defined in expinfo."
-    full_region = [[(sw / 2 + off) / sfo, (-sw / 2 + off) / sfo]
+    full_region = [[sw / 2 + off, -sw / 2 + off] if sfo is None
+                   else [(sw / 2 + off) / sfo, (-sw / 2 + off) / sfo]
                    for sw, off, sfo in zip(expinfo._sw, expinfo._offset, expinfo._sfo)]
-    return check_region_float(obj, full_region)
+    return _check_region(obj, full_region, float)
 
 
 def check_region_idx(obj: Any, pts: Iterable[int]) -> Optional[str]:
-    dim = len(pts)
-    if not isinstance(obj, (list, tuple)):
-        return "Should be a list or tuple"
-    if len(obj) != dim:
-        return f"Should be of length {dim}."
-
-    msg = "Each element should be a list or tuple of 2 ints."
-    for axis, p in zip(obj, pts):
-        if not isinstance(axis, (list, tuple)):
-            return msg
-        if len(axis) != 2:
-            return msg
-        if not all([isinstance(x, int) for x in axis]):
-            return msg
-        if not all([0 <= x < p for x in axis]):
-            return "At least one specified value lies outside the spectral window."
+    full_region = [[0, p - 1] for p in pts]
+    return _check_region(obj, full_region, int)
 
 
-def check_jres_region_float(
-    obj: Any, full_region: Tuple[float, float]
+def _check_jres_region(
+    obj: Any,
+    full_region: Tuple[float, float],
+    type_: type,
 ) -> Optional[str]:
-    if not isinstance(obj, (list, tuple)):
-        return "Should be a list or tuple."
-    if len(obj) != 2:
-        return "Should be of length 2."
-    if not all([isinstance(x, float) for x in obj]):
-        return "Each element should be a float."
-    if not all([full_region[0] >= x >= full_region[1] for x in obj]):
-        return "At least one specified value lies outside the spectral window."
+    if isinstance(_check_region_dim(obj, full_region, type_, 0), str):
+        return (
+            f"Should be a list or tuple of 2 {type_.__name__}s within the F2 spectral "
+            "window or None."
+        )
 
 
-def check_jres_region_hz(obj: Any, expinfo: ExpInfo) -> Optional[str]:
+def check_jres_region_hz(obj: Any, expinfo) -> Optional[str]:
     sw = expinfo._sw[1]
     offset = expinfo._offset[1]
     full_region = [sw / 2 + offset, -sw / 2 + offset]
-    return check_jres_region_float(obj, full_region)
+    return _check_jres_region(obj, full_region, float)
 
 
-def check_jres_region_ppm(obj: Any, expinfo: ExpInfo) -> Optional[str]:
-    sw = expinfo._sw[1]
-    offset = expinfo._offset[1]
+def check_jres_region_ppm(obj: Any, expinfo) -> Optional[str]:
     if expinfo._sfo is None:
         return "Cannot specify region in ppm. sfo is not defined in expinfo."
+    sw = expinfo._sw[1]
+    offset = expinfo._offset[1]
     sfo = expinfo._sfo[1]
     full_region = [(sw / 2 + offset) / sfo, (-sw / 2 + offset) / sfo]
-    return check_jres_region_float(obj, full_region)
+    return _check_jres_region(obj, full_region, float)
+
+
+def check_jres_region_idx(obj: Any, pts: int) -> Optional[str]:
+    full_region = [0, pts - 1]
+    return _check_jres_region(obj, full_region, int)
 
 
 def check_ints_less_than_n(obj: Any, n: int) -> Optional[str]:
@@ -268,7 +316,7 @@ def check_ints_less_than_n(obj: Any, n: int) -> Optional[str]:
         return f"All elements should be between 0 and {n - 1}."
 
 
-def check_frequency_unit(obj: Any, ppm_valid: Optional[bool] = True) -> Optional[str]:
+def check_frequency_unit(obj: Any, ppm_valid: bool = True) -> Optional[str]:
     if obj not in ["hz", "ppm"]:
         return "Should be one of \"hz\" and \"ppm\""
     if obj == "ppm" and not ppm_valid:
@@ -278,15 +326,6 @@ def check_frequency_unit(obj: Any, ppm_valid: Optional[bool] = True) -> Optional
 def check_file_format(obj: Any) -> Optional[str]:
     if obj not in ["txt", "pdf", "csv"]:
         return "Should be one of \"txt\" and \"pdf\", \"csv\""
-
-
-def check_sci_lims(obj: Any) -> Optional[str]:
-    if not isinstance(obj, (tuple, list)) or len(obj) != 2:
-        return "Should be a tuple/list of length 2."
-    if not isinstance(obj[0], int) or obj[0] > 0:
-        return "First element should be a negative int."
-    if not isinstance(obj[1], int) or obj[1] < 0:
-        return "Second element should be a positive int."
 
 
 def is_mpl_color(obj: Any) -> bool:
@@ -320,7 +359,7 @@ def check_spin_system(obj: Any) -> Optional[str]:
         return "Should be an instance of nmr_sims.spin_system.SpinSystem."
 
 
-def check_nucleus(obj: Any) -> Optional[str]:
+def check_nmrsims_nucleus(obj: Any) -> Optional[str]:
     if isinstance(obj, Nucleus):
         return
     elif isinstance(obj, str):
@@ -332,8 +371,38 @@ def check_nucleus(obj: Any) -> Optional[str]:
     )
 
 
+def isnuc(obj: Any) -> bool:
+    return isinstance(obj, str) and bool(re.fullmatch(r"\d+[a-zA-Z]+", obj))
+
+
+def check_nucleus(obj: Any) -> Optional[str]:
+    if not isnuc(obj):
+        return "Should be a string satisfying the regex r\"^\\d+[a-zA-Z]+$\""
+
+
+def check_nucleus_list(
+    obj: Any,
+    length: Optional[int] = None,
+    len_one_can_be_listless: bool = False,
+    none_allowed: bool = False,
+) -> Optional[str]:
+    if length == 1 and len_one_can_be_listless:
+        if isnuc(obj):
+            return
+    if not isiter(obj):
+        return "Should be a list."
+    if (length is not None) and len(obj) != length:
+        return f"Should be of length {length}."
+    if not all([isnuc(x) for x in obj]) and not none_allowed:
+        return "Each element should be a str satifying r\"^\\d+[a-zA-Z]+$\""
+    if not all([isnuc(x) or x is None for x in obj]) and none_allowed:
+        return "Each element should be a str satifying r\"^\\d+[a-zA-Z]+$\" or None."
+    if none_allowed:
+        if not any([isnuc(x) for x in obj]):
+            return "At least one element must not be None."
+
+
 def check_convertible_list(obj: Any, dim: int) -> Optional[str]:
-    isnum = lambda x: isinstance(x, (int, float))
     if not isiter(obj):
         return "Should be a tuple or list."
     if len(obj) != dim:
@@ -343,6 +412,7 @@ def check_convertible_list(obj: Any, dim: int) -> Optional[str]:
         "Each element should be one of:\n"
         "A numerical type\n"
         "A tuple or list of numerical types\n"
+        "A one-dimensional numpy array\n"
         "None"
     )
 
@@ -352,6 +422,8 @@ def check_convertible_list(obj: Any, dim: int) -> Optional[str]:
         elif isiter(elem):
             if not all([isnum(x) for x in elem]):
                 return msg
+        elif isinstance(elem, np.ndarray) and elem.ndim == 1:
+            pass
         else:
             return msg
 
@@ -372,3 +444,70 @@ def check_start_time(obj: Any, dim: int) -> Optional[str]:
         return "Should be a list or tuple"
     if not all([(isnum(x) or bool(re.match(r"^-?\d+dt$", x))) for x in obj]):
         return "At least one invalid start time specifier."
+
+
+def check_sci_lims(obj: Any) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a list or tuple."
+    if len(obj) != 2:
+        return "Should be of length 2."
+    if not all([isint(x) for x in obj]):
+        return "Elements should be ints."
+    if not obj[0] < 0:
+        return "First element should be less than 0."
+    if not obj[1] > 0:
+        return "Second element should be greater than 0."
+
+
+def check_nmrespyplot(obj: Any) -> Optional[str]:
+    if type(obj).__name__ != "NmrespyPlot":
+        return "Should be a `nmrespy.plot.NmrespyPlot` object."
+
+
+def check_optimiser_mode(obj: Any) -> Optional[str]:
+    if not isinstance(obj, str):
+        return "Should be a str."
+    # check if mode is empty or contains and invalid character
+    if any(c not in "apfd" for c in obj) or obj == "":
+        return "Invalid character present, or string is empty."
+    # check if mode contains a repeated character
+    count = {}
+    for c in obj:
+        if c in count.keys():
+            count[c] += 1
+        else:
+            count[c] = 1
+    if not all(map(lambda x: x == 1, count.values())):
+        return "Repeated character present."
+
+
+def check_stylesheet(obj: Any) -> Optional[str]:
+    if not isinstance(obj, str):
+        return "Should be a str."
+
+    # Check two possible paths.
+    # First one is simply the user input:
+    # This will be valid if a full path to a stylesheet has been given.
+    # Second one is to check whether the user has given a name for one of
+    # the provided stylesheets that ship with matplotlib.
+    paths = [
+        Path(obj).resolve(),
+        Path(mpl.__file__).resolve().parent / f"mpl-data/stylelib/{obj}.mplstyle",
+    ]
+
+    for path in paths:
+        if path.is_file():
+            rc = str(
+                mpl.rc_params_from_file(
+                    path, fail_on_error=True, use_default_template=False
+                )
+            )
+            # If the file exists, but no lines can be parsed, an empty
+            # string is returned.
+            if rc:
+                return
+
+    return (
+        "Error in finding/reading the stylesheet. Check you gave a valid path or name"
+        "for the stylesheet, and that the stylesheet is formatted correctly."
+    )

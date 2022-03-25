@@ -1,8 +1,15 @@
+# frames.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 24 Mar 2022 11:21:46 GMT
+
 import webbrowser
 
-from .. import *
-from .config import *
-from .custom_widgets import *
+import tkinter as tk
+
+import nmrespy._paths_and_links as pl
+import nmrespy.app.config as cf
+import nmrespy.app.custom_widgets as wd
 
 # TODO for animation
 # from matplotlib.animation import FuncAnimation
@@ -11,7 +18,7 @@ from .custom_widgets import *
 # import numpy as np
 
 
-class LogoFrame(MyFrame):
+class LogoFrame(wd.MyFrame):
     """Contains the NMR-EsPy and MF groups logos"""
 
     def __init__(self, master, logos="both", scale=0.6):
@@ -23,13 +30,15 @@ class LogoFrame(MyFrame):
 
         if logos in ["both", "nmrespy"]:
             # add NMR-EsPy logo
-            self.nmrespy_img = get_PhotoImage(
-                IMAGESPATH / "nmrespy_full.png", scale / 2.3
+            self.nmrespy_img = cf.get_PhotoImage(
+                pl.NMRESPYLOGOPATH, scale / 2.3
             )
-            self.nmrespy_logo = MyLabel(self, image=self.nmrespy_img, cursor="hand1")
+            self.nmrespy_logo = wd.MyLabel(
+                self, image=self.nmrespy_img, cursor="hand1"
+            )
             # provide link to NMR-EsPy docs
             self.nmrespy_logo.bind(
-                "<Button-1>", lambda e: webbrowser.open_new(GITHUBLINK)
+                "<Button-1>", lambda e: webbrowser.open_new(pl.GITHUBLINK),
             )
             self.nmrespy_logo.grid(row=0, column=column)
 
@@ -38,16 +47,18 @@ class LogoFrame(MyFrame):
 
         if logos in ["both", "mfgroup"]:
             # add MF group logo
-            self.mfgroup_img = get_PhotoImage(MFLOGOPATH, scale)
-            self.mfgroup_logo = MyLabel(self, image=self.mfgroup_img, cursor="hand1")
+            self.mfgroup_img = cf.get_PhotoImage(pl.MFLOGOPATH, scale)
+            self.mfgroup_logo = wd.MyLabel(
+                self, image=self.mfgroup_img, cursor="hand1",
+            )
             # provide link to MF group website
             self.mfgroup_logo.bind(
-                "<Button-1>", lambda e: webbrowser.open_new(MFGROUPLINK)
+                "<Button-1>", lambda e: webbrowser.open_new(pl.MFGROUPLINK)
             )
             self.mfgroup_logo.grid(row=0, column=column, padx=padx)
 
 
-class WarnWindow(MyToplevel):
+class WarnWindow(wd.MyToplevel):
     """A window in case the user does something silly."""
 
     def __init__(self, parent, msg):
@@ -55,16 +66,16 @@ class WarnWindow(MyToplevel):
         self.title("NMR-EsPy - Warning")
 
         # warning image
-        self.img = get_PhotoImage((IMAGESPATH / "warning.png"), 0.08)
-        self.warn_sign = MyLabel(self, image=self.img)
+        self.img = cf.get_PhotoImage(cf.WARNINGPATH, 0.08)
+        self.warn_sign = wd.MyLabel(self, image=self.img)
         self.warn_sign.grid(row=0, column=0, padx=(10, 0), pady=10)
 
         # add text explaining the issue
-        text = MyLabel(self, text=msg, wraplength=400)
+        text = wd.MyLabel(self, text=msg, wraplength=400)
         text.grid(row=0, column=1, padx=10, pady=10)
 
         # close button
-        close_button = MyButton(
+        close_button = wd.MyButton(
             self,
             text="Close",
             bg="#ff9894",
@@ -73,7 +84,7 @@ class WarnWindow(MyToplevel):
         close_button.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10))
 
 
-class DataType(MyToplevel):
+class DataType(wd.MyToplevel):
     """GUI for asking user whether they want to analyse the raw FID or
     pdata
 
@@ -97,9 +108,9 @@ class DataType(MyToplevel):
         # Frame for the NMR-EsPy logo
         self.logo_frame = LogoFrame(self, logos="nmrespy", scale=0.8)
         # Frame containing path labels and checkboxes
-        self.main_frame = MyFrame(self)
+        self.main_frame = wd.MyFrame(self)
         # Frame containing confirm/cancel buttons
-        self.button_frame = MyFrame(self)
+        self.button_frame = wd.MyFrame(self)
         # Arrange frames
         self.logo_frame.grid(row=0, column=0, rowspan=2, padx=10, pady=10)
         self.main_frame.grid(row=0, column=1, padx=(0, 10), pady=(10, 0))
@@ -112,18 +123,18 @@ class DataType(MyToplevel):
         )
 
         # --- Frame heading ----------------------------------------------
-        msg = MyLabel(
+        msg = wd.MyLabel(
             self.main_frame,
             text="Which data would you like to analyse?",
-            font=(MAINFONT, "12", "bold"),
+            font=(cf.MAINFONT, "12", "bold"),
         )
         msg.grid(column=0, row=0, columnspan=2, padx=10, pady=(10, 0))
 
         # --- Processd data checkbutton and labels -----------------------
-        pdata_label = MyLabel(self.main_frame, text="Processed Data")
+        pdata_label = wd.MyLabel(self.main_frame, text="Processed Data")
         pdata_label.grid(column=0, row=1, padx=(10, 0), pady=(10, 0), sticky="w")
 
-        pdatapath = MyLabel(
+        pdatapath = wd.MyLabel(
             self.main_frame,
             text=f"{str(self.paths['pdata'])}/1r",
             font=("Courier", 11),
@@ -135,7 +146,7 @@ class DataType(MyToplevel):
         # other is `0`.
         self.pdata = tk.IntVar()
         self.pdata.set(1)
-        self.pdata_box = MyCheckbutton(
+        self.pdata_box = wd.MyCheckbutton(
             self.main_frame,
             variable=self.pdata,
             command=self.click_pdata,
@@ -143,7 +154,7 @@ class DataType(MyToplevel):
         self.pdata_box.grid(column=1, row=1, rowspan=2, padx=(10, 0), sticky="nsw")
 
         # --- FID checkbutton and labels ---------------------------------
-        fid_label = MyLabel(self.main_frame, text="Raw FID")
+        fid_label = wd.MyLabel(self.main_frame, text="Raw FID")
         fid_label.grid(
             column=0,
             row=3,
@@ -152,7 +163,7 @@ class DataType(MyToplevel):
             sticky="w",
         )
 
-        fidpath = MyLabel(
+        fidpath = wd.MyLabel(
             self.main_frame,
             text=f"{str(self.paths['fid'])}/fid",
             font=("Courier", 11),
@@ -162,7 +173,7 @@ class DataType(MyToplevel):
         # Initially have set to `0`, i.e. pdata is set to the default.
         self.fid = tk.IntVar()
         self.fid.set(0)
-        self.fid_box = MyCheckbutton(
+        self.fid_box = wd.MyCheckbutton(
             self.main_frame,
             variable=self.fid,
             command=self.click_fid,
@@ -170,11 +181,11 @@ class DataType(MyToplevel):
         self.fid_box.grid(column=1, row=3, rowspan=2, padx=(10, 0), sticky="nsw")
 
         # --- Confirm and Cancel buttons ---------------------------------
-        self.confirmbutton = MyButton(
+        self.confirmbutton = wd.MyButton(
             self.button_frame,
             text="Confirm",
             command=self.confirm,
-            bg=BUTTONGREEN,
+            bg=cf.BUTTONGREEN,
         )
         self.confirmbutton.grid(
             column=1,
@@ -184,11 +195,11 @@ class DataType(MyToplevel):
             sticky="e",
         )
 
-        self.cancelbutton = MyButton(
+        self.cancelbutton = wd.MyButton(
             self.button_frame,
             text="Cancel",
             command=self.ctrl.destroy,
-            bg=BUTTONRED,
+            bg=cf.BUTTONRED,
         )
         self.cancelbutton.grid(column=0, row=0, pady=(10, 0), sticky="e")
         self.ctrl.wait_window(self)
@@ -215,14 +226,14 @@ class DataType(MyToplevel):
         self.destroy()
 
 
-class RootButtonFrame(MyFrame):
+class RootButtonFrame(wd.MyFrame):
     def __init__(self, master, cancel_msg="Are you sure you want to close NMR-EsPy?"):
         super().__init__(master)
 
         self.cancel_msg = cancel_msg
 
-        self.cancel_button = MyButton(
-            self, text="Cancel", bg=BUTTONRED, command=self.cancel
+        self.cancel_button = wd.MyButton(
+            self, text="Cancel", bg=cf.BUTTONRED, command=self.cancel
         )
         self.cancel_button.grid(
             row=1,
@@ -232,18 +243,18 @@ class RootButtonFrame(MyFrame):
             sticky="e",
         )
 
-        self.help_button = MyButton(
+        self.help_button = wd.MyButton(
             self,
             text="Help",
-            bg=BUTTONORANGE,
-            command=lambda: webbrowser.open_new(DOCSLINK),
+            bg=cf.BUTTONORANGE,
+            command=lambda: webbrowser.open_new(pl.DOCSLINK),
         )
         self.help_button.grid(row=1, column=1, padx=(10, 0), pady=(10, 0), sticky="e")
 
         # Command varies - will need to be defined from the class that
         # inherits from this
         # For example, see SetupButtonFrame
-        self.green_button = MyButton(self, bg=BUTTONGREEN)
+        self.green_button = wd.MyButton(self, bg=cf.BUTTONGREEN)
         self.green_button.grid(
             row=1,
             column=2,
@@ -252,7 +263,7 @@ class RootButtonFrame(MyFrame):
             sticky="e",
         )
 
-        contact_info_1 = MyLabel(
+        contact_info_1 = wd.MyLabel(
             self,
             text="For queries/feedback, contact",
         )
@@ -265,7 +276,7 @@ class RootButtonFrame(MyFrame):
             sticky="w",
         )
 
-        contact_info_2 = MyLabel(
+        contact_info_2 = wd.MyLabel(
             self,
             text="simon.hulse@chem.ox.ac.uk",
             font="Courier",
@@ -274,7 +285,7 @@ class RootButtonFrame(MyFrame):
         )
         contact_info_2.bind(
             "<Button-1>",
-            lambda e: webbrowser.open_new(MAILTOLINK),
+            lambda e: webbrowser.open_new(pl.MAILTOLINK),
         )
 
         contact_info_2.grid(
@@ -301,7 +312,7 @@ class RootButtonFrame(MyFrame):
             self.master.destroy()
 
 
-class ConfirmWindow(MyToplevel):
+class ConfirmWindow(wd.MyToplevel):
     """A window to double-check the user wants to do something."""
 
     def __init__(self, parent, msg, yes_text="Confirm", no_text="Cancel"):
@@ -310,22 +321,22 @@ class ConfirmWindow(MyToplevel):
         self.conf = False
 
         # add text explaining the issue
-        text = MyLabel(self, text=msg, wraplength=400)
+        text = wd.MyLabel(self, text=msg, wraplength=400)
         text.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
         # close button
-        cancel_button = MyButton(
+        cancel_button = wd.MyButton(
             self,
             text=no_text,
-            bg=BUTTONRED,
+            bg=cf.BUTTONRED,
             command=self.cancel,
         )
         cancel_button.grid(row=1, column=0, padx=10, pady=(0, 10))
 
-        confirm_button = MyButton(
+        confirm_button = wd.MyButton(
             self,
             text=yes_text,
-            bg=BUTTONGREEN,
+            bg=cf.BUTTONGREEN,
             command=self.confirm,
         )
         confirm_button.grid(row=1, column=1, padx=(0, 10), pady=(0, 10))

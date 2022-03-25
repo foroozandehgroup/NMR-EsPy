@@ -1,15 +1,14 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 18 Mar 2022 15:16:02 GMT
+# Last Edited: Fri 25 Mar 2022 11:21:15 GMT
 
 """Constructing and processing NMR signals."""
 
 import copy
-import inspect
 import re
 import tkinter as tk
-from typing import Dict, Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
@@ -19,23 +18,8 @@ import scipy.integrate as integrate
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
-from nmrespy import RED, ORA, END, USE_COLORAMA, ExpInfo
-
-if USE_COLORAMA:
-    import colorama
-
-    colorama.init()
-import nmrespy._errors as errors
-from nmrespy._misc import ArgumentChecker
+from nmrespy import ExpInfo
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-
-"""Provides functionality for constructing synthetic FIDs"""
-
-
-return_type = Tuple[
-    Union[np.ndarray, Tuple[np.ndarray, np.ndarray]],
-    Union[Tuple[np.ndarray], Tuple[np.ndarray, np.ndarray]],
-]
 
 
 def make_fid(
@@ -46,7 +30,7 @@ def make_fid(
     snr: Union[float, None] = None,
     decibels: bool = True,
     modulation: Optional[str] = None,
-) -> return_type:
+) -> Tuple[np.ndarray, Iterable[np.ndarray]]:
     r"""Construct a FID, as a summation of damped complex sinusoids.
 
     Parameters
@@ -395,6 +379,7 @@ def zf(data: np.ndarray) -> np.ndarray:
     return zf_data
 
 
+# TODO: deprecate
 def get_timepoints(
     expinfo: ExpInfo,
     pts: Iterable[int],
@@ -412,15 +397,6 @@ def get_timepoints(
 
     pts
         The number of points the signal comprises in each dimension.
-
-    start_time
-        The start time in each dimension. If set to `None`, the initial
-        point in each dimension with be ``0.0``. To set non-zero start times,
-        a list of floats or strings can be used. If floats are used, they
-        specify the first value in each dimension in seconds. Alternatively,
-        strings of the form ``f'{N}dt'``, where ``N`` is an integer, may be
-        used, which indicates a cetain multiple of the difference in time
-        between two adjacent points.
 
     meshgrid_2d
         If time-points are being derived for a two-dimensional signal, setting
@@ -470,6 +446,7 @@ def get_timepoints(
     return tp
 
 
+# TODO: deprecate
 def get_shifts(
     expinfo: ExpInfo, pts: Iterable[int], *, unit: str = "hz", flip: bool = True,
     meshgrid_2d: bool = True,
@@ -493,7 +470,7 @@ def get_shifts(
         If `True`, the shifts will be returned in descending order, as is
         conventional in NMR. If `False`, the shifts will be in ascending order.
 
-    meshgrid_2d
+    meshgrid
         If shifts are being derived for a two-dimensional signal, setting
         this argument to ``True`` will return two two-dimensional arrays
         corresponding to all pairs of x and y values to construct a 3D
@@ -567,6 +544,7 @@ def ft(
     sanity_check(
         ("axes", axes, sfuncs.check_ints_less_than_n, (dim,), True),
     )
+
     if axes is None:
         axes = list(range(dim))
     if isinstance(axes, int):
@@ -576,7 +554,10 @@ def ft(
     for axis in axes:
         spectrum = fftshift(fft(spectrum, axis=axis), axes=axis)
 
-    return np.flip(spectrum, axis=axes) if flip else spectrum
+    if flip:
+        spectrum = np.flip(spectrum, axis=axes)
+
+    return spectrum
 
 
 def ift(
@@ -761,7 +742,8 @@ def phase(
 
 
 def manual_phase_data(
-    spectrum: np.ndarray, *, max_p1: Union[Iterable[float], None] = None
+    spectrum: np.ndarray,
+    max_p1: Optional[Iterable[float]] = None
 ) -> Tuple[Union[Iterable[float], None], Union[Iterable[float], None]]:
     """Manual phase correction using a Graphical User Interface.
 
@@ -787,12 +769,10 @@ def manual_phase_data(
         First-order phase correction in each dimension, in radians. If the
         user chooses to cancel rather than save, this is set to ``None``.
     """
-    try:
-        dim = spectrum.ndim
-    except Exception:
-        raise TypeError(f"{RED}spectrum should be a numpy array{END}")
-    if dim != 1:
-        raise errors.TwoDimUnsupportedError()
+    sanity_check(("spectrum", spectrum, sfuncs.check_ndarray, (1,)))
+    dim = spectrum.ndim
+    sanity_check(("max_p1", max_p1, sfuncs.check_positive_float_list, (dim,), True))
+
     if max_p1 is None:
         max_p1 = tuple(dim * [10 * np.pi])
 
@@ -800,7 +780,7 @@ def manual_phase_data(
 
     app = PhaseApp(init_spectrum, max_p1)
     app.mainloop()
-    print(app.p0, app.p1)
+
     return (app.p0,), (app.p1,)
 
 
@@ -1054,13 +1034,16 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
 
 
 def _generate_random_signal(
-    m: int, expinfo: ExpInfo, pts: Iterable[int], *, snr: Union[float, None] = None
+    oscillators: int,
+    expinfo: ExpInfo,
+    pts: Iterable[int],
+    snr: Union[float, None] = None
 ) -> Tuple[np.ndarray, Iterable[np.ndarray], np.ndarray]:
     """Convienince function to generate a random synthetic FID.
 
     Parameters
     ----------
-    m
+    oscillators
         Number of oscillators.
 
     expinfo
@@ -1084,36 +1067,29 @@ def _generate_random_signal(
     parameters
         Parameters used to construct the signal
     """
-    # TODO
-    try:
-        sw, offset, dim = expinfo.unpack("sw", "offset", "dim")
-    except Exception:
-        raise TypeError(
-            f"{RED}Check `expinfo` is an instance of " f"nmrespy.ExpInfo{END}"
-        )
-
-    checker = ArgumentChecker(dim=dim)
-    checker.stage(
-        (m, "m", "positive_int"),
-        (pts, "pts", "int_iter"),
-        (snr, "snr", "positive_float", True),
+    sanity_check(
+        ("oscillators", oscillators, sfuncs.check_positive_int),
+        ("expinfo", expinfo, sfuncs.check_expinfo),
+        ("snr", snr, sfuncs.check_float, (), True),
     )
+    sw, offset, dim = expinfo.unpack("sw", "offset", "dim")
+    sanity_check(("pts", pts, sfuncs.check_points, (dim,)))
 
     # low: 0.0, high: 1.0
     # amplitdues
-    para = nrandom.uniform(size=m)
+    para = nrandom.uniform(size=oscillators)
     # phases
-    para = np.hstack((para, nrandom.uniform(low=-np.pi, high=np.pi, size=m)))
+    para = np.hstack((para, nrandom.uniform(low=-np.pi, high=np.pi, size=oscillators)))
     # frequencies
     f = [
-        nrandom.uniform(low=-s / 2 + o, high=s / 2 + o, size=m)
+        nrandom.uniform(low=-s / 2 + o, high=s / 2 + o, size=oscillators)
         for s, o in zip(sw, offset)
     ]
     para = np.hstack((para, *f))
     # damping
-    eta = [nrandom.uniform(low=0.1, high=0.3, size=m) for _ in range(dim)]
+    eta = [nrandom.uniform(low=0.1, high=0.3, size=oscillators) for _ in range(dim)]
     para = np.hstack((para, *eta))
-    para = para.reshape((m, 2 * (dim + 1)), order="F")
+    para = para.reshape((oscillators, 2 * (dim + 1)), order="F")
 
     return (*make_fid(para, expinfo, pts, snr=snr), para)
 

@@ -1,15 +1,26 @@
+# stup.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 24 Mar 2022 11:57:02 GMT
+
 from datetime import datetime
+import re
+import tkinter as tk
+import webbrowser
+
 from matplotlib import figure, patches
 from matplotlib.backends import backend_tkagg
-import re
+import numpy as np
 
-from .._misc import latex_nucleus
-from .config import *
-from .custom_widgets import *
-from .frames import *
+from nmrspy import sig
+from nmrespy._misc import latex_nucleus
+import nmrespy._paths_and_links as pl
+import nmrespy.app.config as cf
+import nmrespy.app.custom_widgets as wd
+import nmrespy.app.frames as fr
 
 
-class SetUp(MyToplevel):
+class SetUp(wd.MyToplevel):
     def __init__(self, parent):
         self.estimator = parent.estimator
         # Shorthand for unit conversion
@@ -41,7 +52,7 @@ class SetUp(MyToplevel):
 
         # --- Region selection parameters --------------------------------
         # Bounds for filtration and noise regions
-        self.bounds = AutoVivification()
+        self.bounds = cf.AutoVivification()
         # Initial values for region of interest and noise region
         init_bounds = [int(np.floor(x * self.n / 16)) for x in (7, 9, 1, 2)]
 
@@ -54,7 +65,7 @@ class SetUp(MyToplevel):
                     value = self.conv(init, f"idx->{unit}")
                     var_str = f"{value:.4f}"
 
-                self.bounds[name][unit] = value_var_dict(value, var_str)
+                self.bounds[name][unit] = cf.value_var_dict(value, var_str)
 
         # Number of points the selected region is composed of
         self.region_size = (
@@ -74,27 +85,27 @@ class SetUp(MyToplevel):
                 value = self.conv(pivot, f"idx->{unit}")
                 var_str = f"{value:.4f}"
 
-            self.pivot[unit] = value_var_dict(value, var_str)
+            self.pivot[unit] = cf.value_var_dict(value, var_str)
 
         # Zero- and first-order correction parameters
-        self.phases = AutoVivification()
+        self.phases = cf.AutoVivification()
 
         # Initialise correction parameters as zero in both radians and
         # degrees.
         for name in ["p0", "p1"]:
             for unit in ["rad", "deg"]:
-                self.phases[name][unit] = value_var_dict(0.0, f"{0.:.4f}")
+                self.phases[name][unit] = cf.value_var_dict(0.0, f"{0.:.4f}")
 
         # --- Various advanced settings ----------------------------------
         # Specifies whether or not to cut the filtered spectral data
-        self.cut = value_var_dict(True, 1)
+        self.cut = cf.value_var_dict(True, 1)
         # Specifies the the ratio between cut signal size and filter
         # bandwidth
-        self.cut_ratio = value_var_dict(3, "3")
+        self.cut_ratio = cf.value_var_dict(3, "3")
 
         # Largest number of points permitted
         max_points = self.cut_size()
-        self.max_points = value_var_dict(max_points, str(max_points))
+        self.max_points = cf.value_var_dict(max_points, str(max_points))
 
         # Number of points to be used for MPM and NLP.
         # By default, number of points will not exceed:
@@ -103,29 +114,29 @@ class SetUp(MyToplevel):
         self.trim = {}
         if max_points <= 4096:
             for name in ["mpm", "nlp"]:
-                self.trim[name] = value_var_dict(max_points, str(max_points))
+                self.trim[name] = cf.value_var_dict(max_points, str(max_points))
         elif max_points <= 8192:
-            self.trim["mpm"] = value_var_dict(4096, "4096")
-            self.trim["nlp"] = value_var_dict(max_points, str(max_points))
+            self.trim["mpm"] = cf.value_var_dict(4096, "4096")
+            self.trim["nlp"] = cf.value_var_dict(max_points, str(max_points))
         else:
-            self.trim["mpm"] = value_var_dict(4096, "4096")
-            self.trim["nlp"] = value_var_dict(8192, "8192")
+            self.trim["mpm"] = cf.value_var_dict(4096, "4096")
+            self.trim["nlp"] = cf.value_var_dict(8192, "8192")
 
         # Number of oscillators
         # Initialise as 0 (use MDL)
-        self.m = value_var_dict(0, "")
+        self.m = cf.value_var_dict(0, "")
         # Specifies whether or not to use the MDL to estimate M
-        self.mdl = value_var_dict(True, 1)
+        self.mdl = cf.value_var_dict(True, 1)
         # Idenitity of the NLP algorithm to use
-        self.method = value_var_dict("trust_region", "Trust Region")
+        self.method = cf.value_var_dict("trust_region", "Trust Region")
         # Maximum iterations of NLP algorithm
-        self.maxit = value_var_dict(200, "200")
+        self.maxit = cf.value_var_dict(200, "200")
         # Whether or not to include phase variance in NLP cost func
-        self.phase_variance = value_var_dict(True, 1)
+        self.phase_variance = cf.value_var_dict(True, 1)
         # Whether or not to purge negligible oscillators
-        self.use_amp_thold = value_var_dict(False, 0)
+        self.use_amp_thold = cf.value_var_dict(False, 0)
         # Amplitude threshold for purging negligible oscillators
-        self.amp_thold = value_var_dict(0.001, "0.001")
+        self.amp_thold = cf.value_var_dict(0.001, "0.001")
 
         # --- Figure for setting up estimation ---------------------------
         self.setupfig = {}
@@ -150,8 +161,8 @@ class SetUp(MyToplevel):
 
         # Prevent user panning/zooming beyond spectral window
         # See Restrictor class for more info ↑
-        Restrictor(self.setupfig["ax"], x=lambda x: x <= xlim[0])
-        Restrictor(self.setupfig["ax"], x=lambda x: x >= xlim[1])
+        cf.Restrictor(self.setupfig["ax"], x=lambda x: x <= xlim[0])
+        cf.Restrictor(self.setupfig["ax"], x=lambda x: x >= xlim[1])
 
         # Get current y-limit. Will reset y-limits to this value after the
         # very tall `noise_region` and `filter_region` rectangles have been
@@ -169,7 +180,7 @@ class SetUp(MyToplevel):
             bottom_left,
             width,
             height,
-            facecolor=REGIONCOLOR,
+            facecolor=cf.REGIONCOLOR,
         )
         self.setupfig["ax"].add_patch(self.setupfig["region"])
 
@@ -178,7 +189,7 @@ class SetUp(MyToplevel):
         width = self.bounds["rnb"]["ppm"]["value"] - self.bounds["lnb"]["ppm"]["value"]
 
         self.setupfig["noise_region"] = patches.Rectangle(
-            bottom_left, width, height, facecolor=NOISEREGIONCOLOR
+            bottom_left, width, height, facecolor=cf.NOISEREGIONCOLOR
         )
         self.setupfig["ax"].add_patch(self.setupfig["noise_region"])
 
@@ -190,7 +201,7 @@ class SetUp(MyToplevel):
         self.setupfig["pivot"] = self.setupfig["ax"].plot(
             x,
             y,
-            color=PIVOTCOLOR,
+            color=cf.PIVOTCOLOR,
             alpha=0,
             lw=0.8,
         )[0]
@@ -199,8 +210,8 @@ class SetUp(MyToplevel):
         self.setupfig["ax"].set_ylim(ylim)
 
         # Aesthetic tweaks to the plot
-        self.setupfig["fig"].patch.set_facecolor(BGCOLOR)
-        self.setupfig["ax"].set_facecolor(PLOTCOLOR)
+        self.setupfig["fig"].patch.set_facecolor(cf.BGCOLOR)
+        self.setupfig["ax"].set_facecolor(cf.PLOTCOLOR)
         self.setupfig["ax"].tick_params(axis="x", which="major", labelsize=6)
         self.setupfig["ax"].locator_params(axis="x", nbins=10)
         self.setupfig["ax"].set_yticks([])
@@ -228,7 +239,7 @@ class SetUp(MyToplevel):
         self.protocol("WM_DELETE_WINDOW", self.click_cross)
 
         # Frame containing the plot
-        self.plot_frame = MyFrame(self)
+        self.plot_frame = wd.MyFrame(self)
         # Make `plot_frame` resizable
         self.plot_frame.columnconfigure(0, weight=1)
         self.plot_frame.rowconfigure(0, weight=1)
@@ -242,8 +253,8 @@ class SetUp(MyToplevel):
 
         # Frame containing the navigation toolbar and advanced settings
         # button
-        self.toolbar_frame = MyFrame(self)
-        self.toolbar = MyNavigationToolbar(
+        self.toolbar_frame = wd.MyFrame(self)
+        self.toolbar = wd.MyNavigationToolbar(
             self.canvas,
             parent=self.toolbar_frame,
         )
@@ -257,10 +268,10 @@ class SetUp(MyToplevel):
 
         # Frame containing notebook widget: for region selection and
         # phase correction
-        self.tab_frame = MyFrame(self)
+        self.tab_frame = wd.MyFrame(self)
         # Make notebook adjustable horizontally
         self.tab_frame.columnconfigure(0, weight=1)
-        self.notebook = MyNotebook(self.tab_frame)
+        self.notebook = wd.MyNotebook(self.tab_frame)
         self.notebook.grid(
             row=0,
             column=0,
@@ -278,7 +289,7 @@ class SetUp(MyToplevel):
         )
 
         # Frame with scale widgets for region selection
-        self.region_frame = MyFrame(self.notebook, bg=NOTEBOOKCOLOR)
+        self.region_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
         self.notebook.add(
             self.region_frame,
             text="Region Selection",
@@ -308,26 +319,26 @@ class SetUp(MyToplevel):
                     text += "bound"
 
             # Scale titles
-            self.region_labels[name] = title = MyLabel(
+            self.region_labels[name] = title = wd.MyLabel(
                 self.region_frame,
                 text=text,
-                bg=NOTEBOOKCOLOR,
+                bg=cf.NOTEBOOKCOLOR,
             )
 
             # Troughcolor of scale
-            troughcolor = REGIONCOLOR if row < 2 else NOISEREGIONCOLOR
+            troughcolor = cf.REGIONCOLOR if row < 2 else cf.NOISEREGIONCOLOR
 
-            self.region_scales[name] = scale = MyScale(
+            self.region_scales[name] = scale = wd.MyScale(
                 self.region_frame,
                 from_=0,
                 to=self.n - 1,
                 troughcolor=troughcolor,
-                bg=NOTEBOOKCOLOR,
+                bg=cf.NOTEBOOKCOLOR,
                 command=(lambda idx, n=name: self.update_region_scale(idx, n)),
             )
             scale.set(self.bounds[name]["idx"]["value"])
 
-            self.region_entries[name] = entry = MyEntry(
+            self.region_entries[name] = entry = wd.MyEntry(
                 self.region_frame,
                 return_command=self.update_region_entry,
                 return_args=(name,),
@@ -340,7 +351,7 @@ class SetUp(MyToplevel):
             entry.grid(row=row, column=2, padx=10, pady=pady, sticky="w")
 
         # Frame with scale widgets for region selection
-        self.phase_frame = MyFrame(self.notebook, bg=NOTEBOOKCOLOR)
+        self.phase_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
         self.notebook.add(
             self.phase_frame,
             text="Phase Correction",
@@ -358,13 +369,13 @@ class SetUp(MyToplevel):
             zip(("pivot", "p0", "p1"), ("pivot", "φ₀", "φ₁"))
         ):
             # Scale titles
-            self.phase_titles[name] = title = MyLabel(
-                self.phase_frame, text=title, bg=NOTEBOOKCOLOR
+            self.phase_titles[name] = title = wd.MyLabel(
+                self.phase_frame, text=title, bg=cf.NOTEBOOKCOLOR
             )
 
             # Pivot scale
             if name == "pivot":
-                troughcolor = PIVOTCOLOR
+                troughcolor = cf.PIVOTCOLOR
                 from_ = 0
                 to = self.n - 1
                 resolution = 1
@@ -381,13 +392,13 @@ class SetUp(MyToplevel):
                 to = 4 if name == "p0" else 32.0
                 resolution = 0.001
 
-            self.phase_scales[name] = scale = MyScale(
+            self.phase_scales[name] = scale = wd.MyScale(
                 self.phase_frame,
                 troughcolor=troughcolor,
                 from_=from_,
                 to=to,
                 resolution=resolution,
-                bg=NOTEBOOKCOLOR,
+                bg=cf.NOTEBOOKCOLOR,
                 command=(lambda value, n=name: self.update_phase_scale(value, n)),
             )
 
@@ -398,7 +409,7 @@ class SetUp(MyToplevel):
                 scale.set(0.0)
                 var = self.phases[name]["rad"]["var"]
 
-            self.phase_entries[name] = entry = MyEntry(
+            self.phase_entries[name] = entry = wd.MyEntry(
                 self.phase_frame,
                 return_command=self.update_phase_entry,
                 return_args=(name,),
@@ -412,7 +423,7 @@ class SetUp(MyToplevel):
             entry.grid(row=row, column=2, padx=10, pady=pady, sticky="w")
 
         # Frame with NMR-EsPy an MF group logos
-        self.logo_frame = LogoFrame(master=self, scale=0.72)
+        self.logo_frame = wd.LogoFrame(master=self, scale=0.72)
 
         # Frame with cancel/help/run/advanced settings buttons
         self.button_frame = SetupButtonFrame(master=self)
@@ -709,8 +720,8 @@ class SetUp(MyToplevel):
         # MPM and NLP, update
         for name, default in zip(("mpm", "nlp"), (4096, 8192)):
             if (
-                self.trim[name]["value"] > self.max_points["value"]
-                or self.max_points["value"] <= default
+                self.trim[name]["value"] > self.max_points["value"] or
+                self.max_points["value"] <= default
             ):
                 self.trim[name]["value"] = self.max_points["value"]
                 self.trim[name]["var"].set(str(self.max_points["value"]))
@@ -728,10 +739,10 @@ class SetUp(MyToplevel):
         """Set up the estimation routine"""
 
         # Check whether any entry widgets have not been verified
-        if not check_invalid_entries(self):
+        if not cf.check_invalid_entries(self):
             msg = "Some parameters have not been validated."
-            WarnWindow(self, msg=msg)
-            self.wait_window(WarnWindow)
+            warn_window = fr.WarnWindow(self, msg=msg)
+            self.wait_window(warn_window)
             return
 
         # Get rid of setup window
@@ -807,7 +818,7 @@ class SetUp(MyToplevel):
         # Pickle result class to the temporary directory
         dt = datetime.now()
         timestamp = f"{dt.year}{dt.month}{dt.day}" f"{dt.hour}{dt.minute}{dt.second}"
-        tmppath = str(TMPPATH / timestamp)
+        tmppath = str(cf.TMPPATH / timestamp)
         self.estimator.to_pickle(path=tmppath, force_overwrite=True)
 
         # TODO: animation window
@@ -816,7 +827,7 @@ class SetUp(MyToplevel):
         self.master.result()
 
 
-class SetupButtonFrame(RootButtonFrame):
+class SetupButtonFrame(fr.RootButtonFrame):
     """Button frame for SetupApp. Buttons for quitting, loading help,
     and running NMR-EsPy"""
 
@@ -825,7 +836,7 @@ class SetupButtonFrame(RootButtonFrame):
         self.green_button["text"] = "Run"
         self.green_button["command"] = self.master.run
 
-        self.adsettings_button = MyButton(
+        self.adsettings_button = wd.MyButton(
             parent=self,
             text="Advanced Settings",
             width=16,
@@ -841,14 +852,14 @@ class SetupButtonFrame(RootButtonFrame):
         )
 
         self.help_button["command"] = lambda: webbrowser.open_new(
-            f"{DOCSLINK}gui/usage/setup.html"
+            f"{pl.DOCSLINK}gui/usage/setup.html"
         )
 
     def advanced_settings(self):
         AdvancedSettings(master=self.master)
 
 
-class AdvancedSettings(MyToplevel):
+class AdvancedSettings(wd.MyToplevel):
     """Frame inside SetupApp notebook - for customising details about the
     optimisation routine"""
 
@@ -857,13 +868,13 @@ class AdvancedSettings(MyToplevel):
 
         self.title("NMR-EsPy - Advanced Settings")
 
-        self.main_frame = MyFrame(self)
+        self.main_frame = wd.MyFrame(self)
         self.main_frame.grid(row=1, column=0)
 
-        adsettings_title = MyLabel(
+        adsettings_title = wd.MyLabel(
             self.main_frame,
             text="Advanced Settings",
-            font=(MAINFONT, 14, "bold"),
+            font=(cf.MAINFONT, 14, "bold"),
         )
         adsettings_title.grid(
             row=0,
@@ -874,7 +885,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        filter_title = MyLabel(
+        filter_title = wd.MyLabel(
             self.main_frame,
             text="Signal Filter Options",
             bold=True,
@@ -888,7 +899,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        cut_label = MyLabel(self.main_frame, text="Cut signal:")
+        cut_label = wd.MyLabel(self.main_frame, text="Cut signal:")
         cut_label.grid(
             row=2,
             column=0,
@@ -897,7 +908,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.cut_checkbutton = MyCheckbutton(
+        self.cut_checkbutton = wd.MyCheckbutton(
             self.main_frame,
             variable=self.master.cut["var"],
             command=self.ud_cut,
@@ -910,7 +921,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        ratio_label = MyLabel(
+        ratio_label = wd.MyLabel(
             self.main_frame,
             text="Cut width/filter width ratio:",
         )
@@ -922,7 +933,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.ratio_entry = MyEntry(
+        self.ratio_entry = wd.MyEntry(
             self.main_frame,
             return_command=self.ud_cut_ratio,
             return_args=(),
@@ -936,7 +947,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        mpm_title = MyLabel(self.main_frame, text="Matrix Pencil", bold=True)
+        mpm_title = wd.MyLabel(self.main_frame, text="Matrix Pencil", bold=True)
         mpm_title.grid(
             row=4,
             column=0,
@@ -946,7 +957,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        datapoint_label = MyLabel(
+        datapoint_label = wd.MyLabel(
             self.main_frame,
             text="Datapoints to consider*:",
         )
@@ -958,7 +969,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.mpm_points_entry = MyEntry(
+        self.mpm_points_entry = wd.MyEntry(
             self.main_frame,
             return_command=self.ud_points,
             return_args=("mpm",),
@@ -972,7 +983,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        oscillator_label = MyLabel(
+        oscillator_label = wd.MyLabel(
             self.main_frame,
             text="Number of oscillators:",
         )
@@ -984,7 +995,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.oscillator_entry = MyEntry(
+        self.oscillator_entry = wd.MyEntry(
             self.main_frame,
             return_command=self.ud_oscillators,
             return_args=(),
@@ -999,7 +1010,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        use_mdl_label = MyLabel(self.main_frame, text="Use MDL:")
+        use_mdl_label = wd.MyLabel(self.main_frame, text="Use MDL:")
         use_mdl_label.grid(
             row=7,
             column=0,
@@ -1008,7 +1019,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.mdl_checkbutton = MyCheckbutton(
+        self.mdl_checkbutton = wd.MyCheckbutton(
             self.main_frame,
             variable=self.master.mdl["var"],
             command=self.ud_mdl_button,
@@ -1021,7 +1032,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        nlp_title = MyLabel(
+        nlp_title = wd.MyLabel(
             self.main_frame,
             text="Nonlinear Programming",
             bold=True,
@@ -1035,7 +1046,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        datapoint_label = MyLabel(
+        datapoint_label = wd.MyLabel(
             self.main_frame,
             text="Datapoints to consider*:",
         )
@@ -1047,7 +1058,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.nlp_points_entry = MyEntry(
+        self.nlp_points_entry = wd.MyEntry(
             self.main_frame,
             return_command=self.ud_points,
             return_args=("nlp",),
@@ -1061,7 +1072,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        nlp_method_label = MyLabel(self.main_frame, text="NLP algorithm:")
+        nlp_method_label = wd.MyLabel(self.main_frame, text="NLP algorithm:")
         nlp_method_label.grid(
             row=10,
             column=0,
@@ -1084,7 +1095,7 @@ class AdvancedSettings(MyToplevel):
         self.algorithm_menu["highlightbackground"] = "black"
         self.algorithm_menu["highlightthickness"] = 1
         self.algorithm_menu["menu"]["bg"] = "white"
-        self.algorithm_menu["menu"]["activebackground"] = ACTIVETABCOLOR
+        self.algorithm_menu["menu"]["activebackground"] = cf.ACTIVETABCOLOR
         self.algorithm_menu["menu"]["activeforeground"] = "white"
 
         # change the max. number of iterations after changing NLP
@@ -1098,7 +1109,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        max_iterations_label = MyLabel(
+        max_iterations_label = wd.MyLabel(
             self.main_frame,
             text="Maximum iterations:",
         )
@@ -1110,7 +1121,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.max_iterations_entry = MyEntry(
+        self.max_iterations_entry = wd.MyEntry(
             self.main_frame,
             return_command=self.ud_max_iterations,
             return_args=(),
@@ -1124,7 +1135,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        phase_variance_label = MyLabel(
+        phase_variance_label = wd.MyLabel(
             self.main_frame,
             text="Optimise phase variance:",
         )
@@ -1136,7 +1147,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.phase_var_checkbutton = MyCheckbutton(
+        self.phase_var_checkbutton = wd.MyCheckbutton(
             self.main_frame,
             variable=self.master.phase_variance["var"],
             command=self.ud_phase_variance,
@@ -1150,7 +1161,7 @@ class AdvancedSettings(MyToplevel):
         )
 
         # amplitude/frequency thresholds
-        amp_thold_label = MyLabel(self.main_frame, text="Amplitude threshold:")
+        amp_thold_label = wd.MyLabel(self.main_frame, text="Amplitude threshold:")
         amp_thold_label.grid(
             row=13,
             column=0,
@@ -1159,11 +1170,11 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.amp_thold_frame = MyFrame(self.main_frame)
+        self.amp_thold_frame = wd.MyFrame(self.main_frame)
         self.amp_thold_frame.columnconfigure(1, weight=1)
         self.amp_thold_frame.grid(row=13, column=1, sticky="ew")
 
-        self.amp_thold_entry = MyEntry(
+        self.amp_thold_entry = wd.MyEntry(
             self.amp_thold_frame,
             state="disabled",
             return_command=self.ud_amp_thold,
@@ -1178,7 +1189,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.amp_thold_checkbutton = MyCheckbutton(
+        self.amp_thold_checkbutton = wd.MyCheckbutton(
             self.amp_thold_frame,
             variable=self.master.use_amp_thold["var"],
             command=self.ud_amp_thold_button,
@@ -1220,14 +1231,14 @@ class AdvancedSettings(MyToplevel):
         #     row=0, column=1, pady=(10, 0), padx=10, sticky='w',
         # )
 
-        self.button_frame = MyFrame(self)
+        self.button_frame = wd.MyFrame(self)
         self.button_frame.columnconfigure(2, weight=1)
         self.button_frame.grid(row=2, column=0, sticky="ew")
 
-        max_label = MyLabel(
+        max_label = wd.MyLabel(
             self.button_frame,
             text="*Max points to consider:",
-            font=(MAINFONT, 9),
+            font=(cf.MAINFONT, 9),
         )
         max_label.grid(
             row=0,
@@ -1237,10 +1248,10 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.max_points_label_mpm = MyLabel(
+        self.max_points_label_mpm = wd.MyLabel(
             self.button_frame,
             bold=True,
-            font=(MAINFONT, 9, "bold"),
+            font=(cf.MAINFONT, 9, "bold"),
             textvariable=self.master.max_points["var"],
         )
         self.max_points_label_mpm.grid(
@@ -1251,7 +1262,7 @@ class AdvancedSettings(MyToplevel):
             sticky="w",
         )
 
-        self.close_button = MyButton(
+        self.close_button = wd.MyButton(
             self.button_frame, text="Close", command=self.close
         )
         self.close_button.grid(
@@ -1277,7 +1288,7 @@ class AdvancedSettings(MyToplevel):
 
         # check the value can be interpreted as a float
         str_value = self.master.cut_ratio["var"].get()
-        if check_float(str_value) and float(str_value) >= 1.0:
+        if cf.check_float(str_value) and float(str_value) >= 1.0:
             float_value = float(str_value)
             self.master.cut_ratio["value"] = float_value
             self.master.ud_max_points()
@@ -1291,8 +1302,8 @@ class AdvancedSettings(MyToplevel):
 
         str_value = self.master.trim[name]["var"].get()
         if (
-            check_int(str_value)
-            and 0 < int(str_value) <= self.master.max_points["value"]
+            cf.check_int(str_value) and
+            0 < int(str_value) <= self.master.max_points["value"]
         ):
             int_value = int(str_value)
             self.master.trim[name]["value"] = int_value
@@ -1319,7 +1330,7 @@ class AdvancedSettings(MyToplevel):
     def ud_oscillators(self):
 
         str_value = self.master.m["var"].get()
-        if check_int(str_value) and int(str_value) > 0:
+        if cf.check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
             self.master.m["value"] = int_value
             self.master.m["var"].set(str(int_value))
@@ -1334,7 +1345,7 @@ class AdvancedSettings(MyToplevel):
     def ud_max_iterations(self):
 
         str_value = self.master.maxit["var"].get()
-        if check_int(str_value) and int(str_value) > 0:
+        if cf.check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
             self.master.maxit["value"] = int_value
             self.master.maxit["var"].set(str(int_value))
@@ -1378,7 +1389,7 @@ class AdvancedSettings(MyToplevel):
     def ud_amp_thold(self):
         # check the value can be interpreted as a float
         str_value = self.master.amp_thold["var"].get()
-        if check_float(str_value) and 0.0 <= float(str_value) < 1.0:
+        if cf.check_float(str_value) and 0.0 <= float(str_value) < 1.0:
             float_value = float(str_value)
             self.master.amp_thold["value"] = float_value
 
@@ -1388,10 +1399,10 @@ class AdvancedSettings(MyToplevel):
             )
 
     def close(self):
-        valid = check_invalid_entries(self.main_frame)
+        valid = cf.check_invalid_entries(self.main_frame)
         if valid:
             self.destroy()
         else:
             msg = "Some parameters have not been validated."
-            WarnWindow(self, msg=msg)
+            fr.WarnWindow(self, msg=msg)
             return

@@ -1,0 +1,33 @@
+17:58:01
+24-03-2022
+
+Experiment Information:
+Parameter                   │F1
+────────────────────────────┼────────
+Nucleus                     │1H
+Transmitter frequency (MHz) │500.00
+Sweep width (Hz)            │1000.00
+Sweep width (ppm)           │2.0000
+Transmitter offset (Hz)     │2000.00
+Transmitter offset (ppm)    │4.0000
+
+
+4.4100 - 4.5900 ppm:
+Osc. │Amp.       │Phase (rad) │Freq. (Hz) │Freq. (ppm) │Damp. (s⁻¹) │Integral  │Norm. Integral
+─────┼───────────┼────────────┼───────────┼────────────┼────────────┼──────────┼───────────────
+1    │1.7668e-4  │-6.5643e-4  │2.2424e+3  │4.4847      │2.4407      │9.7117e-2 │0.50688
+-    │±4.0071e-7 │±2.268e-3   │±1.2128e-3 │±2.4256e-6  │±7.6202e-3  │-         │-
+2    │1.733e-4   │-1.8977e-3  │2.2467e+3  │4.4934      │2.4381      │0.10365   │0.54097
+-    │±4.0845e-7 │±2.3569e-3  │±1.2468e-3 │±2.4935e-6  │±7.8336e-3  │-         │-
+3    │1.6328e-4  │1.3604e-3   │2.2536e+3  │4.5073      │2.4372      │9.6186e-2 │0.50202
+-    │±4.0837e-7 │±2.5011e-3  │±1.3225e-3 │±2.645e-6   │±8.3096e-3  │-         │-
+4    │1.5999e-4  │-1.9287e-3  │2.2579e+3  │4.5159      │2.436       │8.5341e-2 │0.44542
+-    │±4.0032e-7 │±2.5021e-3  │±1.3354e-3 │±2.6709e-6  │±8.3907e-3  │-         │-
+
+
+Estimation performed using NMR-EsPy
+Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk
+If used in any publications, please cite:
+<no papers yet...>
+For more information, visit the GitHub repo:
+https://github.com/foroozandehgroup/NMR-EsPy

@@ -1,8 +1,13 @@
+# config.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Thu 24 Mar 2022 12:01:29 GMT
+
 import tkinter as tk
 from PIL import ImageTk, Image
 import numpy as np
 
-from .. import *
+from nmrespy._paths_and_links import NMRESPYPATH, IMAGEPATH
 
 # useful paths
 APPPATH = NMRESPYPATH / "app"
@@ -38,8 +43,11 @@ FIDCOLORS = [
 ]
 
 # Image paths
-UPARROWPATH = NMRESPYPATH / "images/up_arrow.png"
-DOWNARROWPATH = NMRESPYPATH / "images/down_arrow.png"
+FOLDERPATH = IMAGEPATH / "folder_icon.png"
+ICONPATH = IMAGEPATH / "icon.ico"
+UPARROWPATH = IMAGEPATH / "up_arrow.png"
+DOWNARROWPATH = IMAGEPATH / "down_arrow.png"
+WARNINGPATH = IMAGEPATH / "warning.png"
 
 
 def get_PhotoImage(path, scale=1.0):

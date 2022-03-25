@@ -1,12 +1,18 @@
 # textfile.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 08 Mar 2022 16:49:11 GMT
+# Last Edited: Thu 24 Mar 2022 12:16:37 GMT
 
 import datetime
 import pathlib
 from typing import List, Union
-from nmrespy import GRE, END, GITHUBLINK
+
+from nmrespy._colors import GRE, END, USE_COLORAMA
+from nmrespy._paths_and_links import GITHUBLINK
+
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
 
 
 def write(

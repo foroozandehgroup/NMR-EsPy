@@ -1,7 +1,7 @@
 # test_sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Jan 2022 18:04:45 GMT
+# Last Edited: Mon 21 Mar 2022 16:03:59 GMT
 
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
@@ -115,7 +115,7 @@ def abs_spectrum_2d(fid):
 def test_virtual_echo():
     # --- 1D ---
     fid = simple_fid()
-    ve = sig.make_virtual_echo([fid])
+    ve = sig.make_virtual_echo(fid)
     assert same(np.imag(fftshift(fft(ve))), np.zeros(ve.shape))
     assert ve.size == 2 * fid.size - 1
     assert np.array_equal(ve[1 : fid.size], fid[1:])
