@@ -357,7 +357,7 @@ if __name__ == "__main__":
     # Experiment parameters
     channel = "1H"
     sweep_widths = [50., 10.]
-    points = [128, 512]
+    points = [32, 512]
     offset = 5.
 
     estimator = Estimator2DJ.new_synthetic_from_simulation(
@@ -367,8 +367,7 @@ if __name__ == "__main__":
     estimator.estimate([6.0, 5.0], [1.0, 0.5], initial_guess=3)
     estimator.estimate([8.7, 7.7], [1.0, 0.5], initial_guess=2)
     fid = estimator.make_fid()
-    fid[0] /= 2
-    fid[:, 0] /= 2
+    fid[0, 0] /= 2
     model_spectrum = np.abs(sig.ft(fid)).real
     real_spectrum = np.abs(sig.ft(estimator._data)).real
     shiftsf1, shiftsf2 = estimator._expinfo.get_shifts(unit="ppm")

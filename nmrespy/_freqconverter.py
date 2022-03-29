@@ -3,10 +3,27 @@
 # simon.hulse@chem.ox.ac.uk
 # Last Edited: Fri 25 Mar 2022 11:40:22 GMT
 
-from typing import Iterable, Optional, Union
+import re
+from typing import Any, Iterable, Optional, Union
 
-from nmrespy import ExpInfo
 from nmrespy._sanity import sanity_check, funcs as sfuncs
+
+
+def check_frequency_conversion(
+    obj: Any,
+    ppm_valid: bool,
+    idx_valid: bool,
+) -> Optional[str]:
+    pattern = r"^(idx|ppm|hz)->(idx|ppm|hz)$"
+    if not bool(re.match(pattern, obj)):
+        return (
+            "Should be a str of the form \"{from}->{to}\", "
+            "where {from} and {to} are each one of \"idx\", \"hz\", or \"ppm\""
+        )
+    if (not ppm_valid) and ("ppm" in obj):
+        return "Cannot convert to/from ppm when sfo has not been specified."
+    if (not idx_valid) and ("idx" in obj):
+        return "Cannot convert to/from array indices when pts has not been specified."
 
 
 class FrequencyConverter:
@@ -14,40 +31,40 @@ class FrequencyConverter:
 
     def __init__(
         self,
-        expinfo: ExpInfo,
+        sw: Iterable[float],
+        offset: Iterable[float],
+        sfo: Optional[Iterable[float]] = None,
         pts: Optional[Iterable[int]] = None,
     ) -> None:
         """Initialise the converter.
 
         Parameters
         ----------
-        expinfo
-            Information on experiemnt parameters.
+        sw
+            The sweep width (spectral window) (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        sfo
+            The transmitter frequency (MHz). If ``None``, conversion to and
+            from ppm will not be possible.
 
         pts
-            The points associated with the signal. If ``None``, and
-            ``expinfo.default_pts`` is an iterable if ints, this will be used.
-            If ``expinfo.default_pts`` is also ``None``, conversion to and from
-            array indices will not be permitted (only between Hz and ppm).
+            The points associated with the signal.
+            If ``None``, conversion to and from array indices will not be
+            possible.
         """
-        sanity_check(("expinfo", expinfo, sfuncs.check_expinfo))
-        sanity_check(("pts", pts, sfuncs.check_points, (expinfo.dim,), True))
-        self.expinfo = expinfo
+        # TODO: sanity check
+        self._sw = sw
+        self._offset = offset
+        self._sfo = sfo
+        self._pts = pts
+        self.ppm_valid = self._sfo is not None
+        self.idx_valid = self._pts is not None
 
-        if pts is None:
-            if self.expinfo.default_pts is None:
-                self.pts = None
-            else:
-                self.pts = self.expinfo.default_pts
-        else:
-            self.pts = pts
-
-        self.ppm_valid = self.expinfo.sfo is not None
-        self.idx_valid = self.pts is not None
-
-    @property
-    def dim(self) -> int:
-        return self.expinfo.dim
+    def __len__(self) -> int:
+        return len(self._sw)
 
     def convert(
         self,
@@ -77,15 +94,12 @@ class FrequencyConverter:
             An iterable of the same structure as ``lst``, with converted values.
         """
         sanity_check(
-            ("lst", lst, sfuncs.check_convertible_list, (self.dim,)),
+            ("lst", lst, sfuncs.check_convertible_list, (len(self),)),
             (
-                "conversion", conversion, sfuncs.check_frequency_conversion,
-                (self.ppm_valid,),
+                "conversion", conversion, check_frequency_conversion,
+                (self.ppm_valid, self.idx_valid),
             )
         )
-
-        if "idx" in conversion and not self.idx_valid:
-            raise ValueError("Unable to convert to and from indices.")
 
         converted_lst = []
         for dim, elem in enumerate(lst):
@@ -107,14 +121,14 @@ class FrequencyConverter:
         self, value: Union[int, float], dim: int, conversion: str
     ) -> Union[int, float]:
         """Convert frequency."""
-        pts = self.pts[dim]
-        sw = self.expinfo.sw[dim]
-        off = self.expinfo.offset[dim]
-        if self.ppm_valid:
-            sfo = self.expinfo.sfo[dim]
-
-        if sfo is None and "ppm" in conversion:
-            return value
+        sw = self._sw[dim]
+        off = self._offset[dim]
+        if "ppm" in conversion:
+            sfo = self._sfo[dim]
+            if sfo is None:
+                return value
+        if "idx" in conversion:
+            pts = self._pts[dim]
 
         elif conversion == "idx->hz":
             return off + sw * (0.5 - (float(value) / (pts - 1)))

@@ -74,11 +74,31 @@ def check_float_list(
         return "At least one element must be a float, all Nones not allowed."
 
 
-def check_int_list(obj: Any, dim: Optional[int] = None) -> Optional[str]:
+def check_int_list(
+    obj: Any,
+    length: Optional[int] = None,
+    len_one_can_be_listless: bool = False,
+    must_be_positive: bool = False,
+    allow_none: bool = False,
+) -> Optional[str]:
+    if length == 1 and len_one_can_be_listless:
+        if isint(obj):
+            return
     if not isiter(obj):
-        return "Should be a list or tuple."
-    if not all([isint(x for x in obj)]):
-        return "All elements should be ints."
+        return "Should be a tuple or list."
+    if (length is not None) and (len(obj) != length):
+        return f"Should be of length {length}."
+    if not all([isint(x) for x in obj]) and not allow_none:
+        return "All elements should be int."
+    if not all([(isint(x) or x is None) for x in obj]) and allow_none:
+        return "All elements should be ints or Nones."
+    if (
+        not all([x >= 0 for x in filter(lambda y: y is not None, obj)]) and
+        must_be_positive
+    ):
+        return "All elements should be positive."
+    if not any([isint(x) for x in obj]):
+        return "At least one element must be an int, all Nones not allowed."
 
 
 def check_positive_float(obj: Any, allow_zero: bool = False) -> Optional[str]:
@@ -426,17 +446,6 @@ def check_convertible_list(obj: Any, dim: int) -> Optional[str]:
             pass
         else:
             return msg
-
-
-def check_frequency_conversion(obj: Any, ppm_valid: bool) -> Optional[str]:
-    pattern = r"^(idx|ppm|hz)->(idx|ppm|hz)$"
-    if not bool(re.match(pattern, obj)):
-        return (
-            "Should be a str of the form \"{from}->{to}\", "
-            "where {from} and {to} are each one of \"idx\", \"hz\", or \"ppm\""
-        )
-    if (not ppm_valid) and ("ppm" in obj):
-        return "Cannot convert to/from ppm when sfo has not been specified."
 
 
 def check_start_time(obj: Any, dim: int) -> Optional[str]:

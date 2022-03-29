@@ -28,52 +28,6 @@ def simple_fid(dim=1):
 
 
 def test_make_fid():
-    # --- 1D ---
-    pts = [2048]
-    sw = 2000
-    expinfo = ExpInfo(sw=sw)
-
-    # Simple FID with one oscillator
-    params = np.array([[1.0, 0.0, 500.0, 10.0]])
-    fid, tp = sig.make_fid(params, expinfo, pts)
-    assert np.round(fid[0], 3) == 1.0 + 0.0 * 1j
-    # N.B. Signal is at 500Hz with range of -1000 to 1000Hz, i.e. 3/4 along
-    assert np.argmax(fftshift(fft(fid))) == int(0.75 * 2048)
-    assert np.array_equal(tp[0], np.linspace(0, (pts[0] - 1) / sw, pts[0]))
-
-    # Phase of π/2. Amplitude of first point should be 0 + i
-    params[:, 1] = np.pi / 2
-    fid, _ = sig.make_fid(params, expinfo, pts)
-    assert np.round(fid[0], 3) == 0.0 + 1.0 * 1j
-
-    # Three oscillators
-    params = np.array(
-        [[1.0, 0.0, -250.0, 10.0], [2.0, 0.0, 250.0, 10.0], [1.0, 0.0, 500.0, 10.0]]
-    )
-    fid, _ = sig.make_fid(params, expinfo, pts)
-    assert np.round(fid[0], 3) == 4.0 + 0.0 * 1j
-    # Peaks should be 3/8, 5/8 and 3/4 along the spectrum
-    spectrum = fftshift(fft(fid))
-    assert [x for x in argrelextrema(spectrum, np.greater)[0]] == [
-        int(i / 8 * 2048) for i in (3, 5, 6)
-    ]
-    # Maximum should be the peak that is 5/8 along
-    assert np.argmax(spectrum) == int(5 / 8 * 2048)
-
-    # Include an offset and check signal is identical
-    offset = 200.0
-    expinfo = ExpInfo(sw=sw, offset=offset)
-    params[:, 2] += offset
-    fid_with_offset, _ = sig.make_fid(params, expinfo, pts)
-    assert np.array_equal(fid, fid_with_offset)
-
-    # Make noisy version
-    snr = 30.0
-    expected_std = np.std(np.abs(fid)) / (10 ** (snr / 20))
-    noisy_fid, _ = sig.make_fid(params, expinfo, pts, snr=snr)
-    assert np.allclose(np.std(np.abs(noisy_fid - fid)), expected_std, rtol=0, atol=0.01)
-
-    # --- 2D ---
     pts = [2048, 2048]
     sw, offset = 2000.0, 1000.0
 
