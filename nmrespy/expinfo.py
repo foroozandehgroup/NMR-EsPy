@@ -1,15 +1,18 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 11:39:12 GMT
+# Last Edited: Thu 31 Mar 2022 12:49:02 BST
 
 import re
 from typing import Any, Iterable, Optional, Tuple, Union
 
 import numpy as np
+import numpy.random as nrandom
+import scipy.integrate as integrate
 
 from nmrespy._freqconverter import FrequencyConverter
 from nmrespy._sanity import sanity_check, funcs as sfuncs
+from nmrespy import sig
 
 
 def check_fn_mode(obj: Any) -> Optional[str]:
@@ -67,20 +70,51 @@ class ExpInfo(FrequencyConverter):
         sanity_check(("dim", dim, sfuncs.check_positive_int))
         self._dim = dim
         sanity_check(
-            ("sw", sw, sfuncs.check_float_list, (self.dim, True, True)),
-            ("offset", offset, sfuncs.check_float_list, (self.dim, True), True),
-            ("sfo", sfo, sfuncs.check_float_list, (self.dim, True, True, True), True),
-            ("nuclei", nuclei, sfuncs.check_nucleus_list, (self.dim, True, True), True),
-            ("default_pts", default_pts, sfuncs.check_positive_int_list, (self.dim,), True),  # noqa: E501
+            (
+                "sw", sw, sfuncs.check_float_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+            ),
+            (
+                "offset", offset, sfuncs.check_float_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                },
+                True,
+            ),
+            (
+                "sfo", sfo, sfuncs.check_float_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                    "allow_none": True,
+                },
+                True,
+            ),
+            (
+                "nuclei", nuclei, sfuncs.check_nucleus_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "none_allowed": True
+                },
+                True,
+            ),
+            (
+                "default_pts", default_pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+                True,
+            ),
         )
-
-        self._fn_mode = None
-        if self._dim > 1:
-            sanity_check(("fn_mode", fn_mode, check_fn_mode, (), True))
-            if fn_mode is None:
-                self._fn_mode = "QF"
-            else:
-                self._fn_mode = fn_mode
 
         if offset is None:
             offset = tuple(dim * [0.0])
@@ -92,8 +126,15 @@ class ExpInfo(FrequencyConverter):
         self._sfo = self._totuple(sfo)
         self._nuclei = self._totuple(nuclei)
         self._default_pts = self._totuple(default_pts)
+        self._fn_mode = None
+        if self._dim > 1:
+            sanity_check(("fn_mode", fn_mode, check_fn_mode, (), {}, True))
+            if fn_mode is None:
+                self._fn_mode = "QF"
+            else:
+                self._fn_mode = fn_mode
 
-        super().__init__(self._sw, self._offset, self._sfo, self._default_pts)
+        super().__init__(self._sfo, self._sw, self._offset, self._default_pts)
 
     def _totuple(self, obj: Any) -> Tuple:
         if self._dim == 1 and (not sfuncs.isiter(obj)) and (obj is not None):
@@ -110,7 +151,9 @@ class ExpInfo(FrequencyConverter):
         unit
             Must be ``"hz"`` or ``"ppm"``.
         """
-        sanity_check(("unit", unit, sfuncs.check_frequency_unit, (self.sfo is not None,)))  # noqa: E501
+        sanity_check(
+            ("unit", unit, sfuncs.check_frequency_unit, (self.sfo is not None,)),
+        )
         return self.convert(self._sw, f"hz->{unit}")
 
     def offset(self, unit: str = "hz") -> Iterable[float]:
@@ -121,7 +164,9 @@ class ExpInfo(FrequencyConverter):
         unit
             Must be ``"hz"`` or ``"ppm"``.
         """
-        sanity_check(("unit", unit, sfuncs.check_frequency_unit, (self.sfo is not None,)))  # noqa: E501
+        sanity_check(
+            ("unit", unit, sfuncs.check_frequency_unit, (self.sfo is not None,)),
+        )
         return self.convert(self._offset, f"hz->{unit}")
 
     @property
@@ -139,9 +184,25 @@ class ExpInfo(FrequencyConverter):
         """Get default points associated with each dimension."""
         return self._default_pts
 
+    @default_pts.setter
+    def default_pts(self, value) -> None:
+        sanity_check(
+            (
+                "default_pts", value, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+                True,
+            ),
+        )
+        self._default_pts = self._totuple(value)
+        super().__init__(self.sfo, self.sw(), self.offset(), self.default_pts)
+
     @property
     def fn_mode(self) -> str:
-        """Get acquisiton mode in ndirect dimensions."""
+        """Get acquisiton mode in indirect dimensions."""
         return self._fn_mode
 
     @property
@@ -154,7 +215,9 @@ class ExpInfo(FrequencyConverter):
 
         `args` should be strings with names that match attribute names.
         """
-        to_underscore = ["sw", "offset", "sfo", "nuclei", "dim"]
+        to_underscore = [
+            "sw", "offset", "sfo", "nuclei", "dim", "deafult_pts", "fn_mode",
+        ]
         ud_args = [f"_{a}" if a in to_underscore else a for a in args]
         if len(args) == 1:
             return getattr(self, ud_args[0], None)
@@ -191,11 +254,24 @@ class ExpInfo(FrequencyConverter):
             corresponding to all combinations of points in each dimension.
         """
         sanity_check(
-            ("pts", pts, sfuncs.check_points, (self.dim,), self.default_pts is not None),  # noqa: E501
-            ("start_time", start_time, sfuncs.check_start_time, (self.dim,), True),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+                True,
+            ),
+            (
+                "start_time", start_time, sfuncs.check_start_time, (self.dim,),
+                {"len_one_can_be_listless": True}, True,
+            )
         )
+
         if pts is None:
             pts = self.default_pts
+        pts = self._totuple(pts)
 
         if self.dim > 1:
             sanity_check(
@@ -204,7 +280,8 @@ class ExpInfo(FrequencyConverter):
 
         if start_time is None:
             start_time = [0.0] * self.dim
-
+        if not isinstance(start_time, (list, tuple)):
+            start_time = [start_time]
         start_time = [
             float(re.match(r"^(-?\d+)dt$", st).group(1)) / sw if isinstance(st, str)
             else st
@@ -253,12 +330,25 @@ class ExpInfo(FrequencyConverter):
             plot/contour plot.
         """
         sanity_check(
-            ("pts", pts, sfuncs.check_points, (self.dim,), self.default_pts is not None),  # noqa: E501
-            ("unit", unit, sfuncs.check_frequency_unit, ((self.sfo is not None),), True),  # noqa: E501
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+                True,
+            ),
+            (
+                "unit", unit, sfuncs.check_frequency_unit, (self.sfo is not None,),
+                {}, True,
+            ),
             ("flip", flip, sfuncs.check_bool),
         )
+
         if pts is None:
             pts = self.default_pts
+        pts = self._totuple(pts)
 
         if self.dim > 1:
             sanity_check(("meshgrid", meshgrid, sfuncs.check_bool))
@@ -332,10 +422,18 @@ class ExpInfo(FrequencyConverter):
         """
         sanity_check(
             ("parameters", parameters, sfuncs.check_parameter_array, (self.dim,)),
-            ("pts", pts, sfuncs.check_int_list, (self.dim, False, True), self.default_pts is not None),  # noqa: E501
-            ("snr", snr, sfuncs.check_positive_float, (), True),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+                True,
+            ),
+            ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
             ("decibels", decibels, sfuncs.check_bool),
-            ("fn_mode", fn_mode, check_fn_mode, (), True),
+            ("fn_mode", fn_mode, check_fn_mode, (), {}, True),
         )
 
         if pts is None:
@@ -359,8 +457,8 @@ class ExpInfo(FrequencyConverter):
         tp = self.get_timepoints(pts, meshgrid=False)
 
         if self.dim == 1:
-            return np.einsum(
-                "ij,i->j",
+            fid = np.einsum(
+                "ij,j->i",
                 # Vandermonde matrix of signal poles
                 np.exp(
                     np.outer(
@@ -394,6 +492,184 @@ class ExpInfo(FrequencyConverter):
             )
 
             if fn_mode == "QF":
-                return phase0
+                fid = phase0
             else:
                 raise ValueError(f"{fn_mode} yet to be implemented!")
+
+        if snr is not None:
+            fid += sig._make_noise(fid, snr, decibels)
+        return fid
+
+    def generate_random_signal(
+        self,
+        oscillators: int,
+        pts: Optional[Iterable[int]] = None,
+        snr: Optional[float] = None,
+        decibels: bool = True,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Generate a random synthetic FID.
+
+        Parameters
+        ----------
+        oscillators
+            Number of oscillators.
+
+        pts
+            The number of points to construct the time-points with in each dimesnion.
+            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
+            used.
+
+        snr
+            The signal-to-noise ratio. If `None` then no noise will be added
+            to the FID.
+
+        decibels
+            If ``True``, the snr is taken to be in units of decibels. If ``False``,
+            it is taken to be simply the ratio of the singal power over the
+            noise power.
+
+        Returns
+        -------
+        fid
+            The synthetic FID.
+
+        parameters
+            Parameters used to construct the signal
+        """
+        sanity_check(
+            ("oscillators", oscillators, sfuncs.check_int, (), {"min_value": 1}),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "must_be_positive": True,
+                },
+                self.default_pts is not None,
+            ),
+            ("snr", snr, sfuncs.check_float, (), {}, True),
+            ("decibels", decibels, sfuncs.check_bool),
+        )
+
+        if pts is None:
+            pts = self.default_pts
+        pts = self._totuple(pts)
+
+        # low: 0.0, high: 1.0
+        # amplitdues
+        params = nrandom.uniform(size=oscillators)
+        # phases
+        params = np.hstack(
+            (params, nrandom.uniform(low=-np.pi, high=np.pi, size=oscillators)),
+        )
+        # frequencies
+        f = [
+            nrandom.uniform(low=-s / 2 + o, high=s / 2 + o, size=oscillators)
+            for s, o in zip(self.sw(), self.offset())
+        ]
+        params = np.hstack((params, *f))
+        # damping
+        eta = [
+            nrandom.uniform(low=0.1, high=0.3, size=oscillators)
+            for _ in range(self.dim)
+        ]
+        params = np.hstack((params, *eta))
+        params = params.reshape((oscillators, 2 * (self.dim + 1)), order="F")
+
+        return (self.make_fid(params, pts, snr=snr, decibels=decibels), params)
+
+    def oscillator_integrals(
+        self,
+        parameters: np.ndarray,
+        pts: Optional[Iterable[int]] = None,
+        absolute: bool = True,
+        scale_relative_to: Optional[int] = None,
+    ) -> float:
+        """Determine the integral of the FT of an oscillator.
+
+        Parameters
+        ----------
+        paramaters
+            Parameter array with the following structure:
+
+            * **1-dimensional data:**
+
+              .. code:: python
+
+                 parameters = numpy.array([
+                    [a_1, φ_1, f_1, η_1],
+                    [a_2, φ_2, f_2, η_2],
+                    ...,
+                    [a_m, φ_m, f_m, η_m],
+                 ])
+
+            * **2-dimensional data:**
+
+              .. code:: python
+
+                 parameters = numpy.array([
+                    [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
+                    [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
+                    ...,
+                    [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
+                 ])
+
+        pts
+            The number of points to construct the signals to be integrated in each
+            dimesnion. If ``None``, and ``self.default_pts`` is a tuple of ints, it
+            will be used.
+
+        absolute
+            Whether or not to take the absolute value of the spectrum before
+            integrating.
+
+        scale_relative_to
+            If an int, the integral corresponding to ``parameters[scale_relative_to]``
+            is set to ``1``, and other integrals are scaled accordingly.
+
+        Notes
+        -----
+        The integration is performed using the composite Simpsons rule, provided
+        by `scipy.integrate.simps <https://docs.scipy.org/doc/scipy-1.5.4/\
+        reference/generated/scipy.integrate.simps.html>`_
+
+        Spacing of points along the frequency axes is set as ``1`` (i.e. ``dx = 1``).
+        """
+        sanity_check(
+            ("parameters", parameters, sfuncs.check_parameter_array, (self.dim,)),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+                self.default_pts is not None,
+            ),
+            ("absolute", absolute, sfuncs.check_bool),
+            (
+                "scale_relative_to", scale_relative_to, sfuncs.check_int, (),
+                {
+                    "min_value": 0,
+                    "max_value": parameters.shape[0] - 1,
+                },
+                True,
+            )
+        )
+
+        # Integrals are the spectra initally. They are mutated and converted
+        # into the integrals during the for loop.
+        integrals = [
+            sig.ft(
+                self.make_fid(np.expand_dims(p, axis=0), pts),
+            )
+            for p in parameters
+        ]
+        integrals = [np.absolute(x) if absolute else x for x in integrals]
+
+        for axis in reversed(range(integrals[0].ndim)):
+            integrals = [integrate.simps(x, axis=axis) for x in integrals]
+
+        if isinstance(scale_relative_to, int):
+            integrals = [x / integrals[scale_relative_to] for x in integrals]
+
+        return integrals

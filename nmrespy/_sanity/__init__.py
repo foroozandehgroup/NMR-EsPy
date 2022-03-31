@@ -1,10 +1,10 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 12:23:17 GMT
+# Last Edited: Wed 30 Mar 2022 14:27:23 BST
 
 import inspect
-from typing import Any, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from nmrespy._colors import RED, END, USE_COLORAMA
 
@@ -16,7 +16,12 @@ if USE_COLORAMA:
 class CheckItem:
     """Object which implements a sanity check."""
     def __init__(
-        self, name: str, obj: Any, func: callable, funcargs: Iterable[Any] = (),
+        self,
+        name: str,
+        obj: Any,
+        func: callable,
+        args: Iterable[Any] = (),
+        kwargs: Dict[str, Any] = {},
         none_allowed: bool = False,
     ) -> None:
         self.__dict__.update(locals())
@@ -24,7 +29,7 @@ class CheckItem:
         if none_allowed and obj is None:
             self.msg = None
         else:
-            self.msg = func(obj, *funcargs)
+            self.msg = func(obj, *args, **kwargs)
 
 
 def sanity_check(*param_sets: Iterable[Iterable[Any]]) -> None:

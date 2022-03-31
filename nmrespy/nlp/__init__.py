@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 11:45:50 GMT
+# Last Edited: Thu 31 Mar 2022 13:34:52 BST
 
 """Nonlinear programming for generating NMR parameter estiamtes."""
 
@@ -18,8 +18,7 @@ from nmrespy import ExpInfo
 from nmrespy._colors import ORA, END, USE_COLORAMA
 from . import _funcs as funcs
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-from nmrespy._result import ResultFetcher
-from nmrespy.sig import get_timepoints
+from nmrespy._result_fetcher import ResultFetcher
 
 if USE_COLORAMA:
     import colorama
@@ -228,26 +227,78 @@ class NonlinearProgramming(ResultFetcher):
         use `'trust_region'`, however if your guess has a large number
         of signals, you may find `'lbfgs'` performs more effectively.
         """
-        self.__dict__.update(locals())
-        self._sanity_check()
+        sanity_check(
+            ("expinfo", expinfo, sfuncs.check_expinfo),
+            ("phase_variance", phase_variance, sfuncs.check_bool),
+            ("method", method, sfuncs.check_one_of, ("lbfgs", "trust_region")),
+            (
+                "hessian", hessian, sfuncs.check_one_of,
+                ("exact", "gauss-newton"),
+            ),
+            ("bound", bound, sfuncs.check_bool),
+            (
+                "max_iterations", max_iterations, sfuncs.check_int, (),
+                {"min_value": 1}, True
+            ),
+            ("mode", mode, sfuncs.check_optimiser_mode),
+            (
+                "amp_thold", amp_thold, sfuncs.check_float, (),
+                {"greater_than_zero": True}, True,
+            ),
+            (
+                "freq_thold", freq_thold, sfuncs.check_float, (),
+                {"greater_than_zero": True}, True,
+            ),
+            (
+                "negative_amps", negative_amps, sfuncs.check_one_of,
+                ("remove", "flip_phase"),
+            ),
+            ("fprint", fprint, sfuncs.check_bool),
+        )
+
+        self.dim = expinfo.dim
+
+        sanity_check(
+            ("data", data, sfuncs.check_ndarray, (self.dim,)),
+            ("theta0", theta0, sfuncs.check_parameter_array, (self.dim,)),
+            (
+                "start_time", start_time, sfuncs.check_start_time,
+                (self.dim,), {"len_one_can_be_listless": True}, True,
+            )
+        )
+
+        self.data = data
+        self.theta0 = theta0
+        self.phase_variance = phase_variance
+        self.method = method
+        self.hessian = hessian
+        self.bound = bound
+        self.max_iterations = max_iterations
+        self.mode = mode
+        self.amp_thold = amp_thold
+        self.freq_thold = freq_thold
+        self.negative_amps = negative_amps
+        self.fprint = fprint
+
+        self.norm = nlinalg.norm(self.data)
+        self.normed_data = self.data / self.norm
+        self.pts = self.data.shape
+        expinfo._default_pts = self.pts
+        self.tp = expinfo.get_timepoints(start_time=start_time, meshgrid=False)
+        self.sw, self.offset, sfo = expinfo.unpack("sw", "offset", "sfo")
+
+        super().__init__(sfo)
+
+        if self.max_iterations is None:
+            self.max_iterations = 100 if self.method == "trust_region" else 500
+
         self.p = 2 * self.dim + 2
         self.m = int(self.theta0.size / self.p)
 
-        if self.start_time is None:
-            self.start_time = [0.0] * self.dim
-        if self.max_iterations is None:
-            self.max_iterations = 100 if self.method == "trust_region" else 500
         if self.amp_thold is None:
             self.amp_thold = 0.0
             self.amp_thold = self.amp_thold * nlinalg.norm(self.theta0[:, 0])
         # TODO freq-thold?
-
-        self.pts = self.data.shape
-        self.norm = nlinalg.norm(self.data)
-        self.normed_data = self.data / self.norm
-        self.tp = get_timepoints(
-            self.expinfo, self.pts, start_time=self.start_time, meshgrid_2d=False,
-        )
 
         # Active parameters: parameters that are going to actually be
         # optimised.
@@ -259,40 +310,6 @@ class NonlinearProgramming(ResultFetcher):
         self._recursive_optimise()
         self.result = self._merge_final()
         self.errors = self._get_errors()
-
-        super().__init__(self.expinfo, self.pts)
-
-    def _sanity_check(self):
-        sanity_check(
-            ("expinfo", self.expinfo, sfuncs.check_expinfo),
-            ("phase_variance", self.phase_variance, sfuncs.check_bool),
-            ("method", self.method, sfuncs.check_one_of, ("lbfgs", "trust_region")),
-            (
-                "hessian", self.hessian, sfuncs.check_one_of,
-                ("exact", "gauss-newton"), True
-            ),
-            ("bound", self.bound, sfuncs.check_bool),
-            (
-                "max_iterations", self.max_iterations, sfuncs.check_positive_int, (),
-                True
-            ),
-            ("mode", self.mode, sfuncs.check_optimiser_mode),
-            ("amp_thold", self.amp_thold, sfuncs.check_positive_float, (), True),
-            ("freq_thold", self.freq_thold, sfuncs.check_positive_float, (), True),
-            (
-                "negative_amps", self.negative_amps, sfuncs.check_one_of,
-                ("remove", "flip_phase"),
-            ),
-            ("fprint", self.fprint, sfuncs.check_bool),
-        )
-        sanity_check(
-            ("data", self.data, sfuncs.check_ndarray, (self.expinfo.dim,)),
-            ("theta0", self.theta0, sfuncs.check_parameter_array, (self.expinfo.dim,)),
-            (
-                "start_time", self.start_time, sfuncs.check_start_time,
-                (self.expinfo.dim,), True,
-            )
-        )
 
     def _recursive_optimise(self) -> None:
         """Recursive optimisation until array is unchanged after checks."""
@@ -342,7 +359,7 @@ class NonlinearProgramming(ResultFetcher):
         -------
         shifted_params
         """
-        for i, off in enumerate(self.expinfo.unpack("offset")):
+        for i, off in enumerate(self.offset):
             # Dimension (i+1)'s frequency parameters are given by this slice
             slice = self._get_slice([2 + i])
             # Take frequencies from offset values to be centred at zero
@@ -524,7 +541,7 @@ class NonlinearProgramming(ResultFetcher):
                 bounds.extend([(-np.pi, np.pi)] * self.m)
             # Frequency (iterate over each dimension)
             if 2 in self.active_idx:
-                for sw in self.expinfo.unpack("sw"):
+                for sw in self.sw:
                     # N.B. as the frequencies are centred about zero
                     # the valid frequency range is:
                     # -sw / 2 -> sw / 2

@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 11:44:36 GMT
+# Last Edited: Thu 31 Mar 2022 12:23:28 BST
 
 """Computation of signal estimates using the Matrix Pencil Method."""
 
@@ -17,7 +17,7 @@ import scipy.sparse.linalg as splinalg
 from nmrespy import ExpInfo
 from nmrespy._colors import RED, ORA, END, USE_COLORAMA
 import nmrespy._errors as errors
-from nmrespy._result import ResultFetcher
+from nmrespy._result_fetcher import ResultFetcher
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from ._misc import start_end_wrapper
 from ._timing import timer
@@ -62,7 +62,6 @@ class MatrixPencil(ResultFetcher):
         self,
         data: np.ndarray,
         expinfo: ExpInfo,
-        *,
         oscillators: int = 0,
         start_point: Union[Iterable[int], None] = None,
         fprint: bool = True,
@@ -97,34 +96,44 @@ class MatrixPencil(ResultFetcher):
             Flag specifiying whether to print infomation to the terminal as
             the method runs.
         """
-        self.__dict__.update(locals())
-        self._sanity_check()
-        super().__init__(self.expinfo, self.data.shape)
-
-        if self.expinfo.dim > 2:
-            raise errors.MoreThanTwoDimError()
-
-        if self.start_point is None:
-            self.start_point = [0] * self.dim
-
-        if self.expinfo.dim == 1:
-            self._mpm_1d()
-        elif self.expinfo.dim == 2:
-            self._mpm_2d()
-
-    def _sanity_check(self) -> None:
         sanity_check(
-            ("expinfo", self.expinfo, sfuncs.check_expinfo),
-            ("oscillators", self.oscillators, sfuncs.check_positive_int, (True,)),
-            ("fprint", self.fprint, sfuncs.check_bool),
+            ("expinfo", expinfo, sfuncs.check_expinfo),
+            ("oscillators", oscillators, sfuncs.check_int, (), {"min_value": 0}),
+            ("fprint", fprint, sfuncs.check_bool),
         )
         sanity_check(
-            ("data", self.data, sfuncs.check_ndarray, (self.expinfo.dim,)),
+            ("data", data, sfuncs.check_ndarray, (expinfo.dim,)),
             (
-                "start_point", self.start_point, sfuncs.check_positive_int_list,
-                (self.expinfo.dim, True), True
+                "start_point", start_point, sfuncs.check_int_list, (),
+                {
+                    "length": expinfo.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+                True
             ),
         )
+
+        self.dim, self.sw, self.offset, sfo = expinfo.unpack(
+            "dim", "sw", "offset", "sfo",
+        )
+        self.data = data
+        self.oscillators = oscillators
+        self.start_point = start_point
+        if self.start_point is None:
+            self.start_point = [0] * self.dim
+        self.fprint = fprint
+
+        # Init ResultFetcher
+        super().__init__(sfo)
+
+        if self.dim > 2:
+            raise errors.MoreThanTwoDimError()
+
+        if self.dim == 1:
+            self._mpm_1d()
+        elif self.dim == 2:
+            self._mpm_2d()
 
     @timer
     @start_end_wrapper("MPM STARTED", "MPM COMPLETE")
@@ -348,19 +357,20 @@ class MatrixPencil(ResultFetcher):
             ``M`` is the number of oscillators in the result and ``dim`` is
             the data dimension.
         """
-        sw, offset = self.expinfo.unpack("sw", "offset")
         amp = np.abs(alpha)
         phase = np.arctan2(np.imag(alpha), np.real(alpha))
         freq = np.vstack(
             tuple(
                 [
-                    (sw_ / (2 * np.pi)) * np.imag(np.log(poles_)) + offset_
-                    for sw_, offset_, poles_ in zip(sw, offset, poles)
+                    (sw / (2 * np.pi)) * np.imag(np.log(poles_)) + offset
+                    for sw, offset, poles_ in zip(self.sw, self.offset, poles)
                 ]
             )
         )
         damp = np.vstack(
-            tuple([-sw_ * np.real(np.log(poles_)) for sw_, poles_ in zip(sw, poles)])
+            tuple(
+                [-sw * np.real(np.log(poles_)) for sw, poles_ in zip(self.sw, poles)]
+            )
         )
 
         result = np.vstack((amp, phase, freq, damp)).T
@@ -386,11 +396,11 @@ class MatrixPencil(ResultFetcher):
 
         M_init = params.shape[0]
         # Indices of oscillators with negative damping factors
-        neg_dmp_idx = set()
-        for i in range(2 + self.expinfo.dim, 2 * (self.expinfo.dim + 1)):
-            neg_dmp_idx = neg_dmp_idx | set(np.nonzero(params[:, i] < 0.0)[0])
+        neg_damp_idx = list(
+            set(np.nonzero(params[:, 2 + self.dim : 2 + (self.dim + 1) + 1] < 0.0)[0])
+        )
 
-        ud_params = np.delete(params, list(neg_dmp_idx), axis=0)
+        ud_params = np.delete(params, neg_damp_idx, axis=0)
         M = ud_params.shape[0]
 
         if M < M_init and self.fprint:

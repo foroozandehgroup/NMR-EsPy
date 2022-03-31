@@ -1,7 +1,7 @@
 # test_filter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 10:57:33 GMT
+# Last Edited: Thu 31 Mar 2022 13:51:28 BST
 
 import matplotlib as mpl
 import numpy as np
@@ -9,6 +9,7 @@ import numpy as np
 from nmrespy import ExpInfo, sig
 from nmrespy.freqfilter import Filter
 from nmrespy.mpm import MatrixPencil
+from nmrespy.nlp import NonlinearProgramming
 
 mpl.use("tkAgg")
 
@@ -22,116 +23,92 @@ def round_region(region, x=3):
 
 
 class TestFilterParameters1D:
-    def make_filter(self):
-        #  |----|----|----|----|----|----|----|----|----|
-        #  0    1    2    3    4    5    6    7    8    9  idx
-        # 5.5  4.5  3.5  2.5  1.5  0.5 -0.5 -1.5 -2.5 -3.5 Hz
-        #                 ^    ^         ^    ^
-        #                 |    |  region |    |
-        #                 |                   |
-        #                 |     cut region    |
+    #  |--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|
+    #  0     2     4     6     8     10    12    14    16    18   idx
+    #  5.5   4.5   3.5   2.5   1.5   0.5   -0.5  -1.5  -2.5  -3.5 Hz
+    #                    ^     ^           ^     ^
+    #                    |     |   region  |     |
+    #                    |                       |
+    #                    |       cut region      |
 
-        params = np.array([[1, 0, 2, 0.1]])
-        sw = 9.0
-        offset = 1.0
-        sfo = 2.0
-        pts = [10]
-        expinfo = ExpInfo(1, sw=sw, offset=offset, sfo=sfo)
-        fid = sig.make_fid(params, expinfo, pts)[0]
-        region = ((4, 6),)
-        noise_region = ((1, 2),)  # Doesn't matter
-
-        return Filter(
-            fid,
-            expinfo,
-            region,
-            noise_region,
-            region_unit="idx",
-        )
+    expinfo = ExpInfo(1, sw=9.0, offset=1.0, sfo=2.0, default_pts=10)
+    filt = Filter(
+        expinfo.make_fid(np.array([[1, 0, 2, 0.1]])),
+        expinfo,
+        [1.5, -0.5],
+        [4.5, 3.5],
+    )
 
     def test_sw(self):
-        finfo = self.make_filter()
-        _, expinfo = finfo.get_filtered_spectrum(cut_ratio=None)
-        assert expinfo.unpack("sw") == (9.0,)
-        _, expinfo = finfo.get_filtered_spectrum(cut_ratio=2.0)
-        assert expinfo.unpack("sw") == (4.0,)
+        _, expinfo = self.filt.get_filtered_spectrum(cut_ratio=None)
+        assert expinfo.sw("hz") == (9.0,)
+        _, expinfo = self.filt.get_filtered_spectrum(cut_ratio=2.0)
+        assert expinfo.sw("hz") == (4.0,)
 
     def test_offset(self):
-        finfo = self.make_filter()
-        _, expinfo = finfo.get_filtered_spectrum(cut_ratio=None)
-        assert expinfo.unpack("offset") == (1.0,)
-        _, expinfo = finfo.get_filtered_spectrum(cut_ratio=2.0)
-        assert expinfo.unpack("offset") == (0.5,)
+        _, expinfo = self.filt.get_filtered_spectrum(cut_ratio=None)
+        assert expinfo.offset("hz") == (1.0,)
+        _, expinfo = self.filt.get_filtered_spectrum(cut_ratio=2.0)
+        assert expinfo.offset("hz") == (0.5,)
 
     def test_region(self):
-        finfo = self.make_filter()
-        assert round_region(finfo.get_region(unit="hz")) == ((1.5, -0.5),)
-        assert round_region(finfo.get_region(unit="ppm")) == ((0.75, -0.25),)
-        assert round_region(finfo.get_region(unit="idx")) == ((4, 6),)
+        assert round_region(self.filt.get_region(unit="hz")) == ((1.5, -0.5),)
+        assert round_region(self.filt.get_region(unit="ppm")) == ((0.75, -0.25),)
+        assert round_region(self.filt.get_region(unit="idx")) == ((8, 12),)
 
     def test_noise_region(self):
-        finfo = self.make_filter()
-        assert round_region(finfo.get_noise_region(unit="hz")) == ((4.5, 3.5),)
-        assert round_region(finfo.get_noise_region(unit="ppm")) == ((2.25, 1.75),)
-        assert round_region(finfo.get_noise_region(unit="idx")) == ((1, 2),)
+        assert round_region(self.filt.get_noise_region(unit="hz")) == ((4.5, 3.5),)
+        assert round_region(self.filt.get_noise_region(unit="ppm")) == ((2.25, 1.75),)
+        assert round_region(self.filt.get_noise_region(unit="idx")) == ((2, 4),)
 
     def test_center(self):
-        finfo = self.make_filter()
-        assert round_tuple(finfo.get_center(unit="hz")) == (0.5,)
-        assert round_tuple(finfo.get_center(unit="ppm")) == (0.25,)
-        assert round_tuple(finfo.get_center(unit="idx")) == (5,)
+        assert round_tuple(self.filt.get_center(unit="hz")) == (0.5,)
+        assert round_tuple(self.filt.get_center(unit="ppm")) == (0.25,)
+        assert round_tuple(self.filt.get_center(unit="idx")) == (10,)
 
     def test_bw(self):
-        finfo = self.make_filter()
-        assert round_tuple(finfo.get_bw(unit="hz")) == (2.0,)
-        assert round_tuple(finfo.get_bw(unit="ppm")) == (1.0,)
-        assert round_tuple(finfo.get_bw(unit="idx")) == (2.0,)
+        assert round_tuple(self.filt.get_bw(unit="hz")) == (2.0,)
+        assert round_tuple(self.filt.get_bw(unit="ppm")) == (1.0,)
+        assert round_tuple(self.filt.get_bw(unit="idx")) == (4,)
 
     def test_shape(self):
-        finfo = self.make_filter()
         # 10 * 2 - 1
-        assert finfo.shape == (19,)
+        assert self.filt.shape == (19,)
 
     def test_sg_power(self):
-        finfo = self.make_filter()
-        assert finfo.sg_power == 40.0
+        assert self.filt.sg_power == 40.0
 
 
 class TestFilterPerformance:
-    def make_filter(self):
-        # Construct a 2-oscillator signal. Filter out a single component,
-        # and estimate both the cut and uncut signals.
-        params = np.array(
-            [
-                [10, 0, 350, 10],
-                [10, 0, 100, 10],
-            ]
-        )
-        sw = 1000.0
-        offset = 0.0
-        sfo = 500.0
-        pts = [4096]
-        expinfo = ExpInfo(dim=1, sw=sw, offset=offset, sfo=sfo)
-        region = ((300.0, 400.0),)
-        noise_region = ((-225.0, -250.0),)
-        fid = sig.make_fid(params, expinfo, pts, snr=40.0)[0]
-        return Filter(fid, expinfo, region, noise_region)
+    expinfo = ExpInfo(dim=1, sw=1000., offset=0., sfo=500., default_pts=4096)
+    params = np.array(
+        [
+            [10, 0, 350, 10],
+            [10, 0, 100, 10],
+        ]
+    )
+    filt = Filter(
+        expinfo.make_fid(params, snr=30.0),
+        expinfo,
+        [400., 300.],
+        [-250., -225.],
+    )
 
     def test_uncut(self):
-        expected = np.array([[10, 0, 350, 10]])
-        finfo = self.make_filter()
-        fid, expinfo = finfo.get_filtered_fid(cut_ratio=None)
-        mpm_object = MatrixPencil(fid, expinfo)
-        mpm_result = mpm_object.get_result()
-        assert np.allclose(expected, mpm_result, rtol=0, atol=1e-2)
+        expected = np.array([[10, 0, 350, 10]], dtype="float64")
+        fid, expinfo = self.filt.get_filtered_fid(cut_ratio=None)
+        mpm = MatrixPencil(fid, expinfo)
+        print(mpm.get_result() - expected)
+        assert np.allclose(expected, mpm.get_result(), rtol=0, atol=1e-2)
 
     def test_cut(self):
-        expected = np.array([[10, 0, 350, 10]])
-        finfo = self.make_filter()
-        fid, expinfo = finfo.get_filtered_fid(cut_ratio=1.000001)
-        mpm_object = MatrixPencil(fid, expinfo)
-        mpm_result = mpm_object.get_result()
-        assert np.allclose(expected, mpm_result, rtol=0, atol=1e-1)
+        expected = np.array([[10, 0, 350, 10]], dtype="float64")
+        fid_cut, expinfo_cut = self.filt.get_filtered_fid(cut_ratio=1.0)
+        fid_uncut, expinfo_uncut = self.filt.get_filtered_fid(cut_ratio=None)
+        mpm = MatrixPencil(fid_cut, expinfo_cut)
+        nlp = NonlinearProgramming(fid_uncut, mpm.get_result(), expinfo_uncut)
+        print(nlp.get_result())
+        assert np.allclose(expected, mpm.get_result(), rtol=0, atol=1e-1)
 
 
 # def test_linear_fit():

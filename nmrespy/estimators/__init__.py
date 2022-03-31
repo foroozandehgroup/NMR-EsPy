@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 12:05:54 GMT
+# Last Edited: Tue 29 Mar 2022 15:37:01 BST
 
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
@@ -22,7 +22,7 @@ from nmrespy._files import (
     save_file,
 )
 from nmrespy._freqconverter import FrequencyConverter
-from nmrespy._result import ResultFetcher
+from nmrespy._result_fetcher import ResultFetcher
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy.freqfilter import Region
 from nmrespy.plot import NmrespyPlot

@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 11:07:07 GMT
+# Last Edited: Wed 30 Mar 2022 17:37:49 BST
 
 from pathlib import Path
 import re
@@ -37,14 +37,30 @@ def check_bool(obj: Any):
         return "Should be a bool."
 
 
-def check_float(obj: Any):
+def check_float(
+    obj: Any,
+    greater_than_zero: bool = False,
+    greater_than_one: bool = False,
+) -> Optional[str]:
     if not isinstance(obj, float):
         return "Should be a float."
+    if greater_than_zero and obj < 0.0:
+        return "Should be greater than 0.0"
+    if greater_than_one and obj < 1.0:
+        return "Should be greater than 1.0"
 
 
-def check_float_greater_that_one(obj: Any) -> Optional[str]:
-    if not isinstance(obj, float) or obj < 1.0:
-        return "Should be a float greater than 1."
+def check_int(
+    obj: Any,
+    min_value: Optional[int] = None,
+    max_value: Optional[int] = None,
+) -> Optional[str]:
+    if not isint(obj):
+        return "Should be an int."
+    if isint(min_value) and obj < min_value:
+        return f"Should be greater than or equal to {min_value}."
+    if isint(max_value) and obj > max_value:
+        return f"Should be less than or equal to {max_value}."
 
 
 def check_float_list(
@@ -79,11 +95,11 @@ def check_int_list(
     length: Optional[int] = None,
     len_one_can_be_listless: bool = False,
     must_be_positive: bool = False,
+    max_value: Optional[int] = None,
     allow_none: bool = False,
 ) -> Optional[str]:
-    if length == 1 and len_one_can_be_listless:
-        if isint(obj):
-            return
+    if (length == 1 or length is None) and len_one_can_be_listless and isint(obj):
+        return
     if not isiter(obj):
         return "Should be a tuple or list."
     if (length is not None) and (len(obj) != length):
@@ -97,6 +113,11 @@ def check_int_list(
         must_be_positive
     ):
         return "All elements should be positive."
+    if (
+        isint(max_value) and
+        not all([x <= max_value for x in filter(lambda y: y is not None, obj)])
+    ):
+        return f"All elements must be less than or equal to {max_value}."
     if not any([isint(x) for x in obj]):
         return "At least one element must be an int, all Nones not allowed."
 
@@ -226,6 +247,13 @@ def check_initial_guess(obj: Any, dim: int) -> Optional[str]:
         return "Should be an int, a NumPy array, or None."
 
 
+def check_frequency_unit(obj: Any, ppm_valid: bool) -> Optional[str]:
+    if obj not in ["hz", "ppm"]:
+        return "Must be one of \"hz\" and \"ppm\""
+    if obj == "ppm" and not ppm_valid:
+        return "Cannot generate ppm values without sfo specification."
+
+
 # --- Frequency regions ---
 def _check_region(
     obj: Any,
@@ -273,9 +301,15 @@ def _check_region_dim(
         return msg
 
 
-def check_region_hz(obj: Any, expinfo) -> Optional[str]:
-    full_region = [[sw / 2 + off, -sw / 2 + off]
-                   for sw, off in zip(expinfo._sw, expinfo._offset)]
+def check_region(
+    obj: Any,
+    sw: Iterable[float],
+    offset: Iterable[float],
+) -> Optional[str]:
+    full_region = [
+        [sw_ / 2 + off_, -sw_ / 2 + off_]
+        for sw_, off_ in zip(sw, offset)
+    ]
     return _check_region(obj, full_region, float)
 
 
@@ -334,13 +368,6 @@ def check_ints_less_than_n(obj: Any, n: int) -> Optional[str]:
         return f"Should be between 0 and {n - 1}."
     if isinstance(obj, (list, tuple)) and not all([0 <= i < n for i in obj]):
         return f"All elements should be between 0 and {n - 1}."
-
-
-def check_frequency_unit(obj: Any, ppm_valid: bool = True) -> Optional[str]:
-    if obj not in ["hz", "ppm"]:
-        return "Should be one of \"hz\" and \"ppm\""
-    if obj == "ppm" and not ppm_valid:
-        return "Cannot process ppm values without sfo specification."
 
 
 def check_file_format(obj: Any) -> Optional[str]:
@@ -422,36 +449,17 @@ def check_nucleus_list(
             return "At least one element must not be None."
 
 
-def check_convertible_list(obj: Any, dim: int) -> Optional[str]:
-    if not isiter(obj):
-        return "Should be a tuple or list."
-    if len(obj) != dim:
-        return f"Should be of length {dim}."
-
-    msg = (
-        "Each element should be one of:\n"
-        "A numerical type\n"
-        "A tuple or list of numerical types\n"
-        "A one-dimensional numpy array\n"
-        "None"
-    )
-
-    for elem in obj:
-        if isnum(elem) or elem is None:
-            pass
-        elif isiter(elem):
-            if not all([isnum(x) for x in elem]):
-                return msg
-        elif isinstance(elem, np.ndarray) and elem.ndim == 1:
-            pass
-        else:
-            return msg
-
-
-def check_start_time(obj: Any, dim: int) -> Optional[str]:
+def check_start_time(
+    obj: Any,
+    dim: int,
+    len_one_can_be_listless: bool = False,
+) -> Optional[str]:
+    valid_time = lambda x: isnum(x) or bool(re.match(r"^-?\d+dt$", x))
+    if dim == 1 and len_one_can_be_listless and valid_time(obj):
+        return
     if not isiter(obj):
         return "Should be a list or tuple"
-    if not all([(isnum(x) or bool(re.match(r"^-?\d+dt$", x))) for x in obj]):
+    if not all([valid_time(x) for x in obj]):
         return "At least one invalid start time specifier."
 
 

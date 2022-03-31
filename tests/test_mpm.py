@@ -1,63 +1,68 @@
 # test_mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 09:37:05 GMT
+# Last Edited: Tue 29 Mar 2022 17:22:58 BST
 
 """Test the nmrespy.mpm module."""
 
 import copy
+import sys
 
 import numpy as np
+
 from nmrespy import ExpInfo
 from nmrespy.mpm import MatrixPencil
-from nmrespy.sig import make_fid
+sys.path.insert(0, ".")
+from utils import same  # noqa: E402
 
 
-def test_mpm_1d():
-    """Test 1D MPM."""
-    params = np.array(
-        [
-            [4, 0, -4.5, 1],
-            [3, 0, -2.5, 2],
-            [1, 0, 2.5, 1],
-            [2, 0, 5.5, 2],
-        ]
-    )
-    pts = [2048]
-    expinfo = ExpInfo(dim=1, sw=20., sfo=10.)
-    fid = make_fid(params, expinfo, pts)[0]
-    mpm = MatrixPencil(fid, expinfo, oscillators=4)
-    result = mpm.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-8)
-    ppm_params = copy.deepcopy(params)
-    ppm_params[:, 2] /= 10.0
-    assert np.allclose(mpm.get_result(funit="ppm"), ppm_params, rtol=0, atol=1e-8)
+EXPINFO1D = ExpInfo(dim=1, sw=20., sfo=10., default_pts=2048)
+PARAMS1D = np.array(
+    [
+        [4, 0, -4.5, 1],
+        [3, 0, -2.5, 2],
+        [1, 0, 2.5, 1],
+        [2, 0, 5.5, 2],
+    ]
+)
 
-    # test with FID not starting at t=0
-    mpm = MatrixPencil(fid[20:], expinfo, oscillators=4, start_point=[20])
-    result = mpm.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-8)
+PARAMS1D_PPM = copy.deepcopy(PARAMS1D)
+PARAMS1D_PPM[:, 2] /= 10.
+
+
+EXPINFO2D = ExpInfo(dim=2, sw=(20., 20.), sfo=(None, 10.), default_pts=(128, 128))
+PARAMS2D = np.array(
+    [
+        [3, 0, -2.5, 4.5, 1, 1],
+        [1, 0, 2.5, 2.5, 1, 1],
+        [2, 0, 5.5, 3.5, 1, 1],
+        [0.5, 0, 8, 1, 1, 1],
+    ]
+)
+
+PARAMS2D_PPM = copy.deepcopy(PARAMS2D)
+PARAMS2D_PPM[:, 3] /= 10.
+
+
+def test_1d():
+    fid = EXPINFO1D.make_fid(PARAMS1D)
+    mpm = MatrixPencil(fid, EXPINFO1D, oscillators=4)
+    assert same(mpm.get_result(), PARAMS1D)
+    assert same(mpm.get_result("ppm"), PARAMS1D_PPM)
+
+
+def test_1d_nonzero_start():
+    fid = EXPINFO1D.make_fid(PARAMS1D)
+    mpm = MatrixPencil(fid[20:], EXPINFO1D, oscillators=4, start_point=[20])
+    assert same(mpm.get_result(), PARAMS1D)
+    assert same(mpm.get_result("ppm"), PARAMS1D_PPM)
 
 
 def test_mpm_2d():
-    """Test 2D MPM."""
-    params = np.array(
-        [
-            [3, 0, -2.5, 4.5, 1, 1],
-            [1, 0, 2.5, 2.5, 1, 1],
-            [2, 0, 5.5, 3.5, 1, 1],
-            [0.5, 0, 8, 1, 1, 1],
-        ]
-    )
-    pts = [128, 128]
-    expinfo = ExpInfo(dim=2, sw=(20., 20.), sfo=(10., 10.))
-
-    fid = make_fid(params, expinfo, pts)[0]
-    mpm = MatrixPencil(fid, expinfo, oscillators=4)
-    assert np.allclose(mpm.get_result(), params, rtol=0, atol=1e-8)
-    ppm_params = copy.deepcopy(params)
-    ppm_params[:, 2:4] /= 10.0
-    assert np.allclose(mpm.get_result(funit="ppm"), ppm_params, rtol=0, atol=1e-8)
+    fid = EXPINFO2D.make_fid(PARAMS2D)
+    mpm = MatrixPencil(fid, EXPINFO2D, oscillators=4)
+    assert same(mpm.get_result(), PARAMS2D)
+    assert same(mpm.get_result("ppm"), PARAMS2D_PPM)
 
     # test _remove_negative_damping
     neg_damping = np.vstack(
@@ -72,4 +77,4 @@ def test_mpm_2d():
         )
     )
     mpm.result, mpm.oscillators = mpm._remove_negative_damping(neg_damping)
-    assert np.allclose(mpm.get_result(), params, rtol=0, atol=1e-8)
+    assert same(mpm.get_result(), PARAMS2D)

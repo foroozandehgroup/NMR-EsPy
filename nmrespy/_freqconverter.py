@@ -1,18 +1,48 @@
 # _freqconverter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 11:40:22 GMT
+# Last Edited: Thu 31 Mar 2022 13:20:10 BST
 
 import re
 from typing import Any, Iterable, Optional, Union
 
-from nmrespy._sanity import sanity_check, funcs as sfuncs
+import numpy as np
+
+from nmrespy._sanity import sanity_check
+from nmrespy._sanity.funcs import isiter, isnum
+
+
+def check_convertible_list(obj: Any, dim: int) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a tuple or list."
+    if len(obj) != dim:
+        return f"Should be of length {dim}."
+
+    msg = (
+        "Each element should be one of:\n"
+        "A numerical type\n"
+        "A tuple or list of numerical types\n"
+        "A one-dimensional numpy array\n"
+        "None"
+    )
+
+    for elem in obj:
+        if isnum(elem) or elem is None:
+            pass
+        elif isiter(elem):
+            if not all([isnum(x) for x in elem]):
+                return msg
+        elif isinstance(elem, np.ndarray) and elem.ndim == 1:
+            pass
+        else:
+            return msg
 
 
 def check_frequency_conversion(
     obj: Any,
-    ppm_valid: bool,
-    idx_valid: bool,
+    hz_ppm_valid: bool,
+    hz_idx_valid: bool,
+    ppm_idx_valid: bool,
 ) -> Optional[str]:
     pattern = r"^(idx|ppm|hz)->(idx|ppm|hz)$"
     if not bool(re.match(pattern, obj)):
@@ -20,35 +50,46 @@ def check_frequency_conversion(
             "Should be a str of the form \"{from}->{to}\", "
             "where {from} and {to} are each one of \"idx\", \"hz\", or \"ppm\""
         )
-    if (not ppm_valid) and ("ppm" in obj):
-        return "Cannot convert to/from ppm when sfo has not been specified."
-    if (not idx_valid) and ("idx" in obj):
-        return "Cannot convert to/from array indices when pts has not been specified."
+    if (("ppm" in obj) and ("hz" in obj)) and (not hz_ppm_valid):
+        return "Conversion between Hz and ppm is not possible."
+    elif (("hz" in obj) and ("idx" in obj)) and (not hz_idx_valid):
+        return "Conversion between Hz and array indices is not possible."
+    elif (("ppm" in obj) and ("idx" in obj)) and (not ppm_idx_valid):
+        return "Conversion between ppm and array indices is not possible."
 
 
 class FrequencyConverter:
-    """Handle frequency unit conversion."""
+    """Handle frequency unit conversion.
+
+    Conversion between Hz and ppm requires the transmitter frequency (MHz).
+    Conversion to array indices also requires the sweep width, transmitter offset,
+    and number of signal points.
+    """
 
     def __init__(
         self,
-        sw: Iterable[float],
-        offset: Iterable[float],
         sfo: Optional[Iterable[float]] = None,
+        sw: Optional[Iterable[float]] = None,
+        offset: Optional[Iterable[float]] = None,
         pts: Optional[Iterable[int]] = None,
     ) -> None:
         """Initialise the converter.
 
         Parameters
         ----------
-        sw
-            The sweep width (spectral window) (Hz).
-
-        offset
-            The transmitter offset (Hz).
-
         sfo
             The transmitter frequency (MHz). If ``None``, conversion to and
             from ppm will not be possible.
+
+        sw
+            The sweep width (spectral window) (Hz).
+            If ``None``, conversion to and from array indices will not be
+            possible.
+
+        offset
+            The transmitter offset (Hz).
+            If ``None``, conversion to and from array indices will not be
+            possible.
 
         pts
             The points associated with the signal.
@@ -56,26 +97,37 @@ class FrequencyConverter:
             possible.
         """
         # TODO: sanity check
+        self._sfo = sfo
         self._sw = sw
         self._offset = offset
-        self._sfo = sfo
         self._pts = pts
-        self.ppm_valid = self._sfo is not None
-        self.idx_valid = self._pts is not None
+        self.hz_ppm_valid = self._sfo is not None
+        self.hz_idx_valid = all(
+            [x is not None for x in (self._sw, self._offset, self._pts)]
+        )
+        self.ppm_idx_valid = (
+            self.hz_idx_valid and self.hz_ppm_valid and
+            all([sfo is not None for sfo in self._sfo])
+        )
 
     def __len__(self) -> int:
-        return len(self._sw)
+        if self.hz_ppm_valid:
+            return len(self._sfo)
+        elif self.hz_idx_valid:
+            return len(self._sw)
+        else:
+            return None
 
     def convert(
         self,
-        lst: Iterable[Optional[Union[Iterable[Union[float, int]], float, int]]],
+        to_convert: Iterable[Optional[Union[Iterable[Union[float, int]], float, int]]],
         conversion: str,
     ) -> Iterable[Union[int, float]]:
         """Convert quantities contained within an iterable.
 
         Parameters
         ----------
-        lst
+        to_convert
             An iterable of numerical values, with the same length as
             ``len(self)``.
 
@@ -90,47 +142,54 @@ class FrequencyConverter:
 
         Returns
         -------
-        converted_lst
-            An iterable of the same structure as ``lst``, with converted values.
+        converted
+            An iterable of the same structure as ``to_convert``, with converted values.
         """
         sanity_check(
-            ("lst", lst, sfuncs.check_convertible_list, (len(self),)),
             (
                 "conversion", conversion, check_frequency_conversion,
-                (self.ppm_valid, self.idx_valid),
+                (self.hz_ppm_valid, self.hz_idx_valid, self.ppm_idx_valid),
             )
         )
 
-        converted_lst = []
-        for dim, elem in enumerate(lst):
+        if self._duplicate_conversion(conversion):
+            return to_convert
+
+        sanity_check(
+            ("to_convert", to_convert, check_convertible_list, (len(self),)),
+        )
+
+        converted = []
+        for dim, elem in enumerate(to_convert):
             if elem is None:
-                converted_lst.append(None)
+                converted.append(None)
             elif isinstance(elem, (tuple, list)):
-                converted_lst.append(
+                converted.append(
                     type(elem)([
                         self._convert_value(x, dim, conversion) for x in elem
                     ])
                 )
             else:
                 # elem is a float/int...
-                converted_lst.append(self._convert_value(elem, dim, conversion))
+                converted.append(self._convert_value(elem, dim, conversion))
 
-        return type(lst)(converted_lst)
+        return type(to_convert)(converted)
 
     def _convert_value(
         self, value: Union[int, float], dim: int, conversion: str
     ) -> Union[int, float]:
-        """Convert frequency."""
-        sw = self._sw[dim]
-        off = self._offset[dim]
         if "ppm" in conversion:
             sfo = self._sfo[dim]
+            # By-pass for dimensions where sfo is not defined.
+            # i.e. indirect dimension of 2DJ should always be in Hz.
             if sfo is None:
                 return value
         if "idx" in conversion:
+            sw = self._sw[dim]
+            off = self._offset[dim]
             pts = self._pts[dim]
 
-        elif conversion == "idx->hz":
+        if conversion == "idx->hz":
             return off + sw * (0.5 - (float(value) / (pts - 1)))
 
         elif conversion == "idx->ppm":
@@ -151,3 +210,7 @@ class FrequencyConverter:
         else:
             # conversion will be one of 'hz->hz', 'ppm->ppm', 'idx->idx'
             return value
+
+    @staticmethod
+    def _duplicate_conversion(conversion: str) -> bool:
+        return conversion in ["idx->idx", "ppm->ppm", "hz->hz"]

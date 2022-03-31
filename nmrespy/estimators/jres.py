@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 14:34:07 GMT
+# Last Edited: Wed 30 Mar 2022 14:32:52 BST
 
 from __future__ import annotations
 import datetime
@@ -88,12 +88,18 @@ class Estimator2DJ(Estimator):
         """
         sanity_check(
             ("spin_system", spin_system, sfuncs.check_spin_system),
-            ("sweep_widths", sweep_widths, sfuncs.check_positive_float_list, (2,)),
+            (
+                "sweep_widths", sweep_widths, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
             ("offset", offset, sfuncs.check_float),
-            ("pts", pts, sfuncs.check_points, (2,)),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {"length": 2, "must_be_positive": True},
+            )
             ("channel", channel, sfuncs.check_nmrsims_nucleus),
-            ("f2_unit", f2_unit, sfuncs.check_one_of, ("hz", "ppm")),
-            ("snr", snr, sfuncs.check_float, (), True),
+            ("f2_unit", f2_unit, sfuncs.check_frequency_unit, (True,)),
+            ("snr", snr, sfuncs.check_float, (), {}, True),
         )
         sweep_widths = [f"{sweep_widths[0]}hz", f"{sweep_widths[1]}{f2_unit}"]
         offset = f"{offset}{f2_unit}"

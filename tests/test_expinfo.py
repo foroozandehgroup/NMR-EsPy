@@ -1,13 +1,17 @@
 # test_expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 17:50:33 GMT
+# Last Edited: Wed 30 Mar 2022 16:57:21 BST
 
 """Test :py:mod:`nmrespy.__init__`."""
+
+import sys
 
 import numpy as np
 
 from nmrespy import ExpInfo, sig
+sys.path.insert(0, ".")
+from utils import same  # noqa: E402
 
 
 EXPINFO2D = ExpInfo(
@@ -42,7 +46,7 @@ def check_expinfo_correct(
 
 
 def matching_array_iter(a, b):
-    return all([np.allclose(a_, b_, atol=1e-10) for a_, b_ in zip(a, b)])
+    return all([same(a_, b_) for a_, b_ in zip(a, b)])
 
 
 def test_1d():
@@ -132,7 +136,12 @@ def test_shifts():
 
 def test_make_fid():
     def expected_idx(pts, fractions):
-        return tuple([int(np.round(frac * p, 0)) - 1 for p, frac in zip(pts, fractions)])  # noqa: E501
+        return tuple(
+            [
+                int(np.round(frac * p, 0)) - 1
+                for p, frac in zip(pts, fractions)
+            ]
+        )
 
     def check_peak(fid, expected_fractions):
         return (

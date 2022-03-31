@@ -1,27 +1,43 @@
 # test_nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 09:41:33 GMT
+# Last Edited: Tue 29 Mar 2022 23:28:19 BST
 
 from itertools import combinations
+import sys
+
 import numpy as np
 import numpy.linalg as nlinalg
-from nmrespy import ExpInfo, sig
+
+from nmrespy import ExpInfo
 from nmrespy.nlp import NonlinearProgramming, _funcs
+sys.path.insert(0, ".")
+from utils import similar  # noqa: E402
 
 
-def test_nlp_1d():
-    params = np.array(
-        [
-            [4, 0, -4.5, 1],
-            [3, 0, -2.5, 2],
-            [1, 0, 2.5, 1],
-            [2, 0, 5.5, 2],
-        ]
-    )
-    pts = [1024]
-    expinfo = ExpInfo(dim=1, sw=20.)
-    fid = sig.make_fid(params, expinfo, pts)[0]
+EXPINFO1D = ExpInfo(dim=1, sw=20., default_pts=1024)
+PARAMS1D = np.array(
+    [
+        [4, 0, -4.5, 1],
+        [3, 0, -2.5, 2],
+        [1, 0, 2.5, 1],
+        [2, 0, 5.5, 2],
+    ]
+)
+
+EXPINFO2D = ExpInfo(dim=2, sw=(20., 20.), default_pts=[128, 128])
+PARAMS2D = np.array(
+    [
+        [4, 0, -4.5, 4.5, 1, 1],
+        [3, 0, -2.5, 2.5, 2, 2],
+        [1, 0, 2.5, 3.5, 1, 1],
+        [2, 0, 5.5, -0.5, 2, 2],
+    ]
+)
+
+
+def test_1d():
+    fid = EXPINFO1D.make_fid(PARAMS1D)
     x0 = np.array(
         [
             [3.9, 0.1, -4.3, 1.1],
@@ -31,46 +47,26 @@ def test_nlp_1d():
         ]
     )
 
-    nlp = NonlinearProgramming(
-        fid, x0, expinfo, hessian="gauss-newton", phase_variance=False,
-        fprint=False,
-    )
-    result = nlp.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-4)
+    for hessian in ("exact", "gauss-newton"):
+        nlp = NonlinearProgramming(
+            fid, x0, EXPINFO1D, hessian=hessian, phase_variance=False, fprint=False,
+        )
+        assert similar(nlp.get_result(), PARAMS1D, 1e-4)
 
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, hessian="exact", phase_variance=False,
-        fprint=False,
+        fid, x0, EXPINFO1D, phase_variance=False, method="lbfgs", fprint=False,
     )
-    result = nlp.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-4)
-
-    nlp = NonlinearProgramming(
-        fid, x0, expinfo, phase_variance=False, method="lbfgs", fprint=False,
-    )
-    result = nlp.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-2)
+    assert similar(nlp.get_result(), PARAMS1D, 1e-2)
 
     # test with FID not starting at t=0
     nlp = NonlinearProgramming(
-        fid[20:], x0, expinfo, phase_variance=False, start_time=["20dt"],
+        fid[20:], x0, EXPINFO1D, phase_variance=False, start_time=["20dt"],
     )
-    result = nlp.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-4)
+    assert similar(nlp.get_result(), PARAMS1D, 1e-4)
 
 
 def test_nlp_2d():
-    params = np.array(
-        [
-            [4, 0, -4.5, 4.5, 1, 1],
-            [3, 0, -2.5, 2.5, 2, 2],
-            [1, 0, 2.5, 3.5, 1, 1],
-            [2, 0, 5.5, -0.5, 2, 2],
-        ]
-    )
-    pts = [128, 128]
-    expinfo = ExpInfo(dim=2, sw=(20., 20.))
-    fid = sig.make_fid(params, expinfo, pts)[0]
+    fid = EXPINFO2D.make_fid(PARAMS2D)
     x0 = np.array(
         [
             [3.9, 0.1, -4.3, 4.7, 0.9, 1.1],
@@ -79,31 +75,23 @@ def test_nlp_2d():
             [1.8, -0.1, 5.3, -0.3, 1.8, 2.2],
         ]
     )
+
+    for hessian in ("exact", "gauss-newton"):
+        nlp = NonlinearProgramming(
+            fid, x0, EXPINFO2D, hessian=hessian, phase_variance=False, fprint=False,
+        )
+        assert similar(nlp.get_result(), PARAMS2D, 1e-4)
+
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, hessian="gauss-newton", phase_variance=False, fprint=False,
+        fid, x0, EXPINFO2D, phase_variance=False, method="lbfgs", fprint=False,
     )
-    result = nlp.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-4)
+    assert similar(nlp.get_result(), PARAMS2D, 1e-2)
 
     nlp = NonlinearProgramming(
-        fid, x0, expinfo, hessian="exact", phase_variance=False, fprint=False,
-    )
-    result = nlp.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-4)
-
-    nlp = NonlinearProgramming(
-        fid, x0, expinfo, phase_variance=False, method="lbfgs", fprint=False,
-    )
-
-    result = nlp.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1e-2)
-
-    nlp = NonlinearProgramming(
-        fid[10:, 5:], x0, expinfo, phase_variance=False, start_time=["10dt", "5dt"],
+        fid[10:, 5:], x0, EXPINFO2D, phase_variance=False, start_time=["10dt", "5dt"],
         negative_amps="flip_phase",
     )
-    result = nlp.get_result()
-    assert np.allclose(result, params, rtol=0, atol=1E-4)
+    assert similar(nlp.get_result(), PARAMS2D, 1e-4)
 
 
 def test_analytic_grad_hess():
@@ -114,10 +102,10 @@ def test_analytic_grad_hess():
     # --- 1D ---
     params = np.array([[1.0, 0.0, 5.0, 1.0]])
     x0 = np.array([[0.9, 0.4, 6, 1.2]])
-    pts = [4048]
-    expinfo = ExpInfo(dim=1, sw=100.)
+    expinfo = ExpInfo(dim=1, sw=100., default_pts=4048)
 
-    fid, tp = sig.make_fid(params, expinfo, pts)
+    tp = expinfo.get_timepoints()
+    fid = expinfo.make_fid(params)
     norm = nlinalg.norm(fid)
     fid /= norm
     params[0, 0] /= norm
@@ -136,16 +124,16 @@ def test_analytic_grad_hess():
         obj_fd, grad_fd, hess_fd = _funcs.obj_finite_diff_grad_hess_1d(active, h, *args)
         obj_ex, grad_ex, hess_ex = _funcs.obj_grad_true_hess_1d(active, *args)
 
-        assert np.allclose(grad_fd, grad_ex, rtol=0, atol=0.01)
-        assert np.allclose(hess_fd, hess_ex, rtol=0, atol=0.01)
+        assert similar(grad_fd, grad_ex, 1e-2)
+        assert similar(hess_fd, hess_ex, 1e-2)
 
     # --- 2D ---
     params = np.array([[1.0, 0.0, 5.0, -7.0, 2.0, 1.0]])
     x0 = np.array([[0.9, 0.4, 6, -8.0, 1.8, 1.2]])
-    pts = [128, 128]
-    expinfo = ExpInfo(dim=2, sw=(100., 100.))
+    expinfo = ExpInfo(dim=2, sw=(100., 100.), default_pts=(128, 128))
 
-    fid, tp = sig.make_fid(params, expinfo, pts)
+    tp = expinfo.get_timepoints(meshgrid=False)
+    fid = expinfo.make_fid(params)
     norm = nlinalg.norm(fid)
     fid /= norm
     params[0, 0] /= norm
@@ -175,5 +163,5 @@ def test_analytic_grad_hess():
             )
             obj_ex, grad_ex, hess_ex = _funcs.obj_grad_true_hess_2d(active, *args)
 
-            assert np.allclose(grad_fd, grad_ex, rtol=0, atol=0.02)
-            assert np.allclose(hess_fd, hess_ex, rtol=0, atol=0.02)
+            assert similar(grad_fd, grad_ex, 2e-2)
+            assert similar(hess_fd, hess_ex, 2e-2)

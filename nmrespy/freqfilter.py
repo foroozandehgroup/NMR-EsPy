@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 25 Mar 2022 11:43:08 GMT
+# Last Edited: Thu 31 Mar 2022 13:28:41 BST
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
 
@@ -21,7 +21,6 @@ import numpy.random as nrandom
 # from scipy.optimize import minimize
 
 from nmrespy import ExpInfo
-from nmrespy._freqconverter import FrequencyConverter
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy import sig
 
@@ -32,7 +31,7 @@ RegionInt = Union[Iterable[Optional[Tuple[int, int]]], Tuple[int, int]]
 Region = Union[RegionInt, RegionFloat]
 
 
-class Filter(FrequencyConverter):
+class Filter(ExpInfo):
     """Object with tools to generate frequency-filtered NMR data."""
 
     def __init__(
@@ -90,42 +89,53 @@ class Filter(FrequencyConverter):
         """
         sanity_check(
             ("expinfo", expinfo, sfuncs.check_expinfo),
-            ("sg_power", sg_power, sfuncs.check_positive_float),
-            ("region_unit", region_unit, sfuncs.check_frequency_unit),
+            ("sg_power", sg_power, sfuncs.check_float, (), {"greater_than_one": True}),
+            ("fid", fid, sfuncs.check_ndarray, (expinfo.dim,)),
         )
 
-        sanity_check(("fid", fid, sfuncs.check_ndarray, (expinfo.dim,)))
+        self._fid = fid
+        self._sg_power = sg_power
 
-        if fid.ndim == 2:
+        super().__init__(
+            dim=expinfo.dim,
+            sw=expinfo.sw("hz"),
+            offset=expinfo.offset("hz"),
+            sfo=expinfo.sfo,
+            nuclei=expinfo.nuclei,
+            fn_mode=expinfo.fn_mode
+        )
+
+        if self.dim == 2:
             sanity_check(
                 ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("jres",)),
             )
-        elif fid.ndim == 3:
+        elif self.dim == 3:
             sanity_check(
                 ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase")),
             )
 
-        if region_unit == "hz":
-            region_check = sfuncs.check_region_hz
-        elif region_unit == "ppm":
-            region_check = sfuncs.check_region_ppm
-
         sanity_check(
-            ("region", region, region_check, (expinfo,)),
-            ("noise_region", noise_region, region_check, (expinfo,)),
+            (
+                "region_unit", region_unit, sfuncs.check_frequency_unit,
+                (self.sfo is not None,),
+            ),
         )
 
-        self._fid = fid
-        self._expinfo = copy.deepcopy(expinfo)
-        self._sg_power = sg_power
+        region_check_args = (
+            self.sw(region_unit),
+            self.offset(region_unit),
+        )
+
+        sanity_check(
+            ("region", region, sfuncs.check_region, region_check_args),
+            ("noise_region", noise_region, sfuncs.check_region, region_check_args),
+        )
 
         ve = sig.make_virtual_echo(self._fid, twodim_dtype)
-        # Convert region from hz or ppm to array indices
-        self._expinfo.default_pts = ve.shape
-        super().__init__(self._expinfo)
+        self.default_pts = ve.shape
 
         def process_region(reg):
-            if fid.ndim == 1 and len(reg) == 2:
+            if expinfo.dim == 1 and len(reg) == 2:
                 reg = [reg]
             return tuple(
                 [tuple(sorted(r)) if r is not None else None
@@ -201,7 +211,10 @@ class Filter(FrequencyConverter):
             Filtered spectrum.
         """
         sanity_check(
-            ("cut_ratio", cut_ratio, sfuncs.check_float_greater_that_one, (), True),
+            (
+                "cut_ratio", cut_ratio, sfuncs.check_float, (),
+                {"greater_than_one": True}, True,
+            )
             # ("fix_baseline", fix_baseline, sfuncs.check_bool),
         )
 
@@ -219,7 +232,8 @@ class Filter(FrequencyConverter):
             )
             sw = tuple([abs(lft - rgt) for lft, rgt in cut_hz])
             offset = tuple([(lft + rgt) / 2 for lft, rgt in cut_hz])
-            sfo, nuclei = self._expinfo.unpack("sfo", "nuclei")
+            sfo, nuclei = self.sfo, self.nuclei
+
             expinfo = ExpInfo(
                 dim=self.dim,
                 sw=sw,
@@ -228,14 +242,21 @@ class Filter(FrequencyConverter):
                 nuceli=nuclei,
                 default_pts=filtered_spectrum.shape,
             )
+
         else:
-            expinfo = self._expinfo
+            expinfo = ExpInfo(
+                dim=self.dim,
+                sw=self.sw("hz"),
+                offset=self.offset("hz"),
+                sfo=self.sfo,
+                nuceli=self.nuclei,
+                default_pts=self.default_pts,
+            )
 
         return filtered_spectrum, expinfo
 
     def get_filtered_fid(
         self,
-        *,
         cut_ratio: Optional[float] = 1.1,
         # fix_baseline: bool = False,
     ) -> Tuple[np.ndarray, ExpInfo]:
@@ -254,7 +275,7 @@ class Filter(FrequencyConverter):
             cut_ratio=cut_ratio,  # fix_baseline=fix_baseline
         )
         filtered_fid = self._ift_and_slice(filtered_spectrum)
-        expinfo.default_pts = filtered_fid.shape
+        expinfo._default_pts = filtered_fid.shape
         return filtered_fid, expinfo
 
     def _superg(self) -> np.ndarray:
@@ -433,7 +454,7 @@ class Filter(FrequencyConverter):
         second half of the virtual echo obtained from the IFT of a real spectrum.
         """
         fid_slice = []
-        factor = 2 * len(self._axes)
+        factor = 2 ** (len(self._axes) - 1)
         fid_slice = tuple(
             [slice(0, filtered_spectrum.shape[i] // 2) if i in self._axes
              else slice(0, filtered_spectrum.shape[i])
