@@ -23,6 +23,273 @@ if USE_COLORAMA:
     colorama.init()
 
 
+class ResultWriter(ExpInfo):
+
+    def __init__(
+        self,
+        parameters: np.ndarray,
+        expinfo: ExpInfo,
+        errors: Optional[np.ndarray],
+    ) -> None:
+        sanity_check(
+            ("expinfo", expinfo, sfuncs.check_expinfo),
+        )
+
+        super().__init__(
+            expinfo.dim,
+            expinfo.sw(),
+            expinfo.offset(),
+            expinfo.sfo,
+            expinfo.nuclei,
+            expinfo.default_pts,
+            expinfo.fn_mode,
+        )
+
+        sanity_check(
+            ("parameters", parameters, sfuncs.check_parameter_array, (self.dim,)),
+            ("errors", errors, sfuncs.check_parameter_array, (self.dim,)),
+        )
+
+        self.parameters = parameters
+        self.errors = errors
+
+    def write_experiment_info(
+        self,
+        sig_figs: Optional[int] = 5,
+    ) -> None:
+        """Create Table of experiment information."""
+        sanity_check(
+            ("sig_figs", sig_figs, sfuncs.check_int, (), {"min_value": 1}, True),
+        )
+
+        # Titles
+        self.experiment_info = [
+            ["Parameter"] + [f"F{i}" for i in range(1, self.dim + 1)]
+        ]
+
+        # 1. Nuclei
+        if self.nuclei is not None:
+            self.experiment_info.append(
+                ["Nucleus"] +
+                [x if x is not None else "N/A" for x in self.unicode_nuclei]
+            )
+
+        # 2. Transmitter frequency
+        if self.sfo is not None:
+            self.experiment_info.append(
+                ["Transmitter Frequency (MHz)"] +
+                [self.fmtstr(x, sig_figs, None) if x is not None else "N/A"
+                 for x in self.sfo]
+            )
+
+        # 3. Sweep width (Hz)
+        self.experiment_info.append(
+            ["Sweep Width (Hz)"] +
+            [self.fmtstr(x, sig_figs, None) for x in self.sw("hz")]
+        )
+
+        # 4. Sweep width (ppm)
+        if self.sfo is not None:
+            self.experiment_info.append(
+                ["Sweep Width (ppm)"] +
+                [self.fmtstr(x, sig_figs, None) if sfo is not None else "N/A"
+                 for x, sfo in zip(self.sw("ppm"), self.sfo)]
+            )
+
+        # 5. Transmitter offset (Hz)
+        self.experiment_info.append(
+            ["Transmitter Offset (Hz)"] +
+            [self.fmtstr(x, sig_figs, None) for x in self.offset("hz")]
+        )
+
+        # 6. Transmitter offset (ppm)
+        if self.sfo is not None:
+            self.experiment_info.append(
+                ["Transmitter Offset (ppm)"] +
+                [self.fmtstr(x, sig_figs, None) if sfo is not None else "N/A"
+                 for x, sfo in zip(self.offset("ppm"), self.sfo)]
+            )
+
+    def write_parameters(
+        self,
+        sig_figs: Optional[int] = 5,
+        sci_lims: Optional[Tuple[int, int]] = (-2, 3),
+    ) -> None:
+        """Create Table of parameters."""
+        sanity_check(
+            ("sig_figs", sig_figs, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("sci_lims", sci_lims, sfuncs.check_sci_lims, (), {}, True),
+        )
+        self.parameter_table = []
+
+        titles = ["Osc.", "a", "ϕ (rad)"]
+        for i in range(self.dim):
+            titles.append(
+                self._subscript_numbers(f"f{i + 1} (Hz)") if self.dim > 1
+                else "f (Hz)"
+            )
+            if self.sfo is not None and self.sfo[i] is not None:
+                titles.append(
+                    self._subscript_numbers(f"f{i + 1} (ppm)") if self.dim > 1
+                    else "f (ppm)"
+                )
+
+        for i in range(self.dim):
+            titles.append(
+                self._subscript_numbers(f"η{i + 1} (s⁻¹)") if self.dim > 1
+                else "η (s⁻¹)"
+            )
+
+        self.parameter_table.append(titles)
+
+        for i, p in enumerate(self.parameters, start=1):
+            subtable = [str(i)]
+            # Amplitude
+            subtable.append(self.fmtstr(p[0], sig_figs, sci_lims))
+            # Phase
+            subtable.append(self.fmtstr(p[1], sig_figs, sci_lims))
+            # Frequencies
+            for j, f in enumerate(p[2 : 2 + self.dim]):
+                subtable.append(self.fmtstr(f, sig_figs, sci_lims))
+                if self.sfo is not None and self.sfo[j] is not None:
+                    subtable.append(
+                        self.fmtstr(
+                            self._convert_value(f, j, "hz->ppm"),
+                            sig_figs,
+                            sci_lims,
+                        )
+                    )
+            # Damping
+            subtable.extend(
+                [self.fmtstr(x, sig_figs, sci_lims) for x in p[2 + self.dim :]]
+            )
+
+            self.parameter_table.append(subtable)
+
+    @staticmethod
+    def _subscript_numbers(text: str) -> str:
+        return u''.join(dict(zip(u"0123456789", u"₀₁₂₃₄₅₆₇₈₉")).get(c, c) for c in text)
+
+    def make_file_content(
+        self,
+        description: Optional[str] = None,
+        fmt: str = "txt",
+    ) -> None:
+        sanity_check(
+            ("description", description, sfuncs.check_str, (), {}, True),
+            ("fmt", fmt, sfuncs.check_one_of, ("txt", "pdf", "csv")),
+        )
+
+        if fmt == "txt":
+            module = textfile
+        elif fmt == "pdf":
+            module = pdffile
+
+        if description is None:
+            description = "\n"
+        else:
+            description = f"{description}\n"
+
+        text = (
+            f"{module.header()}\n{description}\n"
+            f"{module.experiment_info(self.experiment_info)}\n\n"
+            f"{module.parameter_table(self.parameter_table)}\n\n"
+            f"{module.footer()}"
+        )
+        with open("blah.tex", "w", encoding="utf-8") as fh:
+            fh.write(text)
+
+    def generate_random_signal(self, *args, **kwargs):
+        raise AttributeError("No such method")
+
+    def fmtstr(
+        self,
+        value: float,
+        sig_figs: Union[int, None],
+        sci_lims: Union[Tuple[int, int], None],
+    ) -> str:
+        """Convert float to formatted string.
+
+        Parameters
+        ----------
+        value
+            Value to convert.
+
+        sig_figs
+            Number of significant figures.
+
+        sci_lims
+            Bounds defining thresholds for using scientific notation.
+        """
+        if isinstance(sig_figs, int):
+            value = self._significant_figures(value, sig_figs)
+
+        if (sci_lims is None) or (value == 0):
+            return str(value)
+
+        # Determine the value of the exponent to check whether the value should
+        # be expressed in scientific or normal notation.
+        exp_search = re.search(r"e(\+|-)(\d+)", f"{value:e}")
+        exp_sign = exp_search.group(1)
+        exp_mag = int(exp_search.group(2))
+
+        if (
+            exp_sign == "+" and
+            exp_mag < sci_lims[1] or
+            exp_sign == "-" and
+            exp_mag < -sci_lims[0]
+        ):
+            return str(value)
+
+        return self._scientific_notation(value)
+
+    @staticmethod
+    def _significant_figures(value: float, s: int) -> Union[int, float]:
+        """Round a value to a certain number of significant figures.
+
+        Parameters
+        ----------
+        value
+            Value to round.
+
+        s
+            Significant figures.
+
+        Returns
+        -------
+        rounded_value: Union[int, float]
+            Value rounded to ``s`` significant figures. If the resulting value
+            is an integer, it will be converted from ``float`` to ``int``.
+        """
+        if value == 0:
+            return 0
+
+        value = round(value, s - int(np.floor(np.log10(abs(value)))) - 1)
+        # If value of form 123456.0, convert to 123456
+        if float(value).is_integer():
+            value = int(value)
+
+        return value
+
+    @staticmethod
+    def _scientific_notation(value: float) -> str:
+        """Convert ``value`` to a string with scientific notation.
+
+        Parameters
+        ----------
+        value
+            Value to process.
+
+        Returns
+        -------
+        sci_value
+            String denoting ``value`` in scientific notation.
+        """
+        return re.sub(r"\.?0+e(\+|-)0?", r"e\1", f"{value:e}")
+
+
+# ======================================
+
 def _append_suffix(path: Path, fmt: str) -> Path:
     if not path.suffix == f".{fmt}":
         path = path.with_suffix(f".{fmt}")

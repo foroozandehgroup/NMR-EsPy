@@ -180,6 +180,17 @@ class ExpInfo(FrequencyConverter):
         return self._nuclei
 
     @property
+    def unicode_nuclei(self) -> Iterable[str]:
+        if self._nuclei is None:
+            return None
+
+        return tuple([
+            u''.join(dict(zip(u"0123456789", u"⁰¹²³⁴⁵⁶⁷⁸⁹")).get(c, c) for c in x)
+            if x is not None else None
+            for x in self._nuclei
+        ])
+
+    @property
     def default_pts(self) -> Iterable[int]:
         """Get default points associated with each dimension."""
         return self._default_pts

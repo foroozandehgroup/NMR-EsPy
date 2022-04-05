@@ -4,97 +4,70 @@
 # Last Edited: Thu 24 Mar 2022 12:16:37 GMT
 
 import datetime
-import pathlib
-from typing import List, Union
+from textwrap import TextWrapper
+from typing import List
 
-from nmrespy._colors import GRE, END, USE_COLORAMA
-from nmrespy._paths_and_links import GITHUBLINK
-
-if USE_COLORAMA:
-    import colorama
-    colorama.init()
+import nmrespy._paths_and_links as pl
 
 
-def write(
-    path: pathlib.Path,
-    param_table: List[List[str]],
-    info_table: Union[List[List[str]], None],
-    description: Union[str, None],
-    fprint: bool,
-) -> None:
-    """Write a result textfile.
-
-    Parameters
-    -----------
-    path
-        File path.
-
-    param_table
-        Table of estimation result parameters.
-
-    info_table
-        Table of experiment information.
-
-    description
-        A descriptive statement.
-
-    fprint
-        Specifies whether or not to print output to terminal.
-    """
-    text = _create_contents(param_table, info_table, description)
-    _write_txt(path, text, fprint)
-
-
-def _write_txt(path: pathlib.Path, text: str, fprint: bool) -> None:
-    try:
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(text)
-    except Exception as e:
-        raise e
-
-    if fprint:
-        print(f"{GRE}Saved result to\n{path}{END}")
-
-
-def _create_contents(
-    param_table: List[List[str]],
-    info_table: Union[List[List[str]], None],
-    description: Union[str, None],
-) -> str:
-    """Create text to be inserted into a file.
-
-    See :py:func:`_write_txt` for a description of the parameters.
-
-    Returns
-    -------
-    contents: str
-        Text to insert into file.
-    """
-    msg = f"{_timestamp()}\n\n"
-    if description:
-        msg += f"Description:\n{description}\n\n"
-    if info_table:
-        msg += (
-            f"Experiment Information:\n" f"{_txt_tabular(info_table, titles=True)}\n\n"
-        )
-    msg += f"{_txt_tabular(param_table, titles=True)}\n\n"
-    msg += _footer()
-
-    return msg
-
-
-def _footer() -> str:
-    """Descriptive text for end of file."""
+def header() -> str:
+    now = datetime.datetime.now()
     return (
-        "Estimation performed using NMR-EsPy\n"
-        "Author: Simon Hulse ~ simon.hulse@chem.ox.ac.uk\n"
-        "If used in any publications, please cite:\n"
-        "<no papers yet...>\n"
-        f"For more information, visit the GitHub repo:\n{GITHUBLINK}\n"
+        f"{now.strftime('%X')} "
+        f"{now.strftime('%d')}-{now.strftime('%m')}-{now.strftime('%y')}"
     )
 
 
-def _txt_tabular(rows: List[List[str]], titles: bool = False) -> str:
+def underline(text: str) -> str:
+    return text + f"\n{len(text) * '─'}\n"
+
+
+def experiment_info(table: List[List[str]]) -> str:
+    return titled_table("Experiment Information", table)
+
+
+def parameter_table(table: List[List[str]]) -> str:
+    return titled_table("Estimation Result", table)
+
+
+def titled_table(title: str, table: List[List[str]]) -> str:
+    text = underline(title)
+    text += f"\n{tabular(table, titles=True)}"
+    return text
+
+
+def footer() -> str:
+    refs = "\n\n".join(
+        [
+            TextWrapper(width=80).fill(paper['citation']) +
+            f"\n({paper['doi']})"
+           for paper in pl.PAPERS.values()
+        ]
+    )
+    return boxify(
+        "Estimation performed using NMR-EsPy\n"
+        "Author: Simon Hulse (simon.hulse@chem.ox.ac.uk)\n\n"
+        f"If used in any publications, please cite:\n{refs}\n\n"
+        f"For more information, visit the GitHub repo:\n{pl.GITHUBLINK}\n",
+        1,
+    )
+
+
+def boxify(text: str, pad: int) -> str:
+    old_lines = text.split("\n")[:-1]
+    longest = max([len(line) for line in old_lines])
+
+    new_lines = [f"┌{(longest + 2 * pad) * '─'}┐"]
+    for line in old_lines:
+        padding = pad * " "
+        space = (longest - len(line)) * " "
+        new_lines.append(f"│{padding}{line}{space}{padding}│")
+
+    new_lines.append(f"└{(longest + 2 * pad) * '─'}┘")
+    return "\n".join(new_lines)
+
+
+def tabular(rows: List[List[str]], titles: bool = False) -> str:
     """Tabularise a list of lists.
 
     Parameters
@@ -145,24 +118,3 @@ def _txt_tabular(rows: List[List[str]], titles: bool = False) -> str:
             table = table[:-1] + "\n"
 
     return table
-
-
-def _timestamp() -> str:
-    """Construct a string with time and date information.
-
-    Returns
-    -------
-    timestamp
-        Of the form:
-
-        .. code::
-
-            hh:mm:ss
-            dd-mm-yy
-    """
-    now = datetime.datetime.now()
-    d = now.strftime("%d")  # Day
-    m = now.strftime("%m")  # Month
-    y = now.strftime("%Y")  # Year
-    t = now.strftime("%X")  # Time (hh:mm:ss)
-    return f"{t}\n{d}-{m}-{y}"

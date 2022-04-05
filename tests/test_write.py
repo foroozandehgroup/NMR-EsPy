@@ -3,6 +3,7 @@
 # simon.hulse@chem.ox.ac.uk
 # Last Edited: Fri 28 Jan 2022 18:36:32 GMT
 
+import copy
 from pathlib import Path
 import pytest
 import subprocess
@@ -10,9 +11,40 @@ import subprocess
 import numpy as np
 import numpy.linalg as nlinalg
 
-from nmrespy import RED, END, ExpInfo, sig, write as nwrite
+from nmrespy import ExpInfo, sig, write as nwrite
+from nmrespy._colors import RED, END
 
 USER_INPUT = True
+
+
+def test_blah():
+    params = np.array(
+        [
+            [1, 0, 20, 3020, 5, 5],
+            [3, 0, 10, 3010, 5, 5],
+            [6, 0, 0, 3000, 5, 5],
+            [3, 0, -10, 2990, 5, 5],
+            [1, 0, -20, 2980, 5, 5],
+        ],
+        dtype="float64",
+    )
+    params += np.random.uniform(-0.1, 0.1, size=params.shape)
+    errors = copy.deepcopy(params)
+    errors /= 100.
+
+    expinfo = ExpInfo(
+        dim=2,
+        sw=[50.0, 5000.0],
+        offset=[0.0, 2000.0],
+        sfo=[None, 400.0],
+        nuclei=[None, "1H"],
+        default_pts=[64, 4096],
+    )
+    writer = nwrite.ResultWriter(params, expinfo, errors)
+    writer.write_experiment_info()
+    writer.write_parameters()
+    writer.make_file_content(description="Example resulut file.", fmt="pdf")
+
 
 
 class Stuff:
