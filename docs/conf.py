@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 15 Feb 2022 14:10:39 GMT
+# Last Edited: Wed 06 Apr 2022 11:23:02 BST
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -21,7 +21,7 @@ import nmrespy
 import sphinx_nameko_theme
 
 
-sys.path.append(os.path.abspath('exts'))
+sys.path.insert(0, os.path.abspath('exts'))
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
@@ -52,6 +52,9 @@ master_doc = 'content/index'
 todo_include_todos = True
 
 autosectionlabel_prefix_document = True
+autoclass_content = "both"
+autodoc_typehints = "description"
+autodoc_typehints_format = "short"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

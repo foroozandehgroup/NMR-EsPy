@@ -1,7 +1,7 @@
 # _files.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 12:15:29 GMT
+# Last Edited: Tue 05 Apr 2022 14:29:27 BST
 
 from pathlib import Path
 import pickle
@@ -15,7 +15,9 @@ if USE_COLORAMA:
     colorama.init()
 
 
-def append_suffix(path: Path, suffix: str) -> Path:
+def append_suffix(path: Path, suffix: Optional[str]) -> Path:
+    if suffix is None:
+        return path
     if not path.suffix == f".{suffix}":
         path = path.with_suffix(f".{suffix}")
     return path
@@ -48,7 +50,11 @@ def open_file(path, binary: bool = False) -> Any:
             return fh.read()
 
 
-def check_saveable_path(obj: Any, suffix: str, force_overwrite: bool) -> Optional[str]:
+def check_saveable_path(
+    obj: Any,
+    suffix: Optional[str],
+    force_overwrite: bool,
+) -> Optional[str]:
     if isinstance(obj, (Path, str)):
         path = configure_path(obj, suffix)
     else:
@@ -58,13 +64,13 @@ def check_saveable_path(obj: Any, suffix: str, force_overwrite: bool) -> Optiona
     if not directory.is_dir():
         return f"The parent directory {directory} doesn't exist."
 
-    if not force_overwrite:
+    if not force_overwrite and path.is_file():
         response = get_yes_no(f"{path} already exists. Overwrite?")
         if not response:
             return "Overwrite not permitted."
 
 
-def check_existent_path(obj: Any, suffix: str) -> Optional[str]:
+def check_existent_path(obj: Any, suffix: Optional[str] = None) -> Optional[str]:
     if isinstance(obj, (Path, str)):
         path = configure_path(obj, suffix)
     else:

@@ -1,33 +1,13 @@
 # pdffile.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 12:20:16 GMT
+# Last Edited: Wed 06 Apr 2022 11:44:40 BST
 
 import datetime
-import os
-import pathlib
 import re
-import shutil
-import subprocess
-import tempfile
-from typing import Dict, List, Optional, Union
+from typing import List
 
-from nmrespy._colors import GRE, END, USE_COLORAMA
 import nmrespy._paths_and_links as pl
-
-if USE_COLORAMA:
-    import colorama
-    colorama.init()
-
-from nmrespy._errors import LaTeXFailedError
-from nmrespy.plot import NmrespyPlot
-
-if USE_COLORAMA:
-    import colorama
-
-    colorama.init()
-
-TMPDIR = pathlib.Path(tempfile.gettempdir())
 
 
 def header() -> str:
@@ -38,7 +18,6 @@ def header() -> str:
         "\\usepackage{cmbright}\n"
         "\\usepackage{enumitem}\n"
         "\\usepackage{amsmath}\n"
-        "\\usepackage{nicefrac}\n"
         "\\usepackage{siunitx}\n"
         "\\usepackage{array}\n"
         "\\usepackage{booktabs}\n"
@@ -81,7 +60,7 @@ def parameter_table(table: List[List[str]]) -> str:
 
 
 def titled_table(title: str, table: List[List[str]]) -> str:
-    text = "\\section{{{title}}}\n"
+    text = f"\\section*{{{title}}}\n"
     text += f"{tabular(table, titles=True)}"
     return text
 
@@ -117,31 +96,50 @@ def tabular(rows: List[List[str]], titles: bool = False) -> str:
 
 
 def texify(entry: str) -> str:
-    print(entry)
-    print(re.search(r"(₀|₁|₂|₃|₄|₅|₆|₇|₈|₉)", entry))
     if entry == "a":
         return "$a$"
-    elif entry == "ϕ (rad)":
-        return "$\\phi$ (rad)"
-    elif bool(re.search(r"(₀|₁|₂|₃|₄|₅|₆|₇|₈|₉)", entry)):
+
+    if entry == "ϕ (°)":
+        return "$\\phi$ ($^{\\circ}$)"
+
+    # Frequency and damping factor labels: f₁, η₂ etc.
+    search_freq_damp = re.search(r"(f|η)(₁|₂|₃)", entry)
+    if search_freq_damp:
         entry = u''.join(
             dict(
                 zip(
-                    u"₀₁₂₃₄₅₆₇₈₉",
-                    ["_0", "_1", "_2", "_3", "_4", "_5", "_6", "_7", "_8", "_9"]
+                    u"₁₂₃",
+                    ["_1", "_2", "_3"],
                 )
             ).get(c, c)
             for c in entry
         )
-        entry = f"${entry}$"
-    if "η" in entry:
-        entry = entry.replace("η", "$\\eta$").replace("s⁻¹", "s$^{-1}$")
+        entry = f"${entry[:3]}${entry[3:]}"
+        if "η" in entry:
+            entry = entry.replace("η", "\\eta").replace("s⁻¹", "s$^{-1}$")
 
-    try:
-        float(entry)
-        return f"$\\num{{{entry}}}$"
-    except ValueError:
+    if entry == "∫":
+        return "$\\int$"
+
+    # Check if number
+    number_regex = (
+        r"(-?\d+(?:\.\d+)?(?:e(?:\+|-)\d+)?)"
+        r"( ± (-?\d+(?:\.\d+)?(?:e(?:\+|-)\d+)?))?"
+    )
+    number_match = re.fullmatch(number_regex, entry)
+    if number_match is None:
         return entry
+
+    elif "±" in entry:
+        return "\\begin{tabular}[c]{@{}c@{}}$" + " \\\\ $\\pm".join(
+            [
+                f"\\num{{{match.group(0)}}}$" for match in
+                re.finditer(r"(-?\d+(?:\.\d+)?(?:e(?:\+|-)\d+)?)", entry)
+            ]
+        ) + "\\end{tabular}"
+
+    else:
+        return f"$\\num{{{entry}}}$"
 
 
 def footer() -> str:
@@ -153,7 +151,7 @@ def footer() -> str:
     refs = "\n".join(
         [
             f"{ref[:quote[0]]}"
-            f"\\textit{{{ref[quote[0] : quote[1] + 1]}}}"
+            f"\\textit{{``{ref[quote[0] + 1 : quote[1] + 1]}}}"
             f"{ref[quote[1] + 1:]}"
             for quote, ref in zip(quotes, refs)
         ]
@@ -183,232 +181,3 @@ def footer() -> str:
         "\\end{tcolorbox}\n"
         "\\end{document}"
     )
-
-
-def write(
-    path: pathlib.Path,
-    param_table: List[List[str]],
-    info_table: Union[List[List[str]], None],
-    description: Union[str, None],
-    pdflatex_exe: Union[str, None],
-    fprint: bool,
-    figure: Union[NmrespyPlot, None],
-):
-    """Writes parameter estimate to a PDF using ``pdflatex``.
-
-    Parameters
-    -----------
-    path : pathlib.Path
-        File path
-
-    param_table
-        Table of estimation result parameters.
-
-    info_table
-        Table of experiment information.
-
-    description
-        A descriptive statement.
-
-    pdflatex_exe
-        Path to ``pdflatex`` executable.
-
-    fprint
-        Specifies whether or not to print output to terminal.
-
-    figure
-        If an instance of :py:class:`~nmrespy.plot.NmrespyPlot`, and ``fmt``
-        is set to ``'pdf'``. The  figure will be included in the result file.
-
-    **figure_kwargs
-        Keyword arguments for the :py:func:`~nmrespy.plot.plot_result`
-        function.
-    """
-    try:
-        text = _read_template()
-    except Exception as e:
-        raise e
-
-    text = _append_links_and_paths(text)
-    text = _append_timestamp(text)
-    text = _append_description(text, description)
-    text = _append_info_table(text, info_table)
-    text = _append_param_table(text, param_table)
-    text = _append_figure(text, figure)
-
-    _write_pdf(path, text, pdflatex_exe, fprint)
-
-
-def _write_pdf(
-    path: pathlib.Path, text: str, pdflatex_exe: Optional[str], fprint: bool
-) -> None:
-    texpaths = _get_texpaths(path)
-    with open(texpaths["tmp"]["tex"], "w", encoding="utf-8") as fh:
-        fh.write(text)
-
-    _compile_tex(texpaths, pdflatex_exe)
-    _cleanup(texpaths)
-
-    if fprint:
-        print(
-            f"{GRE}Result successfuly output to:\n"
-            f"{texpaths['final']['pdf']}\n"
-            "If you wish to customise the document, the TeX file can"
-            " be found at:\n"
-            f"{texpaths['final']['tex']}{END}"
-        )
-
-
-def _read_template() -> str:
-    """Extract LaTeX template text."""
-    with open(pl.NMRESPYPATH / "config/latex_template.txt", "r") as fh:
-        text = fh.read()
-    return text
-
-
-def _append_links_and_paths(template: str) -> str:
-    """Inputs web links and image paths into the text."""
-    # Add image paths and weblinks to TeX document
-    stuff = {
-        "<MFLOGOPATH>": pl.MFLOGOPATH,
-        "<NMRESPYLOGOPATH>": pl.NMRESPYLOGOPATH,
-        "<DOCSLINK>": pl.DOCSLINK,
-        "<MFGROUPLINK>": pl.MFGROUPLINK,
-        "<BOOKICONPATH>": pl.BOOKICONPATH,
-        "<GITHUBLINK>": pl.GITHUBLINK,
-        "<GITHUBLOGOPATH>": pl.GITHUBLOGOPATH,
-        "<MAILTOLINK>": pl.MAILTOLINK,
-        "<EMAILICONPATH>": pl.EMAILICONPATH,
-    }
-
-    for before, after in stuff.items():
-        # On Windows, have to replace paths C:\a\b\c -> C:/a/b/c
-        template = template.replace(before, str(after).replace("\\", "/"))
-
-    return template
-
-
-def _append_timestamp(text: str) -> str:
-    return text.replace("<TIMESTAMP>", _timestamp())
-
-
-def _append_description(text: str, description: Union[str, None]) -> str:
-    """Append description to text."""
-    if description is None:
-        return text.replace(
-            "% user provided description\n\\subsection*{Description}\n" "<DESCRIPTION>",
-            "",
-        )
-    else:
-        return text.replace("<DESCRIPTION>", description)
-
-
-def _append_info_table(text: str, info_table: List[List[str]]) -> str:
-    return text.replace("<INFOTABLE>", _latex_longtable(info_table))
-
-
-def _append_param_table(text: str, param_table: List[List[str]]) -> str:
-    param_table = [[e.replace("±", "$\\pm$") for e in row] for row in param_table]
-    return text.replace("<PARAMTABLE>", _latex_longtable(param_table))
-
-
-def _latex_longtable(rows: List[List[str]]) -> str:
-    """Creates a string of text for a LaTeX longtable.
-
-    Parameters
-    ----------
-    rows
-        The contents of the table. The first element is assumed to be a list
-        of titles.
-
-    Returns
-    -------
-    longtable: str
-        LaTeX longtable
-    """
-    column_specifier = " ".join(["c" for _ in range(len(rows[0]))])
-    table = f"\\begin{{longtable}}[l]{{{column_specifier}}}\n\\toprule\n"
-    for i, row in enumerate(rows):
-        table += " & ".join([e for e in row])
-        if i == 0:
-            table += "\n\\\\\\midrule\n"
-        else:
-            table += "\\\\\n"
-    table += "\\bottomrule\n\\end{longtable}"
-    return table
-
-
-def _append_figure(text: str, figure: Union[NmrespyPlot, None]):
-    if isinstance(figure, NmrespyPlot):
-        path = TMPDIR / "figure.pdf"
-        figure.fig.savefig(path, dpi=600, format="pdf")
-        text = text.replace(
-            "<RESULTFIGURE>",
-            "% figure of result\n\\begin{center}\n"
-            f"\\includegraphics{{{path}}}\n\\end{{center}}",
-        )
-    else:
-        text = text.replace("<RESULTFIGURE>", "")
-
-    return text
-
-
-def timestamp() -> str:
-    """Construct a string with time and date information.
-
-    Returns
-    -------
-    timestamp
-        Of the form:
-
-        .. code::
-
-            hh:mm:ss
-            dd-mm-yy
-    """
-    now = datetime.datetime.now()
-    d = now.strftime("%d")  # Day
-    m = now.strftime("%m")  # Month
-    y = now.strftime("%Y")  # Year
-    t = now.strftime("%X")  # Time (hh:mm:ss)
-    return f"{t}\\\\{d}-{m}-{y}"
-
-
-def _get_texpaths(path: pathlib.Path) -> Dict[str, Dict[str, pathlib.Path]]:
-    return {
-        "tmp": {
-            suffix: TMPDIR / path.with_suffix(f".{suffix}").name
-            for suffix in ("tex", "pdf", "out", "aux", "log")
-        },
-        "final": {"tex": path.with_suffix(".tex"), "pdf": path},
-    }
-
-
-def _compile_tex(
-    texpaths: Dict[str, Dict[str, pathlib.Path]], pdflatex_exe: str
-) -> None:
-    if pdflatex_exe is None:
-        pdflatex_exe = "pdflatex"
-
-    src = texpaths["tmp"]["tex"]
-    dst = texpaths["final"]["tex"]
-    try:
-        subprocess.run(
-            [pdflatex_exe, "-halt-on-error", f"-output-directory={src.parent}", src],
-            stdout=subprocess.DEVNULL,
-            check=True,
-        )
-
-    except Exception or subprocess.SubprocessError:
-        shutil.move(src, dst)
-        raise LaTeXFailedError(dst)
-
-
-def _cleanup(texpaths: Dict[str, Dict[str, pathlib.Path]]) -> None:
-    shutil.copy(texpaths["tmp"]["tex"], texpaths["final"]["tex"])
-    if texpaths["tmp"]["pdf"].is_file():
-        shutil.copy(texpaths["tmp"]["pdf"], texpaths["final"]["pdf"])
-
-    files = [p / TMPDIR / "figure.pdf" for p in texpaths["tmp"].values()]
-    for f in filter(lambda f: f.is_file(), files):
-        os.remove(f)

@@ -1,7 +1,7 @@
 # textfile.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 12:16:37 GMT
+# Last Edited: Tue 05 Apr 2022 15:54:08 BST
 
 import datetime
 from textwrap import TextWrapper
@@ -89,7 +89,7 @@ def tabular(rows: List[List[str]], titles: bool = False) -> str:
     for column in zip(*rows):
         # For each column find the longest string, and set its length
         # as the width
-        pads.append(max(len(str(element)) for element in column))
+        pads.append(max(len(element) for element in column))
 
     separator = "│" if titles else " "
 

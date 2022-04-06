@@ -1,0 +1,41 @@
+10:17:17 06-04-22
+Example result file.
+
+Experiment Information
+──────────────────────
+
+Parameter                   │F1  │F2
+────────────────────────────┼────┼─────
+Nucleus                     │N/A │¹H
+Transmitter Frequency (MHz) │N/A │400
+Sweep Width (Hz)            │50  │5000
+Sweep Width (ppm)           │N/A │12.5
+Transmitter Offset (Hz)     │0   │2000
+Transmitter Offset (ppm)    │N/A │5
+
+
+Estimation Result
+─────────────────
+
+Osc. │a                   │ϕ (°)                 │f₁ (Hz)             │f₂ (Hz)        │f₂ (ppm)         │η₁ (s⁻¹)           │η₂ (s⁻¹)           │∫
+─────┼────────────────────┼──────────────────────┼────────────────────┼───────────────┼─────────────────┼───────────────────┼───────────────────┼────────
+1    │0.99215 ± 9.9215e-3 │0.53866 ± 5.3866e-3   │20.007 ± 0.20007    │3.02e+3 ± 30.2 │7.55 ± 7.55e-2   │5.0039 ± 5.0039e-2 │5.0024 ± 5.0024e-2 │1
+2    │3.0048 ± 3.0048e-2  │-0.5152 ± -5.152e-3   │10 ± 0.1            │3.01e+3 ± 30.1 │7.525 ± 7.525e-2 │5.0001 ± 5.0001e-2 │4.999 ± 4.999e-2   │3.0592
+3    │6.0006 ± 6.0006e-2  │0.13432 ± 1.3432e-3   │9.529e-3 ± 9.529e-5 │3e+3 ± 30      │7.5 ± 7.5e-2     │4.9978 ± 4.9978e-2 │4.9984 ± 4.9984e-2 │6.015
+4    │2.9991 ± 2.9991e-2  │-0.26666 ± -2.6666e-3 │-10.007 ± -0.10007  │2.99e+3 ± 29.9 │7.475 ± 7.475e-2 │4.9987 ± 4.9987e-2 │5.0059 ± 5.0059e-2 │2.9756
+5    │0.99253 ± 9.9253e-3 │0.18298 ± 1.8298e-3   │-20.009 ± -0.20009  │2.98e+3 ± 29.8 │7.45 ± 7.45e-2   │4.9938 ± 4.9938e-2 │4.9912 ± 4.9912e-2 │0.98529
+
+
+┌────────────────────────────────────────────────────────────────────────────────┐
+│ Estimation performed using NMR-EsPy                                            │
+│ Author: Simon Hulse (simon.hulse@chem.ox.ac.uk)                                │
+│                                                                                │
+│ If used in any publications, please cite:                                      │
+│ Simon G. Hulse, Mohammadali Foroozandeh. "Newton meets Ockham: Parameter       │
+│ estimation and model selection of NMR data with NMR-EsPy". J. Magn. Reson. 338 │
+│ (2022) 107173.                                                                 │
+│ (https://doi.org/10.1016/j.jmr.2022.107173)                                    │
+│                                                                                │
+│ For more information, visit the GitHub repo:                                   │
+│ https://github.com/foroozandehgroup/NMR-EsPy                                   │
+└────────────────────────────────────────────────────────────────────────────────┘
