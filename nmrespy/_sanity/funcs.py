@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 30 Mar 2022 17:37:49 BST
+# Last Edited: Wed 06 Apr 2022 13:03:23 BST
 
 from pathlib import Path
 import re
@@ -454,11 +454,16 @@ def check_start_time(
     dim: int,
     len_one_can_be_listless: bool = False,
 ) -> Optional[str]:
-    valid_time = lambda x: isnum(x) or bool(re.match(r"^-?\d+dt$", x))
+    valid_time = lambda x: (
+        isnum(x) or
+        isinstance(x, str) and bool(re.match(r"^-?\d+dt$", x))
+    )
     if dim == 1 and len_one_can_be_listless and valid_time(obj):
         return
     if not isiter(obj):
         return "Should be a list or tuple"
+    if len(obj) != dim:
+        return f"Should be of length {dim}"
     if not all([valid_time(x) for x in obj]):
         return "At least one invalid start time specifier."
 
@@ -479,23 +484,6 @@ def check_sci_lims(obj: Any) -> Optional[str]:
 def check_nmrespyplot(obj: Any) -> Optional[str]:
     if type(obj).__name__ != "NmrespyPlot":
         return "Should be a `nmrespy.plot.NmrespyPlot` object."
-
-
-def check_optimiser_mode(obj: Any) -> Optional[str]:
-    if not isinstance(obj, str):
-        return "Should be a str."
-    # check if mode is empty or contains and invalid character
-    if any(c not in "apfd" for c in obj) or obj == "":
-        return "Invalid character present, or string is empty."
-    # check if mode contains a repeated character
-    count = {}
-    for c in obj:
-        if c in count.keys():
-            count[c] += 1
-        else:
-            count[c] = 1
-    if not all(map(lambda x: x == 1, count.values())):
-        return "Repeated character present."
 
 
 def check_stylesheet(obj: Any) -> Optional[str]:

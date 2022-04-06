@@ -1,14 +1,20 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 31 Mar 2022 13:34:52 BST
+# Last Edited: Wed 06 Apr 2022 15:29:18 BST
 
-"""Nonlinear programming for generating NMR parameter estiamtes."""
+"""Nonlinear programming for generating parameter estiamtes.
+
+MWE
+---
+
+.. literalinclude:: examples/nlp_example.py
+"""
 
 import copy
 import functools
 import operator
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
@@ -42,22 +48,35 @@ if USE_COLORAMA:
 #     * `'d'`: Damping factors are optimised
 
 
-class NonlinearProgramming(ResultFetcher):
-    """Nonlinear programming for time-domain NMR signal estimation."""
+def check_optimiser_mode(obj: Any) -> Optional[str]:
+    if not isinstance(obj, str):
+        return "Should be a str."
+    # check if mode is empty or contains and invalid character
+    if any(c not in "apfd" for c in obj) or obj == "":
+        return "Invalid character present, or string is empty."
+    # check if mode contains a repeated character
+    count = {}
+    for c in obj:
+        if c in count.keys():
+            count[c] += 1
+        else:
+            count[c] = 1
+    if not all(map(lambda x: x == 1, count.values())):
+        return "Repeated character present."
 
-    start_txt = "NONLINEAR PROGRAMMING STARTED"
-    end_txt = "NONLINEAR PROGRAMMING COMPLETE"
+
+class NonlinearProgramming(ResultFetcher):
+    """Object to facilitate numerical optimisation of NMR signal parameters."""
 
     def __init__(
         self,
+        expinfo: ExpInfo,
         data: np.ndarray,
         theta0: np.ndarray,
-        expinfo: ExpInfo,
         *,
         start_time: Optional[Iterable[int]] = None,
         phase_variance: bool = True,
-        method: str = "trust_region",
-        hessian: str = "exact",
+        method: str = "gauss-newton",
         bound: bool = False,
         max_iterations: Optional[int] = None,
         mode: str = "apfd",
@@ -65,23 +84,22 @@ class NonlinearProgramming(ResultFetcher):
         freq_thold: Optional[float] = None,
         negative_amps: str = "remove",
         fprint: bool = True,
-        # mode: Pattern[str] = 'apfd'
     ) -> None:
-        r"""Initialise the class.
-
-        Perform checks inputs, and run NLP if valid.
-
+        r"""
         Parameters
         ----------
+        expinfo
+            Experiment information.
+
         data
-            Signal to be considered (unnormalised).
+            Signal to be considered.
 
         theta0
             Initial parameter guess in the following form:
 
             * **1-dimensional data:**
 
-              .. code-block::
+              .. code:: python3
 
                  theta0 = numpy.array([
                      [a_1, φ_1, f_1, η_1],
@@ -92,7 +110,7 @@ class NonlinearProgramming(ResultFetcher):
 
             * **2-dimensional data:**
 
-              .. code-block::
+              .. code:: python3
 
                  theta0 = numpy.array([
                      [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
@@ -101,57 +119,35 @@ class NonlinearProgramming(ResultFetcher):
                      [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
                  ])
 
-        expinfo
-            Information on the experiment. This class uses `expinfo` to
-            determine the sweep width, transmitter offset and (optionally) the
-            transmitter freqency.
-
         start_time
-            The start time in each dimension. If set to `None`, the initial
+            The start time in each dimension. If set to ``None``, the initial
             point in each dimension with be ``0.0``. To set non-zero start times,
             a list of floats or strings can be used. If floats are used, they
-            specify the first value in each dimension in seconds. Alternatively,
-            strings of the form ``f'{N}dt'``, where ``N`` is an integer, may be
-            used, which indicates a cetain multiple of the difference in time
-            between two adjacent points.
+            specify the start time in each dimension in seconds. Alternatively,
+            strings of the form ``r"\d+dt"``, may be used, which indicates a
+            cetain multiple of the difference in time between two adjacent
+            points.
 
         phase_variance
             Specifies whether or not to include the variance of oscillator
-            phases into the NLP routine. The fiedlity (cost function) is
-            given by:
-
-            * `phase_variance` set to `False`:
-
-              .. math::
-
-                 \mathcal{F}\left(\boldsymbol{\theta}\right) =
-                 \left\lVert \boldsymbol{Y} - \boldsymbol{X} \right\rVert_2^2
-
-            * `phase_variance` set to `True`:
-
-              .. math::
-
-                 \mathcal{F}\left(\boldsymbol{\theta}\right) =
-                 \left\lVert \boldsymbol{Y} - \boldsymbol{X} \right
-                 \rVert_2^2 + \mathrm{Var}\left(\boldsymbol{\phi}\right)
+            phases into the NLP routine.
 
         method
-            Optimisation algorithm to use. Should be ``'trust_region'`` or
-            ``'lbfgs'``. These utilise
-            `scipy.optimise.minimise <https://docs.scipy.org/doc/scipy/
-            reference/generated/scipy.optimize.minimize.html>`_, with
-            the method either being `trust-constr <https://docs.scipy.org/doc/
-            scipy/reference/optimize.minimize-trustconstr.html\
-            #optimize-minimize-trustconstr>`_, or
-            `L-BFGS-B <https://docs.scipy.org/doc/scipy/reference/
-            optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
+            Specifies the optimisation method.
 
-        hessian
-            Specifies the method for constructing the hessian if ``method`` is
-            ``'trust_region'``. Should be one of ``'exact'`` and ``'gauss-newton'``.
-            With ``'exact'``, the true Hessian wil be generated. With
-            ``'gauss-newton``, an approxmiation, based on the Gauss-Newton method
-            will be used.
+            * ``"exact"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be exact.
+            * ``"gauss-newton"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be approximated based on the
+              `Gauss-Newton method <https://en.wikipedia.org/wiki/
+              Gauss%E2%80%93Newton_algorithm>`_
+            * ``"lbfgs"`` Uses SciPy's
+              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
         bound
             Specifies whether or not to bound the parameters during
@@ -167,22 +163,28 @@ class NonlinearProgramming(ResultFetcher):
 
         max_iterations
             A value specifiying the number of iterations the routine may run
-            through before it is terminated. If `None`, the default number
-            of maximum iterations is set (`100` if `method` is
-            `'trust_region'`, and `500` if `method` is `'lbfgs'`).
+            through before it is terminated. If ``None``, the default number
+            of maximum iterations is set (``100`` if ``hessian`` is
+            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"hessian"`` is
+            ``"lbfgs"``).
+
+        mode
+            A string containing a subset of the characters ``"a"`` (amplitudes),
+            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
+            Specifies which types of parameters should be considered for optimisation.
 
         amp_thold
             A value that imposes a threshold for deleting oscillators of
-            negligible ampltiude. If `None`, does nothing. If a float,
+            negligible ampltiude. If ``None``, does nothing. If a float,
             oscillators with amplitudes satisfying :math:`a_m <
             a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2`` will be
             removed from the parameter array, where :math:`\lVert
             \boldsymbol{a} \rVert_2` is the Euclidian norm of the vector of
-            all the oscillator amplitudes. It is advised to set `amp_thold`
+            all the oscillator amplitudes. It is advised to set ``amp_thold``
             at least a couple of orders of magnitude below 1.
 
         freq_thold
-            If `None`, does nothing. If a float, oscillator pairs with
+            If ``None``, does nothing. If a float, oscillator pairs with
             frequencies satisfying
             :math:`\lvert f_m - f_p \rvert < f_{\mathrm{thold}}` will be
             removed from the parameter array. A new oscillator will be included
@@ -201,46 +203,31 @@ class NonlinearProgramming(ResultFetcher):
             Indicates how to treat oscillators which have gained negative
             amplitudes during the optimisation.
 
-            * ``'remove'`` will result in such oscillators being purged from
+            * ``"remove"`` will result in such oscillators being purged from
               the parameter estimate. The optimisation routine will the be
               re-run recursively until no oscillators have a negative
               amplitude.
-            * ``'flip_phase'`` will retain oscillators with negative
+            * ``"flip_phase"`` will retain oscillators with negative
               amplitudes, but the the amplitudes will be multiplied by -1,
-              and a π radians phase shift will be applied to these oscillators.
+              and a π radians phase shift will be applied.
 
         fprint
-            If `True`, the method provides information on progress to
-            the terminal as it runs. If `False`, the method will run silently.
-
-        Notes
-        -----
-        The two optimisation algorithms (specified by `method`) primarily
-        differ in how they treat the calculation of the matrix of cost
-        function second derivatives (called the Hessian). `'trust_region'`
-        will calculate the Hessian explicitly at every iteration, whilst
-        `'lbfgs'` uses an update formula based on gradient information to
-        estimate the Hessian. The upshot of this is that the convergence
-        rate (the number of iterations needed to reach convergence) is
-        typically better for `'trust_region'`, though each iteration
-        typically takes longer to generate. By default, it is advised to
-        use `'trust_region'`, however if your guess has a large number
-        of signals, you may find `'lbfgs'` performs more effectively.
+            If ``True``, the method provides information on progress to
+            the terminal as it runs. If ``False``, the method will run silently.
         """
         sanity_check(
             ("expinfo", expinfo, sfuncs.check_expinfo),
             ("phase_variance", phase_variance, sfuncs.check_bool),
-            ("method", method, sfuncs.check_one_of, ("lbfgs", "trust_region")),
             (
-                "hessian", hessian, sfuncs.check_one_of,
-                ("exact", "gauss-newton"),
+                "method", method, sfuncs.check_one_of,
+                ("exact", "gauss-newton", "lbfgs"),
             ),
             ("bound", bound, sfuncs.check_bool),
             (
                 "max_iterations", max_iterations, sfuncs.check_int, (),
                 {"min_value": 1}, True
             ),
-            ("mode", mode, sfuncs.check_optimiser_mode),
+            ("mode", mode, check_optimiser_mode),
             (
                 "amp_thold", amp_thold, sfuncs.check_float, (),
                 {"greater_than_zero": True}, True,
@@ -271,7 +258,6 @@ class NonlinearProgramming(ResultFetcher):
         self.theta0 = theta0
         self.phase_variance = phase_variance
         self.method = method
-        self.hessian = hessian
         self.bound = bound
         self.max_iterations = max_iterations
         self.mode = mode
@@ -290,7 +276,7 @@ class NonlinearProgramming(ResultFetcher):
         super().__init__(sfo)
 
         if self.max_iterations is None:
-            self.max_iterations = 100 if self.method == "trust_region" else 500
+            self.max_iterations = 500 if self.method == "lbfgs" else 100
 
         self.p = 2 * self.dim + 2
         self.m = int(self.theta0.size / self.p)
@@ -478,22 +464,22 @@ class NonlinearProgramming(ResultFetcher):
 
     def _get_functions(self) -> Tuple[callable, callable, callable]:
         """Derive the functions to obtain the objective, graident and Hessian."""
-        if self.method == "trust_region":
+        if self.method in ["exact", "gauss-newton"]:
             if self.dim == 1:
-                if self.hessian == "exact":
+                if self.method == "exact":
                     function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_true_hess_1d
                     )
-                elif self.hessian == "gauss-newton":
+                elif self.method == "gauss-newton":
                     function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_gauss_newton_hess_1d
                     )
-            elif self.dim == 2:
-                if self.hessian == "exact":
+            if self.dim == 2:
+                if self.method == "exact":
                     function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_true_hess_2d
                     )
-                elif self.hessian == "gauss-newton":
+                elif self.method == "gauss-newton":
                     function_factory = funcs.ObjGradHess(
                         funcs.obj_grad_gauss_newton_hess_2d
                     )
@@ -502,16 +488,14 @@ class NonlinearProgramming(ResultFetcher):
             gradient = function_factory.gradient
             hessian = function_factory.hessian
 
-        if self.method == "lbfgs":
-            # Need to compute the Hessian once, at the end of the optimisation,
-            # to compute errors.
-            # Compute this separately.
+        elif self.method == "lbfgs":
             if self.dim == 1:
                 function_factory = funcs.ObjGrad(funcs.obj_grad_1d)
                 hessian = funcs.hess_1d
-            elif self.dim == 2:
+            if self.dim == 2:
                 function_factory = funcs.ObjGrad(funcs.obj_grad_2d)
                 hessian = funcs.hess_2d
+
             objective = function_factory.objective
             gradient = function_factory.gradient
 
@@ -556,7 +540,7 @@ class NonlinearProgramming(ResultFetcher):
 
     def _run_optimiser(self) -> np.ndarray:
         """Run the optimisation algorithm."""
-        if self.method == "trust_region":
+        if self.method in ["exact", "gauss-newton"]:
             result = optimize.minimize(
                 fun=self.objective,
                 x0=self.active,

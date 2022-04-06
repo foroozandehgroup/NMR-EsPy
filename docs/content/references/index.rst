@@ -8,7 +8,7 @@ Reference
    load
    freqfilter
    mpm
-   nlp/index
+   nlp
    plot
    sig
    write

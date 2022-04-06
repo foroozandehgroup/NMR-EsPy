@@ -1,7 +1,7 @@
 # test_nlp.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 29 Mar 2022 23:28:19 BST
+# Last Edited: Wed 06 Apr 2022 12:44:31 BST
 
 from itertools import combinations
 import sys
@@ -47,20 +47,15 @@ def test_1d():
         ]
     )
 
-    for hessian in ("exact", "gauss-newton"):
+    for method in ("exact", "gauss-newton", "lbfgs"):
         nlp = NonlinearProgramming(
-            fid, x0, EXPINFO1D, hessian=hessian, phase_variance=False, fprint=False,
+            EXPINFO1D, fid, x0, method=method, phase_variance=False, fprint=False,
         )
-        assert similar(nlp.get_result(), PARAMS1D, 1e-4)
-
-    nlp = NonlinearProgramming(
-        fid, x0, EXPINFO1D, phase_variance=False, method="lbfgs", fprint=False,
-    )
-    assert similar(nlp.get_result(), PARAMS1D, 1e-2)
+        assert similar(nlp.get_result(), PARAMS1D, 1e-2 if method == "lbfgs" else 1e-4)
 
     # test with FID not starting at t=0
     nlp = NonlinearProgramming(
-        fid[20:], x0, EXPINFO1D, phase_variance=False, start_time=["20dt"],
+        EXPINFO1D, fid[20:], x0, phase_variance=False, start_time=["20dt"],
     )
     assert similar(nlp.get_result(), PARAMS1D, 1e-4)
 
@@ -76,19 +71,14 @@ def test_nlp_2d():
         ]
     )
 
-    for hessian in ("exact", "gauss-newton"):
+    for method in ("exact", "gauss-newton", "lbfgs"):
         nlp = NonlinearProgramming(
-            fid, x0, EXPINFO2D, hessian=hessian, phase_variance=False, fprint=False,
+            EXPINFO2D, fid, x0, method=method, phase_variance=False, fprint=False,
         )
-        assert similar(nlp.get_result(), PARAMS2D, 1e-4)
+        assert similar(nlp.get_result(), PARAMS2D, 1e-2 if method == "lbfgs" else 1e-4)
 
     nlp = NonlinearProgramming(
-        fid, x0, EXPINFO2D, phase_variance=False, method="lbfgs", fprint=False,
-    )
-    assert similar(nlp.get_result(), PARAMS2D, 1e-2)
-
-    nlp = NonlinearProgramming(
-        fid[10:, 5:], x0, EXPINFO2D, phase_variance=False, start_time=["10dt", "5dt"],
+        EXPINFO2D, fid[10:, 5:], x0, phase_variance=False, start_time=["10dt", "5dt"],
         negative_amps="flip_phase",
     )
     assert similar(nlp.get_result(), PARAMS2D, 1e-4)
