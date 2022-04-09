@@ -3,4 +3,4 @@ nmrespy.sig
 
 .. automodule:: nmrespy.sig
    :members:
-   :private-members:
+   :exclude-members: PhaseApp

@@ -3,7 +3,15 @@
 # simon.hulse@chem.ox.ac.uk
 # Last Edited: Thu 31 Mar 2022 13:28:41 BST
 
-"""Frequecy filtration of NMR data using super-Gaussian band-pass filters."""
+"""Frequecy filtration of NMR data using super-Gaussian band-pass filters.
+
+MWE
+---
+
+.. literalinclude:: examples/filter_example.py
+
+.. image:: media/filter_example.png
+"""
 
 # TODO: I have commeneted out all code relating to baseline fixing.
 # I may look into this in the future to see if I can achieve improvements
@@ -73,17 +81,18 @@ class Filter(ExpInfo):
         -----
         **Region specification**
 
-        For a :math:`d`-dimensional experiment, the ``region`` and ``noise_region``
-        arguments should be array-like objects (``list``, ``tuple``, etc.)
-        containing :math:`d` length-2 array-like objects. Each of these specifies
-        the boundaries of the region of interest in each dimension. If no filtering
-        is to be applied to a particular region (i.e. the F1 dimension of a pseudo-2D
-        dataset), set the element for this dimension to ``None``.
+        For a :math:`d`-dimensional experiment, the ``region`` and
+        ``noise_region`` arguments should be array-like objects (``list``,
+        ``tuple``, etc.) containing :math:`d` length-2 array-like objects. Each
+        of these specifies the boundaries of the region of interest in each
+        dimension. If no filtering is to be applied to a particular dimension
+        (i.e. the F1 dimension of a pseudo-2D dataset), set the element for
+        this dimension to ``None``.
 
-        As an example, for a 2-dimensional dataset, where the desired region
-        is from 4 - 4.5ppm in dimension 1 and 1.2 - 1.6ppm in dimension 2,
-        ``region`` would be specified as: ``((4., 4.5), (1.2, 1.6))``. Note that
-        the order of values in each dimension is not important. Also,
+        As an example, for a 2-dimensional dataset, where the desired region is
+        from 4 - 4.5ppm in dimension 1 and 1.2 - 1.6ppm in dimension 2,
+        ``region`` would be specified as: ``((4., 4.5), (1.2, 1.6))``. Note
+        that the order of values in each dimension is not important. Also,
         ``region_unit`` would have to be manually set as ``'ppm'`` in this
         example, as regions are expected in Hz by default.
         """
@@ -209,6 +218,9 @@ class Filter(ExpInfo):
         -------
         filtered_spectrum
             Filtered spectrum.
+
+        expinfo
+            Experiment information corresponding to the filtered signal.
         """
         sanity_check(
             (

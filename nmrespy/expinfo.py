@@ -35,8 +35,7 @@ class ExpInfo(FrequencyConverter):
         fn_mode: Optional[str] = None,
         **kwargs,
     ) -> None:
-        """Create an ExpInfo instance.
-
+        """
         Parameters
         ----------
         dim
@@ -67,7 +66,8 @@ class ExpInfo(FrequencyConverter):
         kwargs
             Any extra parameters to be included
         """
-        sanity_check(("dim", dim, sfuncs.check_positive_int))
+        print(locals())
+        sanity_check(("dim", dim, sfuncs.check_int, (), {"min_value": 1}))
         self._dim = dim
         sanity_check(
             (
@@ -170,17 +170,26 @@ class ExpInfo(FrequencyConverter):
         return self.convert(self._offset, f"hz->{unit}")
 
     @property
-    def sfo(self) -> Iterable[Optional[float]]:
+    def sfo(self) -> Optional[Iterable[Optional[float]]]:
         "Get the transmitter frequency (MHz)."
         return self._sfo
 
     @property
-    def nuclei(self) -> Iterable[str]:
+    def nuclei(self) -> Optional[Iterable[Optional[str]]]:
         """Get the nuclei associated with each channel."""
         return self._nuclei
 
     @property
-    def unicode_nuclei(self) -> Iterable[str]:
+    def unicode_nuclei(self) -> Optional[Iterable[Optional[str]]]:
+        """Get the nuclei associated with each channel with superscript numbers.
+
+        .. code:: python3
+
+           >>> expinfo = ExpInfo(..., nuclei=("1H", "15N"), ...)
+           >>> expinfo.unicode_nuclei
+           ('¹H', '¹⁵N')
+        """
+
         if self._nuclei is None:
             return None
 
@@ -376,7 +385,7 @@ class ExpInfo(FrequencyConverter):
 
     def make_fid(
         self,
-        parameters: np.ndarray,
+        params: np.ndarray,
         pts: Optional[Iterable[int]] = None,
         snr: Union[float, None] = None,
         decibels: bool = True,
@@ -386,14 +395,14 @@ class ExpInfo(FrequencyConverter):
 
         Parameters
         ----------
-        paramaters
+        params
             Parameter array with the following structure:
 
             * **1-dimensional data:**
 
               .. code:: python
 
-                 parameters = numpy.array([
+                 params = numpy.array([
                     [a_1, φ_1, f_1, η_1],
                     [a_2, φ_2, f_2, η_2],
                     ...,
@@ -404,7 +413,7 @@ class ExpInfo(FrequencyConverter):
 
               .. code:: python
 
-                 parameters = numpy.array([
+                 params = numpy.array([
                     [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
                     [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
                     ...,
@@ -432,7 +441,7 @@ class ExpInfo(FrequencyConverter):
             If ``None``, ``self.fn_mode`` will be used.
         """
         sanity_check(
-            ("parameters", parameters, sfuncs.check_parameter_array, (self.dim,)),
+            ("params", params, sfuncs.check_parameter_array, (self.dim,)),
             (
                 "pts", pts, sfuncs.check_int_list, (),
                 {
@@ -458,11 +467,11 @@ class ExpInfo(FrequencyConverter):
             fn_mode = fn_mode
 
         offset = self.offset()
-        amp = parameters[:, 0]
-        phase = parameters[:, 1]
+        amp = params[:, 0]
+        phase = params[:, 1]
         # Center frequencies at 0 based on offset
-        freq = [parameters[:, 2 + i] - offset[i] for i in range(self.dim)]
-        damp = [parameters[:, self.dim + 2 + i] for i in range(self.dim)]
+        freq = [params[:, 2 + i] - offset[i] for i in range(self.dim)]
+        damp = [params[:, self.dim + 2 + i] for i in range(self.dim)]
 
         # Time points in each dimension
         tp = self.get_timepoints(pts, meshgrid=False)
@@ -544,7 +553,7 @@ class ExpInfo(FrequencyConverter):
         fid
             The synthetic FID.
 
-        parameters
+        params
             Parameters used to construct the signal
         """
         sanity_check(
@@ -590,23 +599,23 @@ class ExpInfo(FrequencyConverter):
 
     def oscillator_integrals(
         self,
-        parameters: np.ndarray,
+        params: np.ndarray,
         pts: Optional[Iterable[int]] = None,
         absolute: bool = True,
         scale_relative_to: Optional[int] = None,
     ) -> float:
-        """Determine the integral of the FT of an oscillator.
+        """Determine the integral of the FT of oscillators.
 
         Parameters
         ----------
-        paramaters
+        params
             Parameter array with the following structure:
 
             * **1-dimensional data:**
 
               .. code:: python
 
-                 parameters = numpy.array([
+                 params = numpy.array([
                     [a_1, φ_1, f_1, η_1],
                     [a_2, φ_2, f_2, η_2],
                     ...,
@@ -617,7 +626,7 @@ class ExpInfo(FrequencyConverter):
 
               .. code:: python
 
-                 parameters = numpy.array([
+                 params = numpy.array([
                     [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
                     [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
                     ...,
@@ -634,7 +643,7 @@ class ExpInfo(FrequencyConverter):
             integrating.
 
         scale_relative_to
-            If an int, the integral corresponding to ``parameters[scale_relative_to]``
+            If an int, the integral corresponding to ``params[scale_relative_to]``
             is set to ``1``, and other integrals are scaled accordingly.
 
         Notes
@@ -646,7 +655,7 @@ class ExpInfo(FrequencyConverter):
         Spacing of points along the frequency axes is set as ``1`` (i.e. ``dx = 1``).
         """
         sanity_check(
-            ("parameters", parameters, sfuncs.check_parameter_array, (self.dim,)),
+            ("params", params, sfuncs.check_parameter_array, (self.dim,)),
             (
                 "pts", pts, sfuncs.check_int_list, (),
                 {
@@ -661,7 +670,7 @@ class ExpInfo(FrequencyConverter):
                 "scale_relative_to", scale_relative_to, sfuncs.check_int, (),
                 {
                     "min_value": 0,
-                    "max_value": parameters.shape[0] - 1,
+                    "max_value": params.shape[0] - 1,
                 },
                 True,
             )
@@ -673,7 +682,7 @@ class ExpInfo(FrequencyConverter):
             sig.ft(
                 self.make_fid(np.expand_dims(p, axis=0), pts),
             )
-            for p in parameters
+            for p in params
         ]
         integrals = [np.absolute(x) if absolute else x for x in integrals]
 

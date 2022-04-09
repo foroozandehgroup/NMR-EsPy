@@ -18,6 +18,18 @@ if USE_COLORAMA:
     colorama.init()
 
 
+def copydoc(fromfunc, sep="\n"):
+    """Decorator: copy the docstring of `fromfunc`."""
+    def _decorator(func):
+        sourcedoc = fromfunc.__doc__
+        if func.__doc__ is None:
+            func.__doc__ = sourcedoc
+        else:
+            func.__doc__ = sep.join([sourcedoc, func.__doc__])
+        return func
+    return _decorator
+
+
 def get_yes_no(prompt: str) -> bool:
     """Ask user to input 'yes' or 'no'.
 

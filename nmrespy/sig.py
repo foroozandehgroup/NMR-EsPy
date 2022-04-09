@@ -3,7 +3,7 @@
 # simon.hulse@chem.ox.ac.uk
 # Last Edited: Wed 30 Mar 2022 16:43:32 BST
 
-"""Constructing and processing NMR signals."""
+"""Manipulating and processing NMR signals."""
 
 import copy
 import re
@@ -18,217 +18,6 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-
-
-# TODO deprecate
-# def make_fid(
-#     params: np.ndarray,
-#     expinfo: ExpInfo,
-#     pts: Iterable[int],
-#     *,
-#     snr: Union[float, None] = None,
-#     decibels: bool = True,
-#     modulation: Optional[str] = None,
-# ) -> Tuple[np.ndarray, Iterable[np.ndarray]]:
-#     r"""Construct a FID, as a summation of damped complex sinusoids.
-
-#     Parameters
-#     ----------
-#     params
-#         Parameter array with the following structure:
-
-#         * **1-dimensional data:**
-
-#           .. code:: python
-
-#              parameters = numpy.array([
-#                 [a_1, φ_1, f_1, η_1],
-#                 [a_2, φ_2, f_2, η_2],
-#                 ...,
-#                 [a_m, φ_m, f_m, η_m],
-#              ])
-
-#         * **2-dimensional data:**
-
-#           .. code:: python
-
-#              parameters = numpy.array([
-#                 [a_1, φ_1, f1_1, f2_1, η1_1, η2_1],
-#                 [a_2, φ_2, f1_2, f2_2, η1_2, η2_2],
-#                 ...,
-#                 [a_m, φ_m, f1_m, f2_m, η1_m, η2_m],
-#              ])
-
-#     expinfo
-#         Information on the experiment. Used to determine the number of points,
-#         sweep width and transmitter offset.
-
-#     pts
-#         The number of points the signal comprises in each dimension.
-
-#     snr
-#         The signal-to-noise ratio. If `None` then no noise will be added
-#         to the FID.
-
-#     decibels
-#         If `True`, the snr is taken to be in units of decibels. If `False`,
-#         it is taken to be simply the ratio of the singal power over the
-#         noise power.
-
-#     modulation
-#         The type of modulation present in the indirect dimension, if the data
-#         is 2D. `In the expressions below, a it is assumed a single oscillator
-#         has been provided for simplicity`.
-
-#         * `'none'`: Returns a single signal of the form:
-
-#           .. math::
-
-#              y(t_1, t_2) = a \exp(\mathrm{i} \phi)
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_1 - \eta_1 \right)
-#              t_1 \right]
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-#              t_2 \right]
-
-#         * `'amp'`: Returns an amplitude-modulated pair of signals of the form:
-
-#           .. math::
-
-#              y_{\mathrm{cos}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
-#              \cos \left( 2 \pi f_1 t_1 \right)
-#              \exp \left( - \eta_1 t_1 \right)
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-#              t_2 \right]
-
-#              y_{\mathrm{sin}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
-#              \sin \left( 2 \pi f_1 t_1 \right)
-#              \exp \left( - \eta_1 t_1 \right)
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-#              t_2 \right]
-
-#         * `'phase'`: Returns an phase-modulated pair of signals of the form:
-
-#           .. math::
-
-
-#              y_{\mathrm{P}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_1 - \eta_1 \right)
-#              y_{\mathrm{P}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_1 - \eta_1 \right)
-#              t_1 \right]
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-#              t_2 \right]
-#              t_1 \right]
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-#              t_2 \right]
-#              y_{\mathrm{N}}(t_1, t_2) = a \exp(\mathrm{i} \phi)
-#              \exp \left[ \left( - 2 \pi \mathrm{i} f_1 - \eta_1 \right)
-#              t_1 \right]
-#              \exp \left[ \left( 2 \pi \mathrm{i} f_2 - \eta_2 \right)
-#              t_2 \right]
-
-#     Returns
-#     -------
-#     fid
-#         The synthetic signal generated.
-
-#         + If the data to be constructed is 1D or 2D with `modulation` set to
-#           `'none'`, the result will be a NumPy array.
-#         + If the data is 2D with `modulation` set to `'amp'`, or `'phase'`
-#           the result will be a length-2 list with signals of the forms
-#           indicated above (See `modulation`).
-
-#     tp
-#         The time points the FID is sampled at in each dimension.
-
-#     Notes
-#     -----
-#     The resulting `fid` is given by
-
-#     .. math::
-
-#        y[n_1, \cdots, n_D] =
-#        \sum_{m=1}^{M} a_m \exp\left(\mathrm{i} \phi_m\right)
-#        \prod_{d=1}^{D}
-#        \exp\left[\left(2 \pi \mathrm{i} f_m - \eta_m\right)
-#        n_d \Delta t_d\right]
-
-#     where :math:`d` is either 1 or 2, :math:`M` is the number of
-#     oscillators, and :math:`\Delta t_d = 1 / f_{\mathrm{sw}, d}`.
-#     """
-#     # --- Check validity of inputs ---------------------------------------
-#     sanity_check(("expinfo", expinfo, sfuncs.check_expinfo),)
-
-#     dim = expinfo.unpack("dim")
-#     sanity_check(
-#         ("params", params, sfuncs.check_parameter_array, (dim,)),
-#         ("pts", pts, sfuncs.check_points, (dim,)),
-#         ("decibels", decibels, sfuncs.check_bool),
-#         ("modulation", modulation, sfuncs.check_modulation, (), {}, True),
-#         ("snr", snr, sfuncs.check_positive_float, (), {}, True),
-#     )
-
-#     # --- Extract amplitudes, phases, frequencies and damping ------------
-#     offset = expinfo.unpack("offset")
-#     amp = params[:, 0]
-#     phase = params[:, 1]
-#     # Center frequencies at 0 based on offset
-#     freq = [params[:, 2 + i] - offset[i] for i in range(dim)]
-#     damp = [params[:, dim + 2 + i] for i in range(dim)]
-
-#     # Time points in each dimension
-#     tp = get_timepoints(expinfo, pts, meshgrid_2d=False)
-
-#     # --- Generate noiseless FID -----------------------------------------
-#     if dim == 1:
-#         # Vandermonde matrix of poles
-#         Z = np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0])))
-#         # Vector of complex ampltiudes
-#         alpha = amp * np.exp(1j * phase)
-#         # Compute FID!
-#         fid = Z @ alpha
-
-#     if dim == 2:
-#         if modulation == "phase":
-#             Z1 = [
-#                 np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0]))),
-#                 np.exp(np.outer(tp[0], (-1j * 2 * np.pi * freq[0] - damp[0]))),
-#             ]
-#         else:
-#             Z1 = np.exp(np.outer(tp[0], (1j * 2 * np.pi * freq[0] - damp[0])))
-#             if modulation == "amp":
-#                 Z1 = [np.real(Z1), np.imag(Z1)]
-#             else:
-#                 Z1 = [Z1]
-
-#         Z2T = np.exp(np.outer((1j * 2 * np.pi * freq[1] - damp[1]), tp[1]))
-#         # TODO: Support for constructing negative time signals
-#         # rev_poles = np.outer(1j * 2 * np.pi * freq[1], -tp[1][::-1]) + \
-#         #             np.outer(-damp[1], tp[1][::-1])
-#         # Z2revT = np.exp(rev_poles)
-#         # Z2fullT = np.hstack((Z2revT, Z2T))
-#         # print(Z2fullT.shape)
-#         # Diagonal matrix of complex amplitudes
-#         A = np.diag(amp * np.exp(1j * phase))
-
-#         fid = []
-#         for z1 in Z1:
-#             fid.append(z1 @ A @ Z2T)
-#             # fid.append(z1 @ A @ Z2fullT)
-
-#         if len(fid) == 1:
-#             fid = fid[0]
-
-#     # --- Add noise to FID -----------------------------------------------
-#     if snr is None:
-#         return fid, tp
-#     else:
-#         if isinstance(fid, np.ndarray):
-#             return fid + _make_noise(fid, snr, decibels), tp
-#         elif isinstance(fid, list):
-#             for i, f in enumerate(fid):
-#                 fid[i] = f + _make_noise(f, snr, decibels)
-#             return fid, tp
 
 
 def make_virtual_echo(
@@ -257,11 +46,6 @@ def make_virtual_echo(
           amplitude modulated pair.
         * ``"phase"``: the two signals in axis 2 of ``data`` should be a phase
           modulated pair.
-
-    Returns
-    -------
-    virtual_echo
-        The virtual echo signal associated with ``data``.
 
     References
     ----------
@@ -357,11 +141,6 @@ def zf(data: np.ndarray) -> np.ndarray:
     ----------
     data
         Signal to zero-fill.
-
-    Returns
-    -------
-    zf_data: numpy.ndarray
-        Zero-filled data.
     """
     zf_data = copy.deepcopy(data)
     for i, n in enumerate(zf_data.shape):
@@ -402,12 +181,6 @@ def ft(
 
     flip
         Whether or not to flip the Fourier Transform of `fid` in each
-        dimension.
-
-    Returns
-    -------
-    spectrum: numpy.ndarray
-        Fourier transform of the data, (optionally) flipped in each
         dimension.
     """
     sanity_check(
@@ -466,11 +239,6 @@ def ift(
     flip : bool, default: True
         Whether or not to flip ``spectrum`` in each dimension prior to Inverse
         Fourier Transform.
-
-    Returns
-    -------
-    fid : numpy.ndarray
-        IFT of the spectrum.
     """
     sanity_check(
         ("spectrum", spectrum, sfuncs.check_ndarray),
@@ -594,10 +362,6 @@ def phase(
     pivot
         Index of the pivot in each dimension. If ``None``, the pivot will be ``0``
         in each dimension.
-
-    Returns
-    -------
-    phased_data : numpy.ndarray
     """
     sanity_check(("data", data, sfuncs.check_ndarray))
     dim = data.ndim
@@ -624,8 +388,8 @@ def phase(
 
 def manual_phase_data(
     spectrum: np.ndarray,
-    max_p1: Optional[Iterable[float]] = None
-) -> Tuple[Union[Iterable[float], None], Union[Iterable[float], None]]:
+    max_p1: Optional[Iterable[float]] = None,
+) -> Tuple[Optional[Iterable[float]], Optional[Iterable[float]]]:
     """Manual phase correction using a Graphical User Interface.
 
     .. warning::
@@ -642,11 +406,11 @@ def manual_phase_data(
 
     Returns
     -------
-    p0: Union[Iterable[float], None]
+    p0
         Zero-order phase correction in each dimension, in radians. If the
         user chooses to cancel rather than save, this is set to ``None``.
 
-    p1: Union[Iterable[float], None]
+    p1
         First-order phase correction in each dimension, in radians. If the
         user chooses to cancel rather than save, this is set to ``None``.
     """

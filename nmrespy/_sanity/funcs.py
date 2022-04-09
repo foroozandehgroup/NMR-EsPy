@@ -122,6 +122,17 @@ def check_int_list(
         return "At least one element must be an int, all Nones not allowed."
 
 
+def check_str_list(obj: Any, length: Optional[int] = None) -> Optional[str]:
+    if isiter(obj):
+        if not all([isinstance(x, str) for x in obj]):
+            return "Each element should be a str."
+        if length is not None and len(obj) != length:
+            return f"Should be of length {length}."
+
+    elif not ((length == 1 or length is None) and isinstance(obj, str)):
+        return "Should be an iterable of strs."
+
+
 def check_positive_float(obj: Any, allow_zero: bool = False) -> Optional[str]:
     if not (isfloat(obj) and obj > 0):
         return "Should be a positive float."
@@ -196,6 +207,20 @@ def check_ndarray(
         for (axis, size) in shape:
             if obj.shape[axis] != size:
                 return f"Axis {axis} should be of size {size}."
+
+
+def check_ndarray_list(
+    obj: Any,
+    dim: Optional[int] = None,
+    shape: Optional[Iterable[Tuple[int, int]]] = None,
+) -> Optional[str]:
+    if isiter(obj):
+        for i, item in enumerate(obj):
+            outcome = check_ndarray(item, dim, shape)
+            if isinstance(outcome, str):
+                return f"Issue with element {i}: {outcome}"
+    elif isinstance(check_ndarray(obj, dim, shape), str):
+        return "Should be an iterable of numpy arrays."
 
 
 def check_expinfo(obj: Any, dim: Optional[int] = None) -> Optional[str]:
@@ -310,15 +335,6 @@ def check_region(
         [sw_ / 2 + off_, -sw_ / 2 + off_]
         for sw_, off_ in zip(sw, offset)
     ]
-    return _check_region(obj, full_region, float)
-
-
-def check_region_ppm(obj: Any, expinfo) -> Optional[str]:
-    if expinfo._sfo is None:
-        return "Cannot specify region in ppm. sfo is not defined in expinfo."
-    full_region = [[sw / 2 + off, -sw / 2 + off] if sfo is None
-                   else [(sw / 2 + off) / sfo, (-sw / 2 + off) / sfo]
-                   for sw, off, sfo in zip(expinfo._sw, expinfo._offset, expinfo._sfo)]
     return _check_region(obj, full_region, float)
 
 

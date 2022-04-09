@@ -26,10 +26,6 @@ def experiment_info(table: List[List[str]]) -> str:
     return titled_table("Experiment Information", table)
 
 
-def parameter_table(table: List[List[str]]) -> str:
-    return titled_table("Estimation Result", table)
-
-
 def titled_table(title: str, table: List[List[str]]) -> str:
     text = underline(title)
     text += f"\n{tabular(table, titles=True)}"

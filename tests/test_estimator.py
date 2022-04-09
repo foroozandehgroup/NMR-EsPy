@@ -56,13 +56,7 @@ def basic_estimator(dim: int = 1, with_sfo: bool = True) -> Estimator1D:
     # return Estimator.new_synthetic_from_parameters(params, expinfo, pts, snr=25.0)
 
 
-def test():
-    # e = basic_estimator()
-    # e.view_log
-    # e.save_log("/tmp/hello", force_overwrite=False)
-    # e.to_pickle("/tmp/estimator")
-    # clone = Estimator1D.from_pickle("/tmp/estimator")
-
+def test_simulated():
     from nmr_sims.spin_system import SpinSystem
 
     system = SpinSystem(
@@ -91,18 +85,17 @@ def test():
 
     e = Estimator1D.new_synthetic_from_simulation(
         system,
-        2.,
-        4.,
-        4096,
+        2.,    # sw
+        4.,    # offset
+        4096,  # number of pts
         freq_unit="ppm",
     )
 
-    # e = Estimator1D.new_synthetic_from_parameters(
-    #     np.array([[1, 0, 200, 1]]),
-    #     ExpInfo(1000),
-    #     4048,
-    # )
     e.estimate([4.59, 4.41], [4.2, 4.15], region_unit="ppm")
+    e.estimate([3.97, 3.87], [4.2, 4.15], region_unit="ppm")
+    e.write_result(path="helloooo", fmt="pdf", description="Hello there")
+    e.view_log
+    exit()
     print(e._results[0].get_result(funit="ppm"))
     e.write_results(force_overwrite=True)
     p = e.plot_results()

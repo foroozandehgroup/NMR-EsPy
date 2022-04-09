@@ -63,14 +63,14 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
 
     Returns
     -------
-    data: numpy.ndarray
+    data
         The associated data.
 
-    expinfo: nmrespy.ExpInfo
-        Experiment information of use to NMR-EsPy. As well as the normal
-        associated properties (see the :py:class:`ExpInfo` docs),
-        the ``parameters`` attribute is a ``dict`` with parameters from
-        all parameter files assocaited with the dataset.
+    expinfo
+        Experiment information. As well as the normal associated properties
+        (see :py:class:`nmrespy.ExpInfo`), the ``parameters`` attribute is a
+        dict with parameters from all acqus and procs files associated with the
+        dataset.
 
     Raises
     ------
@@ -188,16 +188,7 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
         AUTOPOS --> <>
         BF1 --> 500.13
         BF2 --> 500.13
-        BF3 --> 500.13
-        BF4 --> 500.13
-        BF5 --> 500.13
-        BF6 --> 500.13
-        BF7 --> 500.13
-        BF8 --> 500.13
         --snip--
-        ZGOPTNS --> <>
-        ZL1 --> 120
-        ZL2 --> 120
         ZL3 --> 120
         ZL4 --> 120
         scaledByNS --> no
@@ -207,7 +198,7 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
         dataset = _BrukerDatasetForNmrespy(directory)
 
     except Exception as exc:
-        raise type(exc)(f"{RED}{exc.__str__()}{END}")
+        raise type(exc)(f"{RED}{str(exc)}{END}")
 
     if dataset.dim > 2:
         raise MoreThanTwoDimError()
@@ -225,9 +216,9 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
         if not response:
             exit()
 
-    # Complete set of parameters
     data = dataset.data
     expinfo = dataset.expinfo
+    expinfo._default_pts = data.shape
 
     return data, expinfo
 

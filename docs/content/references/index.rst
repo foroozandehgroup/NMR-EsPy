@@ -1,10 +1,21 @@
 Reference
 =========
 
-.. toctree::
-   :maxdepth: 2
+Things that you will need to look at
+------------------------------------
 
-   core
+.. toctree::
+   :maxdepth: 1
+
+   expinfo
+   estimator1d
+
+Things you (probably) won't need to look at
+-------------------------------------------
+
+.. toctree::
+   :maxdepth: 1
+
    load
    freqfilter
    mpm
@@ -12,5 +23,3 @@ Reference
    plot
    sig
    write
-   errors
-   misc

@@ -2,8 +2,6 @@ nmrespy.mpm
 ^^^^^^^^^^^
 
 .. automodule:: nmrespy.mpm
-
-.. autoclass:: nmrespy.mpm.MatrixPencil
-   :special-members:
    :members:
-   :private-members:
+   :inherited-members:
+   :exclude-members: convert

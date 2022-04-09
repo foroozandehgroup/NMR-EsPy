@@ -55,10 +55,6 @@ def experiment_info(table: List[List[str]]) -> str:
     return titled_table("Experiment Information", table)
 
 
-def parameter_table(table: List[List[str]]) -> str:
-    return titled_table("Estimation Result", table)
-
-
 def titled_table(title: str, table: List[List[str]]) -> str:
     text = f"\\section*{{{title}}}\n"
     text += f"{tabular(table, titles=True)}"
@@ -103,7 +99,7 @@ def texify(entry: str) -> str:
         return "$\\phi$ ($^{\\circ}$)"
 
     # Frequency and damping factor labels: f₁, η₂ etc.
-    search_freq_damp = re.search(r"(f|η)(₁|₂|₃)", entry)
+    search_freq_damp = re.search(r"(f|η)(₁|₂|₃)?", entry)
     if search_freq_damp:
         entry = u''.join(
             dict(

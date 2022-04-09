@@ -59,7 +59,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -139,8 +139,8 @@ class ResultWriter(ExpInfo):
     def __init__(
         self,
         expinfo: ExpInfo,
-        parameters: np.ndarray,
-        errors: Optional[np.ndarray] = None,
+        params: Iterable[np.ndarray],
+        errors: Optional[Iterable[np.ndarray]] = None,
         description: Optional[str] = None,
     ) -> None:
         """
@@ -149,7 +149,7 @@ class ResultWriter(ExpInfo):
         expinfo
             Experiment information.
 
-        parameters
+        params
             Parameters derived from estimation.
 
         errors
@@ -176,34 +176,47 @@ class ResultWriter(ExpInfo):
 
         sanity_check(
             (
-                "parameters", parameters, sfuncs.check_ndarray, (),
-                {"dim": 2, "shape": [(1, 2 * (self.dim + 1))]},
+                "params", params, sfuncs.check_ndarray_list, (),
+                {
+                    "dim": 2,
+                    "shape": [(1, 2 * (self.dim + 1))],
+                },
             )
         )
         sanity_check(
             (
-                "errors", errors, sfuncs.check_ndarray, (),
+                "errors", errors, sfuncs.check_ndarray_list, (),
                 {
                     "dim": 2,
-                    "shape": [(i, s) for i, s in enumerate(parameters.shape)],
+                    "shape": [(i, s) for i, s in enumerate(params[0].shape)],
                 },
                 True,
             )
         )
 
-        self.parameters = parameters
-        self.errors = errors
+        def makeiter(obj):
+            return (obj,) if isinstance(obj, np.ndarray) else obj
+
+        self.params = makeiter(params)
+        self.errors = makeiter(errors)
+        if self.errors is None:
+            self.errors = tuple(len(self.params) * [None])
+
         self.description = description if description is not None else ""
-        self.integrals = self.oscillator_integrals(
-            self.parameters,
-            self.default_pts if self.default_pts is not None else self.dim * [4096],
-            scale_relative_to=int(np.argmin(self.parameters[:, 0])),
-        )
+        self.integrals = tuple([
+            self.oscillator_integrals(
+                params,
+                self.default_pts if self.default_pts is not None else self.dim * [4096],
+                scale_relative_to=int(np.argmin(params[:, 0])),
+            )
+            for params in self.params
+        ])
 
     def write(
         self,
         path: Union[str, Path],
         fmt: str = "txt",
+        titles: Iterable[str] = None,
         experiment_info_sig_figs: Optional[int] = 5,
         parameters_sig_figs: Optional[int] = 5,
         parameters_sci_lims: Optional[Tuple[int, int]] = (-2, 3),
@@ -220,6 +233,9 @@ class ResultWriter(ExpInfo):
 
         fmt
             Must be one of ``"txt"`` or ``"pdf"``.
+
+        titles
+            Titles for each parameter table. If ``None``, give generic titles.
 
         experiment_info_sig_figs
             The number of significant figures to give to numerical experiment
@@ -255,6 +271,10 @@ class ResultWriter(ExpInfo):
         sanity_check(
             ("fmt", fmt, sfuncs.check_one_of, ("txt", "pdf")),
             (
+                "titles", titles, sfuncs.check_str_list, (),
+                {"length": len(self.params)}, True,
+            ),
+            (
                 "experiment_info_sig_figs", experiment_info_sig_figs,
                 sfuncs.check_int, (), {"min_value": 1},
             ),
@@ -275,10 +295,16 @@ class ResultWriter(ExpInfo):
         )
 
         path = configure_path(path, "txt" if fmt == "txt" else "tex")
+        if titles is None:
+            titles = tuple(
+                [f"Estimation Result{i}" for i in range(1, len(self.params) + 1)]
+            )
+        titles = (titles,) if isinstance(titles, str) else tuple(titles)
 
         save_file(
             self._make_file_content(
                 fmt,
+                titles,
                 experiment_info_sig_figs,
                 parameters_sig_figs,
                 parameters_sci_lims,
@@ -358,14 +384,8 @@ class ResultWriter(ExpInfo):
 
         return experiment_info
 
-    def _construct_parameters(
-        self,
-        sig_figs: int,
-        sci_lims: Tuple[int, int],
-    ) -> List[List[str]]:
-        """Create Table of parameters."""
-        parameter_table = []
-
+    @property
+    def _table_titles(self) -> List[str]:
         titles = ["Osc.", "a", "ϕ (°)"]
         for i in range(self.dim):
             titles.append(
@@ -384,23 +404,43 @@ class ResultWriter(ExpInfo):
                 else "η (s⁻¹)"
             )
         titles.append("∫")
-        parameter_table.append(titles)
+        return titles
 
-        if self.errors is not None:
-            fstr = lambda p, e: (
-                f"{self._fmtstr(p, sig_figs, sci_lims)} ± "
-                f"{self._fmtstr(e, sig_figs, sci_lims)}"
-            )
+    def _construct_parameters(
+        self,
+        sig_figs: int,
+        sci_lims: Tuple[int, int],
+    ) -> List[List[str]]:
+        """Create Table of parameters."""
+        tables = []
+        titles = self._table_titles
+
+        fstr = lambda p, e: (
+            f"{self._fmtstr(p, sig_figs, sci_lims)} ± "
+            f"{self._fmtstr(e, sig_figs, sci_lims)}"
+            if e is not None
+            else self._fmtstr(p, sig_figs, sci_lims)
+        )
+
+        for params, errors, integrals in zip(self.params, self.errors, self.integrals):
+            table = [titles]
+            if errors is None:
+                errors = tuple(len(params) * [None])
 
             for i, (p, e, integ) in enumerate(
-                zip(self.parameters, self.errors, self.integrals),
+                zip(params, errors, integrals),
                 start=1,
             ):
                 subtable = [str(i)]
                 # Amplitude
                 subtable.append(fstr(p[0], e[0]))
                 # Phase
-                subtable.append(fstr(p[1] * 180 / np.pi, e[1] * 180 / np.pi))
+                subtable.append(
+                    fstr(
+                        p[1] * 180 / np.pi,
+                        e[1] * 180 / np.pi if e[1] is not None else None,
+                    )
+                )
                 # Frequencies
                 fslice = slice(2, 2 + self.dim)
                 for j, (f, fe) in enumerate(zip(p[fslice], e[fslice])):
@@ -409,7 +449,8 @@ class ResultWriter(ExpInfo):
                         subtable.append(
                             fstr(
                                 self._convert_value(f, j, "hz->ppm"),
-                                self._convert_value(fe, j, "hz->ppm"),
+                                self._convert_value(fe, j, "hz->ppm")
+                                if fe is not None else None,
                             )
                         )
                 # Damping
@@ -418,40 +459,17 @@ class ResultWriter(ExpInfo):
                     [fstr(d, de) for d, de in zip(p[dslice], e[dslice])]
                 )
                 # Integral
-                subtable.append(self._fmtstr(integ, sig_figs, sci_lims))
+                subtable.append(fstr(integ, None))
 
-                parameter_table.append(subtable)
+                table.append(subtable)
+            tables.append(table)
 
-        else:
-            fstr = lambda p: self._fmtstr(p, sig_figs, sci_lims)
-            for i, (p, integ) in enumerate(
-                zip(self.parameters, self.integrals),
-                start=1,
-            ):
-                subtable = [str(i)]
-                # Amplitude
-                subtable.append(fstr(p[0]))
-                # Phase
-                subtable.append(fstr(p[1] * 180 / np.pi))
-                # Frequencies
-                for j, f in enumerate(p[2 : 2 + self.dim]):
-                    subtable.append(fstr(f))
-                    if self.sfo is not None and self.sfo[j] is not None:
-                        subtable.append(fstr(self._convert_value(f, j, "hz->ppm")))
-                # Damping
-                subtable.extend(
-                    [fstr(x) for x in p[2 + self.dim :]]
-                )
-                # Integral
-                subtable.append(fstr(integ))
-
-                parameter_table.append(subtable)
-
-        return parameter_table
+        return tables
 
     def _make_file_content(
         self,
         fmt: str,
+        titles: Optional[Iterable[str]],
         experiment_info_sig_figs: int,
         parameters_sig_figs: int,
         parameters_sci_lims: Tuple[int, int],
@@ -462,15 +480,22 @@ class ResultWriter(ExpInfo):
             module = pdffile
 
         experiment_info = self._construct_experiment_info(experiment_info_sig_figs)
-        parameter_table = self._construct_parameters(
+        tables = self._construct_parameters(
             parameters_sig_figs,
             parameters_sci_lims,
+        )
+
+        paramtables = '\n\n'.join(
+            [
+                module.titled_table(title, table)
+                for title, table in zip(titles, tables)
+            ]
         )
 
         return (
             f"{module.header()}\n{self.description}\n\n"
             f"{module.experiment_info(experiment_info)}\n\n"
-            f"{module.parameter_table(parameter_table)}\n\n"
+            f"{paramtables}\n\n"
             f"{module.footer()}"
         )
 

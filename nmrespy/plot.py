@@ -3,7 +3,7 @@
 # simon.hulse@chem.ox.ac.uk
 # Last Edited: Thu 24 Mar 2022 14:13:37 GMT
 
-"""Support for plotting estimation results"""
+"""Module for plotting estimation results."""
 
 from pathlib import Path
 import re
@@ -814,7 +814,7 @@ def plot_result(
 
     stylesheet
         The name of/path to a matplotlib stylesheet for further
-        customaisation of the plot. See `<here https://matplotlib.org/\
+        customaisation of the plot. See `here <https://matplotlib.org/\
         stable/tutorials/introductory/customizing.html>`__ for more
         information on stylesheets.
 

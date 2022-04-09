@@ -7,5 +7,5 @@
 
 from ._version import __version__
 from nmrespy.expinfo import ExpInfo
-# from nmrespy.estimators.onedim import Estimator1D
-# from nmrespy.estimators.jres import Estimator2DJ
+from nmrespy.estimators.onedim import Estimator1D
+from nmrespy.estimators.jres import Estimator2DJ

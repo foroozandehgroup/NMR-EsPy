@@ -164,8 +164,8 @@ class NonlinearProgramming(ResultFetcher):
         max_iterations
             A value specifiying the number of iterations the routine may run
             through before it is terminated. If ``None``, the default number
-            of maximum iterations is set (``100`` if ``hessian`` is
-            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"hessian"`` is
+            of maximum iterations is set (``100`` if ``method`` is
+            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
             ``"lbfgs"``).
 
         mode

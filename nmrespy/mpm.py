@@ -3,7 +3,13 @@
 # simon.hulse@chem.ox.ac.uk
 # Last Edited: Thu 31 Mar 2022 12:23:28 BST
 
-"""Computation of signal estimates using the Matrix Pencil Method."""
+"""Computation of NMR parameter estimates using the Matrix Pencil Method.
+
+MWE
+---
+
+.. literalinclude:: examples/mpm_example.py
+"""
 
 import copy
 from typing import Iterable, Union
@@ -60,26 +66,20 @@ class MatrixPencil(ResultFetcher):
 
     def __init__(
         self,
-        data: np.ndarray,
         expinfo: ExpInfo,
+        data: np.ndarray,
         oscillators: int = 0,
         start_point: Union[Iterable[int], None] = None,
         fprint: bool = True,
     ) -> None:
-        """Initialise the class.
-
-        Check validity of inputs, and runs the MPM.
-
+        """
         Parameters
         ----------
+        expinfo
+            Experiment information.
+
         data
             Signal to be considered.
-
-        expinfo
-            Information on the experiment. Used to determine the sweep width,
-            transmitter offset, and (optional) transmitter frequency in MHz.
-            Transmitter offset is optional, however if it set it `None`, no
-            conversion of result frequencies from Hz to ppm will be possible.
 
         oscillators
             The number of oscillators. If ``0``, the number of oscilators will
