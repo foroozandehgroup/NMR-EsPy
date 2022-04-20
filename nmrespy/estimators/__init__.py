@@ -4,15 +4,15 @@
 # Last Edited: Tue 29 Mar 2022 15:37:01 BST
 
 from __future__ import annotations
-from abc import ABCMeta, abstractmethod
+import abc
 import datetime
 import functools
 from pathlib import Path
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
 
-from nmrespy import ExpInfo, sig
+from nmrespy import ExpInfo
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import (
     check_saveable_path,
@@ -21,12 +21,8 @@ from nmrespy._files import (
     open_file,
     save_file,
 )
-from nmrespy._freqconverter import FrequencyConverter
-from nmrespy._misc import copydoc
 from nmrespy._result_fetcher import ResultFetcher
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-from nmrespy.freqfilter import Region
-from nmrespy.plot import NmrespyPlot, plot_result
 
 if USE_COLORAMA:
     import colorama
@@ -42,7 +38,7 @@ def logger(f: callable):
     return inner
 
 
-class Estimator(ExpInfo, metaclass=ABCMeta):
+class Estimator(ExpInfo, metaclass=abc.ABCMeta):
     """Base estimation class."""
 
     def __init__(
@@ -73,10 +69,10 @@ class Estimator(ExpInfo, metaclass=ABCMeta):
             offset=expinfo.offset(),
             sfo=expinfo.sfo,
             nuclei=expinfo.nuclei,
+            default_pts=self._data.shape,
             fn_mode=expinfo.fn_mode,
         )
 
-        self.default_pts = self._data.shape
         self._results = []
         now = datetime.datetime.now().strftime('%d-%m-%y %H:%M:%S')
         self._log = (
@@ -123,18 +119,13 @@ class Estimator(ExpInfo, metaclass=ABCMeta):
         path = configure_path(path, "log")
         save_file(self._log, path, fprint=fprint)
 
-    def converter(self, shape: Optional[Iterable[int]] = None):
-        if shape is None:
-            shape = self._data.shape
-        return FrequencyConverter(self.sfo, self.sw, self.offset, shape)
-
     @classmethod
-    @abstractmethod
+    @abc.abstractmethod
     def new_bruker(*args, **kwargs):
         pass
 
     @classmethod
-    @abstractmethod
+    @abc.abstractmethod
     def new_synthetic_from_simulation(*args, **kwargs):
         pass
 
@@ -176,7 +167,7 @@ class Estimator(ExpInfo, metaclass=ABCMeta):
             ("fprint", fprint, sfuncs.check_bool),
         )
         sanity_check(
-            ("path", path, check_saveable_path, ("pkl", force_overwrite), True),
+            ("path", path, check_saveable_path, ("pkl", force_overwrite), {}, True),
         )
 
         if path is None:
@@ -243,7 +234,7 @@ class Estimator(ExpInfo, metaclass=ABCMeta):
                 f" What was loaded didn't satisfy this!{END}"
             )
 
-    @abstractmethod
+    @abc.abstractmethod
     def estimate(*args, **kwargs):
         pass
 
@@ -258,15 +249,18 @@ class Estimator(ExpInfo, metaclass=ABCMeta):
             The indices of results to return. Index ``0`` corresponds to the first
             result obtained using the estimator, ``1`` corresponds to the next, etc.
             If ``None``, all results will be returned.
-
-        Returns
-        -------
-        List of results selected.
         """
+        if not self._results:
+            return None
+
         sanity_check(
             (
-                "indices", indices, sfuncs.check_ints_less_than_n,
-                (len(self._results),), True,
+                "indices", indices, sfuncs.check_int_list, (),
+                {
+                    "must_be_positive": True,
+                    "max_value": len(self._results) - 1,
+                },
+                True,
             ),
         )
         if indices is None:
@@ -274,76 +268,31 @@ class Estimator(ExpInfo, metaclass=ABCMeta):
         else:
             return [self._results[i] for i in indices]
 
-    @abstractmethod
+    @abc.abstractmethod
     def write_result(*args, **kwargs):
         pass
 
-    @copydoc(plot_result)
-    @abstractmethod
-    def plot_results(*args, **kwargs):
+    @abc.abstractmethod
+    def plot_result(*args, **kwargs):
         pass
 
 
-class Result(ResultFetcher, metaclass=ABCMeta):
+class Result(ResultFetcher):
 
     def __init__(
         self,
-        timestamp: datetime.datetime,
-        signal: np.ndarray,
-        expinfo: ExpInfo,
-        region: Region,
         result: np.ndarray,
         errors: np.ndarray,
+        region: Iterable[Tuple[float, float]],
+        sfo: Iterable[float],
     ) -> None:
-        self.__dict__.update(locals())
-        self.expinfo.default_pts = self.signal.shape
-        super().__init__(self.expinfo)
+        self.result = result
+        self.errors = errors
+        self.region = region
+        super().__init__(sfo)
 
-    @property
-    def osc_number(self) -> int:
-        """Return the number of oscillators in the result."""
-        return self.result.shape[0]
-
-    def get_region(self, unit: str = "hz") -> Iterable[Tuple[float, float]]:
+    def get_region(self, unit: str = "hz"):
         sanity_check(
-            ("unit", unit, sfuncs.check_one_of, ("hz", "ppm"),),
+            ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
         )
         return self.convert(self.region, f"hz->{unit}")
-
-    def make_fid(
-        self,
-        pts: Optional[Iterable[int]] = None,
-        oscillators: Optional[Iterable[int]] = None,
-    ) -> Iterable[np.ndarray]:
-        """Construct a synthetic FID using the estimation result.
-
-        Parameters
-        ----------
-        pts
-            The number of points to construct the FID with in each dimesnion.
-            If ``None``, the number of points used will match the estimated signal.
-
-        oscillators
-            Which oscillators in the result to include. If ``None``, all
-            oscillators will be included. If a list of ints, the subset of
-            oscillators corresponding to these indices will be used.
-
-        Returns
-        -------
-        fid
-            The generated FID.
-        """
-        sanity_check(
-            ("pts", pts, sfuncs.check_points, (self.dim,), True),
-            (
-                "oscillators", oscillators, sfuncs.check_ints_less_than_n,
-                (self.osc_number,), True,
-            ),
-        )
-
-        if pts is None:
-            pts = self.signal.shape
-        if oscillators is None:
-            oscillators = list(range(self.osc_number))
-        params = self.result[oscillators]
-        return sig.make_fid(params, self.expinfo, pts)[0]

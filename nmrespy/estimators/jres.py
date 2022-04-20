@@ -14,8 +14,8 @@ from nmr_sims.nuclei import Nucleus
 from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import ExpInfo, sig
-from nmrespy.estimators import Estimator, Result
-from nmrespy.freqfilter import Filter, Region
+from nmrespy.estimators import Estimator
+from nmrespy.freqfilter import Filter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
 from nmrespy._sanity import (

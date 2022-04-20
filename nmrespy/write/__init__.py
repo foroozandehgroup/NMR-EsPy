@@ -174,25 +174,28 @@ class ResultWriter(ExpInfo):
             expinfo.fn_mode,
         )
 
-        sanity_check(
-            (
-                "params", params, sfuncs.check_ndarray_list, (),
-                {
-                    "dim": 2,
-                    "shape": [(1, 2 * (self.dim + 1))],
-                },
-            )
-        )
-        sanity_check(
-            (
-                "errors", errors, sfuncs.check_ndarray_list, (),
-                {
-                    "dim": 2,
-                    "shape": [(i, s) for i, s in enumerate(params[0].shape)],
-                },
-                True,
-            )
-        )
+        # sanity_check(
+        #     (
+        #         "params", params, sfuncs.check_ndarray_list, (),
+        #         {
+        #             "dim": 2,
+        #             "shapes": len(params) * [(1, 2 * (self.dim + 1))],
+        #         },
+        #     )
+        # )
+        # sanity_check(
+        #     (
+        #         "errors", errors, sfuncs.check_ndarray_list, (),
+        #         {
+        #             "dim": 2,
+        #             "shapes": [
+        #                 [(i, s) for i, s in enumerate(p.shape)]
+        #                 for p in params
+        #             ]
+        #         },
+        #         True,
+        #     )
+        # )
 
         def makeiter(obj):
             return (obj,) if isinstance(obj, np.ndarray) else obj

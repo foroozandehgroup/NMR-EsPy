@@ -212,15 +212,17 @@ def check_ndarray(
 def check_ndarray_list(
     obj: Any,
     dim: Optional[int] = None,
-    shape: Optional[Iterable[Tuple[int, int]]] = None,
+    shapes: Optional[Iterable[Iterable[Tuple[int, int]]]] = None,
 ) -> Optional[str]:
     if isiter(obj):
-        for i, item in enumerate(obj):
+        for i, (item, shape) in enumerate(zip(obj, shapes)):
             outcome = check_ndarray(item, dim, shape)
             if isinstance(outcome, str):
                 return f"Issue with element {i}: {outcome}"
-    elif isinstance(check_ndarray(obj, dim, shape), str):
-        return "Should be an iterable of numpy arrays."
+        return
+    check_for_array = check_ndarray(obj, dim, shapes[0])
+    if isinstance(check_for_array, str):
+        return check_for_array
 
 
 def check_expinfo(obj: Any, dim: Optional[int] = None) -> Optional[str]:

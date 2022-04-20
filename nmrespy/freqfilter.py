@@ -141,27 +141,34 @@ class Filter(ExpInfo):
         )
 
         ve = sig.make_virtual_echo(self._fid, twodim_dtype)
+        # Need to set default points before using the frequency converter
+        # to convert to array indices
         self.default_pts = ve.shape
 
-        def process_region(reg):
-            if expinfo.dim == 1 and len(reg) == 2:
-                reg = [reg]
-            return tuple(
-                [tuple(sorted(r)) if r is not None else None
-                 for r in self.convert(reg, f"{region_unit}->idx")]
-            )
+        self._region = self._process_region(region, region_unit)
+        self._noise_region = self._process_region(noise_region, region_unit)
+        self._spectrum = sig.ft(ve, axes=self.axes)
 
-        self._region = process_region(region)
-        self._noise_region = process_region(noise_region)
-
-        self._axes = list(
+    @property
+    def axes(self):
+        return list(
             filter(
                 lambda x: x is not None,
                 [i if r is not None else None for i, r in enumerate(self._region)],
             )
         )
 
-        self._spectrum = sig.ft(ve, axes=self._axes)
+    def _process_region(
+        self,
+        region: Union[Iterable[Optional[Tuple[float, float]]], Tuple[float, float]],
+        region_unit: str,
+    ) -> Iterable[Tuple[int, int]]:
+        if self.dim == 1 and len(region) == 2:
+            region = [region]
+        return tuple(
+            [tuple(sorted(r)) if r is not None else None
+             for r in self.convert(region, f"{region_unit}->idx")]
+        )
 
     @property
     def spectrum(self) -> np.ndarray:
@@ -466,14 +473,14 @@ class Filter(ExpInfo):
         second half of the virtual echo obtained from the IFT of a real spectrum.
         """
         fid_slice = []
-        factor = 2 ** (len(self._axes) - 1)
+        factor = 2 ** (len(self.axes) - 1)
         fid_slice = tuple(
-            [slice(0, filtered_spectrum.shape[i] // 2) if i in self._axes
+            [slice(0, filtered_spectrum.shape[i] // 2) if i in self.axes
              else slice(0, filtered_spectrum.shape[i])
              for i in range(self.dim)]
         )
 
-        return factor * sig.ift(filtered_spectrum, axes=self._axes)[fid_slice]
+        return factor * sig.ift(filtered_spectrum, axes=self.axes)[fid_slice]
 
     # ================
     # Commented stuff below is related to baseline fixing.

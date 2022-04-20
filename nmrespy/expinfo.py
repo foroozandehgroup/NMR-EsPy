@@ -66,7 +66,6 @@ class ExpInfo(FrequencyConverter):
         kwargs
             Any extra parameters to be included
         """
-        print(locals())
         sanity_check(("dim", dim, sfuncs.check_int, (), {"min_value": 1}))
         self._dim = dim
         sanity_check(

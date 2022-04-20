@@ -46,7 +46,7 @@ class ResultFetcher(FrequencyConverter):
         self,
         funit: str = "hz",
         sort_by: str = "f-1",
-    ):
+    ) -> np.ndarray:
         """Returns the estimation result
 
         Parameters
@@ -73,7 +73,7 @@ class ResultFetcher(FrequencyConverter):
         self,
         funit: str = "hz",
         sort_by: str = "f-1",
-    ):
+    ) -> np.ndarray:
         """Returns the errors of the estimation result.
 
         Parameters
@@ -122,7 +122,6 @@ class ResultFetcher(FrequencyConverter):
 
     @staticmethod
     def _process_sort_by(sort_by: str, ndim: int) -> int:
-        print(sort_by)
         if sort_by == "a":
             return 0
         elif sort_by == "p":

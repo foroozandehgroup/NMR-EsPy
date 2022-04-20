@@ -32,9 +32,9 @@ class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
         sw, offset, sfo, nuclei = [[] for _ in range(4)]
         for f in acqusfiles:
             params = self.get_parameters(filenames=f)[f]
-            sw.append(params["SW_h"])
-            offset.append(params["O1"])
-            sfo.append(params["SFO1"])
+            sw.append(float(params["SW_h"]))
+            offset.append(float(params["O1"]))
+            sfo.append(float(params["SFO1"]))
             nuclei.append(re.match("^<(.+?)>$", params["NUC1"]).group(1))
 
         return ExpInfo(

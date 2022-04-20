@@ -56,7 +56,7 @@ def basic_estimator(dim: int = 1, with_sfo: bool = True) -> Estimator1D:
     # return Estimator.new_synthetic_from_parameters(params, expinfo, pts, snr=25.0)
 
 
-def test_simulated():
+def test_synthetic_from_simulation():
     from nmr_sims.spin_system import SpinSystem
 
     system = SpinSystem(
@@ -83,7 +83,7 @@ def test_simulated():
         }
     )
 
-    e = Estimator1D.new_synthetic_from_simulation(
+    estimator = Estimator1D.new_synthetic_from_simulation(
         system,
         2.,    # sw
         4.,    # offset
@@ -91,15 +91,62 @@ def test_simulated():
         freq_unit="ppm",
     )
 
-    e.estimate([4.59, 4.41], [4.2, 4.15], region_unit="ppm")
-    e.estimate([3.97, 3.87], [4.2, 4.15], region_unit="ppm")
-    e.write_result(path="helloooo", fmt="pdf", description="Hello there")
-    e.view_log
-    exit()
-    print(e._results[0].get_result(funit="ppm"))
-    e.write_results(force_overwrite=True)
-    p = e.plot_results()
-    p[0].fig.savefig("hello.pdf")
+    # estimator.view_data(freq_unit="ppm")
+    estimator.estimate([4.59, 4.41], [4.2, 4.15], region_unit="ppm")
+    estimator.estimate([3.97, 3.87], [4.2, 4.15], region_unit="ppm")
+    # estimator.view_log
+    # estimator.save_log("/tmp/logfile", force_overwrite=True)
+    # estimator.write_result(force_overwrite=True)
+    # estimator.write_result(fmt="pdf", force_overwrite=True)
+    plot = estimator.plot_result()[1]
+    plot.save("testing", fmt="blah", dpi=600)
+    plot.displace_labels([1, 3], (-0.02, 0.0))
+    plot.save("testing2", fmt="png", dpi=600)
+
+
+def test_bruker():
+    path = "~/Documents/DPhil/papers/newton_meets_ockham/code/andrographolide/1/pdata/1"
+    estimator = Estimator1D.new_bruker(path)
+    estimator.view_data(freq_unit="ppm")
+    regions = (
+        (6.7, 6.55),
+        (2.39, 2.26),
+        (1.43, 1.28),
+    )
+    noise_region = (-0.15, -0.3)
+    for region in regions:
+        estimator.estimate(region, noise_region, region_unit="ppm", phase_variance=True)
+
+    estimator.write_result()
+    plots = estimator.plot_result()
+    for i, plot in enumerate(plots):
+        plot.save(f"plot{i}", fmt="pdf")
+
+
+def test_synthetic_from_parameters():
+    pass
+    # params = np.array(
+    #     [
+    #         [1, 0, 250, 2],
+    #         [2, 0, 240, 2],
+    #         [1, 0, 230, 2],
+    #         [2, 0, -300, 2],
+    #         [2, 0, -315, 2],
+
+    #     ]
+    # )
+    # pts = 8192
+    # sw = 1000.
+    # sfo = 500.
+    # estimator = Estimator1D.new_synthetic_from_parameters(
+    #     params, pts, sw, sfo=sfo,
+    # )
+
+    # estimator.estimate([270., 210.], [25., -25.])
+    # estimator.estimate([-280., -335.], [25., -25.])
+
+    # print(estimator._results)
+
 
 # class TestPickle:
 #     def test_default(self):

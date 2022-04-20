@@ -54,7 +54,7 @@ def sanity_check(*param_sets: Iterable[Iterable[Any]]) -> None:
 
     Raises
     ------
-    TypeError
+    ValueError
         If an argument does not pass it's sanity check.
     """
     funcname = get_name(inspect.currentframe())
@@ -66,7 +66,7 @@ def sanity_check(*param_sets: Iterable[Iterable[Any]]) -> None:
                 f"`{check_item.name}` is invalid:\n"
                 f"{check_item.msg}{END}."
             )
-            raise TypeError(errmsg)
+            raise ValueError(errmsg)
 
 
 def get_name(frame: inspect.types.FrameType) -> Optional[str]:

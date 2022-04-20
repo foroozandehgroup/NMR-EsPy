@@ -24,7 +24,7 @@ def append_suffix(path: Path, suffix: Optional[str]) -> Path:
 
 
 def configure_path(path: Union[str, Path], suffix: str) -> Path:
-    return append_suffix(Path(path).resolve(), suffix)
+    return append_suffix(Path(path).expanduser(), suffix)
 
 
 def save_file(content: Any, path: Path, binary: bool = False, fprint: bool = True):
@@ -82,7 +82,7 @@ def check_existent_path(obj: Any, suffix: Optional[str] = None) -> Optional[str]
 
 def check_existent_dir(obj: Any) -> Optional[str]:
     if isinstance(obj, (Path, str)):
-        path = Path(obj).resolve()
+        path = Path(obj).expanduser()
     else:
         return "Should be a pathlib.Path object or a str specifying a path."
 

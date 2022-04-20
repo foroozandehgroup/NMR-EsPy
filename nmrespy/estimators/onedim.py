@@ -4,14 +4,12 @@
 # Last Edited: Fri 25 Mar 2022 10:37:48 GMT
 
 from __future__ import annotations
-import datetime
+import copy
 from pathlib import Path
-import re
-import tempfile
 from typing import Any, Iterable, Optional, Tuple, Union
-import uuid
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from nmr_sims.experiments.pa import PulseAcquireSimulation
 from nmr_sims.nuclei import Nucleus
@@ -19,14 +17,10 @@ from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._errors import TwoDimUnsupportedError
 from nmrespy._files import (
     check_existent_dir,
     check_saveable_path,
-    configure_path,
-    save_file,
 )
-from nmrespy._misc import copydoc
 
 from nmrespy._sanity import (
     sanity_check,
@@ -36,10 +30,7 @@ from nmrespy.freqfilter import Filter
 from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
-from nmrespy.plot import (
-    NmrespyPlot,
-    plot_result,
-)
+from nmrespy.plot import ResultPlotter
 from nmrespy.write import ResultWriter
 
 from . import logger, Estimator, Result
@@ -51,7 +42,18 @@ if USE_COLORAMA:
 
 
 class Estimator1D(Estimator):
-    """Estimator class for 1D data."""
+    """Estimator class for 1D data.
+
+    .. note::
+
+        To create an instance of ``Estimator1D``, you should use one of the following
+        methods:
+
+        * :py:meth:`new_bruker`
+        * :py:meth:`new_synthetic_from_parameters`
+        * :py:meth:`new_synthetic_from_simulation`
+        * :py:meth:`from_pickle`
+    """
 
     def __init__(
         self,
@@ -74,33 +76,74 @@ class Estimator1D(Estimator):
         super().__init__(data, expinfo, datapath)
 
     @classmethod
-    @copydoc(Estimator.new_bruker)
     def new_bruker(
         cls,
         directory: Union[str, Path],
         ask_convdta: bool = True,
     ) -> Estimator1D:
+        """Create a new instance from Bruker-formatted data.
+
+        Parameters
+        ----------
+        directory
+            Absolute path to data directory.
+
+        ask_convdta
+            If ``True``, the user will be warned that the data should have its
+            digitial filter removed prior to importing if the data to be impoprted
+            is from an ``fid`` or ``ser`` file. If ``False``, the user is not
+            warned.
+
+        Notes
+        -----
+        **Directory Requirements**
+
+        There are certain file paths expected to be found relative to ``directory``
+        which contain the data and parameter files. Here is an extensive list of
+        the paths expected to exist, for different data types:
+
+        * Raw FID
+
+          + ``directory/fid``
+          + ``directory/acqus``
+
+        * Processed data
+
+          + ``directory/1r``
+          + ``directory/../../acqus``
+          + ``directory/procs``
+
+        **Digital Filters**
+
+        If you are importing raw FID data, make sure the path specified
+        corresponds to an ``fid`` file which has had its group delay artefact
+        removed. To do this, open the data you wish to analyse in TopSpin, and
+        enter ``convdta`` in the bottom-left command line. You will be prompted
+        to enter a value for the new data directory. It is this value you
+        should use in ``directory``, not the one corresponding to the original
+        (uncorrected) signal.
+        """
         sanity_check(
             ("directory", directory, check_existent_dir),
             ("ask_convdta", ask_convdta, sfuncs.check_bool),
         )
 
-        directory = Path(directory).resolve()
+        directory = Path(directory).expanduser()
         data, expinfo = load_bruker(directory, ask_convdta=ask_convdta)
 
-        if expinfo.dim != 1:
+        if data.ndim != 1:
             raise ValueError(f"{RED}Data dimension should be 1.{END}")
 
         if directory.parent.name == "pdata":
-            shape = tuple([slice(0, x // 2) for x in data.shape])
-            data = (2 * data.ndim * sig.ift(data))[shape]
+            slice_ = slice(0, data.shape[0] // 2)
+            data = (2 * sig.ift(data))[slice_]
 
         return cls(data, expinfo, directory)
 
     @classmethod
     def new_synthetic_from_parameters(
         cls,
-        parameters: np.ndarray,
+        params: np.ndarray,
         pts: int,
         sw: float,
         offset: float = 0.0,
@@ -111,12 +154,12 @@ class Estimator1D(Estimator):
 
         Parameters
         ----------
-        parameters
+        params
             Parameter array with the following structure:
 
               .. code:: python
 
-                 parameters = numpy.array([
+                 params = numpy.array([
                     [a_1, φ_1, f_1, η_1],
                     [a_2, φ_2, f_2, η_2],
                     ...,
@@ -140,22 +183,30 @@ class Estimator1D(Estimator):
             to the FID.
         """
         sanity_check(
-            ("parameters", parameters, sfuncs.check_parameter_array, (expinfo.dim,)),
-            ("pts", pts, sfuncs.check_positive_int),
-            ("snr", snr, sfuncs.check_positive_float, (), True),
+            ("params", params, sfuncs.check_ndarray, (), {"dim": 2, "shape": [(1, 4)]}),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
+            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("offset", offset, sfuncs.check_float, (), {}, True),
+            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
 
-        if expinfo.dim != 1:
-            raise ValueError(f"{RED}Should be specifying as 1D signal.{END}")
+        expinfo = ExpInfo(
+            dim=1,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            default_pts=pts,
+        )
 
-        data = sig.make_fid(parameters, expinfo, [pts], snr=snr)[0]
+        data = expinfo.make_fid(params, snr=snr)
         return cls(data, expinfo)
 
     @classmethod
     def new_synthetic_from_simulation(
         cls,
         spin_system: SpinSystem,
-        sweep_width: float,
+        sw: float,
         offset: float,
         pts: int,
         freq_unit: str = "hz",
@@ -180,17 +231,17 @@ class Estimator1D(Estimator):
             for more details. **N.B. the transmitter frequency (sfo) will
             be determined by** ``spin_system.field``.
 
-        sweep_width
-            The sweep width.
+        sw
+            The sweep width in Hz.
 
         offset
-            The transmitter offset frequency.
+            The transmitter offset frequency in Hz.
 
         pts
             The number of points sampled.
 
         freq_unit
-            The unit that ``sweep_width`` and ``offset`` are expressed in. Should
+            The unit that ``sw`` and ``offset`` are expressed in. Should
             be either ``"hz"`` or ``"ppm"``.
 
         channel
@@ -204,17 +255,18 @@ class Estimator1D(Estimator):
         """
         sanity_check(
             ("spin_system", spin_system, sfuncs.check_spin_system),
-            ("sweep_width", sweep_width, sfuncs.check_positive_float),
+            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float),
             ("pts", pts, sfuncs.check_positive_int),
             ("freq_unit", freq_unit, sfuncs.check_one_of, ("hz", "ppm")),
             ("channel", channel, sfuncs.check_nmrsims_nucleus),
             ("snr", snr, sfuncs.check_float, (), {}, True),
         )
-        sweep_width = f"{sweep_width}{freq_unit}"
+
+        sw = f"{sw}{freq_unit}"
         offset = f"{offset}{freq_unit}"
         sim = PulseAcquireSimulation(
-            spin_system, pts, sweep_width, offset=offset, channel=channel,
+            spin_system, pts, sw, offset=offset, channel=channel,
         )
         sim.simulate()
         _, data = sim.fid
@@ -235,7 +287,8 @@ class Estimator1D(Estimator):
     def view_data(
         self,
         domain: str = "freq",
-        components = "real",
+        components: str = "real",
+        freq_unit: str = "hz",
     ) -> None:
         """View the data.
 
@@ -246,13 +299,38 @@ class Estimator1D(Estimator):
 
         components
             Must be ``"real"``, ``"imag"``, or ``"both"``.
+
+        freq_unit
+            Must be ``"hz"`` or ``"ppm"``.
         """
         sanity_check(
             ("domain", domain, sfuncs.check_one_of, ("freq", "time")),
             ("components", components, sfuncs.check_one_of, ("real", "imag", "both")),
+            ("freq_unit", freq_unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
         )
 
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        y = copy.deepcopy(self._data)
 
+        if domain == "freq":
+            x = self.get_shifts(unit=freq_unit)[0]
+            y[0] /= 2
+            y = sig.ft(y)
+            label = f"$\\omega$ ({freq_unit.replace('h', 'H')})"
+        elif domain == "time":
+            x = self.get_timepoints()[0]
+            label = "$t$ (s)"
+
+        if components in ["real", "both"]:
+            ax.plot(x, y.real, color="k")
+        if components in ["imag", "both"]:
+            ax.plot(x, y.imag, color="#808080")
+
+        ax.set_xlabel(label)
+        ax.set_xlim((x[0], x[-1]))
+
+        plt.show()
 
     @logger
     def estimate(
@@ -358,11 +436,9 @@ class Estimator1D(Estimator):
             ),
         )
 
-        timestamp = datetime.datetime.now()
-
         # The plan of action:
         # --> Derive filtered signals (both cut and uncut)
-        # --> Run the MDL followed by MPM for an initial guess
+        # --> Run the MDL followed by MPM for an initial guess on cut signal
         # --> Run Optimiser on cut signal
         # --> Run Optimiser on uncut signal
 
@@ -397,12 +473,12 @@ class Estimator1D(Estimator):
         )
 
         self._results.append(
-            {
-                "timestamp": timestamp,
-                "region": region,
-                "result": final_result.get_result(),
-                "errors": final_result.get_errors(),
-            }
+            Result(
+                final_result.get_result(),
+                final_result.get_errors(),
+                region,
+                self.sfo,
+            )
         )
 
     @logger
@@ -484,25 +560,18 @@ class Estimator1D(Estimator):
         results = [self._results[i] for i in indices]
         writer = ResultWriter(
             expinfo,
-            [result["result"] for result in results],
-            [result["errors"] for result in results],
+            [result.get_result() for result in results],
+            [result.get_errors() for result in results],
             description,
         )
-        region_unit = "ppm" if self.hz_ppm_valid else "hz"
-        print([
-            self.convert(result["region"], f"hz->{region_unit}")
-            for result in results
-        ])
-
         region_unit = "ppm" if self.hz_ppm_valid else "hz"
         titles = [
             f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
             for left, right in [
-                self.convert(result["region"], f"hz->{region_unit}")[0]
+                result.get_region(region_unit)[0]
                 for result in results
             ]
         ]
-        print(titles)
 
         writer.write(
             path=path,
@@ -514,69 +583,8 @@ class Estimator1D(Estimator):
             fprint=fprint,
         )
 
-    @staticmethod
-    def _process_txt(
-        contents: Iterable[Tuple[str, Iterable[Tuple[float, float]]]]
-    ) -> str:
-        n = len(contents)
-        fulltxt = ""
-        for i, (txt, region) in enumerate(contents):
-            table_start = re.search("Osc. │", txt).span()[0]
-            table_end = re.search("\n\n\nEstimation performed", txt).span()[0]
-
-            # Add title
-            if i == 0:
-                fulltxt += txt[:table_start]
-
-            region_list = ", ".join(
-                [f"{r[1]:.4f} - {r[0]:.4f} ppm (F{i})"
-                 for i, r in enumerate(region, start=1)]
-            )
-            if len(region) == 1:
-                region_list = region_list[:-5]
-
-            fulltxt += f"{region_list}:\n"
-            fulltxt += f"{txt[table_start : table_end]}\n\n"
-
-            # Add blurb
-            if i == n - 1:
-                fulltxt += txt[table_end + 2:]
-
-        return fulltxt
-
-    @staticmethod
-    def _process_pdf(
-        contents: Iterable[Tuple[str, Iterable[Tuple[float, float]]]]
-    ) -> str:
-        n = len(contents)
-        fulltxt = ""
-        for i, (txt, region) in enumerate(contents):
-            table_start = re.search(
-                r"\\begin\{longtable\}\[l\]\{c c c c", txt
-            ).span()[0]
-            table_end = re.search("\n\n\n\n% blurb", txt).span()[0]
-
-            # Add title
-            if i == 0:
-                fulltxt += txt[:table_start - 21]
-
-            region_list = ", ".join(
-                [f"{r[0]} -- {r[1]} ppm (F{i})" for i, r in enumerate(region, start=1)]
-            )
-            if len(region) == 1:
-                region_list = region_list.replace(" (F1)", "")
-
-            fulltxt += f"\\subsection*{{{region_list}}}\n"
-            fulltxt += f"{txt[table_start : table_end]}\n\n"
-
-            # Add blurb
-            if i == n - 1:
-                fulltxt += txt[table_end + 4:]
-
-        return fulltxt
-
-    @copydoc(Estimator.plot_results)
-    def plot_results(
+    @logger
+    def plot_result(
         self,
         indices: Optional[Iterable[int]] = None,
         *,
@@ -591,35 +599,142 @@ class Estimator1D(Estimator):
         oscillator_colors: Optional[Any] = None,
         show_labels: bool = False,
         stylesheet: Optional[Union[str, Path]] = None,
-    ) -> Iterable[NmrespyPlot]:
+    ) -> Iterable[ResultPlotter]:
+        """Write estimation results to text and PDF files.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        plot_model
+            If ``True``, plot the model generated using ``result``. This model is
+            a summation of all oscillator present in the result.
+
+        plot_residual
+            If ``True``, plot the difference between the data and the model
+            generated using ``result``.
+
+        residual_shift
+            Specifies a translation of the residual plot along the y-axis. If
+            ``None``, a default shift will be applied.
+
+        model_shift
+            Specifies a translation of the residual plot along the y-axis. If
+            ``None``, a default shift will be applied.
+
+        shifts_unit
+            Units to display chemical shifts in. Must be either ``'ppm'`` or
+            ``'hz'``.
+
+        data_color
+            The colour used to plot the data. Any value that is recognised by
+            matplotlib as a color is permitted. See `here
+            <https://matplotlib.org/stable/tutorials/colors/colors.html>`_ for
+            a full description of valid values.
+
+        residual_color
+            The colour used to plot the residual. See ``data_color`` for a
+            description of valid colors.
+
+        model_color
+            The colour used to plot the model. See ``data_color`` for a
+            description of valid colors.
+
+        oscillator_colors
+            Describes how to color individual oscillators. The following
+            is a complete list of options:
+
+            * If a valid matplotlib color is given, all oscillators will
+              be given this color.
+            * If a string corresponding to a matplotlib colormap is given,
+              the oscillators will be consecutively shaded by linear increments
+              of this colormap. For all valid colormaps, see
+              `here <https://matplotlib.org/stable/tutorials/colors/\
+              colormaps.html>`__
+            * If an iterable object containing valid matplotlib colors is
+              given, these colors will be cycled.
+              For example, if ``oscillator_colors = ['r', 'g', 'b']``:
+
+              + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
+              + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
+              + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
+
+            * If ``None``, the default colouring method will be applied, which
+              involves cycling through the following colors:
+
+                - :oscblue:`#1063E0`
+                - :oscorange:`#EB9310`
+                - :oscgreen:`#2BB539`
+                - :oscred:`#D4200C`
+
+        show_labels
+            If ``True``, each oscillator will be given a numerical label
+            in the plot, if ``False``, the labels will be hidden.
+
+        stylesheet
+            The name of/path to a matplotlib stylesheet for further
+            customaisation of the plot. See `here <https://matplotlib.org/\
+            stable/tutorials/introductory/customizing.html>`__ for more
+            information on stylesheets.
+        """
         sanity_check(
-            ("indices", indices, sfuncs.check_ints_less_than_n, (), True),
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {
+                    "must_be_positive": True,
+                    "max_value": len(self._results) - 1,
+                },
+                True,
+            ),
             ("plot_residual", plot_residual, sfuncs.check_bool),
             ("plot_model", plot_model, sfuncs.check_bool),
-            ("residual_shift", residual_shift, sfuncs.check_float, (), True),
-            ("model_shift", model_shift, sfuncs.check_float, (), True),
-            ("shifts_unit", shifts_unit, sfuncs.check_frequency_unit),
+            ("residual_shift", residual_shift, sfuncs.check_float, (), {}, True),
+            ("model_shift", model_shift, sfuncs.check_float, (), {}, True),
+            (
+                "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
+                (self.hz_ppm_valid,),
+            ),
             ("data_color", data_color, sfuncs.check_mpl_color),
             ("residual_color", residual_color, sfuncs.check_mpl_color),
             ("model_color", model_color, sfuncs.check_mpl_color),
             (
                 "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
-                (), True,
+                (), {}, True,
             ),
             ("show_labels", show_labels, sfuncs.check_bool),
-            ("stylesheet", stylesheet, sfuncs.check_str, (), True),
+            ("stylesheet", stylesheet, sfuncs.check_str, (), {}, True),
         )
         results = self.get_results(indices)
 
-        if self.dim == 2:
-            raise TwoDimUnsupportedError()
+        expinfo = ExpInfo(
+            1,
+            sw=self.sw(),
+            offset=self.offset(),
+            sfo=self.sfo,
+            nuclei=self.nuclei,
+            default_pts=self.default_pts,
+        )
+
         return [
-            plot_result(
+            ResultPlotter(
                 self._data,
                 result.get_result(funit="hz"),
-                self._expinfo,
+                expinfo,
                 region=result.get_region(unit=shifts_unit),
                 shifts_unit=shifts_unit,
+                plot_residual=plot_residual,
+                plot_model=plot_model,
+                residual_shift=residual_shift,
+                model_shift=model_shift,
+                data_color=data_color,
+                residual_color=residual_color,
+                model_color=model_color,
+                oscillator_colors=oscillator_colors,
+                show_labels=show_labels,
+                stylesheet=stylesheet,
             )
             for result in results
         ]

@@ -99,7 +99,7 @@ def texify(entry: str) -> str:
         return "$\\phi$ ($^{\\circ}$)"
 
     # Frequency and damping factor labels: f₁, η₂ etc.
-    search_freq_damp = re.search(r"(f|η)(₁|₂|₃)?", entry)
+    search_freq_damp = re.search(r"^(f|η)(₁|₂|₃)?", entry)
     if search_freq_damp:
         entry = u''.join(
             dict(
