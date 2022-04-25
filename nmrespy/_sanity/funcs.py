@@ -63,6 +63,18 @@ def check_int(
         return f"Should be less than or equal to {max_value}."
 
 
+def check_index(obj: Any, length: int) -> Optional[str]:
+    intcheck = check_int(obj)
+    if isinstance(intcheck, str):
+        return intcheck
+    l = length * [0]
+    try:
+        l[obj]
+        return
+    except IndexError:
+        return f"Invalid index {obj} for Estimator with {length} saved results."
+
+
 def check_float_list(
     obj: Any,
     length: Optional[int] = None,
@@ -95,6 +107,7 @@ def check_int_list(
     length: Optional[int] = None,
     len_one_can_be_listless: bool = False,
     must_be_positive: bool = False,
+    min_value: Optional[int] = None,
     max_value: Optional[int] = None,
     allow_none: bool = False,
 ) -> Optional[str]:
@@ -118,6 +131,11 @@ def check_int_list(
         not all([x <= max_value for x in filter(lambda y: y is not None, obj)])
     ):
         return f"All elements must be less than or equal to {max_value}."
+    if (
+        isint(min_value) and
+        not all([x >= min_value for x in filter(lambda y: y is not None, obj)])
+    ):
+        return f"All elements must be greater than or equal to {min_value}."
     if not any([isint(x) for x in obj]):
         return "At least one element must be an int, all Nones not allowed."
 

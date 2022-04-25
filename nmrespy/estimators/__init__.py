@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 29 Mar 2022 15:37:01 BST
+# Last Edited: Mon 25 Apr 2022 15:04:32 BST
 
 from __future__ import annotations
 import abc
@@ -33,6 +33,11 @@ def logger(f: callable):
     @functools.wraps(f)
     def inner(*args, **kwargs):
         class_instance = args[0]
+        if "_log" in kwargs:
+            if not kwargs["_log"]:
+                return f(*args, **kwargs)
+            else:
+                del kwargs["_log"]
         class_instance._log += f"--> `{f.__name__}` {args[1:]} {kwargs}\n"
         return f(*args, **kwargs)
     return inner
@@ -284,11 +289,13 @@ class Result(ResultFetcher):
         result: np.ndarray,
         errors: np.ndarray,
         region: Iterable[Tuple[float, float]],
+        noise_region: Iterable[Tuple[float, float]],
         sfo: Iterable[float],
     ) -> None:
         self.result = result
         self.errors = errors
         self.region = region
+        self.noise_region = noise_region
         super().__init__(sfo)
 
     def get_region(self, unit: str = "hz"):
@@ -296,3 +303,9 @@ class Result(ResultFetcher):
             ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
         )
         return self.convert(self.region, f"hz->{unit}")
+
+    def get_noise_region(self, unit: str = "hz"):
+        sanity_check(
+            ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
+        )
+        return self.convert(self.noise_region, f"hz->{unit}")
