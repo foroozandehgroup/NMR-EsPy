@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 25 Apr 2022 15:04:46 BST
+# Last Edited: Mon 25 Apr 2022 23:28:50 BST
 
 from __future__ import annotations
 import copy
@@ -831,6 +831,7 @@ class Estimator1D(Estimator):
         unit: str = "hz",
         split_number: int = 2,
         amp_ratio: Optional[Iterable[float]] = None,
+        **estimate_kwargs,
     ) -> None:
         """Splits an oscillator in an estimation result into multiple oscillators.
 
@@ -929,7 +930,91 @@ class Estimator1D(Estimator):
         x0 = np.delete(x0, oscillator, axis=0)
         x0 = np.vstack((x0, new_oscs))
 
+        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
+
+    @logger
+    def add_oscillators(
+        self,
+        params: np.ndarray,
+        index: int = -1,
+        **estimate_kwargs,
+    ) -> None:
+        """Add oscillators to an estimation result.
+
+        Optimisation is carried out afterwards, on the updated set of oscillators.
+
+        Parameters
+        ----------
+        params
+            The parameters of new oscillators to be added. Should be of shape
+            ``(n, 4)``, where ``n`` is the number of new oscillators to add. Even
+            when one oscillator is being added this should be a 2D array, i.e.:
+
+            .. code:: python3
+
+                params = oscillators = np.array([[a, φ, f, η]])
+
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. By default, the most recently obtained result will be
+            edited.
+
+        estimate_kwargs
+            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
+            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
+            will be ignored if given.
+        """
+        sanity_check(
+            (
+                "params", params, sfuncs.check_ndarray, (),
+                {"dim": 2, "shape": ((1, 4),)},
+            ),
+            ("index", index, sfuncs.check_index, (len(self._results),)),
+        )
+        result = self._results[index]
+        x0 = result.get_result()
+        x0 = np.vstack((x0, params))
         self._optimise_after_edit(x0, result, index)
+
+    @logger
+    def remove_oscillators(
+        self,
+        oscillators: Iterable[int],
+        index: int = -1,
+        **estimate_kwargs,
+    ) -> None:
+        """Remove oscillators from an estimation result.
+
+        Optimisation is carried out afterwards, on the updated set of oscillators.
+
+        Parameters
+        ----------
+        oscillators
+            A list of indices corresponding to the oscillators to be removed.
+
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. By default, the most recently obtained result will be
+            edited.
+
+        estimate_kwargs
+            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
+            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
+            will be ignored if given.
+        """
+        sanity_check(("index", index, sfuncs.check_index, (len(self._results),)))
+        result = self._results[index]
+        x0 = result.get_result()
+        sanity_check(
+            (
+                "oscillators", oscillators, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": x0.shape[0] - 1},
+            ),
+        )
+        x0 = np.delete(x0, oscillators, axis=0)
+        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
 
     def _optimise_after_edit(
         self,
@@ -941,6 +1026,9 @@ class Estimator1D(Estimator):
         for key in estimate_kwargs.keys():
             if key in ("region_unit", "initial_guess", "fprint"):
                 del estimate_kwargs[key]
+
+        if getattr(estimate_kwargs, "fprint", None) is None:
+            estimate_kwargs["fprint"] = False
 
         self.estimate(
             result.get_region(),
