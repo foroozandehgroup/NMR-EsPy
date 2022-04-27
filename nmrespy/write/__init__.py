@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Apr 2022 11:33:30 BST
+# Last Edited: Wed 27 Apr 2022 15:49:48 BST
 
 r"""Module for the creation of text and PDF files of estimation results.
 

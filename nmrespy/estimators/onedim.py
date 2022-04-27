@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 25 Apr 2022 23:28:50 BST
+# Last Edited: Wed 27 Apr 2022 15:48:45 BST
 
 from __future__ import annotations
 import copy
@@ -284,6 +284,32 @@ class Estimator1D(Estimator):
 
         return cls(data, expinfo)
 
+    def phase_data(
+        self,
+        p0: float = 0.0,
+        p1: float = 0.0,
+        pivot: int = 0,
+    ) -> None:
+        """Apply first-order phae correction to the estimator's data.
+
+        Parameters
+        ----------
+        p0
+            Zero-order phase correction, in radians.
+
+        p1
+            First-order phase correction, in radians.
+
+        pivot
+            Index of the pivot.
+        """
+        sanity_check(
+            ("p0", p0, sfuncs.check_float),
+            ("p1", p1, sfuncs.check_float),
+            ("pivot", pivot, sfuncs.check_index, (self._data.size,)),
+        )
+        self._data = sig.phase(self._data, [p0], [p1], [pivot])
+
     def view_data(
         self,
         domain: str = "freq",
@@ -340,8 +366,11 @@ class Estimator1D(Estimator):
         region_unit: str = "hz",
         initial_guess: Optional[Union[np.ndarray, int]] = None,
         method: str = "gauss-newton",
-        phase_variance: bool = False,
+        phase_variance: bool = True,
         max_iterations: Optional[int] = None,
+        cut_ratio: Optional[float] = 1.1,
+        mpm_trim: Optional[int] = 4096,
+        nlp_trim: Optional[int] = None,
         fprint: bool = True,
         _log: bool = True,
     ) -> None:
@@ -410,6 +439,19 @@ class Estimator1D(Estimator):
             ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
             ``"lbfgs"``).
 
+        mpm_trim
+            Specifies the maximal size allowed for the filtered signal when
+            undergoing the Matrix Pencil. If ``None``, no trimming is applied
+            to the signal. If an int, and the filtered signal has a size
+            greater than ``mpm_trim``, this signal will be set as
+            ``signal[:mpm_trim]``.
+
+        nlp_trim
+            Specifies the maximal size allowed for the filtered signal when undergoing
+            nonlinear programming. By default (``None``), no trimming is applied to
+            the signal. If an int, and the filtered signal has a size greater than
+            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
+
         fprint
             Whether of not to output information to the terminal.
 
@@ -432,6 +474,12 @@ class Estimator1D(Estimator):
                 {"min_value": 1}, True,
             ),
             ("fprint", fprint, sfuncs.check_bool),
+            ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
+            (
+                "cut_ratio", cut_ratio, sfuncs.check_float, (),
+                {"greater_than_one": True}, True,
+            ),
         )
 
         sanity_check(
@@ -463,22 +511,49 @@ class Estimator1D(Estimator):
         uncut_signal, uncut_expinfo = filt.get_filtered_fid(cut_ratio=None)
         region = filt.get_region()
 
+        import matplotlib as mpl
+        mpl.use("tkAgg")
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.plot(sig.ft(cut_signal))
+        plt.show()
+        cut_size = cut_signal.size
+        uncut_size = uncut_signal.size
+        if (mpm_trim is None) or (mpm_trim > cut_size):
+            mpm_trim = cut_size
+        if (nlp_trim is None) or (nlp_trim > uncut_size):
+            nlp_trim = uncut_size
+
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
         else:
             oscillators = initial_guess if isinstance(initial_guess, int) else 0
             x0 = MatrixPencil(
-                cut_expinfo, cut_signal, oscillators=oscillators, fprint=fprint,
+                cut_expinfo,
+                cut_signal[:mpm_trim],
+                oscillators=oscillators,
+                fprint=fprint,
             ).get_result()
 
         cut_result = NonlinearProgramming(
-            cut_expinfo, cut_signal, x0, phase_variance=phase_variance, method=method,
-            max_iterations=max_iterations, fprint=fprint,
+            cut_expinfo,
+            cut_signal[:mpm_trim],
+            x0,
+            phase_variance=phase_variance,
+            method=method,
+            max_iterations=max_iterations,
+            fprint=fprint,
         ).get_result()
 
         final_result = NonlinearProgramming(
-            uncut_expinfo, uncut_signal, cut_result, phase_variance=phase_variance,
-            method=method, max_iterations=max_iterations, fprint=fprint,
+            uncut_expinfo,
+            uncut_signal[:nlp_trim],
+            cut_result,
+            phase_variance=phase_variance,
+            method=method,
+            max_iterations=max_iterations,
+            fprint=fprint,
         )
 
         self._results.append(
@@ -502,6 +577,7 @@ class Estimator1D(Estimator):
         sci_lims: Optional[Tuple[int, int]] = (-2, 3),
         force_overwrite: bool = False,
         fprint: bool = True,
+        pdflatex_exe: Optional[Union[str, Path]] = None,
     ) -> None:
         """Write estimation results to text and PDF files.
 
@@ -538,6 +614,15 @@ class Estimator1D(Estimator):
 
         fprint
             Specifies whether or not to print information to the terminal.
+
+        pdflatex_exe
+            The path to the system's ``pdflatex`` executable.
+
+            .. note::
+
+               You are unlikely to need to set this manually. It is primarily
+               present to specify the path to ``pdflatex.exe`` on Windows when
+               the NMR-EsPy GUI has been loaded from TopSpin.
         """
         sanity_check(
             (
@@ -591,6 +676,7 @@ class Estimator1D(Estimator):
             parameters_sci_lims=sci_lims,
             force_overwrite=True,
             fprint=fprint,
+            pdflatex_exe=pdflatex_exe,
         )
 
     @logger
@@ -749,6 +835,9 @@ class Estimator1D(Estimator):
             for result in results
         ]
 
+    def _positive_index(self, index: int) -> int:
+        return index % len(self._results)
+
     @logger
     def merge_oscillators(
         self,
@@ -796,6 +885,7 @@ class Estimator1D(Estimator):
         sanity_check(
             ("index", index, sfuncs.check_index, (len(self._results),)),
         )
+        index = self._positive_index(index)
         result = self._results[index]
         x0 = result.get_result()
         sanity_check(
@@ -826,7 +916,7 @@ class Estimator1D(Estimator):
     def split_oscillator(
         self,
         oscillator: int,
-        index: int,
+        index: int = -1,
         separation_frequency: Optional[float] = None,
         unit: str = "hz",
         split_number: int = 2,
@@ -884,6 +974,7 @@ class Estimator1D(Estimator):
             ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
             ("split_number", split_number, sfuncs.check_int, (), {"min_value": 2}),
         )
+        index = self._positive_index(index)
         result = self._results[index]
         x0 = result.get_result()
         sanity_check(
@@ -972,10 +1063,10 @@ class Estimator1D(Estimator):
             ),
             ("index", index, sfuncs.check_index, (len(self._results),)),
         )
+        index = self._positive_index(index)
         result = self._results[index]
-        x0 = result.get_result()
-        x0 = np.vstack((x0, params))
-        self._optimise_after_edit(x0, result, index)
+        x0 = np.vstack((result.get_result(), params))
+        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
 
     @logger
     def remove_oscillators(
@@ -1005,6 +1096,7 @@ class Estimator1D(Estimator):
             will be ignored if given.
         """
         sanity_check(("index", index, sfuncs.check_index, (len(self._results),)))
+        index = self._positive_index(index)
         result = self._results[index]
         x0 = result.get_result()
         sanity_check(
@@ -1028,17 +1120,17 @@ class Estimator1D(Estimator):
                 del estimate_kwargs[key]
 
         if getattr(estimate_kwargs, "fprint", None) is None:
-            estimate_kwargs["fprint"] = False
+            estimate_kwargs["fprint"] = True
 
         self.estimate(
             result.get_region(),
             result.get_noise_region(),
             region_unit="hz",
             initial_guess=x0,
-            fprint=False,
             _log=False,
             **estimate_kwargs,
         )
 
         del self._results[index]
         self._results.insert(index, self._results.pop(-1))
+        print([r.result for r in self._results])

@@ -1,16 +1,14 @@
-#!/usr/bin/python3
-
-# Application for using NMR-EsPy
+# __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Tue 26 Apr 2022 12:24:56 BST
 
 # This is currently only applicable to 1D NMR data.
 
 import pathlib
 import tkinter as tk
 
-from nmrespy._errors import TwoDimUnsupportedError
-from nmrespy.core import Estimator
+from nmrespy import Estimator1D
 from nmrespy.app.frames import DataType  # TODO: WaitingWindow
 from nmrespy.app import stup, result
 
@@ -50,15 +48,12 @@ class NMREsPyApp(tk.Tk):
         if res:
             # Wish to view result from a previously-generated result.
             # Jump straight to the result window.
-            self.estimator = Estimator.from_pickle(path)
+            self.estimator = Estimator1D.from_pickle(path)
+            self.result()
 
         else:
             # Create Estimator instance from the provided path
-            self.estimator = Estimator.new_bruker(path)
-
-            # App is only applicable to 1D data currently
-            if self.estimator.get_dim() > 1:
-                raise TwoDimUnsupportedError()
+            self.estimator = Estimator1D.new_bruker(path)
 
             # TODO: animation window
             # self.waiting_window = WaitingWindow(self)

@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 14:13:37 GMT
+# Last Edited: Wed 27 Apr 2022 14:34:06 BST
 
 """Module for plotting estimation results."""
 
@@ -231,16 +231,33 @@ class ResultPlotter(ExpInfo):
         self.data_color = data_color
         self.model_color = model_color
         self.residual_color = residual_color
+        self.model_shift = model_shift
+        self.residual_shift = residual_shift
 
         if stylesheet is None:
             stylesheet = STYLESHEETPATH
         self._update_rc(stylesheet, oscillator_colors)
 
         region_idx = self.convert(region, f"{shifts_unit}->idx")
-        self.slice_ = tuple([slice(r[0], r[1]) for r in region_idx])
+        self.slice_ = tuple([slice(r[0], r[1] + 1) for r in region_idx])
 
         self.shifts = self.get_shifts(unit=shifts_unit)[0][self.slice_]
-        datacopy = copy.deepcopy(data)
+        self._make_ydata()
+
+        self.fig = plt.figure()
+        self.ax = self.fig.add_axes([0.02, 0.15, 0.96, 0.83])
+        self._create_artists()
+
+        label = (
+            f"{self.unicode_nuclei[0]} ({shifts_unit.replace('h', 'H')})"
+            if self.unicode_nuclei is not None
+            else shifts_unit.replace('h', 'H')
+        )
+        self.ax.set_xlabel(label)
+        self.configure_lims()
+
+    def _make_ydata(self) -> None:
+        datacopy = copy.deepcopy(self.data)
         datacopy[0] /= 2
         self.spectrum = sig.ft(datacopy)[self.slice_].real
 
@@ -250,32 +267,43 @@ class ResultPlotter(ExpInfo):
             fid[0] /= 2
             self.peaks.append(sig.ft(fid).real[self.slice_])
 
-        self.model = sum(self.peaks, np.zeros(self.spectrum.shape))
+        self.model = sum(self.peaks, np.zeros(self.spectrum.shape)) + (
+            0.1 * np.amax(self.spectrum) if self.model_shift is None
+            else self.model_shift
+        )
         self.residual = self.spectrum - self.model
-
-        self.residual_shift = (
-            -1.5 * np.amax(np.abs(self.residual)) if residual_shift is None
-            else residual_shift
-        )
-        self.model_shift = (
-            0.1 * np.amax(self.spectrum) if model_shift is None
-            else model_shift
+        self.residual += (
+            -1.5 * np.amax(np.abs(self.residual)) if self.residual_shift is None
+            else self.residual_shift
         )
 
-        self.fig = plt.figure()
-        self.ax = self.fig.add_axes([0.02, 0.15, 0.96, 0.83])
+    def _create_artists(self) -> None:
+        # Clear out any children already present
+        for child in self.ax.get_children():
+            if (
+                isinstance(child, mpl.lines.Line2D) or
+                isinstance(child, mpl.text.Text) and child.get_text() != ""
+            ):
+                child.remove()
 
         self.data_plot = self.ax.plot(
             self.shifts, self.spectrum, self.data_color,
         )[0]
+
         self.model_plot = self.ax.plot(
-            self.shifts, self.model + self.model_shift, self.model_color,
-            alpha=1 if self.plot_model else 0
+            self.shifts,
+            self.model,
+            color=self.model_color,
+            alpha=1 # if self.plot_model else 0
         )[0]
+
         self.residual_plot = self.ax.plot(
-            self.shifts, self.residual + self.residual_shift, self.residual_color,
+            self.shifts,
+            self.residual,
+            self.residual_color,
             alpha=1 if self.plot_residual else 0
         )[0]
+
         self.oscillator_plots = [
             {
                 "label": self.ax.text(
@@ -290,14 +318,6 @@ class ResultPlotter(ExpInfo):
                 )[0],
             } for i, peak in enumerate(self.peaks)
         ]
-
-        label = (
-            f"{self.unicode_nuclei[0]} ({shifts_unit.replace('h', 'H')})"
-            if self.unicode_nuclei is not None
-            else shifts_unit.replace('h', 'H')
-        )
-        self.ax.set_xlabel(label)
-        self.configure_lims()
 
     def _update_rc(
         self,

@@ -1,7 +1,7 @@
 # _result_fetcher.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 30 Mar 2022 17:10:20 BST
+# Last Edited: Tue 26 Apr 2022 16:10:37 BST
 
 import copy
 import re
@@ -110,7 +110,7 @@ class ResultFetcher(FrequencyConverter):
 
         dim = ((array.shape[1] - 2) // 2)
         if funit == "ppm":
-            f_idx = list(range(2, dim))
+            f_idx = list(range(2, 2 + dim))
             array[:, f_idx] = np.array(
                 self.convert(
                     [a for a in array[:, f_idx].T], conversion="hz->ppm",

@@ -1,8 +1,9 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 11:57:02 GMT
+# Last Edited: Tue 26 Apr 2022 16:12:27 BST
 
+import copy
 from datetime import datetime
 import re
 import tkinter as tk
@@ -12,8 +13,7 @@ from matplotlib import figure, patches
 from matplotlib.backends import backend_tkagg
 import numpy as np
 
-from nmrspy import sig
-from nmrespy._misc import latex_nucleus
+from nmrespy import sig
 import nmrespy._paths_and_links as pl
 import nmrespy.app.config as cf
 import nmrespy.app.custom_widgets as wd
@@ -23,27 +23,25 @@ import nmrespy.app.frames as fr
 class SetUp(wd.MyToplevel):
     def __init__(self, parent):
         self.estimator = parent.estimator
-        # Shorthand for unit conversion
-        self.conv = lambda value, conversion: self.estimator._converter.convert(
-            [value], conversion
-        )[0]
 
         # --- SETUP WINDOW -----------------------------------------------
-        # Spectral data
-        self.spec = sig.ft(self.estimator.get_data())
-        # Number of spectrum points
-        self.n = self.spec.size
-        # Transmitter frequency
-        self.sfo = self.estimator.get_sfo()[0]
-        # Nucleus identity
-        self.nuc = self.estimator.get_nucleus()[0]
+        self.spec = copy.deepcopy(self.estimator.data)
+        self.spec[0] /= 2
+        self.spec = sig.ft(self.spec)
+
+        # Shorthand for unit conversion
+        self.conv = lambda value, conversion: self.estimator.convert(
+            [value], conversion
+        )[0]
 
         # Sweep width, offset, and chemical shifts, in both ppm and Hz
         self.sw, self.off, self.shifts = {}, {}, {}
         for unit in ["hz", "ppm"]:
-            self.sw[unit] = self.estimator.get_sw(unit=unit)[0]
-            self.off[unit] = self.estimator.get_offset(unit=unit)[0]
-            self.shifts[unit] = self.estimator.get_shifts(unit=unit)[0]
+            self.sw[unit] = self.estimator.sw(unit=unit)[0]
+            self.off[unit] = self.estimator.offset(unit=unit)[0]
+            self.shifts[unit] = self.estimator.get_shifts(
+                unit=unit, pts=self.spec.shape,
+            )[0]
 
         # Units that are active in the app.
         # For frequencies, default is ppm (Hz also possible)
@@ -54,7 +52,7 @@ class SetUp(wd.MyToplevel):
         # Bounds for filtration and noise regions
         self.bounds = cf.AutoVivification()
         # Initial values for region of interest and noise region
-        init_bounds = [int(np.floor(x * self.n / 16)) for x in (7, 9, 1, 2)]
+        init_bounds = [int(np.floor(x * self.spec.size / 16)) for x in (7, 9, 1, 2)]
 
         for name, init in zip(["lb", "rb", "lnb", "rnb"], init_bounds):
             # Save bounds to array index, ppm and hz units
@@ -67,16 +65,11 @@ class SetUp(wd.MyToplevel):
 
                 self.bounds[name][unit] = cf.value_var_dict(value, var_str)
 
-        # Number of points the selected region is composed of
-        self.region_size = (
-            self.bounds["rb"]["idx"]["value"] - self.bounds["lb"]["idx"]["value"]
-        )
-
         # --- Phase correction parameters --------------------------------
         self.pivot = {}
 
         # Initialise pivot at center of spectrum
-        pivot = int(self.n // 2)
+        pivot = int(self.spec.size // 2)
         for unit in ["idx", "hz", "ppm"]:
             # Set pivot in units of array index, Hz, and ppm
             if unit == "idx":
@@ -97,38 +90,13 @@ class SetUp(wd.MyToplevel):
                 self.phases[name][unit] = cf.value_var_dict(0.0, f"{0.:.4f}")
 
         # --- Various advanced settings ----------------------------------
-        # Specifies whether or not to cut the filtered spectral data
-        self.cut = cf.value_var_dict(True, 1)
-        # Specifies the the ratio between cut signal size and filter
-        # bandwidth
-        self.cut_ratio = cf.value_var_dict(3, "3")
-
-        # Largest number of points permitted
-        max_points = self.cut_size()
-        self.max_points = cf.value_var_dict(max_points, str(max_points))
-
-        # Number of points to be used for MPM and NLP.
-        # By default, number of points will not exceed:
-        # 4096 (MPM)
-        # 8192 (NLP)
-        self.trim = {}
-        if max_points <= 4096:
-            for name in ["mpm", "nlp"]:
-                self.trim[name] = cf.value_var_dict(max_points, str(max_points))
-        elif max_points <= 8192:
-            self.trim["mpm"] = cf.value_var_dict(4096, "4096")
-            self.trim["nlp"] = cf.value_var_dict(max_points, str(max_points))
-        else:
-            self.trim["mpm"] = cf.value_var_dict(4096, "4096")
-            self.trim["nlp"] = cf.value_var_dict(8192, "8192")
-
         # Number of oscillators
         # Initialise as 0 (use MDL)
         self.m = cf.value_var_dict(0, "")
         # Specifies whether or not to use the MDL to estimate M
         self.mdl = cf.value_var_dict(True, 1)
         # Idenitity of the NLP algorithm to use
-        self.method = cf.value_var_dict("trust_region", "Trust Region")
+        self.method = cf.value_var_dict("gauss-newton", "Gauss-Newton")
         # Maximum iterations of NLP algorithm
         self.maxit = cf.value_var_dict(200, "200")
         # Whether or not to include phase variance in NLP cost func
@@ -219,10 +187,8 @@ class SetUp(wd.MyToplevel):
         for direction in ("top", "bottom", "left", "right"):
             self.setupfig["ax"].spines[direction].set_color("k")
 
-        # xlabel of the form $^{<mass>}$<elem> (ppm)
         self.setupfig["ax"].set_xlabel(
-            f"{latex_nucleus(self.nuc)} (ppm)",
-            fontsize=8,
+            f"{self.estimator.unicode_nuclei[0]} (ppm)", fontsize=8,
         )
 
         # --- Construction of the setup GUI ------------------------------
@@ -331,7 +297,7 @@ class SetUp(wd.MyToplevel):
             self.region_scales[name] = scale = wd.MyScale(
                 self.region_frame,
                 from_=0,
-                to=self.n - 1,
+                to=self.spec.size - 1,
                 troughcolor=troughcolor,
                 bg=cf.NOTEBOOKCOLOR,
                 command=(lambda idx, n=name: self.update_region_scale(idx, n)),
@@ -377,7 +343,7 @@ class SetUp(wd.MyToplevel):
             if name == "pivot":
                 troughcolor = cf.PIVOTCOLOR
                 from_ = 0
-                to = self.n - 1
+                to = self.spec.size - 1
                 resolution = 1
 
             # p0 and p1 scales
@@ -423,7 +389,7 @@ class SetUp(wd.MyToplevel):
             entry.grid(row=row, column=2, padx=10, pady=pady, sticky="w")
 
         # Frame with NMR-EsPy an MF group logos
-        self.logo_frame = wd.LogoFrame(master=self, scale=0.72)
+        self.logo_frame = fr.LogoFrame(master=self, scale=0.72)
 
         # Frame with cancel/help/run/advanced settings buttons
         self.button_frame = SetupButtonFrame(master=self)
@@ -443,17 +409,13 @@ class SetUp(wd.MyToplevel):
     def update_region_entry(self, name):
         """Update the GUI after the user presses <Enter> whilst in a
         `self.region_entries` widget"""
-
         unit = self.active_units["freq"]
 
         try:
             # Get StringVar of widget of interest, and try to convert
             # to a numerical value
             value = self.bounds[name][unit]["var"].get()
-            if unit == "idx":
-                idx = int(value)
-            else:
-                idx = self.conv(float(value), f"{unit}->idx")
+            idx = self.conv(float(value), f"{unit}->idx")
 
             # Check whether `idx` is valid
             if self.check_valid_index(idx, name):
@@ -470,7 +432,6 @@ class SetUp(wd.MyToplevel):
     def update_region_scale(self, idx, name):
         """Update the GUI after the user changes the slider on a scale
         widget"""
-
         idx = int(idx)
 
         if not self.check_valid_index(idx, name):
@@ -484,15 +445,11 @@ class SetUp(wd.MyToplevel):
 
     def reset_bound(self, name, unit):
         value = self.bounds[name][unit]["value"]
-        if unit == "idx":
-            self.bounds[name][unit]["var"].set(str(value))
-        else:
-            self.bounds[name][unit]["var"].set(f"{value:.4f}")
+        self.bounds[name][unit]["var"].set(f"{value:.4f}")
 
     def check_valid_index(self, idx, name):
         """Given an update index, and the identity of the bound to change,
         determine whether the index is valid."""
-
         # Determine if we are considering a left or right bound
         if name[0] == "l":
             left = idx
@@ -501,7 +458,7 @@ class SetUp(wd.MyToplevel):
             left = self.bounds[f"l{name[1:]}"]["idx"]["value"]
             right = idx
 
-        if left < right and 0 <= idx <= self.n - 1:
+        if left < right and 0 <= idx <= self.spec.size - 1:
             # All good
             return True
         # All bad
@@ -510,7 +467,6 @@ class SetUp(wd.MyToplevel):
     def update_bound(self, name, idx):
         """Given a dictionary key, and new value in units of array indices,
         update region bound variables"""
-
         # Set bound's index value and the corresponding StringVar
         self.bounds[name]["idx"]["value"] = idx
         self.bounds[name]["idx"]["var"].set(str(idx))
@@ -522,24 +478,15 @@ class SetUp(wd.MyToplevel):
                 f"{self.bounds[name][unit]['value']:.4f}"
             )
 
-        # Determine if dealing with a bound relating to the region of interest,
-        # or a bound relating to the noise region
-        reg = "region" if name in ["lb", "rb"] else "noise_region"
-
-        if reg == "region":
-            # Update region of interest size
-            self.region_size = (
-                self.bounds["rb"]["idx"]["value"] - self.bounds["lb"]["idx"]["value"]
-            )
-            # Update maximum number of points possible
-            self.ud_max_points()
-
         # Get active frequency unit ('hz' or 'ppm')
         active_unit = self.active_units["freq"]
 
         # Determine left and right bounds of the region changed
         left = self.bounds[f"l{name[1:]}"][active_unit]["value"]
         right = self.bounds[f"r{name[1:]}"][active_unit]["value"]
+        # Determine if dealing with a bound relating to the region of interest,
+        # or a bound relating to the noise region
+        reg = "region" if name in ["lb", "rb"] else "noise_region"
         # update region rectangle
         self.setupfig[reg].set_x(left)
         self.setupfig[reg].set_width(right - left)
@@ -586,7 +533,7 @@ class SetUp(wd.MyToplevel):
                 else:
                     idx = self.conv(float(value), f"{unit}->idx")
 
-                if 0 <= idx <= self.n - 1:
+                if 0 <= idx <= self.spec.size - 1:
                     self.phase_scales["pivot"].set(idx)
                     self.update_pivot(idx)
                 else:
@@ -680,7 +627,7 @@ class SetUp(wd.MyToplevel):
         pivot = self.pivot["idx"]["value"]
         p0 = self.phases["p0"]["rad"]["value"]
         p1 = self.phases["p1"]["rad"]["value"]
-        n = self.n
+        n = self.spec.size
 
         # Perform phase correction of spectrum
         corrector = np.exp(1j * (p0 + p1 * np.arange(-pivot, -pivot + n, 1) / n))
@@ -705,20 +652,20 @@ class SetUp(wd.MyToplevel):
 
             if low < 0:
                 low = 0
-            if high > self.n - 1:
-                high = self.n - 1
+            if high > self.spec.size - 1:
+                high = self.spec.size - 1
 
             self.max_points["value"] = high - low
 
         else:
-            self.max_points["value"] = self.n // 2
+            self.max_points["value"] = self.spec.size // 2
 
         self.max_points["var"].set(str(self.max_points["value"]))
 
         # If current trim params are larger than the new max points
         # or they are smaller than the default number of points for
         # MPM and NLP, update
-        for name, default in zip(("mpm", "nlp"), (4096, 8192)):
+        for name, default in zip(("mpm", "nlp"), (4096, 32768)):
             if (
                 self.trim[name]["value"] > self.max_points["value"] or
                 self.max_points["value"] <= default
@@ -756,30 +703,19 @@ class SetUp(wd.MyToplevel):
         pivot = self.pivot["idx"]["value"]
         p0 = self.phases["p0"]["rad"]["value"]
         p1 = self.phases["p1"]["rad"]["value"]
-        p0 = p0 - p1 * (pivot / self.n)
-        p0, p1 = [p0], [p1]
+        p0 = p0 - p1 * (pivot / self.spec.size)
 
         region = [
-            [self.bounds["lb"]["idx"]["value"], self.bounds["rb"]["idx"]["value"]]
+            [self.bounds["lb"]["hz"]["value"], self.bounds["rb"]["hz"]["value"]]
         ]
         noise_region = [
-            [self.bounds["lnb"]["idx"]["value"], self.bounds["rnb"]["idx"]["value"]]
+            [self.bounds["lnb"]["hz"]["value"], self.bounds["rnb"]["hz"]["value"]]
         ]
-
-        # Whether of not to cut the frequency-filtered signal
-        cut = self.cut["value"]
-        if cut:
-            cut_ratio = float(self.cut_ratio["value"])
-        else:
-            cut_ratio = None
-
-        # Number of points to consider in MPM and NLP
-        trim_mpm = [self.trim["mpm"]["value"]]
-        trim_nlp = [self.trim["nlp"]["value"]]
 
         # Get number of oscillators for initial guess (or determine whether
         # to use MDL)
         m = self.m["value"]
+        m = None if m == 0 else m
 
         # Optimisation method
         method = self.method["value"]
@@ -787,39 +723,26 @@ class SetUp(wd.MyToplevel):
         maxit = self.maxit["value"]
         # Whether or not to use phase variance
         phase_variance = self.phase_variance["value"]
-        # Whether or not to set an amplitude threshold on estimation result
-        if self.use_amp_thold["value"]:
-            amp_thold = self.amp_thold["value"]
-        else:
-            amp_thold = None
 
         # --- Run through the estimation ---------------------------------
         # Phase data
         self.estimator.phase_data(p0=p0, p1=p1)
-        # Filter signal
-        self.estimator.frequency_filter(
+
+        self.estimator.estimate(
             region,
             noise_region,
-            cut=cut,
-            cut_ratio=cut_ratio,
-            region_unit="idx",
-        )
-        # Initial guess using the matrix pencil
-        self.estimator.matrix_pencil(trim=trim_mpm, M=m)
-        # Generate final estimation result using nonlinear programming
-        self.estimator.nonlinear_programming(
-            trim=trim_nlp,
-            max_iterations=maxit,
+            region_unit="hz",
+            initial_guess=m,
             method=method,
+            max_iterations=maxit,
             phase_variance=phase_variance,
-            amp_thold=amp_thold,
         )
 
         # Pickle result class to the temporary directory
         dt = datetime.now()
         timestamp = f"{dt.year}{dt.month}{dt.day}" f"{dt.hour}{dt.minute}{dt.second}"
         tmppath = str(cf.TMPPATH / timestamp)
-        self.estimator.to_pickle(path=tmppath, force_overwrite=True)
+        self.estimator.to_pickle(path=tmppath)
 
         # TODO: animation window
         # self.master.waiting_window.destroy()
@@ -885,110 +808,12 @@ class AdvancedSettings(wd.MyToplevel):
             sticky="w",
         )
 
-        filter_title = wd.MyLabel(
-            self.main_frame,
-            text="Signal Filter Options",
-            bold=True,
-        )
-        filter_title.grid(
-            row=1,
-            column=0,
-            columnspan=2,
-            padx=(10, 0),
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        cut_label = wd.MyLabel(self.main_frame, text="Cut signal:")
-        cut_label.grid(
-            row=2,
-            column=0,
-            padx=(10, 0),
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        self.cut_checkbutton = wd.MyCheckbutton(
-            self.main_frame,
-            variable=self.master.cut["var"],
-            command=self.ud_cut,
-        )
-        self.cut_checkbutton.grid(
-            row=2,
-            column=1,
-            padx=10,
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        ratio_label = wd.MyLabel(
-            self.main_frame,
-            text="Cut width/filter width ratio:",
-        )
-        ratio_label.grid(
-            row=3,
-            column=0,
-            padx=(10, 0),
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        self.ratio_entry = wd.MyEntry(
-            self.main_frame,
-            return_command=self.ud_cut_ratio,
-            return_args=(),
-            textvariable=self.master.cut_ratio["var"],
-        )
-        self.ratio_entry.grid(
-            row=3,
-            column=1,
-            padx=10,
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        mpm_title = wd.MyLabel(self.main_frame, text="Matrix Pencil", bold=True)
-        mpm_title.grid(
-            row=4,
-            column=0,
-            columnspan=2,
-            padx=(10, 0),
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        datapoint_label = wd.MyLabel(
-            self.main_frame,
-            text="Datapoints to consider*:",
-        )
-        datapoint_label.grid(
-            row=5,
-            column=0,
-            padx=(10, 0),
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        self.mpm_points_entry = wd.MyEntry(
-            self.main_frame,
-            return_command=self.ud_points,
-            return_args=("mpm",),
-            textvariable=self.master.trim["mpm"]["var"],
-        )
-        self.mpm_points_entry.grid(
-            row=5,
-            column=1,
-            padx=10,
-            pady=(10, 0),
-            sticky="w",
-        )
-
         oscillator_label = wd.MyLabel(
             self.main_frame,
             text="Number of oscillators:",
         )
         oscillator_label.grid(
-            row=6,
+            row=1,
             column=0,
             padx=(10, 0),
             pady=(10, 0),
@@ -1003,7 +828,7 @@ class AdvancedSettings(wd.MyToplevel):
             textvariable=self.master.m["var"],
         )
         self.oscillator_entry.grid(
-            row=6,
+            row=1,
             column=1,
             padx=10,
             pady=(10, 0),
@@ -1012,7 +837,7 @@ class AdvancedSettings(wd.MyToplevel):
 
         use_mdl_label = wd.MyLabel(self.main_frame, text="Use MDL:")
         use_mdl_label.grid(
-            row=7,
+            row=2,
             column=0,
             padx=(10, 0),
             pady=(10, 0),
@@ -1025,63 +850,23 @@ class AdvancedSettings(wd.MyToplevel):
             command=self.ud_mdl_button,
         )
         self.mdl_checkbutton.grid(
-            row=7,
+            row=2,
             column=1,
             padx=10,
             pady=(10, 0),
             sticky="w",
         )
 
-        nlp_title = wd.MyLabel(
-            self.main_frame,
-            text="Nonlinear Programming",
-            bold=True,
-        )
-        nlp_title.grid(
-            row=8,
-            column=0,
-            columnspan=2,
-            padx=10,
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        datapoint_label = wd.MyLabel(
-            self.main_frame,
-            text="Datapoints to consider*:",
-        )
-        datapoint_label.grid(
-            row=9,
-            column=0,
-            padx=(10, 0),
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        self.nlp_points_entry = wd.MyEntry(
-            self.main_frame,
-            return_command=self.ud_points,
-            return_args=("nlp",),
-            textvariable=self.master.trim["nlp"]["var"],
-        )
-        self.nlp_points_entry.grid(
-            row=9,
-            column=1,
-            padx=10,
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        nlp_method_label = wd.MyLabel(self.main_frame, text="NLP algorithm:")
+        nlp_method_label = wd.MyLabel(self.main_frame, text="NLP method:")
         nlp_method_label.grid(
-            row=10,
+            row=3,
             column=0,
             padx=(10, 0),
             pady=(10, 0),
             sticky="w",
         )
 
-        options = ("Trust Region", "L-BFGS")
+        options = ("Gauss-Newton", "Exact Hessian", "L-BFGS")
 
         # I was getting funny behaviour when I tried to make a class
         # that inherited from tk.OptionMenu
@@ -1102,7 +887,7 @@ class AdvancedSettings(wd.MyToplevel):
         # algorithm
         self.master.method["var"].trace("w", self.ud_nlp_algorithm)
         self.algorithm_menu.grid(
-            row=10,
+            row=3,
             column=1,
             padx=10,
             pady=(10, 0),
@@ -1114,7 +899,7 @@ class AdvancedSettings(wd.MyToplevel):
             text="Maximum iterations:",
         )
         max_iterations_label.grid(
-            row=11,
+            row=4,
             column=0,
             padx=(10, 0),
             pady=(10, 0),
@@ -1128,7 +913,7 @@ class AdvancedSettings(wd.MyToplevel):
             textvariable=self.master.maxit["var"],
         )
         self.max_iterations_entry.grid(
-            row=11,
+            row=4,
             column=1,
             padx=10,
             pady=(10, 0),
@@ -1140,7 +925,7 @@ class AdvancedSettings(wd.MyToplevel):
             text="Optimise phase variance:",
         )
         phase_variance_label.grid(
-            row=12,
+            row=5,
             column=0,
             padx=(10, 0),
             pady=(10, 0),
@@ -1153,114 +938,16 @@ class AdvancedSettings(wd.MyToplevel):
             command=self.ud_phase_variance,
         )
         self.phase_var_checkbutton.grid(
-            row=12,
+            row=5,
             column=1,
             padx=10,
             pady=(10, 0),
             sticky="w",
         )
-
-        # amplitude/frequency thresholds
-        amp_thold_label = wd.MyLabel(self.main_frame, text="Amplitude threshold:")
-        amp_thold_label.grid(
-            row=13,
-            column=0,
-            padx=(10, 0),
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        self.amp_thold_frame = wd.MyFrame(self.main_frame)
-        self.amp_thold_frame.columnconfigure(1, weight=1)
-        self.amp_thold_frame.grid(row=13, column=1, sticky="ew")
-
-        self.amp_thold_entry = wd.MyEntry(
-            self.amp_thold_frame,
-            state="disabled",
-            return_command=self.ud_amp_thold,
-            return_args=(),
-            textvariable=self.master.amp_thold["var"],
-        )
-        self.amp_thold_entry.grid(
-            row=0,
-            column=0,
-            padx=(10, 0),
-            pady=(10, 0),
-            sticky="w",
-        )
-
-        self.amp_thold_checkbutton = wd.MyCheckbutton(
-            self.amp_thold_frame,
-            variable=self.master.use_amp_thold["var"],
-            command=self.ud_amp_thold_button,
-        )
-        self.amp_thold_checkbutton.grid(
-            row=0,
-            column=1,
-            pady=(10, 0),
-            padx=10,
-            sticky="w",
-        )
-
-        # TODO May reincorporate later on...
-        # freq_thold_label = MyLabel(
-        #    self.main_frame, text='Frequency threshold:',
-        # )
-        # freq_thold_label.grid(
-        #     row=14, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
-        # )
-        #
-        # self.freq_thold_frame = MyFrame(self.main_frame)
-        # self.freq_thold_frame.columnconfigure(1, weight=1)
-        # self.freq_thold_frame.grid(row=14, column=1, sticky='ew')
-        #
-        # self.freq_thold_entry = MyEntry(
-        #     self.freq_thold_frame,
-        #     textvariable=self.master.adsettings['freq_thold']['var']['ppm'],
-        # )
-        # self.freq_thold_entry.grid(
-        #     row=0, column=0, padx=(10, 0), pady=(10, 0), sticky='w',
-        # )
-        #
-        # self.freq_thold_checkbutton = MyCheckbutton(
-        #     self.freq_thold_frame,
-        #     variable=self.master.adsettings['use_freq_thold']['var'],
-        #     command=lambda name='freq': self.ud_thold_button(name),
-        # )
-        # self.freq_thold_checkbutton.grid(
-        #     row=0, column=1, pady=(10, 0), padx=10, sticky='w',
-        # )
 
         self.button_frame = wd.MyFrame(self)
         self.button_frame.columnconfigure(2, weight=1)
         self.button_frame.grid(row=2, column=0, sticky="ew")
-
-        max_label = wd.MyLabel(
-            self.button_frame,
-            text="*Max points to consider:",
-            font=(cf.MAINFONT, 9),
-        )
-        max_label.grid(
-            row=0,
-            column=0,
-            padx=(10, 0),
-            pady=(20, 10),
-            sticky="w",
-        )
-
-        self.max_points_label_mpm = wd.MyLabel(
-            self.button_frame,
-            bold=True,
-            font=(cf.MAINFONT, 9, "bold"),
-            textvariable=self.master.max_points["var"],
-        )
-        self.max_points_label_mpm.grid(
-            row=0,
-            column=1,
-            padx=(3, 0),
-            pady=(20, 10),
-            sticky="w",
-        )
 
         self.close_button = wd.MyButton(
             self.button_frame, text="Close", command=self.close
@@ -1272,45 +959,6 @@ class AdvancedSettings(wd.MyToplevel):
             pady=(20, 10),
             sticky="e",
         )
-
-    def ud_cut(self):
-
-        if int(self.master.cut["var"].get()):
-            self.master.cut["value"] = True
-            self.ratio_entry["state"] = "normal"
-        else:
-            self.master.cut["value"] = False
-            self.ratio_entry["state"] = "disabled"
-
-        self.master.ud_max_points()
-
-    def ud_cut_ratio(self):
-
-        # check the value can be interpreted as a float
-        str_value = self.master.cut_ratio["var"].get()
-        if cf.check_float(str_value) and float(str_value) >= 1.0:
-            float_value = float(str_value)
-            self.master.cut_ratio["value"] = float_value
-            self.master.ud_max_points()
-
-        else:
-            self.master.cut_ratio["var"].set(
-                str(self.master.cut_ratio["value"]),
-            )
-
-    def ud_points(self, name):
-
-        str_value = self.master.trim[name]["var"].get()
-        if (
-            cf.check_int(str_value) and
-            0 < int(str_value) <= self.master.max_points["value"]
-        ):
-            int_value = int(str_value)
-            self.master.trim[name]["value"] = int_value
-            self.master.trim[name]["var"].set(str(int_value))
-
-        else:
-            self.master.trim[name]["var"].set(str(self.master.trim[name]["value"]))
 
     def ud_mdl_button(self):
         """For when the user clicks on the checkbutton relating to use the
@@ -1328,7 +976,6 @@ class AdvancedSettings(wd.MyToplevel):
             self.oscillator_entry.key_press()
 
     def ud_oscillators(self):
-
         str_value = self.master.m["var"].get()
         if cf.check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
@@ -1343,7 +990,6 @@ class AdvancedSettings(wd.MyToplevel):
                 self.master.m["var"].set(str(self.master.m["value"]))
 
     def ud_max_iterations(self):
-
         str_value = self.master.maxit["var"].get()
         if cf.check_int(str_value) and int(str_value) > 0:
             int_value = int(str_value)
@@ -1358,8 +1004,13 @@ class AdvancedSettings(wd.MyToplevel):
         number of maximum iterations for the given method"""
 
         method = self.master.method["var"].get()
-        if method == "Trust Region":
-            self.master.method["value"] = "trust_region"
+        if method == "Exact Hessian":
+            self.master.method["value"] = "exact"
+            self.master.maxit["value"] = 100
+            self.master.maxit["var"].set("100")
+
+        elif method == "Gauss-Newton":
+            self.master.method["value"] = "gauss-newton"
             self.master.maxit["value"] = 200
             self.master.maxit["var"].set("200")
 
@@ -1369,34 +1020,10 @@ class AdvancedSettings(wd.MyToplevel):
             self.master.maxit["var"].set("500")
 
     def ud_phase_variance(self):
-
         if int(self.master.phase_variance["var"].get()):
             self.master.phase_variance["value"] = True
         else:
             self.master.phase_variance["value"] = False
-
-    def ud_amp_thold_button(self):
-        """For when the user clicks on the checkbutton relating to whether
-        or not to impose an amplitude threshold"""
-
-        if int(self.master.use_amp_thold["var"].get()):
-            self.master.use_amp_thold["value"] = True
-            self.amp_thold_entry["state"] = "normal"
-        else:
-            self.master.use_amp_thold["value"] = False
-            self.amp_thold_entry["state"] = "disabled"
-
-    def ud_amp_thold(self):
-        # check the value can be interpreted as a float
-        str_value = self.master.amp_thold["var"].get()
-        if cf.check_float(str_value) and 0.0 <= float(str_value) < 1.0:
-            float_value = float(str_value)
-            self.master.amp_thold["value"] = float_value
-
-        else:
-            self.master.amp_thold["var"].set(
-                str(self.master.amp_thold["value"]),
-            )
 
     def close(self):
         valid = cf.check_invalid_entries(self.main_frame)

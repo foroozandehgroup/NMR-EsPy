@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 25 Apr 2022 15:04:32 BST
+# Last Edited: Tue 26 Apr 2022 10:45:47 BST
 
 from __future__ import annotations
 import abc
@@ -86,6 +86,15 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             "=====================\n"
             f"--> Created @ {now}\n"
         )
+
+    @property
+    def data(self) -> np.ndarray:
+        """Return the data assocaited with the estimator."""
+        return self._data
+
+    @abc.abstractmethod
+    def phase_data(*args, **kwargs):
+        pass
 
     @property
     def view_log(self) -> None:

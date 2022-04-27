@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 12:03:01 GMT
+# Last Edited: Thu 28 Apr 2022 00:17:44 BST
 
 import ast
 import copy
@@ -25,6 +25,7 @@ class Result(wd.MyToplevel):
 
         super().__init__(master)
 
+        self.master.estimator._results[-1].result = self.master.estimator._results[-1].result[:-1]
         self.resizable(True, True)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
@@ -86,7 +87,9 @@ class Result(wd.MyToplevel):
 
     def create_plot(self):
         # Generate figure of result
-        self.result_plot = self.master.estimator.plot_result()
+        self.result_plot = self.master.estimator.plot_result(
+            [len(self.master.estimator._results) - 1]
+        )[0]
         self.result_plot.fig.set_size_inches(6, 3.5)
         self.result_plot.fig.set_dpi(170)
 
@@ -96,31 +99,10 @@ class Result(wd.MyToplevel):
         cf.Restrictor(self.result_plot.ax, x=lambda x: x >= xlim[1])
 
     def update_plot(self):
-        self.master.estimator._saveable = True
-        plot = self.master.estimator.plot_result()
-        ax, lines, labels = plot.ax, plot.lines, plot.labels
-
-        # Update y-axis limits
-        self.result_plot.ax.set_ylim(ax.get_ylim())
-        # Clear current objects
-        self.result_plot.ax.lines = []
-        self.result_plot.ax.texts = []
-
-        for line in lines.values():
-            self.result_plot.ax.plot(
-                line.get_xdata(),
-                line.get_ydata(),
-                color=line.get_color(),
-                lw=line.get_lw(),
-            )
-
-        for label in labels.values():
-            self.result_plot.ax.text(
-                *label.get_position(),
-                label.get_text(),
-                fontsize=label.get_fontsize(),
-            )
-
+        result = self.master.estimator._results[-1].get_result()
+        self.result_plot.result = result
+        self.result_plot._make_ydata()
+        self.result_plot._create_artists()
         self.canvas.draw()
 
 
@@ -174,7 +156,7 @@ class EditParametersFrame(wd.MyToplevel):
 
         self.title("NMR-EsPy - Edit Parameters")
 
-        self.protocol("WM_DELETE_WINDOW", self.click_cross)
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
 
         # Reference to NMREsPyApp class: gives access to estimator
         self.ctrl = self.master.master
@@ -182,9 +164,12 @@ class EditParametersFrame(wd.MyToplevel):
         # Prevent access to other windows
         self.grab_set()
 
-        # Store initial parameter array incase the user wants to restore
-        # after making changes.
-        self.previous = copy.deepcopy(self.ctrl.estimator.get_result())
+        self.history = [
+            (
+                self.ctrl.estimator._results[-1].get_result(),
+                self.ctrl.estimator._results[-1].get_errors(),
+            )
+        ]
 
         # --- Parameter table --------------------------------------------
         titles = [
@@ -193,11 +178,12 @@ class EditParametersFrame(wd.MyToplevel):
             "Frequency (ppm)",
             "Damping (s⁻¹)",
         ]
+        self.result = self.ctrl.estimator._results[-1]
         # Parameters in ppm - to be added to the table
-        contents = self.ctrl.estimator.get_result(freq_unit="ppm")
+        contents = self.result.get_result(funit="ppm")
         # Region of interest, in ppm. Used to ensure any newly frequency
         # satisfies the selected region of interest
-        region = self.ctrl.estimator.get_filter_info().get_region(unit="ppm")
+        region = self.result.get_region(unit="ppm")
 
         self.table = wd.MyTable(
             self,
@@ -261,14 +247,14 @@ class EditParametersFrame(wd.MyToplevel):
         self.table.selected_number.trace("w", self.configure_button_states)
 
         # Reset
-        self.reset_button = wd.MyButton(
+        self.undo_button = wd.MyButton(
             self.row2,
-            text="Reset",
-            command=self.reset,
+            text="Undo",
+            command=self.undo,
             state="disabled",
             width=10,
         )
-        self.reset_button.grid(
+        self.undo_button.grid(
             row=0,
             column=0,
             sticky="e",
@@ -278,13 +264,13 @@ class EditParametersFrame(wd.MyToplevel):
 
         # Button to close if no changes have been made, and re-run optimiser
         # if changes have been made
-        self.close_rerun_button = wd.MyButton(
+        self.close_button = wd.MyButton(
             self.row2,
             text="Close",
-            command=self.close_or_rerun,
+            command=self.destroy,
             width=10,
         )
-        self.close_rerun_button.grid(
+        self.close_button.grid(
             row=0,
             column=1,
             sticky="e",
@@ -335,75 +321,41 @@ class EditParametersFrame(wd.MyToplevel):
         split_frame = SplitFrame(self, *self.table.selected_rows)
         self.wait_window(split_frame)
 
-    def close_or_rerun(self):
-        if self.close_rerun_button["text"] == "Close":
-            self.destroy()
-        else:
-            self.rerun()
-
     def changed_result(self):
         """Regenerate parameter table and plot to reflect change in
         estimator.result"""
-        # If result doess not match original, provide option to re-run
-        # the optimiser. If it does match, provide the option to simply
-        # close the window.
-        if not np.array_equal(self.ctrl.estimator.result, self.previous):
-            self.close_rerun_button["text"] = "Re-run Optimiser"
-            self.reset_button["state"] = "normal"
+        self.history.append(
+            (
+                self.ctrl.estimator._results[-1].get_result(),
+                self.ctrl.estimator._results[-1].get_errors(),
+            )
+        )
+
+        if len(self.history) > 1:
+            self.undo_button["state"] = "normal"
         else:
-            self.close_rerun_button["text"] = "Close"
-            self.reset_button["state"] = "disabled"
+            self.undo_button["state"] = "disabled"
 
         # Un-select all table rows, and reconstuct the table.
         self.table.selected_rows = []
         self.table.selected_number.set(0)
         self.table.reconstruct(
-            contents=self.ctrl.estimator.get_result(freq_unit="ppm"),
+            contents=self.ctrl.estimator._results[-1].get_result(funit="ppm"),
             top=0,
         )
 
         # Update the plot
         self.master.update_plot()
 
-    def rerun(self):
-        # Get info from previous call to nonlinear_programming
-        for line in reversed(self.ctrl.estimator._log.split("\n")):
-            if "nonlinear_programming" in line:
-                # Get the kwargs (these are stored within curly braces)
-                nlp_args = ast.literal_eval(re.findall(r"\{.*\}", line)[0])
-
-        # Kill result window
-        self.master.destroy()
-        # RE-run NLP on current set of parameters
-        self.ctrl.estimator.nonlinear_programming(
-            trim=nlp_args["trim"],
-            max_iterations=nlp_args["max_iterations"],
-            method=nlp_args["method"],
-            phase_variance=nlp_args["phase_variance"],
-            amp_thold=nlp_args["amp_thold"],
-        )
-        # Load new result window.
-        self.ctrl.result()
-
-    def reset(self):
+    def undo(self):
         # Reset result back to original
-        self.ctrl.estimator.result = self.previous
+        self.ctrl.estimator._results[-1].result = self.history[-2][0]
+        self.ctrl.estimator._results[-1].errors = self.history[-2][1]
+        # Remove last elements from history
+        self.history.pop()
+        self.history.pop()
         # Re-set the table and plot.
         self.changed_result()
-
-    def click_cross(self):
-        if self.close_rerun_button["text"] == "Close":
-            self.destroy()
-        else:
-            msg = (
-                "You have manually changed the estimation result. It is "
-                "necessary to re-run the optimiser after doing this. Either "
-                "click the <Re-run Optimiser> button, or click the <Reset> "
-                "button  to undo the changes you have made, and then click "
-                "the <Close> button."
-            )
-            warn_window = fr.WarnWindow(self, msg=msg)
-            self.wait_window(warn_window)
 
 
 class AddFrame(wd.MyToplevel):
@@ -430,7 +382,7 @@ class AddFrame(wd.MyToplevel):
 
         # Empty entry boxes to begin with
         contents = [["", "", "", ""]]
-        region = self.ctrl.estimator.get_filter_info().get_region(unit="ppm")
+        region = self.ctrl.estimator._results[-1].get_region(unit="ppm")
 
         self.table = wd.MyTable(
             self,
@@ -495,15 +447,13 @@ class AddFrame(wd.MyToplevel):
         # Extract parameters from table
         new_oscillators = np.array(self.table.get_values())
         # Convert from ppm to hz
-        new_oscillators[:, 2] = self.ctrl.estimator._converter.convert(
+        new_oscillators[:, 2] = self.ctrl.estimator.convert(
             [new_oscillators[:, 2]],
             "ppm->hz",
         )[0]
-        # Add new oscillators to result
-        result = np.vstack((self.ctrl.estimator.get_result(), new_oscillators))
-        # Order by frequency
-        self.ctrl.estimator.result = result[np.argsort(result[:, 2])]
-
+        print(new_oscillators)
+        self.ctrl.estimator.add_oscillators(new_oscillators)
+        print(self.ctrl.estimator._results[-1].result)
         self.master.changed_result()
         self.destroy()
 
@@ -576,7 +526,7 @@ class SplitFrame(wd.MyToplevel):
         # Convert frequency to ppm
         self.sep_freq = {
             "hz": 2.0,
-            "ppm": self.ctrl.estimator._converter.convert([2.0], "hz->ppm")[0],
+            "ppm": self.ctrl.estimator.convert([2.0], "hz->ppm")[0],
         }
         self.sep_entry = wd.MyEntry(
             frame,
@@ -699,7 +649,7 @@ class SplitFrame(wd.MyToplevel):
 
         # Update values for other unit
         from_, to = ("hz", "ppm") if unit == "hz" else ("ppm", "hz")
-        self.sep_freq[to] = self.ctrl.estimator._converter.convert(
+        self.sep_freq[to] = self.ctrl.estimator.convert(
             [value], f"{from_}->{to}"
         )[0]
 
@@ -709,7 +659,7 @@ class SplitFrame(wd.MyToplevel):
         ratio = self.amp_ratio["var"].get()
         # Regex for string of ints separated by colons
         number = int(self.number_chooser.get())
-        regex = r"^\d+(:\d+)+$"
+        regex = r"^\d+(\.\d+)?(:\d+(\.\d+)?)+$"
         # Check that:
         # a) the ratio fully matches the regex
         # b) the number of values matches the specified number of child
@@ -726,7 +676,7 @@ class SplitFrame(wd.MyToplevel):
         sep_freq = self.sep_freq["hz"]
         split_number = int(self.number_chooser.get())
         amp_ratio = self.amp_ratio["var"].get()
-        amp_ratio = [int(i) for i in amp_ratio.split(":")]
+        amp_ratio = [float(i) for i in amp_ratio.split(":")]
 
         self.ctrl.estimator.split_oscillator(
             self.index,
@@ -895,8 +845,8 @@ class SaveFrame(wd.MyToplevel):
             sticky="w",
         )
 
-        titles = ("Text:", "PDF:", "CSV:")
-        self.fmts = ("txt", "pdf", "csv")
+        titles = ("Text:", "PDF:")
+        self.fmts = ("txt", "pdf")
         for i, (title, tag) in enumerate(zip(titles, self.fmts)):
 
             wd.MyLabel(self.file_frame, text=title).grid(
@@ -948,11 +898,8 @@ class SaveFrame(wd.MyToplevel):
             ext.grid(row=i + 2, column=3, pady=(15, 0), sticky="w")
 
         self.pdflatex = self.master.master.pdflatex
-        if self.pdflatex is None:
-            self.pdflatex = "pdflatex"
-
         check_latex = subprocess.call(
-            f"{self.pdflatex} -v",
+            f"{self.pdflatex if self.pdflatex is not None else 'pdflatex'} -v",
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             shell=True,
@@ -1196,35 +1143,36 @@ class SaveFrame(wd.MyToplevel):
             return
 
         # Directory
-        dir = self.dir_name["value"]
-
+        dir_ = self.dir_name["value"]
+        index = [len(self.ctrl.estimator._results) - 1]
         # Figure
         if self.save_fig.get():
             # Generate figure path
             fig_fmt = self.fig_fmt.get()
             dpi = self.fig_dpi["value"]
             fig_name = self.fig_name.get()
-            fig_path = dir / f"{fig_name}.{fig_fmt}"
+            fig_path = dir_ / f"{fig_name}"
 
             # Convert size from cm -> inches
             fig_size = (
                 self.fig_width["value"] / 2.54,
                 self.fig_height["value"] / 2.54,
             )
-            fig = self.master.result_plot.fig
-            fig.set_size_inches(*fig_size)
-            fig.savefig(fig_path, dpi=dpi)
+            plot = self.ctrl.estimator.plot_result(index)[0]
+            plot.fig.set_size_inches(*fig_size)
+            plot.save(fig_path, fmt=fig_fmt, dpi=dpi, force_overwrite=True)
 
         # Result files
-        for fmt in ("txt", "pdf", "csv"):
+        for fmt in ("txt", "pdf"):
             if self.__dict__[f"save_{fmt}"].get():
                 name = self.__dict__[f"name_{fmt}"].get()
-                path = str(dir / name)
+                path = str(dir_ / name)
                 description = self.descr_box.get("1.0", "end-1c")
                 if description == "":
                     description = None
 
                 self.ctrl.estimator.write_result(
+                    index,
                     path=path,
                     description=description,
                     fmt=fmt,
@@ -1234,11 +1182,7 @@ class SaveFrame(wd.MyToplevel):
 
         if self.pickle_estimator.get():
             name = self.pickle_name.get()
-            path = str(dir / name)
+            path = str(dir_ / name)
             self.ctrl.estimator.to_pickle(path=path, force_overwrite=True)
 
         self.master.destroy()
-
-    def customise_figure(self):
-        print("TODO")
-        # CustomiseFigureFrame(self, self.master)

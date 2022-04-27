@@ -1,17 +1,16 @@
 # config.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 12:01:29 GMT
+# Last Edited: Tue 26 Apr 2022 10:18:51 BST
 
 import tkinter as tk
 from PIL import ImageTk, Image
 import numpy as np
 
-from nmrespy._paths_and_links import NMRESPYPATH, IMAGEPATH
+import nmrespy._paths_and_links as pl
 
 # useful paths
-APPPATH = NMRESPYPATH / "app"
-TMPPATH = APPPATH / "tmp"
+TMPPATH = pl.NMRESPYPATH / "app/tmp"
 
 # GUI font
 MAINFONT = "Helvetica"
@@ -43,11 +42,11 @@ FIDCOLORS = [
 ]
 
 # Image paths
-FOLDERPATH = IMAGEPATH / "folder_icon.png"
-ICONPATH = IMAGEPATH / "icon.ico"
-UPARROWPATH = IMAGEPATH / "up_arrow.png"
-DOWNARROWPATH = IMAGEPATH / "down_arrow.png"
-WARNINGPATH = IMAGEPATH / "warning.png"
+FOLDERPATH = pl.IMAGESPATH / "folder_icon.png"
+ICONPATH = pl.IMAGESPATH / "icon.ico"
+UPARROWPATH = pl.IMAGESPATH / "up_arrow.png"
+DOWNARROWPATH = pl.IMAGESPATH / "down_arrow.png"
+WARNINGPATH = pl.IMAGESPATH / "warning.png"
 
 
 def get_PhotoImage(path, scale=1.0):

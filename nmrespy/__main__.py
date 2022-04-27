@@ -1,7 +1,7 @@
 # __main__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 10:35:00 GMT
+# Last Edited: Tue 26 Apr 2022 12:14:41 BST
 
 """Run when the user calls the nmrespy module from a command line.
 
@@ -83,7 +83,7 @@ if __name__ == "__main__":
         exit()
 
     if args.estimate is not None:
-        path = pathlib.Path(args.estimate).resolve()
+        path = pathlib.Path(args.estimate).expanduser().resolve()
         if not path.is_dir():
             raise ValueError(
                 f"{RED}\nThe path you have specified doesn't exist:\n{path}" f"{END}"
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         res = False
 
     else:
-        path = pathlib.Path(args.result).resolve()
+        path = pathlib.Path(args.result).expanduser().resolve()
         if not path.is_file():
             raise ValueError(
                 f"{RED}\nThe path you have specified doesn't exist:\n{path}" f"{END}"
