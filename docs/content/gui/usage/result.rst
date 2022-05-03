@@ -262,9 +262,10 @@ Result Figure
   + `Size (cm)` - The width and height of the figure, in centimeters.
 
   .. note::
-    The most up-voted answer to
-    `this Stack Overflow question <https://stackoverflow.com/questions/47633546/relationship-between-dpi-and-figure-size>`_ provides a good
-    description of the relationship between figure size and dpi.
+    The most up-voted answer to `this Stack Overflow question
+    <https://stackoverflow.com/questions/47633546/relationship-between-dpi-and-figure-size>`_
+    provides a good description of the relationship between figure size and
+    dpi.
 
   .. note::
     Beyond specifying the dpi and size of the figure, the GUI does not provide
@@ -278,7 +279,7 @@ Result Files
 ------------
 
   Used for saving a table of result parameters to various file formats.
-  For each of the valid formats (``txt``, ``pdf``, and ``csv``), the associated
+  For each of the valid formats (``txt`` and ``pdf``), the associated
   tick-boxes are used for specifying whether or not to generate a file of that
   format. Adjacent to each tick-box is an entry box for specifying the name of
   the result file.

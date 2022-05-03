@@ -92,7 +92,7 @@ inputting desired values into the adjacent entry boxes.
 
      For the majority of entry boxes in the GUI, you will notice that the box
      turns red after you manually change its contents. This indicates
-     that the input adhere to certain criteria (i.e. it must be a number, a
+     that the input must adhere to certain criteria (i.e. it must be a number, a
      valid path on your computer etc.), and it has not been validated. After you
      have changed the value in an entry box, press ``<Return>``. The entry box
      will then turn back to its original colour. If the value you
@@ -174,20 +174,20 @@ in the `Region Selection` tab.
 Advanced Estimation Settings
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Clicking the `Advanced Settings` button will load a window enabling various
-aspects of the estimation routine to be tweaked:
+Clicking the `Advanced Settings` button will load a window enabling a few
+more advanced aspects of the estimation routine to be tweaked:
 
 .. only:: html
 
   .. image:: ../../media/gui/windows/advanced_settings_window.png
     :align: center
-    :scale: 80%
+    :scale: 15%
 
 .. only:: latex
 
   .. image:: ../../media/gui/windows/advanced_settings_window.png
     :align: center
-    :scale: 60%
+    :scale: 12%
 
 Below is a summary of the meaning of all of these parameters.
 
@@ -196,32 +196,6 @@ Below is a summary of the meaning of all of these parameters.
    For the majority of cases, you should find that the default parameters
    provided will be suitable.
 
-Signal Filter Options
----------------------
-
-  The basic idea behind frequency-filtering the data is to apply a band-pass
-  filter to the spectral data, and then to convert the spectrum back to the
-  time domain. By applying this filter, a substantial amount of the spectrum
-  becomes redundant, and so it can be appropriate the "cut" off regions that are
-  not of interest. The basic idea is illustrated in this figure:
-
-  .. only:: html
-
-    .. image:: ../../media/gui/filter_cut/filter_cut.png
-      :align: center
-      :scale: 20%
-
-  .. only:: latex
-
-    .. image:: ../../media/gui/filter_cut/filter_cut.png
-      :align: center
-      :scale: 80%
-
-  + `Cut signal` - Specifies whether or not to perform cutting of the spectrum.
-    By default, this is selected.
-  + `Cut width/filter width ratio` - Specifies how many points the cut signal
-    will be composed of relative to the number of points the filter spans. This
-    is set to 3 by default.
 
 Matrix Pencil Method Options
 ----------------------------
@@ -232,12 +206,6 @@ Matrix Pencil Method Options
   choose how many oscillators to generate using the MPM, or to
   estimate the number of oscillators using the Minimum Description Length (MDL).
 
-  + `Datapoints to consider` - Specifies how many points in the filtered
-    signal to consider. The fewer datapoints, the faster the MPM
-    will be. However, if too few datapoints are used, the result may be
-    unreliable. If the signal contains fewer than 4096 (2¹²) points, the
-    full signal will be considered by default. Otherwise, the first 4096 points
-    will be considered.
   + `Use MDL` - Whether or not to use the Minimum Description Length.
     By default, the MDL will be used.
   + `Number of Oscillators` - The number of oscillators used in the MPM.
@@ -249,35 +217,19 @@ Nonlinear Programming Options
   The result of the Matrix Pencil Method is fed into a nonlinear programming
   (NLP) routine to determine the final signal parameter estimate.
 
-  + `Datapoints to consider` - Analogous to the parameter with the same name
-    under **Matrix Pencil**. The cost of running NLP is less susceptible to
-    increases in the number of datapoints, so the full signal will be analysed
-    by default if it comprises 8192 (2¹³) points or fewer. Otherwise, the
-    signal's first 8192 points will be considered by default.
-  + `NLP algorithm` - The optimisation routine. This can be either
-    `Trust Region` or `L-BFGS`. By default, Trust-Region is used. The primary
-    difference between these methods is that for Trust-Region, the
+  + `NLP method` - The optimisation routine. This can be one of
+    `Gauss-Newton` (default), `Exact Newton`, or `L-BFGS`.
+    The main difference between these methods is the means by which the
     `Hessian matrix <https://en.wikipedia.org/wiki/Hessian_matrix>`_ (a matrix
-    of second order derivatives) is computed
-    explicitly. In L-BFGS, the Hessian is approximated. The upshot of this
-    is that the Trust-Region routine tends to lead to convergence in fewer
-    iterations, however each iteration takes longer to compute.
+    of second order derivatives) is computed.
   + `Maximum iterations` - The largest number of iterations to perform before
     terminating an returning the optimiser. The default value is dependent on
-    the NLP algorithm used (200 if Trust-Region selected, 500 if L-BFGS
-    selected).
+    the NLP algorithm used (200 if Gauss-Newton is selected, 100 for
+    Trust-Region, and 500 for L-BFGS).
   + `Optimise phase variance` - Specifies whether to consider the variance of
     oscillator phases during the estimation routine. If your data is derived
     from a well-phased spectrum, it is advised you have this selected.
-  + `Amplitude threshold` - Sets a threshold, such that any oscillator in the
-    final result with an amplitude below the threshold will be removed. The
-    threshold is defined as
-    :math:`a_{\mathrm{thold}} \lVert\boldsymbol{a}\rVert_2` where
-    :math:`\lVert\boldsymbol{a}\rVert_2` is the
-    `Euclidian norm <https://en.wikipedia.org/wiki/Norm_(mathematics)>`_ of
-    the oscillator amplitudes, and :math:`a_{\mathrm{thold}}` is the specified
-    threshold. By default, no such threshold will be applied to the data.
 
-Once you are happy with the calculation setup, simply click the *Run* button.
+Once you are happy with the estimation setup, simply click the *Run* button.
 You will find that details of the routine are output to the terminal as it
 runs.

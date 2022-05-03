@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 27 Apr 2022 15:48:45 BST
+# Last Edited: Tue 03 May 2022 13:40:34 BST
 
 from __future__ import annotations
 import copy
@@ -511,13 +511,6 @@ class Estimator1D(Estimator):
         uncut_signal, uncut_expinfo = filt.get_filtered_fid(cut_ratio=None)
         region = filt.get_region()
 
-        import matplotlib as mpl
-        mpl.use("tkAgg")
-        import matplotlib.pyplot as plt
-        fig = plt.figure()
-        ax = fig.add_subplot()
-        ax.plot(sig.ft(cut_signal))
-        plt.show()
         cut_size = cut_signal.size
         uncut_size = uncut_signal.size
         if (mpm_trim is None) or (mpm_trim > cut_size):

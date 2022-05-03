@@ -5,6 +5,9 @@ Theory Overview
 
    This page is work in progress.
 
+   A complete overview of the theory underpinning NMR-EsPy can be found in
+   our `2022 JMR paper <https://doi.org/10.1016/j.jmr.2022.107173>`_.
+
 On this page, I provide a brief overview of the goal of NMR-EsPy and how
 it attempts to achieve this. If you simply wish to use NMR-EsPy without
 worrying about the underlying theory, feel free to skip this.

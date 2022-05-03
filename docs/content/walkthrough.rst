@@ -2,14 +2,14 @@ Example Walk-through
 ====================
 
 This page provides an outline of basic NMR-EsPy usage.  If you intend to only
-to use the graphical user interface, this page won't be useful: :doc:`follow
-this link <gui/index>`.
+to use the accompanying graphical user interface, this page won't be useful:
+:doc:`follow this link <gui/index>`.
 
 As an illustration of the typical steps involved in using NMR-EsPy, we will
 consider an example dataset that ships with TopSpin 4. Assuming you installed
-TopSpin in the default path, this should be present in the path:
+TopSpin in the default path, this should be present at:
 
-* Linux: ``/opt/topspin4.x.y/examdata/exam1d_1H/1/pdata/1``
+* UNIX: ``/opt/topspin4.x.y/examdata/exam1d_1H/1/pdata/1``
 * Windows: ``C:\Bruker\TopSpin4.x.y\examdata\exam1d_1H\1\pdata\1``
 
 In what follows, as I am using TopSpin 4.0.8, I shall be replacing
@@ -125,9 +125,9 @@ Result tables and figures can both easily be generated using the
 Miscellaneous
 ^^^^^^^^^^^^^
 
-A log of method calls made by the estimator can be output output to the
-terminal, or saved to a file, using :py:meth:`~nmrespy.Estimator1D.view_log`
-and :py:meth:`~nmrespy.Estimator1D.save_log`, respectively.
+A log of method calls made by the estimator can be output to the terminal, or
+saved to a file, using :py:meth:`~nmrespy.Estimator1D.view_log` and
+:py:meth:`~nmrespy.Estimator1D.save_log`, respectively.
 
 .. code:: pycon
 
@@ -145,8 +145,8 @@ and :py:meth:`~nmrespy.Estimator1D.save_log`, respectively.
     >>> estimator.save_log(path="logfile")
     Saved file logfile.log
 
-The estimator object can be stored as a byte-stream using
-:py:meth:`~nmrespy.Estimator1D.to_pickle` protocol, enabling it to be re-loaded
+The estimator object can be stored as a byte-stream using the
+:py:meth:`~nmrespy.Estimator1D.to_pickle` method, enabling it to be re-loaded
 at a later time.
 
 .. code:: pycon

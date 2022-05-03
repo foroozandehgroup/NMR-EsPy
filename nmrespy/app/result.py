@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 28 Apr 2022 00:17:44 BST
+# Last Edited: Tue 03 May 2022 13:39:47 BST
 
 import ast
 import copy
@@ -25,7 +25,6 @@ class Result(wd.MyToplevel):
 
         super().__init__(master)
 
-        self.master.estimator._results[-1].result = self.master.estimator._results[-1].result[:-1]
         self.resizable(True, True)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
