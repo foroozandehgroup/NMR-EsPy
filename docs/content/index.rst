@@ -3,11 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. only:: html
+Welcome to NMR-EsPy's Documentatation
+=====================================
 
-  .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png
-    :align: center
-    :width: 350
+.. only:: html
 
   .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/build/badge.svg
     :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Abuild
@@ -24,7 +23,21 @@
     :align: center
     :width: 250
 
-**Simon Hulse and Mohammadali Foroozandeh, University of Oxford**
+.. only:: latex
+
+   .. |github| image:: media/github.png
+             :scale: 8%
+
+   .. |email| image:: media/email.png
+            :scale: 1%
+
+.. role:: raw-html(raw)
+    :format: html
+
+**Simon G. Hulse \& Mohammadali Foroozandeh,**:raw-html:`<br />`
+**Department of Chemistry,**:raw-html:`<br />`
+**University of Oxford**
+
 
 NMR-EsPy (**N**\ uclear **M**\ agnetic **R**\ esonance **Es**\ timation in
 **Py**\ thon) is a Python package for the estimation of parameters that
@@ -34,43 +47,15 @@ As with the majority of packages that do a lot of number crunching in Python,
 NMR-EsPy relies heavily on `NumPy <https://numpy.org/>`_ as well as
 `SciPy <https://www.scipy.org/>`_ routines to function efficiently.
 
-The NMR-EsPy package is a product of work carried out during my Ph.D
-within the group of Dr. Mohammadali Foroozandeh, in the University of
-Oxford's Chemistry Department. To find out more about the group, take a look
+The NMR-EsPy package is a product of work carried out during Simon's Ph.D
+within the Foroozandeh group. To find out more about the group, take a look
 at our `website. <http://foroozandeh.chem.ox.ac.uk/home>`_
 
-The following publications are directly linked to NMR-EsPy and provide
-an extensive background on the underlying theory and examples of results
-obtained by using it:
-
-*No publications yet...*
-
-For more information:
-
-|github| `<https://github.com/foroozandehgroup/NMR-EsPy>`_
-
-|email| `simon.hulse@chem.ox.ac.uk <mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy%20query>`_
-
-.. only:: html
-
-   .. |github| image:: media/github.png
-              :scale: 15%
-
-   .. |email| image:: media/email.png
-             :scale: 2%
-
-.. only:: latex
-
-   .. |github| image:: media/github.png
-             :scale: 8%
-
-   .. |email| image:: media/email.png
-            :scale: 1%
-
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    install
    theory_overview
@@ -79,3 +64,11 @@ For more information:
    misc/index
    references/index
    contributors
+
+Publications
+------------
+
+* Simon G. Hulse, Mohammadali Foroozandeh. Newton meets Ockham: Parameter
+  estimation and model selection of NMR data with NMR-EsPy. *J. Magn. Reson.*
+  338 (2022) 107173. :raw-html:`<br />`
+  `<https://doi.org/10.1016/j.jmr.2022.107173>`_
