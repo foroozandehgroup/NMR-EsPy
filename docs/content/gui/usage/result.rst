@@ -35,7 +35,7 @@ succeeded in describing certain aspects of the data well. For example, it may
 fit two very closely-separated resonances with a single oscillator.
 
 The *Edit Parameter Estimate* button provides functionality to manually change
-the estimation result. Upon making such changes, the optimiser should be re-run
+the estimation result. Upon making such changes, the optimiser is be re-run
 to achieve a minimisation of the cost function of interest.
 
 .. warning::
@@ -111,7 +111,7 @@ has failed to identify. Extensive use of this button is not advised.
 .. note::
 
   The add button provides exactly the same functionality as
-  :py:meth:`~nmrespy.core.Estimator.add_oscillators`.
+  :py:meth:`~nmrespy.estimators.onedim.Estimator1D.add_oscillators`.
 
 Clicking on the Add button when no oscillators are selected will load the
 following window:
@@ -152,7 +152,7 @@ from the result.
 .. note::
 
   The add button provides exactly the same functionality as
-  :py:meth:`~nmrespy.core.Estimator.remove_oscillators`.
+  :py:meth:`~nmrespy.estimators.onedim.Estimator1D.remove_oscillators`.
 
 The Merge Button
 ----------------
@@ -169,7 +169,7 @@ are modelling a single resonance in the data.
 .. note::
 
   The add button provides exactly the same functionality as
-  :py:meth:`~nmrespy.core.Estimator.merge_oscillators`.
+  :py:meth:`~nmrespy.estimators.onedim.Estimator1D.merge_oscillators`.
 
 The Split Button
 ----------------
@@ -180,7 +180,7 @@ and in its place create a series of "child" oscillators.
 .. note::
 
   The add button provides exactly the same functionality as
-  :py:meth:`~nmrespy.core.Estimator.split_oscillator`.
+  :py:meth:`~nmrespy.estimators.onedim.Estimator1D.split_oscillator`.
 
 The following window loads when you click *Split*:
 
@@ -270,10 +270,7 @@ Result Figure
   .. note::
     Beyond specifying the dpi and size of the figure, the GUI does not provide
     any means of customising the appearance of the figure in this version.
-    I intend to provide support of for in a future version.  At the moment,
-    the only means of customising the figure is to do it by writing a Python
-    script. I provide an outline of how you can achieve certain customisations
-    :doc:`here <../../misc/figure_customisation>`
+    I intend to provide support of for in a future version.
 
 Result Files
 ------------
@@ -291,7 +288,7 @@ Estimator
 ---------
 
   Used for saving (`"pickling" <https://docs.python.org/3/library/pickle.html>`_)
-  the :py:class:`nmrespy.core.Estimator` class instance, associated with the
+  the :py:class:`~nmrespy.estimators.onedim.Estimator1D` class instance, associated with the
   estimation result.
 
   + `Save Estimator` - Specifies whether or not to save the estimator to a

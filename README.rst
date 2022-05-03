@@ -11,9 +11,6 @@
    .. image:: https://badge.fury.io/py/nmrespy.svg
       :target: https://badge.fury.io/py/nmrespy
 
-   .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/build/badge.svg
-     :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Abuild
-
    .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg
       :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs
 
@@ -27,14 +24,12 @@ NMR data.
 
 Getting started:
 
-* Installation: ``pip install nmrespy``
+* Installation: ``python -m pip install nmrespy``
 * HTML Documentation: https://foroozandehgroup.github.io/NMR-EsPy/
-* PDF Documentation: https://github.com/foroozandehgroup/NMR-EsPy/raw/gh-pages/nmr-espy.pdf
 * Check out the `Example Walkthrough <https://https://foroozandehgroup.github.io/NMR-EsPy/walkthrough.html>`_
   page in the docs for a tutorial on NMR-EsPy's basic usage.
-
-The following figure shows the final result generated in the example
-walkthrough in NMR-EsPy's docs:
+* This `2022 JMR paper <https://doi.org/10.1016/j.jmr.2022.107173>`_ provides a detailed description of the theory behind NMR-EsPy
+  and showcases a couple of results derived using it.
 
 .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/media/walkthrough/figures/plot_example_edited.png
    :scale: 5 %

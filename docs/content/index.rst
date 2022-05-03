@@ -51,6 +51,10 @@ The NMR-EsPy package is a product of work carried out during Simon's Ph.D
 within the Foroozandeh group. To find out more about the group, take a look
 at our `website. <http://foroozandeh.chem.ox.ac.uk/home>`_
 
+If you come across any unexpected behavior, please get in touch with Simon,
+via email (see the email icon in the sidebar), or `file an issue
+<https://github.com/foroozandehgroup/NMR-EsPy/issues>`_.
+
 Contents
 --------
 
@@ -61,7 +65,6 @@ Contents
    theory_overview
    walkthrough
    gui/index
-   misc/index
    references/index
    contributors
 

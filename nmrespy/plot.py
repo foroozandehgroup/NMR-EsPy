@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 27 Apr 2022 14:34:06 BST
+# Last Edited: Tue 03 May 2022 15:42:56 BST
 
 """Module for plotting estimation results."""
 
@@ -294,7 +294,7 @@ class ResultPlotter(ExpInfo):
             self.shifts,
             self.model,
             color=self.model_color,
-            alpha=1 # if self.plot_model else 0
+            alpha=1 if self.plot_model else 0
         )[0]
 
         self.residual_plot = self.ax.plot(

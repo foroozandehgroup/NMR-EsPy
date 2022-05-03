@@ -1,3 +1,8 @@
+# latex_fudge.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Tue 03 May 2022 15:22:21 BST
+
 # Sphinx fucks up sectioning in some places when it builds the LaTeX docs.
 # Also, idk how to implement certain things in LaTeX via rst files,
 # so this file takes the .tex file output by sphinx and manually
@@ -11,10 +16,12 @@ import socket
 hostname = socket.gethostname()
 if hostname == 'precision':
     fname = ('/home/simon/Documents/DPhil/projects/spectral_estimation/'
-             'NMR-EsPy/docs/build/latex/nmr-espy.tex')
+             'NMR-EsPy/docs/_build/latex/nmr-espy.tex')
 elif hostname == 'belladonna.chem.ox.ac.uk':
     fname = ('/u/mf/jesu2901/Documents/DPhil/projects/spectral_estimation/'
-             'NMR-EsPy/docs/build/latex/nmr-espy.tex')
+             'NMR-EsPy/docs/_build/latex/nmr-espy.tex')
+else:
+    fname = 'latex/nmr-espy.tex'
 
 with open(fname, 'r') as fh:
     text = fh.read()

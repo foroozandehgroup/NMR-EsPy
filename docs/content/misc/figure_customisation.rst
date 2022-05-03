@@ -61,7 +61,7 @@ To generate the estimator figure, add the following line:
 
    plot = estimator.plot_result()
 
-Giving the :py:meth:`~nmrespy.core.Estimator.plot_result` method no arguments
+Giving the :py:meth:`~nmrespy.onedim.Estimator.plot_result` method no arguments
 will produce a figure which is identical to the one produced by using the GUI.
 There are some things that you can customise by providing arguments to the
 method. Notable things that can be tweaked are:
@@ -78,10 +78,10 @@ method. Notable things that can be tweaked are:
   so you must still manually specify the desired oscillator colours if you want
   these to not be the default colours.
 
-Have a look at the :py:func:`nmrespy.plot.plot_result` function for a
+Have a look at the :py:class:`nmrespy.plot.ResultPlotter` function for a
 description of the acceptable arguments. Only the following arguments should
 be used (the others are automatically determined internally by the
-:py:meth:`nmrespy.core.Estimator.plot_result` method):
+:py:meth:`nmrespy.onedim.Estimator.plot_result` method):
 
 * `shifts_unit`
 * `plot_residual`
@@ -104,9 +104,8 @@ by editing ``plot``.
 General Guidance
 ----------------
 
-:py:meth:`nmrespy.core.Estimator.plot_result` produces an instance of the
-:py:class:`nmrespy.plot.NmrespyPlot` class. This possesses four notable
-attributes:
+:py:meth:`nmrespy.onedim.Estimator.plot_result` produces a list of
+:py:class:`nmrespy.plot.ResultPlotter` instances.
 
 * `fig` (`matplotlib.figure.Figure <https://matplotlib.org/3.3.1/api/_as_gen/matplotlib.figure.Figure.html>`_) the overall figure.
 * `ax` (`matplotlib.axes._subplots.AxesSubplot <https://matplotlib.org/3.3.1/api/axes_api.html#the-axes-class>`_) the figure axes.
