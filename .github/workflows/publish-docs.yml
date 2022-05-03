@@ -37,6 +37,7 @@ jobs:
 
       - name: update gh-pages
         run: |
+          rm -r gh-pages/*
           cp -r master/docs/html/* gh-pages/
           cd gh-pages
           touch .nojekyll
