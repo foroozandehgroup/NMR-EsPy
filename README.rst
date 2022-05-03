@@ -31,6 +31,6 @@ Getting started:
 * This `2022 JMR paper <https://doi.org/10.1016/j.jmr.2022.107173>`_ provides a detailed description of the theory behind NMR-EsPy
   and showcases a couple of results derived using it.
 
-.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/media/walkthrough/figures/plot_example_edited.png
+.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/content/media/walkthrough/5_54-5_42.png
    :scale: 5 %
    :align: center
