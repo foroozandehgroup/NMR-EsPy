@@ -8,8 +8,8 @@ Welcome to NMR-EsPy's Documentatation
 
 .. only:: html
 
-  .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/build/badge.svg
-    :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Abuild
+  .. image:: https://badge.fury.io/py/nmrespy.svg
+    :target: https://badge.fury.io/py/nmrespy
 
   .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg
     :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs
