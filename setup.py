@@ -1,18 +1,16 @@
 # setup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 29 Apr 2022 11:40:12 BST
+# Last Edited: Tue 03 May 2022 16:14:51 BST
 
 from setuptools import setup, find_packages
 
 with open("README.rst", "r") as fh:
     long_description = fh.read()
 
-exec(open("nmrespy/__init__.py").read())
-
 setup(
     name="nmrespy",
-    version=__version__,  # noqa: F821
+    version="1.0",
     description="NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python",
     author="Simon G. Hulse, Mohammadali Foroozandeh",
     author_email="simon.hulse@chem.ox.ac.uk",
