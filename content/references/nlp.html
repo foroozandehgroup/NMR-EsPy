@@ -1,0 +1,393 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>nmrespy.nlp &#8212; NMR-EsPy  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nameko.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="nmrespy.plot" href="plot.html" />
+    <link rel="prev" title="nmrespy.mpm" href="mpm.html" />
+   
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Lora:400' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+  </head><body>
+  
+  
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="plot.html" title="nmrespy.plot"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="mpm.html" title="nmrespy.mpm"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">nmrespy.nlp</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <style>
+   .grey {color:#808080}
+   .red {color:#ff0000}
+   .green {color:#008000}
+   .blue {color:#0000ff}
+   .oscblue {color:#1063e0}
+   .oscorange {color:#eb9310}
+   .oscgreen {color:#2bb539}
+   .oscred {color:#d4200c}
+   .regiongreen {color: #7fd47f}
+   .regionblue {color: #66b3ff}
+</style><section id="module-nmrespy.nlp">
+<span id="nmrespy-nlp"></span><h1>nmrespy.nlp<a class="headerlink" href="#module-nmrespy.nlp" title="Permalink to this headline">¶</a></h1>
+<p>Nonlinear programming for generating parameter estiamtes.</p>
+<section id="mwe">
+<h2>MWE<a class="headerlink" href="#mwe" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">uniform</span>
+
+<span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">ExpInfo</span>
+<span class="kn">from</span> <span class="nn">nmrespy.nlp</span> <span class="kn">import</span> <span class="n">NonlinearProgramming</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">set_printoptions</span><span class="p">(</span>
+    <span class="n">formatter</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;float&quot;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">x</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="n">expinfo</span> <span class="o">=</span> <span class="n">ExpInfo</span><span class="p">(</span>
+    <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">sw</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">,</span>
+    <span class="n">sfo</span><span class="o">=</span><span class="mf">400.0</span><span class="p">,</span>
+    <span class="n">nuclei</span><span class="o">=</span><span class="s2">&quot;1H&quot;</span><span class="p">,</span>
+    <span class="n">default_pts</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">parameters</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">290</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">280</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">150</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">155</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">160</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">165</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Make FID with SNR of 30dB</span>
+<span class="n">fid</span> <span class="o">=</span> <span class="n">expinfo</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">snr</span><span class="o">=</span><span class="mf">30.0</span><span class="p">)</span>
+
+<span class="c1"># Add noise to parameter array for initial guess</span>
+<span class="n">initial_guess</span> <span class="o">=</span> <span class="n">parameters</span> <span class="o">+</span> <span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+<span class="c1"># Optimise parameters using the Gauss-Newton method (default method)</span>
+<span class="n">nlp</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
+    <span class="n">expinfo</span><span class="p">,</span>
+    <span class="n">fid</span><span class="p">,</span>
+    <span class="n">initial_guess</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">nlp</span><span class="o">.</span><span class="n">get_result</span><span class="p">(</span><span class="s2">&quot;hz&quot;</span><span class="p">)</span>
+<span class="n">errors</span> <span class="o">=</span> <span class="n">nlp</span><span class="o">.</span><span class="n">get_errors</span><span class="p">(</span><span class="s2">&quot;hz&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Result:</span><span class="se">\n</span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="se">\n</span><span class="s2">Errors:</span><span class="se">\n</span><span class="si">{</span><span class="n">errors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Ensure that every parameter is at least within 0.01 of its True value</span>
+<span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">)</span>
+
+<span class="c1"># --- Output ---</span>
+<span class="c1">#</span>
+<span class="c1"># Result:</span>
+<span class="c1"># [[0.99669 -0.00051 300.00017 0.99671]</span>
+<span class="c1">#  [2.00048 -0.00083 290.00006 1.09946]</span>
+<span class="c1">#  [0.99956 -0.00069 279.99916 0.99938]</span>
+<span class="c1">#  [0.99962 -0.00070 -150.00034 0.99706]</span>
+<span class="c1">#  [3.00004 -0.00046 -154.99967 1.20114]</span>
+<span class="c1">#  [3.00037 -0.00023 -159.99970 1.20171]</span>
+<span class="c1">#  [1.00073 -0.00039 -164.99948 0.99820]]</span>
+<span class="c1"># Errors:</span>
+<span class="c1"># [[0.00277 0.00278 0.00063 0.00394]</span>
+<span class="c1">#  [0.00291 0.00146 0.00036 0.00227]</span>
+<span class="c1">#  [0.00278 0.00278 0.00063 0.00395]</span>
+<span class="c1">#  [0.00280 0.00280 0.00063 0.00395]</span>
+<span class="c1">#  [0.00310 0.00103 0.00028 0.00174]</span>
+<span class="c1">#  [0.00310 0.00103 0.00028 0.00174]</span>
+<span class="c1">#  [0.00280 0.00280 0.00063 0.00396]]</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="nmrespy.nlp.NonlinearProgramming">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nmrespy.nlp.</span></span><span class="sig-name descname"><span class="pre">NonlinearProgramming</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expinfo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase_variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gauss-newton'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'apfd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp_thold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq_thold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">negative_amps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'remove'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/nlp.html#NonlinearProgramming"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.nlp.NonlinearProgramming" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object to facilitate numerical optimisation of NMR signal parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>expinfo</strong> (<a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.expinfo.ExpInfo"><em>ExpInfo</em></a>) – Experiment information.</p></li>
+<li><p><strong>data</strong> (<em>ndarray</em>) – Signal to be considered.</p></li>
+<li><p><strong>theta0</strong> (<em>ndarray</em>) – <p>Initial parameter guess in the following form:</p>
+<ul>
+<li><p><strong>1-dimensional data:</strong></p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">theta0</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="n">a_1</span><span class="p">,</span> <span class="n">φ_1</span><span class="p">,</span> <span class="n">f_1</span><span class="p">,</span> <span class="n">η_1</span><span class="p">],</span>
+    <span class="p">[</span><span class="n">a_2</span><span class="p">,</span> <span class="n">φ_2</span><span class="p">,</span> <span class="n">f_2</span><span class="p">,</span> <span class="n">η_2</span><span class="p">],</span>
+    <span class="o">...</span><span class="p">,</span>
+    <span class="p">[</span><span class="n">a_m</span><span class="p">,</span> <span class="n">φ_m</span><span class="p">,</span> <span class="n">f_m</span><span class="p">,</span> <span class="n">η_m</span><span class="p">],</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>2-dimensional data:</strong></p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">theta0</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+    <span class="p">[</span><span class="n">a_1</span><span class="p">,</span> <span class="n">φ_1</span><span class="p">,</span> <span class="n">f1_1</span><span class="p">,</span> <span class="n">f2_1</span><span class="p">,</span> <span class="n">η1_1</span><span class="p">,</span> <span class="n">η2_1</span><span class="p">],</span>
+    <span class="p">[</span><span class="n">a_2</span><span class="p">,</span> <span class="n">φ_2</span><span class="p">,</span> <span class="n">f1_2</span><span class="p">,</span> <span class="n">f2_2</span><span class="p">,</span> <span class="n">η1_2</span><span class="p">,</span> <span class="n">η2_2</span><span class="p">],</span>
+    <span class="o">...</span><span class="p">,</span>
+    <span class="p">[</span><span class="n">a_m</span><span class="p">,</span> <span class="n">φ_m</span><span class="p">,</span> <span class="n">f1_m</span><span class="p">,</span> <span class="n">f2_m</span><span class="p">,</span> <span class="n">η1_m</span><span class="p">,</span> <span class="n">η2_m</span><span class="p">],</span>
+<span class="p">])</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</p></li>
+<li><p><strong>start_time</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The start time in each dimension. If set to <code class="docutils literal notranslate"><span class="pre">None</span></code>, the initial
+point in each dimension with be <code class="docutils literal notranslate"><span class="pre">0.0</span></code>. To set non-zero start times,
+a list of floats or strings can be used. If floats are used, they
+specify the start time in each dimension in seconds. Alternatively,
+strings of the form <code class="docutils literal notranslate"><span class="pre">r&quot;\d+dt&quot;</span></code>, may be used, which indicates a
+cetain multiple of the difference in time between two adjacent
+points.</p></li>
+<li><p><strong>phase_variance</strong> (<em>bool</em>) – Specifies whether or not to include the variance of oscillator
+phases into the NLP routine.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – <p>Specifies the optimisation method.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;exact&quot;</span></code> Uses SciPy’s
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html#optimize-minimize-trustconstr">trust-constr routine</a>
+The Hessian will be exact.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;gauss-newton&quot;</span></code> Uses SciPy’s
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html#optimize-minimize-trustconstr">trust-constr routine</a>
+The Hessian will be approximated based on the
+<a class="reference external" href="https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm">Gauss-Newton method</a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;lbfgs&quot;</span></code> Uses SciPy’s
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb">L-BFGS-B routine</a>.</p></li>
+</ul>
+</p></li>
+<li><p><strong>bound</strong> (<em>bool</em>) – <p>Specifies whether or not to bound the parameters during
+optimisation. Bounds are given by:</p>
+<ul>
+<li><p><span class="math">0 \leq a_m \leq \infty</span></p></li>
+<li><p><span class="math">-\pi &lt; \phi_m \leq \pi</span></p></li>
+<li><p><span class="math">-f_{\mathrm{sw}} / 2 + f_{\mathrm{off}} \leq f_m \leq\
+f_{\mathrm{sw}} / 2 + f_{\mathrm{off}}</span></p></li>
+<li><p><span class="math">0 \leq \eta_m \leq \infty</span></p></li>
+</ul>
+<p><span class="math">(\forall m \in \{1, \cdots, M\})</span></p>
+</p></li>
+<li><p><strong>max_iterations</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – A value specifiying the number of iterations the routine may run
+through before it is terminated. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default number
+of maximum iterations is set (<code class="docutils literal notranslate"><span class="pre">100</span></code> if <code class="docutils literal notranslate"><span class="pre">method</span></code> is
+<code class="docutils literal notranslate"><span class="pre">&quot;exact&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;gauss-newton&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">500</span></code> if <code class="docutils literal notranslate"><span class="pre">&quot;method&quot;</span></code> is
+<code class="docutils literal notranslate"><span class="pre">&quot;lbfgs&quot;</span></code>).</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – A string containing a subset of the characters <code class="docutils literal notranslate"><span class="pre">&quot;a&quot;</span></code> (amplitudes),
+<code class="docutils literal notranslate"><span class="pre">&quot;p&quot;</span></code> (phases), <code class="docutils literal notranslate"><span class="pre">&quot;f&quot;</span></code> (frequencies), and <code class="docutils literal notranslate"><span class="pre">&quot;d&quot;</span></code> (damping factors).
+Specifies which types of parameters should be considered for optimisation.</p></li>
+<li><p><strong>amp_thold</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – A value that imposes a threshold for deleting oscillators of
+negligible ampltiude. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, does nothing. If a float,
+oscillators with amplitudes satisfying <span class="math">a_m &lt;
+a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2</span> will be
+removed from the parameter array, where <span class="math">\lVert
+\boldsymbol{a} \rVert_2</span> is the Euclidian norm of the vector of
+all the oscillator amplitudes. It is advised to set <code class="docutils literal notranslate"><span class="pre">amp_thold</span></code>
+at least a couple of orders of magnitude below 1.</p></li>
+<li><p><strong>freq_thold</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – <p>If <code class="docutils literal notranslate"><span class="pre">None</span></code>, does nothing. If a float, oscillator pairs with
+frequencies satisfying
+<span class="math">\lvert f_m - f_p \rvert &lt; f_{\mathrm{thold}}</span> will be
+removed from the parameter array. A new oscillator will be included
+in the array, with parameters:</p>
+<ul>
+<li><p>amplitude: <span class="math">a = a_m + a_p</span></p></li>
+<li><p>phase: <span class="math">\phi = \left(\phi_m + \phi_p\right) / 2</span></p></li>
+<li><p>frequency: <span class="math">f = \left(f_m + f_p\right) / 2</span></p></li>
+<li><p>damping: <span class="math">\eta = \left(\eta_m + \eta_p\right) / 2</span></p></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>NOT IMPLEMENTED YET</p>
+</div>
+</p></li>
+<li><p><strong>negative_amps</strong> (<em>str</em>) – <p>Indicates how to treat oscillators which have gained negative
+amplitudes during the optimisation.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;remove&quot;</span></code> will result in such oscillators being purged from
+the parameter estimate. The optimisation routine will the be
+re-run recursively until no oscillators have a negative
+amplitude.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;flip_phase&quot;</span></code> will retain oscillators with negative
+amplitudes, but the the amplitudes will be multiplied by -1,
+and a π radians phase shift will be applied.</p></li>
+</ul>
+</p></li>
+<li><p><strong>fprint</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, the method provides information on progress to
+the terminal as it runs. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the method will run silently.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="nmrespy.nlp.NonlinearProgramming.get_errors">
+<span class="sig-name descname"><span class="pre">get_errors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.nlp.NonlinearProgramming.get_errors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the errors of the estimation result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>funit</strong> (<em>str</em>) – The unit to express the frequencies in. Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p></li>
+<li><p><strong>sort_by</strong> (<em>str</em>) – Specifies the parameter by which the oscillators are ordered by.
+Should be one of <code class="docutils literal notranslate"><span class="pre">&quot;a&quot;</span></code> for amplitudes <code class="docutils literal notranslate"><span class="pre">&quot;p&quot;</span></code> for phase, <code class="docutils literal notranslate"><span class="pre">&quot;f&lt;n&gt;&quot;</span></code>
+for frequency in the <code class="docutils literal notranslate"><span class="pre">&lt;n&gt;</span></code>-th dimension, <code class="docutils literal notranslate"><span class="pre">&quot;d&lt;n&gt;&quot;</span></code> for the damping
+factor in the <code class="docutils literal notranslate"><span class="pre">&lt;n&gt;</span></code>-th dimension. By setting <code class="docutils literal notranslate"><span class="pre">&lt;n&gt;</span></code> to <code class="docutils literal notranslate"><span class="pre">-1</span></code>, the
+final (direct) dimension will be used. For 1D data, <code class="docutils literal notranslate"><span class="pre">&quot;f&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;d&quot;</span></code>
+can be used to specify the frequency or damping factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><em>ndarray</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nmrespy.nlp.NonlinearProgramming.get_result">
+<span class="sig-name descname"><span class="pre">get_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.nlp.NonlinearProgramming.get_result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the estimation result</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>funit</strong> (<em>str</em>) – The unit to express the frequencies in. Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p></li>
+<li><p><strong>sort_by</strong> (<em>str</em>) – Specifies the parameter by which the oscillators are ordered by.
+Should be one of <code class="docutils literal notranslate"><span class="pre">&quot;a&quot;</span></code> for amplitudes <code class="docutils literal notranslate"><span class="pre">&quot;p&quot;</span></code> for phase, <code class="docutils literal notranslate"><span class="pre">&quot;f&lt;n&gt;&quot;</span></code>
+for frequency in the <code class="docutils literal notranslate"><span class="pre">&lt;n&gt;</span></code>-th dimension, <code class="docutils literal notranslate"><span class="pre">&quot;d&lt;n&gt;&quot;</span></code> for the damping
+factor in the <code class="docutils literal notranslate"><span class="pre">&lt;n&gt;</span></code>-th dimension. By setting <code class="docutils literal notranslate"><span class="pre">&lt;n&gt;</span></code> to <code class="docutils literal notranslate"><span class="pre">-1</span></code>, the
+final (direct) dimension will be used. For 1D data, <code class="docutils literal notranslate"><span class="pre">&quot;f&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;d&quot;</span></code>
+can be used to specify the frequency or damping factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><em>ndarray</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><style>
+.aligncenter {
+    text-align: center;
+}
+</style>
+
+<a href="https://foroozandehgroup.github.io/NMR-EsPy/">
+    <img style="padding: 0px 0px 12px"
+         src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png"
+         alt="NMR-EsPy logo"
+         width=230px
+         height=auto />
+</a>
+
+<p class="aligncenter">
+    <a href="https://github.com/foroozandehgroup/NMR-EsPy">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/github.png"
+             alt="Github"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy%20query">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
+             alt="email"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="https://foroozandeh.chem.ox.ac.uk/home">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png"
+             alt="Group website"
+             width=auto
+             height=30px />
+    </a>
+</p>
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">nmrespy.nlp</a><ul>
+<li><a class="reference internal" href="#mwe">MWE</a></li>
+</ul>
+</li>
+</ul>
+
+  </div><h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation index</a><ul>
+  <li><a href="index.html">Reference</a><ul>
+      <li>Previous: <a href="mpm.html" title="previous chapter">nmrespy.mpm</a></li>
+      <li>Next: <a href="plot.html" title="next chapter">nmrespy.plot</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/content/references/nlp.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  
+  </body>
+</html>

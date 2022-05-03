@@ -1,0 +1,295 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>nmrespy.load &#8212; NMR-EsPy  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nameko.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="nmrespy.freqfilter" href="freqfilter.html" />
+    <link rel="prev" title="nmrespy.Estimator1D" href="estimator1d.html" />
+   
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Lora:400' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+  </head><body>
+  
+  
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="freqfilter.html" title="nmrespy.freqfilter"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="estimator1d.html" title="nmrespy.Estimator1D"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy  documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">nmrespy.load</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <style>
+   .grey {color:#808080}
+   .red {color:#ff0000}
+   .green {color:#008000}
+   .blue {color:#0000ff}
+   .oscblue {color:#1063e0}
+   .oscorange {color:#eb9310}
+   .oscgreen {color:#2bb539}
+   .oscred {color:#d4200c}
+   .regiongreen {color: #7fd47f}
+   .regionblue {color: #66b3ff}
+</style><section id="module-nmrespy.load">
+<span id="nmrespy-load"></span><h1>nmrespy.load<a class="headerlink" href="#module-nmrespy.load" title="Permalink to this headline">¶</a></h1>
+<p>Provides functionality for importing NMR data.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.load.load_bruker">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.load.</span></span><span class="sig-name descname"><span class="pre">load_bruker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ask_convdta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/load.html#load_bruker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.load.load_bruker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load data and experiment information from Bruker format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>directory</strong> (<em>str</em>) – Absolute path to data directory.</p></li>
+<li><p><strong>ask_convdta</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, the user will be warned that the data should have its
+digitial filter removed prior to importing if the data to be impoprted
+is from an <code class="docutils literal notranslate"><span class="pre">fid</span></code> or <code class="docutils literal notranslate"><span class="pre">ser</span></code> file. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the user is not
+warned.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>data</em> – The associated data.</p></li>
+<li><p><em>expinfo</em> – Experiment information. As well as the normal associated properties
+(see <a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.ExpInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">nmrespy.ExpInfo</span></code></a>), the <code class="docutils literal notranslate"><span class="pre">parameters</span></code> attribute is a
+dict with parameters from all acqus and procs files associated with the
+dataset.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>OSError</strong> – If the directory specified does not exist.</p></li>
+<li><p><strong>ValueError</strong> – If the directroy specified does not have the requisite data and
+    parameter files expected for a Bruker dataset.</p></li>
+<li><p><strong>MoreThanTwoDimError</strong> – If the dataset specified has more than 2 dimensions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><em>Tuple</em>[<em>ndarray</em>, <a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.expinfo.ExpInfo"><em>ExpInfo</em></a>]</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p><strong>Directory Requirements</strong></p>
+<p>There are certain file paths expected to be found relative to <code class="docutils literal notranslate"><span class="pre">directory</span></code>
+which contain the data and parameter files. Here is an extensive list of
+the paths expected to exist, for different data dimensions, and
+data types (raw time-domain data or processed data):</p>
+<ul class="simple">
+<li><p>1D data</p>
+<ul>
+<li><p>Raw FID</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/fid</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/acqus</span></code></p></li>
+</ul>
+</li>
+<li><p>Processed data</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/1r</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/../../acqus</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/procs</span></code></p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>2D data</p>
+<ul>
+<li><p>Raw FID</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/ser</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/acqus</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/acqu2s</span></code></p></li>
+</ul>
+</li>
+<li><p>Processed data</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/2rr</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/../../acqus</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/../../acqu2s</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/procs</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">directory/proc2s</span></code></p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>Digital Filters</strong></p>
+<p>If you are importing raw FID data, make sure the path
+specified corresponds to an <code class="docutils literal notranslate"><span class="pre">fid</span></code> or <code class="docutils literal notranslate"><span class="pre">ser</span></code> file which has had its
+group delay artefact removed. To do this, open the data you wish to analyse in
+TopSpin, and enter <code class="docutils literal notranslate"><span class="pre">convdta</span></code> in the bottom-left command line. You will be
+prompted to enter a value for the new data directory. It is this value you
+should use in <code class="docutils literal notranslate"><span class="pre">directory</span></code>, not the one corresponding to the original
+(uncorrected) signal.</p>
+<p><strong>For Development</strong></p>
+<div class="admonition-todo admonition" id="id1">
+<p class="admonition-title">Todo</p>
+<p>Incorporate functionality to phase correct data to remove group delay.
+This would circumvent the need to ask the user to ensure they have
+performed <code class="docutils literal notranslate"><span class="pre">convdta</span></code> prior to importing.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">nmrespy.load</span> <span class="kn">import</span> <span class="n">load_bruker</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">load_bruker</span>
+<span class="go">&lt;function load_bruker at 0x7f21fd526bf8&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">path</span> <span class="o">=</span> <span class="s1">&#39;tests/data/1&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span> <span class="o">=</span> <span class="n">load_bruker</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+<span class="go">You should ensure you data has had its group delay artefact removed.</span>
+<span class="go">Prior to dealing with the data in NMR-EsPy, you should call the</span>
+<span class="go">`CONVDTA` command on the dataset. If this has already been done, feel</span>
+<span class="go">free to proceed. If not, quit the program.</span>
+<span class="go">Continue?</span>
+<span class="go">Enter [y] or [n]</span>
+<span class="go">y</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+<span class="go">(32692,)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">expinfo</span><span class="o">.</span><span class="n">sw</span>
+<span class="go">(5494.50549450549,)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">expinfo</span><span class="o">.</span><span class="n">offset</span>
+<span class="go">(2249.20599998768,)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">expinfo</span><span class="o">.</span><span class="n">sfo</span>
+<span class="go">(500.132249206,)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">expinfo</span><span class="o">.</span><span class="n">nuclei</span>
+<span class="go">(&#39;1H&#39;,)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">expinfo</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="go">acqus</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">expinfo</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s1">&#39;acqus&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1"> --&gt; </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="go">ACQT0 --&gt; -2.26890760309556</span>
+<span class="go">AMP --&gt; [100, 100, 100, 100, 100, 100, 100, 100, 100, 100,</span>
+<span class="go">         100, 100, 100, 100, 100, 100, 100, 100, 100, 100,</span>
+<span class="go">         100, 100, 100, 100, 100, 100, 100, 100, 100, 100,</span>
+<span class="go">         100, 100]</span>
+<span class="go">AMPCOIL --&gt; [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,</span>
+<span class="go">             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,</span>
+<span class="go">             0, 0, 0]</span>
+<span class="go">AQSEQ --&gt; 0</span>
+<span class="go">AQ_mod --&gt; 3</span>
+<span class="go">AUNM --&gt; &lt;au_zg&gt;</span>
+<span class="go">AUTOPOS --&gt; &lt;&gt;</span>
+<span class="go">BF1 --&gt; 500.13</span>
+<span class="go">BF2 --&gt; 500.13</span>
+<span class="go">--snip--</span>
+<span class="go">ZL3 --&gt; 120</span>
+<span class="go">ZL4 --&gt; 120</span>
+<span class="go">scaledByNS --&gt; no</span>
+<span class="go">scaledByRG --&gt; no</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><style>
+.aligncenter {
+    text-align: center;
+}
+</style>
+
+<a href="https://foroozandehgroup.github.io/NMR-EsPy/">
+    <img style="padding: 0px 0px 12px"
+         src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png"
+         alt="NMR-EsPy logo"
+         width=230px
+         height=auto />
+</a>
+
+<p class="aligncenter">
+    <a href="https://github.com/foroozandehgroup/NMR-EsPy">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/github.png"
+             alt="Github"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy%20query">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
+             alt="email"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="https://foroozandeh.chem.ox.ac.uk/home">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png"
+             alt="Group website"
+             width=auto
+             height=30px />
+    </a>
+</p><h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation index</a><ul>
+  <li><a href="index.html">Reference</a><ul>
+      <li>Previous: <a href="estimator1d.html" title="previous chapter">nmrespy.Estimator1D</a></li>
+      <li>Next: <a href="freqfilter.html" title="next chapter">nmrespy.freqfilter</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/content/references/load.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  
+  </body>
+</html>
