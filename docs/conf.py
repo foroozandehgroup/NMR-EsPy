@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 03 May 2022 16:18:55 BST
+# Last Edited: Tue 03 May 2022 16:57:11 BST
 
 import os
 import sys
@@ -28,7 +28,7 @@ extensions = [
     "sphinx_selective_exclude.eager_only",
 ]
 
-master_doc = "content/index"
+master_doc = "index"
 
 todo_include_todos = True
 
