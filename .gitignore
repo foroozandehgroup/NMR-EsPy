@@ -1,6 +1,4 @@
 **/__pycache__/
-docs/_templates
-docs/_static
 docs/Makefile
 docs/_build
 .venv
