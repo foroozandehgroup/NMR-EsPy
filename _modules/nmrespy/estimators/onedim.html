@@ -47,7 +47,7 @@
 <span></span><span class="c1"># onedim.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Tue 03 May 2022 13:40:34 BST</span>
+<span class="c1"># Last Edited: Fri 06 May 2022 14:41:29 BST</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">import</span> <span class="nn">copy</span>
@@ -544,63 +544,96 @@
         <span class="c1"># --&gt; Run the MDL followed by MPM for an initial guess on cut signal</span>
         <span class="c1"># --&gt; Run Optimiser on cut signal</span>
         <span class="c1"># --&gt; Run Optimiser on uncut signal</span>
+        <span class="k">if</span> <span class="n">region</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">noise_region</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="n">filt</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span>
-            <span class="n">ExpInfo</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">),</span>
-            <span class="n">region</span><span class="p">,</span>
-            <span class="n">noise_region</span><span class="p">,</span>
-            <span class="n">region_unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">,</span>
-        <span class="p">)</span>
+            <span class="n">signal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">mpm_trim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">mpm_trim</span> <span class="o">&gt;</span> <span class="n">signal</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+                <span class="n">mpm_trim</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">size</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">nlp_trim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">nlp_trim</span> <span class="o">&gt;</span> <span class="n">signal</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+                <span class="n">nlp_trim</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">size</span>
 
-        <span class="n">cut_signal</span><span class="p">,</span> <span class="n">cut_expinfo</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_filtered_fid</span><span class="p">()</span>
-        <span class="n">uncut_signal</span><span class="p">,</span> <span class="n">uncut_expinfo</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_filtered_fid</span><span class="p">(</span><span class="n">cut_ratio</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-        <span class="n">region</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_region</span><span class="p">()</span>
+            <span class="n">expinfo</span> <span class="o">=</span> <span class="n">ExpInfo</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">)</span>
 
-        <span class="n">cut_size</span> <span class="o">=</span> <span class="n">cut_signal</span><span class="o">.</span><span class="n">size</span>
-        <span class="n">uncut_size</span> <span class="o">=</span> <span class="n">uncut_signal</span><span class="o">.</span><span class="n">size</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">mpm_trim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">mpm_trim</span> <span class="o">&gt;</span> <span class="n">cut_size</span><span class="p">):</span>
-            <span class="n">mpm_trim</span> <span class="o">=</span> <span class="n">cut_size</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">nlp_trim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">nlp_trim</span> <span class="o">&gt;</span> <span class="n">uncut_size</span><span class="p">):</span>
-            <span class="n">nlp_trim</span> <span class="o">=</span> <span class="n">uncut_size</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_guess</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">x0</span> <span class="o">=</span> <span class="n">initial_guess</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">oscillators</span> <span class="o">=</span> <span class="n">initial_guess</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_guess</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="n">x0</span> <span class="o">=</span> <span class="n">MatrixPencil</span><span class="p">(</span>
+                    <span class="n">expinfo</span><span class="p">,</span>
+                    <span class="n">signal</span><span class="p">[:</span><span class="n">mpm_trim</span><span class="p">],</span>
+                    <span class="n">oscillators</span><span class="o">=</span><span class="n">oscillators</span><span class="p">,</span>
+                    <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_guess</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="n">x0</span> <span class="o">=</span> <span class="n">initial_guess</span>
+            <span class="n">final_result</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
+                <span class="n">expinfo</span><span class="p">,</span>
+                <span class="n">signal</span><span class="p">[:</span><span class="n">nlp_trim</span><span class="p">],</span>
+                <span class="n">x0</span><span class="p">,</span>
+                <span class="n">phase_variance</span><span class="o">=</span><span class="n">phase_variance</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">max_iterations</span><span class="o">=</span><span class="n">max_iterations</span><span class="p">,</span>
+                <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
+            <span class="p">)</span>
+
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">oscillators</span> <span class="o">=</span> <span class="n">initial_guess</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_guess</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
-            <span class="n">x0</span> <span class="o">=</span> <span class="n">MatrixPencil</span><span class="p">(</span>
+            <span class="n">filt</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span>
+                <span class="n">ExpInfo</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">),</span>
+                <span class="n">region</span><span class="p">,</span>
+                <span class="n">noise_region</span><span class="p">,</span>
+                <span class="n">region_unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">cut_signal</span><span class="p">,</span> <span class="n">cut_expinfo</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_filtered_fid</span><span class="p">()</span>
+            <span class="n">uncut_signal</span><span class="p">,</span> <span class="n">uncut_expinfo</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_filtered_fid</span><span class="p">(</span><span class="n">cut_ratio</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">region</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_region</span><span class="p">()</span>
+            <span class="n">noise_region</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_noise_region</span><span class="p">()</span>
+
+            <span class="n">cut_size</span> <span class="o">=</span> <span class="n">cut_signal</span><span class="o">.</span><span class="n">size</span>
+            <span class="n">uncut_size</span> <span class="o">=</span> <span class="n">uncut_signal</span><span class="o">.</span><span class="n">size</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">mpm_trim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">mpm_trim</span> <span class="o">&gt;</span> <span class="n">cut_size</span><span class="p">):</span>
+                <span class="n">mpm_trim</span> <span class="o">=</span> <span class="n">cut_size</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">nlp_trim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">nlp_trim</span> <span class="o">&gt;</span> <span class="n">uncut_size</span><span class="p">):</span>
+                <span class="n">nlp_trim</span> <span class="o">=</span> <span class="n">uncut_size</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_guess</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">x0</span> <span class="o">=</span> <span class="n">initial_guess</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">oscillators</span> <span class="o">=</span> <span class="n">initial_guess</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_guess</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+                <span class="n">x0</span> <span class="o">=</span> <span class="n">MatrixPencil</span><span class="p">(</span>
+                    <span class="n">cut_expinfo</span><span class="p">,</span>
+                    <span class="n">cut_signal</span><span class="p">[:</span><span class="n">mpm_trim</span><span class="p">],</span>
+                    <span class="n">oscillators</span><span class="o">=</span><span class="n">oscillators</span><span class="p">,</span>
+                    <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
+
+            <span class="n">cut_result</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
                 <span class="n">cut_expinfo</span><span class="p">,</span>
                 <span class="n">cut_signal</span><span class="p">[:</span><span class="n">mpm_trim</span><span class="p">],</span>
-                <span class="n">oscillators</span><span class="o">=</span><span class="n">oscillators</span><span class="p">,</span>
+                <span class="n">x0</span><span class="p">,</span>
+                <span class="n">phase_variance</span><span class="o">=</span><span class="n">phase_variance</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">max_iterations</span><span class="o">=</span><span class="n">max_iterations</span><span class="p">,</span>
                 <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
             <span class="p">)</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
 
-        <span class="n">cut_result</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
-            <span class="n">cut_expinfo</span><span class="p">,</span>
-            <span class="n">cut_signal</span><span class="p">[:</span><span class="n">mpm_trim</span><span class="p">],</span>
-            <span class="n">x0</span><span class="p">,</span>
-            <span class="n">phase_variance</span><span class="o">=</span><span class="n">phase_variance</span><span class="p">,</span>
-            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
-            <span class="n">max_iterations</span><span class="o">=</span><span class="n">max_iterations</span><span class="p">,</span>
-            <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
-
-        <span class="n">final_result</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
-            <span class="n">uncut_expinfo</span><span class="p">,</span>
-            <span class="n">uncut_signal</span><span class="p">[:</span><span class="n">nlp_trim</span><span class="p">],</span>
-            <span class="n">cut_result</span><span class="p">,</span>
-            <span class="n">phase_variance</span><span class="o">=</span><span class="n">phase_variance</span><span class="p">,</span>
-            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
-            <span class="n">max_iterations</span><span class="o">=</span><span class="n">max_iterations</span><span class="p">,</span>
-            <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
-        <span class="p">)</span>
+            <span class="n">final_result</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
+                <span class="n">uncut_expinfo</span><span class="p">,</span>
+                <span class="n">uncut_signal</span><span class="p">[:</span><span class="n">nlp_trim</span><span class="p">],</span>
+                <span class="n">cut_result</span><span class="p">,</span>
+                <span class="n">phase_variance</span><span class="o">=</span><span class="n">phase_variance</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">max_iterations</span><span class="o">=</span><span class="n">max_iterations</span><span class="p">,</span>
+                <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
+            <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
             <span class="n">Result</span><span class="p">(</span>
                 <span class="n">final_result</span><span class="o">.</span><span class="n">get_result</span><span class="p">(),</span>
                 <span class="n">final_result</span><span class="o">.</span><span class="n">get_errors</span><span class="p">(),</span>
-                <span class="n">filt</span><span class="o">.</span><span class="n">get_region</span><span class="p">(),</span>
-                <span class="n">filt</span><span class="o">.</span><span class="n">get_noise_region</span><span class="p">(),</span>
+                <span class="n">region</span><span class="p">,</span>
+                <span class="n">noise_region</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="p">)</span></div>

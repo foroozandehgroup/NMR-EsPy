@@ -47,7 +47,7 @@
 <span></span><span class="c1"># expinfo.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Thu 31 Mar 2022 12:49:02 BST</span>
+<span class="c1"># Last Edited: Fri 06 May 2022 11:55:17 BST</span>
 
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
@@ -234,7 +234,6 @@
 <span class="sd">           &gt;&gt;&gt; expinfo.unicode_nuclei</span>
 <span class="sd">           (&#39;¹H&#39;, &#39;¹⁵N&#39;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nuclei</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
 
@@ -242,6 +241,31 @@
             <span class="sa">u</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="sa">u</span><span class="s2">&quot;0123456789&quot;</span><span class="p">,</span> <span class="sa">u</span><span class="s2">&quot;⁰¹²³⁴⁵⁶⁷⁸⁹&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">x</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
             <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nuclei</span>
+        <span class="p">])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">latex_nuclei</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]:</span>
+        <span class="sd">&quot;&quot;&quot;Get the nuclei associated with each channel with for use in LaTeX.</span>
+
+<span class="sd">        .. code:: python3</span>
+
+<span class="sd">           &gt;&gt;&gt; expinfo = ExpInfo(..., nuclei=(&quot;1H&quot;, &quot;15N&quot;), ...)</span>
+<span class="sd">           &gt;&gt;&gt; expinfo.latex_nuclei</span>
+<span class="sd">           (&#39;\\textsuperscript{1}H&#39;, &#39;\\textsuperscript{15}N&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nuclei</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">components</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^(\d+)([A-Za-z]+)&quot;</span><span class="p">,</span> <span class="n">nucleus</span><span class="p">)</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">nucleus</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">nucleus</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nuclei</span>
+        <span class="p">]</span>
+
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">([</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">textsuperscript</span><span class="se">{{</span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="se">}}{{</span><span class="si">{</span><span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="se">}}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">components</span>
         <span class="p">])</span>
 
     <span class="nd">@property</span>

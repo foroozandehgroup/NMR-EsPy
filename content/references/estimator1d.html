@@ -324,6 +324,17 @@ corresponding to all combinations of points in each dimension.</p></li>
 </dl>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="nmrespy.Estimator1D.latex_nuclei">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">latex_nuclei</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#nmrespy.Estimator1D.latex_nuclei" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the nuclei associated with each channel with for use in LaTeX.</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">expinfo</span> <span class="o">=</span> <span class="n">ExpInfo</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">nuclei</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;1H&quot;</span><span class="p">,</span> <span class="s2">&quot;15N&quot;</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">expinfo</span><span class="o">.</span><span class="n">latex_nuclei</span>
+<span class="go">(&#39;\textsuperscript{1}H&#39;, &#39;\textsuperscript{15}N&#39;)</span>
+</pre></div>
+</div>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="nmrespy.Estimator1D.merge_oscillators">
 <span class="sig-name descname"><span class="pre">merge_oscillators</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oscillators</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">estimate_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.merge_oscillators"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.merge_oscillators" title="Permalink to this definition">¶</a></dt>
