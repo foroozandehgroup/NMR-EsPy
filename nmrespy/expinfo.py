@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 31 Mar 2022 12:49:02 BST
+# Last Edited: Fri 06 May 2022 11:55:17 BST
 
 import re
 from typing import Any, Iterable, Optional, Tuple, Union
@@ -188,7 +188,6 @@ class ExpInfo(FrequencyConverter):
            >>> expinfo.unicode_nuclei
            ('¹H', '¹⁵N')
         """
-
         if self._nuclei is None:
             return None
 
@@ -196,6 +195,31 @@ class ExpInfo(FrequencyConverter):
             u''.join(dict(zip(u"0123456789", u"⁰¹²³⁴⁵⁶⁷⁸⁹")).get(c, c) for c in x)
             if x is not None else None
             for x in self._nuclei
+        ])
+
+    @property
+    def latex_nuclei(self) -> Optional[Iterable[Optional[str]]]:
+        """Get the nuclei associated with each channel with for use in LaTeX.
+
+        .. code:: python3
+
+           >>> expinfo = ExpInfo(..., nuclei=("1H", "15N"), ...)
+           >>> expinfo.latex_nuclei
+           ('\\textsuperscript{1}H', '\\textsuperscript{15}N')
+        """
+        if self._nuclei is None:
+            return None
+
+        components = [
+            re.search(r"^(\d+)([A-Za-z]+)", nucleus).groups()
+            if nucleus is not None else None
+            for nucleus in self._nuclei
+        ]
+
+        return tuple([
+            f"\\textsuperscript{{{c[0]}}}{{{c[1]}}}" if c is not None
+            else None
+            for c in components
         ])
 
     @property
