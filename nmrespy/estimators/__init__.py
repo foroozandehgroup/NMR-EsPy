@@ -398,6 +398,52 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         else:
             return arrays
 
+    def make_fid(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        pts: Optional[Iterable[int]] = None,
+        fn_mode: Optional[str] = None,
+    ) -> np.ndarray:
+        """Construct a noiseless FID from estimation result parameters.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to extract errors from. Index ``0`` corresponds to
+            the first result obtained using the estimator, ``1`` corresponds to
+            the next, etc.  If ``None``, all results will be used.
+
+        pts
+            The number of points to construct the time-points with in each dimesnion.
+            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
+            used.
+
+        fn_mode
+            Acquisition mode in indirect dimensions of mulit-dimensional experiments.
+            If the data is not 1-dimensional, this should be one of ``None``,
+            ``"QF"``, ``"QSED"``, ``"TPPI"``, ``"States"``, ``"States-TPPI"``,
+            ``"Echo-Anitecho"``. If ``None``, ``self.fn_mode`` will be used.
+        """
+        sanity_check(
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {"max_value": len(self._results) - 1}, True,
+            ),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "min_value": 1,
+                },
+                True,
+            ),
+            ("fn_mode", fn_mode, sfuncs.check_fn_mode, (), {}, True),
+        )
+
+        params = self.get_params(indices)
+        return super().make_fid(params, pts=pts, fn_mode=fn_mode)
+
     @abc.abstractmethod
     def write_result(*args, **kwargs):
         pass
