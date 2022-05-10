@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 09 May 2022 08:10:11 BST
+# Last Edited: Tue 10 May 2022 14:46:24 BST
 
 from __future__ import annotations
 import datetime
@@ -18,7 +18,7 @@ from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
 )
-from nmrespy . import logger, Estimator, Result
+from . import logger, Estimator, Result
 from nmrespy.freqfilter import Filter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
@@ -44,6 +44,7 @@ class Estimator2DJ(Estimator):
         channel: Union[str, Nucleus] = "1H",
         f2_unit: str = "ppm",
         snr: Optional[float] = 30.0,
+        lb: Optional[Tuple[float, float]] = None,
     ) -> Estimator2DJ:
         """Generate an estimator with data derived from a J-resolved experiment
         simulation.
@@ -56,15 +57,15 @@ class Estimator2DJ(Estimator):
         Parameters
         ----------
         spin_system
-            Specification of the spin system to run simulations on.
-            `See here <https://foroozandehgroup.github.io/nmr_sims/content/
-            references/spin_system.html#nmr_sims.spin_system.SpinSystem.__init__>`_
+            Specification of the spin system to run simulations on. `See here
+            <https://foroozandehgroup.github.io/nmr_sims/content/references/
+            spin_system.html#nmr_sims.spin_system.SpinSystem.__init__>`_
             for more details.
 
         sweep_widths
-            The sweep width in each dimension. The first element, corresponding to
-            F1, should be in Hz. The second element, corresponding to F2, should have
-            be expressed in the unit which corresponding to ``f2_unit``.
+            The sweep width in each dimension. The first element, corresponding
+            to F1, should be in Hz. The second element, corresponding to F2,
+            should be expressed in the unit which corresponds to ``f2_unit``.
 
         offset
             The transmitter offset. The value's unit should correspond with
@@ -85,6 +86,11 @@ class Estimator2DJ(Estimator):
         snr
             The signal-to-noise ratio of the resulting signal, in decibels. ``None``
             produces a noiseless signal.
+
+        lb
+            The damping (line-broadening) factor applied to the simulated FID.
+            By default, this will be set to ensure that the final point in each
+            dimension in scaled to be 1/1000 of it's un-damped value.
         """
         sanity_check(
             ("spin_system", spin_system, sfuncs.check_spin_system),
@@ -100,13 +106,19 @@ class Estimator2DJ(Estimator):
             ("channel", channel, sfuncs.check_nmrsims_nucleus),
             ("f2_unit", f2_unit, sfuncs.check_frequency_unit, (True,)),
             ("snr", snr, sfuncs.check_float, (), {}, True),
+            (
+                "lb", lb, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True}, True,
+            ),
         )
+
         sweep_widths = [f"{sweep_widths[0]}hz", f"{sweep_widths[1]}{f2_unit}"]
         offset = f"{offset}{f2_unit}"
+
         sim = JresSimulation(spin_system, pts, sweep_widths, offset, channel)
         sim.simulate()
-        _, data = sim.fid
-        data = data.T
+        _, data, _ = sim.fid(lb=lb)
+
         if snr is not None:
             data += sig._make_noise(data, snr)
 
