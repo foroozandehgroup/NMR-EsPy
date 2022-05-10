@@ -196,13 +196,13 @@ The Hessian will be approximated based on the
 <li><p><strong>bound</strong> (<em>bool</em>) – <p>Specifies whether or not to bound the parameters during
 optimisation. Bounds are given by:</p>
 <ul>
-<li><p><span class="math">0 \leq a_m \leq \infty</span></p></li>
-<li><p><span class="math">-\pi &lt; \phi_m \leq \pi</span></p></li>
-<li><p><span class="math">-f_{\mathrm{sw}} / 2 + f_{\mathrm{off}} \leq f_m \leq\
-f_{\mathrm{sw}} / 2 + f_{\mathrm{off}}</span></p></li>
-<li><p><span class="math">0 \leq \eta_m \leq \infty</span></p></li>
+<li><p><img class="math" src="../../_images/math/fa5fd6230281c8c6524310c9287f398e6dd4d523.png" alt="0 \leq a_m \leq \infty"/></p></li>
+<li><p><img class="math" src="../../_images/math/f174ca3f0e9cf7735fe7af5e8fb4c418ab0f4448.png" alt="-\pi &lt; \phi_m \leq \pi"/></p></li>
+<li><p><img class="math" src="../../_images/math/e9454dea51c234231f0547a0fd5ee5f87be14236.png" alt="-f_{\mathrm{sw}} / 2 + f_{\mathrm{off}} \leq f_m \leq\
+f_{\mathrm{sw}} / 2 + f_{\mathrm{off}}"/></p></li>
+<li><p><img class="math" src="../../_images/math/3dcf83342094e34a601590bdf5b7cf9888350dd9.png" alt="0 \leq \eta_m \leq \infty"/></p></li>
 </ul>
-<p><span class="math">(\forall m \in \{1, \cdots, M\})</span></p>
+<p><img class="math" src="../../_images/math/307409f0194d9386b4aff3ef70fb0b31ab9d2c86.png" alt="(\forall m \in \{1, \cdots, M\})"/></p>
 </p></li>
 <li><p><strong>max_iterations</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – A value specifiying the number of iterations the routine may run
 through before it is terminated. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default number
@@ -214,22 +214,22 @@ of maximum iterations is set (<code class="docutils literal notranslate"><span c
 Specifies which types of parameters should be considered for optimisation.</p></li>
 <li><p><strong>amp_thold</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – A value that imposes a threshold for deleting oscillators of
 negligible ampltiude. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, does nothing. If a float,
-oscillators with amplitudes satisfying <span class="math">a_m &lt;
-a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2</span> will be
-removed from the parameter array, where <span class="math">\lVert
-\boldsymbol{a} \rVert_2</span> is the Euclidian norm of the vector of
+oscillators with amplitudes satisfying <img class="math" src="../../_images/math/c84d1b95714b6f83dbf42158541a85aa57f6d93f.png" alt="a_m &lt;
+a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2"/> will be
+removed from the parameter array, where <img class="math" src="../../_images/math/30c2dbf01cf69a6741c2a2c7706cf24e334036ad.png" alt="\lVert
+\boldsymbol{a} \rVert_2"/> is the Euclidian norm of the vector of
 all the oscillator amplitudes. It is advised to set <code class="docutils literal notranslate"><span class="pre">amp_thold</span></code>
 at least a couple of orders of magnitude below 1.</p></li>
 <li><p><strong>freq_thold</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – <p>If <code class="docutils literal notranslate"><span class="pre">None</span></code>, does nothing. If a float, oscillator pairs with
 frequencies satisfying
-<span class="math">\lvert f_m - f_p \rvert &lt; f_{\mathrm{thold}}</span> will be
+<img class="math" src="../../_images/math/4e3a6ffc19d9be719efcb6e503b9b41b582877ec.png" alt="\lvert f_m - f_p \rvert &lt; f_{\mathrm{thold}}"/> will be
 removed from the parameter array. A new oscillator will be included
 in the array, with parameters:</p>
 <ul>
-<li><p>amplitude: <span class="math">a = a_m + a_p</span></p></li>
-<li><p>phase: <span class="math">\phi = \left(\phi_m + \phi_p\right) / 2</span></p></li>
-<li><p>frequency: <span class="math">f = \left(f_m + f_p\right) / 2</span></p></li>
-<li><p>damping: <span class="math">\eta = \left(\eta_m + \eta_p\right) / 2</span></p></li>
+<li><p>amplitude: <img class="math" src="../../_images/math/87f5d91caa16da31a89f9087342b794c85cea611.png" alt="a = a_m + a_p"/></p></li>
+<li><p>phase: <img class="math" src="../../_images/math/6bc24e42744ff70a74a304ab83e2f1af5f2a5795.png" alt="\phi = \left(\phi_m + \phi_p\right) / 2"/></p></li>
+<li><p>frequency: <img class="math" src="../../_images/math/dab75f52c4905438a18cdfd0fe406fa339a8dec9.png" alt="f = \left(f_m + f_p\right) / 2"/></p></li>
+<li><p>damping: <img class="math" src="../../_images/math/f999a19690afa1e8dc12c89e0895fcf0337e2760.png" alt="\eta = \left(\eta_m + \eta_p\right) / 2"/></p></li>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
