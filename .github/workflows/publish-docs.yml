@@ -20,8 +20,10 @@ jobs:
         with:
           python-version: 3.9
 
-      - name: install nmrespy dependencies and sphinx and build docs
+      - name: install nmrespy dependencies, LaTeX, sphinx and build docs
         run: |
+          sudo apt-get update -y
+          sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-xetex dvipng
           python -m pip install --upgrade pip
           cd master/
           python -m pip install .
