@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 06 May 2022 14:41:29 BST
+# Last Edited: Tue 10 May 2022 15:28:47 BST
 
 from __future__ import annotations
 import copy
@@ -518,7 +518,7 @@ class Estimator1D(Estimator):
                     signal[:mpm_trim],
                     oscillators=oscillators,
                     fprint=fprint,
-                ).get_result()
+                ).get_params()
 
             final_result = NonlinearProgramming(
                 expinfo,
@@ -560,7 +560,7 @@ class Estimator1D(Estimator):
                     cut_signal[:mpm_trim],
                     oscillators=oscillators,
                     fprint=fprint,
-                ).get_result()
+                ).get_params()
 
             cut_result = NonlinearProgramming(
                 cut_expinfo,
@@ -570,7 +570,7 @@ class Estimator1D(Estimator):
                 method=method,
                 max_iterations=max_iterations,
                 fprint=fprint,
-            ).get_result()
+            ).get_params()
 
             final_result = NonlinearProgramming(
                 uncut_expinfo,
@@ -584,7 +584,7 @@ class Estimator1D(Estimator):
 
         self._results.append(
             Result(
-                final_result.get_result(),
+                final_result.get_params(),
                 final_result.get_errors(),
                 region,
                 noise_region,

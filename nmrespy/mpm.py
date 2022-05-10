@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 31 Mar 2022 12:23:28 BST
+# Last Edited: Tue 10 May 2022 14:32:18 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
 
@@ -221,7 +221,7 @@ class MatrixPencil(ResultFetcher):
 
         params = self._generate_params(alpha, poles.reshape((1, self.oscillators)))
         params[:, 0] *= norm
-        self.result, self.oscillators = self._remove_negative_damping(params)
+        self.params, self.oscillators = self._remove_negative_damping(params)
 
     @timer
     @start_end_wrapper("MMEMP STARTED", "MMEMP COMPLETE")
@@ -337,7 +337,7 @@ class MatrixPencil(ResultFetcher):
 
         params = self._generate_params(alpha, poles)
         params[:, 0] *= norm
-        self.result, self.oscillators = self._remove_negative_damping(params)
+        self.params, self.oscillators = self._remove_negative_damping(params)
 
     def _generate_params(self, alpha: np.ndarray, poles: np.ndarray) -> np.ndarray:
         """Convert complex amplitudes and signal poles to parameter array.

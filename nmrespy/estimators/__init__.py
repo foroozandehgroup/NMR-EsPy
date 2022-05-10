@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Apr 2022 10:45:47 BST
+# Last Edited: Tue 10 May 2022 17:00:24 BST
 
 from __future__ import annotations
 import abc
@@ -267,20 +267,136 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         if not self._results:
             return None
 
+        length = len(self._results)
         sanity_check(
             (
                 "indices", indices, sfuncs.check_int_list, (),
-                {
-                    "must_be_positive": True,
-                    "max_value": len(self._results) - 1,
-                },
-                True,
+                {"max_value": length - 1}, True,
             ),
         )
+
         if indices is None:
             return self._results
         else:
+            indices = [i % length for i in indices]
             return [self._results[i] for i in indices]
+
+    def get_params(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        merge: bool = True,
+        funit: str = "hz",
+        sort_by: str = "f-1",
+    ) -> Union[Iterable[np.ndarray], np.ndarray]:
+        """Return estimation result parameters.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to extract parameters from. Index ``0``
+            corresponds to the first result obtained using the estimator, ``1``
+            corresponds to the next, etc.  If ``None``, all results will be
+            used.
+
+        merge
+            If ``True``, a single array of all parameters from each specified
+            estiamtion result specified will be returned. If ``False``, an iterable
+            of each individual estimation result's parameters will be returned.
+
+        funit
+            The unit to express frequencies in. Must be one of ``"hz"`` and ``"ppm"``.
+
+        sort_by
+            Specifies the parameter by which the oscillators are ordered by.
+            Should be one of ``"a"`` for amplitudes ``"p"`` for phase, ``"f<n>"``
+            for frequency in the ``<n>``-th dimension, ``"d<n>"`` for the damping
+            factor in the ``<n>``-th dimension. By setting ``<n>`` to ``-1``, the
+            final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
+            can be used to specify the frequency or damping factor.
+        """
+        sanity_check(
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {"max_value": len(self._results) - 1}, True,
+            ),
+            ("merge", merge, sfuncs.check_bool),
+            ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
+            ("sort_by", sort_by, sfuncs.check_sort_by, (self.dim,)),
+        )
+
+        return self._get_arrays("params", indices, funit, sort_by, merge)
+
+    def get_errors(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        merge: bool = True,
+        funit: str = "hz",
+        sort_by: str = "f-1",
+    ) -> Union[Iterable[np.ndarray], np.ndarray]:
+        """Return estimation result errors.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to extract errors from. Index ``0`` corresponds to
+            the first result obtained using the estimator, ``1`` corresponds to
+            the next, etc.  If ``None``, all results will be used.
+
+        merge
+            If ``True``, a single array of all parameters from each specified
+            estiamtion result specified will be returned. If ``False``, an iterable
+            of each individual estimation result's parameters will be returned.
+
+        funit
+            The unit to express frequencies in. Must be one of ``"hz"`` and ``"ppm"``.
+
+        sort_by
+            Specifies the parameter by which the oscillators are ordered by.
+            Should be one of ``"a"`` for amplitudes ``"p"`` for phase, ``"f<n>"``
+            for frequency in the ``<n>``-th dimension, ``"d<n>"`` for the damping
+            factor in the ``<n>``-th dimension. By setting ``<n>`` to ``-1``, the
+            final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
+            can be used to specify the frequency or damping factor.
+        """
+        sanity_check(
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {"max_value": len(self._results) - 1}, True,
+            ),
+            ("merge", merge, sfuncs.check_bool),
+            ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
+            ("sort_by", sort_by, sfuncs.check_sort_by, (self.dim,)),
+        )
+
+        return self._get_arrays("errors", indices, funit, sort_by, merge)
+
+    def _get_arrays(
+        self,
+        name: str,
+        indices: Iterable[int],
+        funit: str,
+        sort_by: str,
+        merge: bool,
+    ) -> np.ndarray:
+        results = self.get_results(indices)
+        arrays = [result._get_array(name, funit, sort_by) for result in results]
+
+        if merge:
+            array = np.vstack(arrays)
+            sort_idx = results[0]._process_sort_by(sort_by, self.dim)
+
+            param_array = np.vstack(
+                [
+                    result._get_array("params", funit, sort_by)
+                    for result in results
+                ]
+            )
+
+            array = array[np.argsort(param_array[:, sort_idx])]
+            return array
+
+        else:
+            return arrays
 
     @abc.abstractmethod
     def write_result(*args, **kwargs):
@@ -295,13 +411,13 @@ class Result(ResultFetcher):
 
     def __init__(
         self,
-        result: np.ndarray,
+        params: np.ndarray,
         errors: np.ndarray,
         region: Iterable[Tuple[float, float]],
         noise_region: Iterable[Tuple[float, float]],
         sfo: Iterable[float],
     ) -> None:
-        self.result = result
+        self.params = params
         self.errors = errors
         self.region = region
         self.noise_region = noise_region

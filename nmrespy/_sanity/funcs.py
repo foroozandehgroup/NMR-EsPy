@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Apr 2022 13:03:23 BST
+# Last Edited: Tue 10 May 2022 16:54:54 BST
 
 from pathlib import Path
 import re
@@ -552,3 +552,24 @@ def check_stylesheet(obj: Any) -> Optional[str]:
         "Error in finding/reading the stylesheet. Check you gave a valid path or name"
         "for the stylesheet, and that the stylesheet is formatted correctly."
     )
+
+
+def check_sort_by(obj: Any, dim: int) -> Optional[str]:
+    if not isinstance(obj, str):
+        return "Should be a str."
+
+    valids = (
+        ["a", "p", "f-1", "d-1"] +
+        ([f"f{i}" for i in range(1, dim + 1)] if dim > 1 else ["f", "f1"]) +
+        ([f"d{i}" for i in range(1, dim + 1)] if dim > 1 else ["d", "d1"])
+    )
+
+    if obj not in valids:
+        valid_list = ", ".join(valids)
+        return f"Invalid value. Should be one of: {valid_list}."
+
+
+def check_fn_mode(obj: Any) -> Optional[str]:
+    valids = ["QF", "QSED", "TPPI", "States", "States-TPPI", "Echo-Anitecho"]
+    if obj not in valids:
+        return "Should be one of " + ", ".join([f"\"{x}\"" for x in valids])

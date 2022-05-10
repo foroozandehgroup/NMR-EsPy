@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Apr 2022 15:29:18 BST
+# Last Edited: Tue 10 May 2022 14:32:33 BST
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -294,7 +294,7 @@ class NonlinearProgramming(ResultFetcher):
         self.active, self.passive = self._split_initial()
         self.objective, self.gradient, self.hessian = self._get_functions()
         self._recursive_optimise()
-        self.result = self._merge_final()
+        self.params = self._merge_final()
         self.errors = self._get_errors()
 
     def _recursive_optimise(self) -> None:
