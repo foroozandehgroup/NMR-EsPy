@@ -217,9 +217,10 @@ class Estimator2DJ(Estimator):
         noise_region: Optional[Tuple[Union[int, float], Union[int, float]]] = None,
         region_unit: str = "ppm",
         initial_guess: Optional[Union[np.ndarray, int]] = None,
-        hessian: str = "gauss-newton",
+        method: str = "gauss-newton",
         phase_variance: bool = False,
         max_iterations: Optional[int] = None,
+        fprint: bool = True,
     ):
         """Estimate a specified region in F2 of the signal.
 
@@ -235,13 +236,13 @@ class Estimator2DJ(Estimator):
         ----------
         region
             The frequency range of interest in F2. Should be of the form
-            ``[left, right]`` where ``left`` and ``right`` are the left and right
+            ``(left, right)`` where ``left`` and ``right`` are the left and right
             bounds of the region of interest. If ``None``, the full signal will be
             considered, though for sufficently large and complex signals it is
-            probable that poor and slow performance will be achieved.
+            probable that poor and slow performance will be realised.
 
         noise_region
-            If ``region`` is not ``None``, this must be of the form ``[left, right]``
+            If ``region`` is not ``None``, this must be of the form ``(left, right)``
             too. This should specify a frequency range in F2 where no noticeable
             signals reside, i.e. only noise exists.
 
@@ -257,12 +258,22 @@ class Estimator2DJ(Estimator):
             oscillators. If a NumPy array, this array will be used as the initial
             guess.
 
-        hessian
-            Specifies how to compute the Hessian at each iteration of the optimisation.
+        method
+            Specifies the optimisation method.
 
-            * ``"exact"`` - the exact analytical Hessian will be computed.
-            * ``"gauss-newton"`` - the Hessian will be approximated as per the
-              Guass-Newton method.
+            * ``"exact"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be exact.
+            * ``"gauss-newton"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be approximated based on the
+              `Gauss-Newton method <https://en.wikipedia.org/wiki/
+              Gauss%E2%80%93Newton_algorithm>`_
+            * ``"lbfgs"`` Uses SciPy's
+              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
         phase_variance
             Whether or not to include the variance of oscillator phases in the cost
@@ -270,126 +281,109 @@ class Estimator2DJ(Estimator):
             considered is derived from well-phased data.
 
         max_iterations
-            The number of iterations to allow the optimiser to run before
-            terminatingi if convergence has yet to be achieved. If ``None``, this
-            number will be set to a default, depending on the identity of ``hessian``.
+            A value specifiying the number of iterations the routine may run
+            through before it is terminated. If ``None``, the default number
+            of maximum iterations is set (``100`` if ``method`` is
+            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
+            ``"lbfgs"``).
+
+        fprint
+            Whether of not to output information to the terminal.
         """
         sanity_check(
-            ("region_unit", region_unit, sfuncs.check_frequency_unit),
+            (
+                "region_unit", region_unit, sfuncs.check_frequency_unit,
+                (self.hz_ppm_valid,)
+            ),
             (
                 "initial_guess", initial_guess, sfuncs.check_initial_guess,
-                (self.dim,), True
+                (self.dim,), {}, True
             ),
-            ("hessian", hessian, sfuncs.check_one_of, ("gauss-newton", "exact")),
+            ("method", method, sfuncs.check_one_of, ("gauss-newton", "exact", "lbfgs")),
             ("phase_variance", phase_variance, sfuncs.check_bool),
-            ("max_iterations", max_iterations, sfuncs.check_positive_int, (), True),
+            (
+                "max_iterations", max_iterations, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            ("fprint", fprint, sfuncs.check_bool),
         )
-
-        if region_unit == "hz":
-            region_check = sfuncs.check_jres_region_hz
-        elif region_unit == "ppm":
-            region_check = sfuncs.check_jres_region_ppm
 
         sanity_check(
-            ("region", region, region_check, (self._expinfo,), True),
-            ("noise_region", noise_region, region_check, (self._expinfo,), True),
+            (
+                "region", region, sfuncs.check_region,
+                (
+                    (self.sw(region_unit)[1],),
+                    (self.offset(region_unit)[1],),
+                ), {}, True,
+            ),
+            (
+                "noise_region", noise_region, sfuncs.check_region,
+                (
+                    (self.sw(region_unit)[1],),
+                    (self.offset(region_unit)[1],),
+                ), {}, True,
+            ),
         )
 
+        # The plan of action:
+        # --> Derive filtered signals (both cut and uncut)
+        # --> Run the MDL followed by MPM for an initial guess on cut signal
+        # --> Run Optimiser on cut signal
+        # --> Run Optimiser on uncut signal
         filt = Filter(
             self._data,
-            self._expinfo,
-            [None, region],
-            [None, noise_region],
+            ExpInfo(2, self.sw(), self.offset(), self.sfo),
+            (None, region),
+            (None, noise_region),
             region_unit=region_unit,
             twodim_dtype="jres",
         )
 
-        signal, expinfo = filt.get_filtered_fid()
+        cut_signal, cut_expinfo = filt.get_filtered_fid()
+        uncut_signal, uncut_expinfo = filt.get_filtered_fid(cut_ratio=None)
         region = filt.get_region()
+        noise_region = filt.get_noise_region()
 
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
         else:
             oscillators = initial_guess if isinstance(initial_guess, int) else 0
-            x0 = MatrixPencil(signal, expinfo, oscillators=oscillators).get_result()
+            x0 = MatrixPencil(
+                cut_expinfo,
+                cut_signal,
+                oscillators=oscillators,
+                fprint=fprint,
+            ).get_params()
 
-        nlp_result = NonlinearProgramming(
-            signal, x0, expinfo, phase_variance=phase_variance, hessian=hessian,
+        cut_result = NonlinearProgramming(
+            cut_expinfo,
+            cut_signal,
+            x0,
+            phase_variance=phase_variance,
+            method=method,
             max_iterations=max_iterations,
+            fprint=fprint,
+        ).get_params()
+
+        final_result = NonlinearProgramming(
+            uncut_expinfo,
+            uncut_signal,
+            cut_result,
+            phase_variance=phase_variance,
+            method=method,
+            max_iterations=max_iterations,
+            fprint=fprint,
         )
-        result, errors = nlp_result.get_result("hz"), nlp_result.get_errors()
 
         self._results.append(
-            {
-                "timestamp": datetime.datetime.now(),
-                "filter": filt,
-                "result": result,
-                "errors": errors,
-            }
+            Result(
+                final_result.get_params(),
+                final_result.get_errors(),
+                region,
+                noise_region,
+                self.sfo,
+            )
         )
-
-    def make_fid(
-        self,
-        pts: Optional[Iterable[int]] = None,
-        indices: Optional[Iterable[int]] = None,
-    ) -> np.ndarray:
-        """Construct a synthetic FID using estimation results.
-
-        Parameters
-        ----------
-        pts
-            The number of points to construct the FID with in each dimesnion.
-            If ``None``, the number of points used will match the data.
-
-        indices
-            The indices of results to return. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be returned.
-        """
-        sanity_check(
-            ("pts", pts, sfuncs.check_points, (self.dim,), True),
-            (
-                "indices", indices, sfuncs.check_ints_less_than_n,
-                (len(self._results),), True,
-            ),
-        )
-
-        if pts is None:
-            pts = self._expinfo.default_pts
-
-        return sig.make_fid(self.get_results(indices), self._expinfo, pts)[0]
-
-    def get_results(
-        self,
-        indices: Optional[Iterable[int]],
-        merge: bool = True,
-    ) -> np.ndarray:
-        sanity_check(
-            (
-                "indices", indices, sfuncs.check_ints_less_than_n,
-                (len(self._results),), True,
-            ),
-            ("merge", merge, sfuncs.check_bool),
-        )
-
-        if indices is None:
-            indices = range(len(self._results))
-
-        results = [self._results[i]["result"] for i in indices]
-
-        if merge:
-            sizes = [result.shape[0] for result in results]
-            params = np.zeros((sum(sizes), 2 * self.dim + 2))
-
-            idx = 0
-            for size, result in zip(sizes, results):
-                params[idx : idx + size] = result
-                idx += size
-
-        else:
-            params = results
-
-        return params
 
     def write_results(self):
         pass
