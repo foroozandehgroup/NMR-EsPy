@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 11 May 2022 16:16:19 BST
+# Last Edited: Wed 11 May 2022 17:16:20 BST
 
 from __future__ import annotations
 import copy
@@ -389,12 +389,6 @@ class Estimator2DJ(Estimator):
             )
         )
 
-    def write_results(self):
-        pass
-
-    def plot_results(self):
-        pass
-
     def negative_45_signal(
         self,
         indices: Optional[Iterable[int]] = None,
@@ -433,7 +427,4 @@ class Estimator2DJ(Estimator):
         pass
 
     def plot_result(self):
-        pass
-
-    def write_result(self):
         pass

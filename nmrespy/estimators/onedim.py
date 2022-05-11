@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 11 May 2022 16:09:24 BST
+# Last Edited: Wed 11 May 2022 17:23:02 BST
 
 from __future__ import annotations
 import copy
@@ -17,10 +17,7 @@ from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._files import (
-    check_existent_dir,
-    check_saveable_path,
-)
+from nmrespy._files import check_existent_dir
 
 from nmrespy._sanity import (
     sanity_check,
@@ -31,7 +28,6 @@ from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
 from nmrespy.plot import ResultPlotter
-from nmrespy.write import ResultWriter
 
 from . import logger, Estimator, Result
 
@@ -590,119 +586,6 @@ class Estimator1D(Estimator):
                 noise_region,
                 self.sfo,
             )
-        )
-
-    @logger
-    def write_result(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        path: Union[Path, str] = "./nmrespy_result",
-        fmt: str = "txt",
-        description: Optional[str] = None,
-        sig_figs: Optional[int] = 5,
-        sci_lims: Optional[Tuple[int, int]] = (-2, 3),
-        force_overwrite: bool = False,
-        fprint: bool = True,
-        pdflatex_exe: Optional[Union[str, Path]] = None,
-    ) -> None:
-        """Write estimation results to text and PDF files.
-
-        Parameters
-        ----------
-        indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
-
-        path
-            Path to save the result file to.
-
-        fmt
-            Must be one of ``"txt"`` or ``"pdf"``.
-
-        description
-            A description to add to the result file.
-
-        sig_figs
-            The number of significant figures to give to parameters. If
-            ``None``, the full value will be used.
-
-        sci_lims
-            Given a value ``(-x, y)``, for ints ``x`` and ``y``, any parameter ``p``
-            with a value which satisfies ``p < 10 ** -x`` or ``p >= 10 ** y`` will be
-            expressed in scientific notation, rather than explicit notation.
-            If ``None``, all values will be expressed explicitely.
-
-        force_overwrite
-            If the file specified already exists, and this is set to ``False``, the
-            user will be prompted to specify that they are happy overwriting the
-            current file.
-
-        fprint
-            Specifies whether or not to print information to the terminal.
-
-        pdflatex_exe
-            The path to the system's ``pdflatex`` executable.
-
-            .. note::
-
-               You are unlikely to need to set this manually. It is primarily
-               present to specify the path to ``pdflatex.exe`` on Windows when
-               the NMR-EsPy GUI has been loaded from TopSpin.
-        """
-        sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {
-                    "must_be_positive": True,
-                    "max_value": len(self._results) - 1,
-                },
-                True,
-            ),
-            ("fmt", fmt, sfuncs.check_one_of, ("txt", "pdf")),
-            ("description", description, sfuncs.check_str, (), {}, True),
-            ("sig_figs", sig_figs, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("sci_lims", sci_lims, sfuncs.check_sci_lims, (), {}, True),
-            ("force_overwrite", force_overwrite, sfuncs.check_bool),
-            ("fprint", fprint, sfuncs.check_bool),
-        )
-        sanity_check(("path", path, check_saveable_path, (fmt, force_overwrite)))
-
-        expinfo = ExpInfo(
-            1,
-            self.sw(),
-            self.offset(),
-            self.sfo,
-            self.nuclei,
-            self.default_pts,
-        )
-
-        indices = range(len(self._results)) if indices is None else indices
-        results = [self._results[i] for i in indices]
-        writer = ResultWriter(
-            expinfo,
-            [result.get_result() for result in results],
-            [result.get_errors() for result in results],
-            description,
-        )
-        region_unit = "ppm" if self.hz_ppm_valid else "hz"
-        titles = [
-            f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
-            for left, right in [
-                result.get_region(region_unit)[0]
-                for result in results
-            ]
-        ]
-
-        writer.write(
-            path=path,
-            fmt=fmt,
-            titles=titles,
-            parameters_sig_figs=sig_figs,
-            parameters_sci_lims=sci_lims,
-            force_overwrite=True,
-            fprint=fprint,
-            pdflatex_exe=pdflatex_exe,
         )
 
     @logger
