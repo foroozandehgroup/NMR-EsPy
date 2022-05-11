@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 11 May 2022 15:08:34 BST
+# Last Edited: Wed 11 May 2022 15:16:45 BST
 
 from __future__ import annotations
 import copy
@@ -222,7 +222,7 @@ class Estimator2DJ(Estimator):
         max_iterations: Optional[int] = None,
         fprint: bool = True,
     ):
-        """Estimate a specified region in F2 of the signal.
+        r"""Estimate a specified region in F2 of the signal.
 
         The basic steps that this method carries out are:
 
@@ -433,67 +433,3 @@ class Estimator2DJ(Estimator):
 
     def write_result(self):
         pass
-
-
-if __name__ == "__main__":
-    import matplotlib as mpl
-    mpl.use("tkAgg")
-
-    spin_system = SpinSystem({
-        1: {
-            "shift": 5.5,
-            "couplings": {
-                2: 4.6,
-                3: 4.6,
-            }
-        },
-        2: {
-            "shift": 8.2,
-        },
-        3: {
-            "shift": 8.2,
-        },
-    })
-
-    # Experiment parameters
-    channel = "1H"
-    sweep_widths = [50., 10.]
-    points = [32, 512]
-    offset = 5.
-
-    estimator = Estimator2DJ.new_synthetic_from_simulation(
-        spin_system, sweep_widths, offset, points, channel=channel, f2_unit="ppm",
-        snr=10.
-    )
-    estimator.estimate([6.0, 5.0], [1.0, 0.5], initial_guess=3)
-    estimator.estimate([8.7, 7.7], [1.0, 0.5], initial_guess=2)
-    fid = estimator.make_fid()
-    fid[0, 0] /= 2
-    model_spectrum = np.abs(sig.ft(fid)).real
-    real_spectrum = np.abs(sig.ft(estimator._data)).real
-    shiftsf1, shiftsf2 = estimator._expinfo.get_shifts(unit="ppm")
-
-    import matplotlib as mpl
-    mpl.use("tkAgg")
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    ax.plot_wireframe(shiftsf1 + 5, shiftsf2 + 0.2, model_spectrum / 2, lw=0.2, cstride=1, rstride=1)
-    ax.plot_wireframe(shiftsf1, shiftsf2, real_spectrum, lw=0.2, color="b", cstride=1, rstride=1)
-    ax.set_xlim(reversed(ax.get_xlim()))
-    ax.set_ylim(reversed(ax.get_ylim()))
-    plt.show()
-
-    neg45 = estimator.negative_45_signal(pts=32000)
-    neg45[0] /= 2
-    shifts = estimator._expinfo.get_shifts(unit="ppm", meshgrid=False)[1]
-    spectrum = sig.ft(neg45)
-
-    import matplotlib as mpl
-    mpl.use("tkAgg")
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    ax.plot(shifts, spectrum)
-    ax.set_xlim(reversed(ax.get_xlim()))
-    plt.show()
