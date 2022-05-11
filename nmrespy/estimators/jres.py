@@ -421,12 +421,24 @@ class Estimator2DJ(Estimator):
                     2j * np.pi * (params[:, 3] - offset) - params[:, 5],
                 )
             )
-        ) @ (params[:, 0] * np.exp(1j * params[:, 1])) # alpha
+        ) @ (params[:, 0] * np.exp(1j * params[:, 1]))  # alpha
 
         return signal
 
+    def phase_data(self):
+        pass
+
+    def plot_result(self):
+        pass
+
+    def write_result(self):
+        pass
+
 
 if __name__ == "__main__":
+    import matplotlib as mpl
+    mpl.use("tkAgg")
+
     spin_system = SpinSystem({
         1: {
             "shift": 5.5,
