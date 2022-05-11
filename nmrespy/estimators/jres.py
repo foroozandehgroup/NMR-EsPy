@@ -1,14 +1,16 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 14:46:24 BST
+# Last Edited: Wed 11 May 2022 15:08:34 BST
 
 from __future__ import annotations
-import datetime
+import copy
 from pathlib import Path
 from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
+import matplotlib.pyplot as plt
+
 from nmr_sims.experiments.jres import JresSimulation
 from nmr_sims.nuclei import Nucleus
 from nmr_sims.spin_system import SpinSystem
@@ -18,7 +20,7 @@ from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
 )
-from . import logger, Estimator, Result
+from nmrespy.estimators import logger, Estimator, Result
 from nmrespy.freqfilter import Filter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
@@ -129,9 +131,86 @@ class Estimator2DJ(Estimator):
             sfo=[None, sim.sfo[0]],
             nuclei=[None, sim.channels[0].name],
             default_pts=data.shape,
+            fn_mode="QF",
         )
         return cls(data, expinfo, None)
 
+    def view_data(
+        self,
+        domain: str = "freq",
+        components: str = "real",
+        freq_unit: str = "hz",
+        abs_: bool = False,
+    ) -> None:
+        """View the data.
+
+        Parameters
+        ----------
+        domain
+            Must be ``"freq"`` or ``"time"``.
+
+        components
+            Must be ``"real"``, ``"imag"``, or ``"both"``.
+
+        freq_unit
+            Must be ``"hz"`` or ``"ppm"``.
+
+        abs_
+            Whether or not to display frequency-domain data in absolute-value mode.
+        """
+        sanity_check(
+            ("domain", domain, sfuncs.check_one_of, ("freq", "time")),
+            ("components", components, sfuncs.check_one_of, ("real", "imag", "both")),
+            ("freq_unit", freq_unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
+            ("abs_", abs_, sfuncs.check_bool),
+        )
+
+        fig = plt.figure()
+        ax = fig.add_subplot(projection="3d")
+        z = copy.deepcopy(self._data)
+
+        if domain == "freq":
+            x, y = self.get_shifts(unit=freq_unit)
+            z[0, 0] /= 2
+            z = sig.ft(z)
+
+            if abs_:
+                z = np.abs(z)
+
+            if self.nuclei is None:
+                pass
+            else:
+                freq_units = ("Hz", freq_unit.replace("h", "H"))
+                nuclei = [
+                    nuc if nuc is not None else "$\\omega$"
+                    for nuc in self.latex_nuclei
+                ]
+                xlabel, ylabel = [
+                    f"{nuc} ({fu})" for nuc, fu in zip(nuclei, freq_units)
+
+                ]
+        elif domain == "time":
+            x, y = self.get_timepoints()
+            xlabel, ylabel = [f"$t_{i}$ (s)" for i in range(1, 3)]
+
+        if components in ("real", "both"):
+            ax.plot_wireframe(
+                x, y, z.real, color="k", lw=0.2, rstride=1, cstride=1,
+            )
+        if components in ("imag", "both"):
+            ax.plot_wireframe(
+                x, y, z.imag, color="#808080", lw=0.2, rstride=1, cstride=1,
+            )
+
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_xlim(reversed(ax.get_xlim()))
+        ax.set_ylim(reversed(ax.get_ylim()))
+        ax.set_zticks([])
+
+        plt.show()
+
+    @logger
     def estimate(
         self,
         region: Optional[Tuple[Union[int, float], Union[int, float]]] = None,
