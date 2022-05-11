@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 06 May 2022 11:55:17 BST
+# Last Edited: Tue 10 May 2022 16:55:26 BST
 
 import re
 from typing import Any, Iterable, Optional, Tuple, Union
@@ -13,12 +13,6 @@ import scipy.integrate as integrate
 from nmrespy._freqconverter import FrequencyConverter
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy import sig
-
-
-def check_fn_mode(obj: Any) -> Optional[str]:
-    valids = ["QF", "QSED", "TPPI", "States", "States-TPPI", "Echo-Anitecho"]
-    if obj not in valids:
-        return "Should be one of " + ", ".join([f"\"{x}\"" for x in valids])
 
 
 class ExpInfo(FrequencyConverter):
@@ -127,7 +121,7 @@ class ExpInfo(FrequencyConverter):
         self._default_pts = self._totuple(default_pts)
         self._fn_mode = None
         if self._dim > 1:
-            sanity_check(("fn_mode", fn_mode, check_fn_mode, (), {}, True))
+            sanity_check(("fn_mode", fn_mode, sfuncs.check_fn_mode, (), {}, True))
             if fn_mode is None:
                 self._fn_mode = "QF"
             else:
@@ -476,7 +470,7 @@ class ExpInfo(FrequencyConverter):
             ),
             ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
             ("decibels", decibels, sfuncs.check_bool),
-            ("fn_mode", fn_mode, check_fn_mode, (), {}, True),
+            ("fn_mode", fn_mode, sfuncs.check_fn_mode, (), {}, True),
         )
 
         if pts is None:

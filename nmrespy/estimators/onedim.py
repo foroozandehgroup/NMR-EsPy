@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 15:28:47 BST
+# Last Edited: Wed 11 May 2022 14:12:30 BST
 
 from __future__ import annotations
 import copy
@@ -269,7 +269,7 @@ class Estimator1D(Estimator):
             spin_system, pts, sw, offset=offset, channel=channel,
         )
         sim.simulate()
-        _, data = sim.fid
+        _, data, _ = sim.fid()
         if snr is not None:
             data += sig._make_noise(data, snr)
 
