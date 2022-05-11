@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 17:00:24 BST
+# Last Edited: Wed 11 May 2022 16:43:02 BST
 
 from __future__ import annotations
 import abc
@@ -96,10 +96,9 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
     def phase_data(*args, **kwargs):
         pass
 
-    @property
-    def view_log(self) -> None:
-        """View the log for the estimator instance."""
-        print(self._log)
+    def get_log(self) -> str:
+        """Get the log for the estimator instance."""
+        return self._log
 
     def save_log(
         self,
@@ -141,6 +140,10 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
     @classmethod
     @abc.abstractmethod
     def new_synthetic_from_simulation(*args, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def view_data(*args, **kwargs):
         pass
 
     @logger
@@ -451,6 +454,317 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def plot_result(*args, **kwargs):
         pass
+
+    @logger
+    def merge_oscillators(
+        self,
+        oscillators: Iterable[int],
+        index: int = -1,
+        **estimate_kwargs,
+    ) -> None:
+        """Merge oscillators in an estimation result.
+
+        Removes the osccilators specified, and constructs a single new
+        oscillator with a cumulative amplitude, and averaged phase,
+        frequency and damping. Then runs optimisation on the updated set of
+        oscillators.
+
+        Parameters
+        ----------
+        oscillators
+            A list of indices corresponding to the oscillators to be merged.
+
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. By default, the most recently obtained result will be
+            edited.
+
+        estimate_kwargs
+            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
+            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
+            will be ignored if given.
+
+        Notes
+        -----
+        Assuming that an estimation result contains a subset of oscillators
+        denoted by indices :math:`\\{m_1, m_2, \\cdots, m_J\\}`, where :math:`J
+        \\leq M`, the new oscillator formed by the merging of the oscillator
+        subset will possess the following parameters prior to re-running estimation:
+
+            * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`
+            * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
+              \\phi_{m_i}`
+            * :math:`f_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J f_{m_i}`
+            * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
+              \\eta_{m_i}`
+        """
+        sanity_check(
+            ("index", index, sfuncs.check_index, (len(self._results),)),
+        )
+        index = self._positive_index(index)
+        result = self._results[index]
+        x0 = result.get_params()
+        sanity_check(
+            (
+                "oscillators", oscillators, sfuncs.check_int_list,
+                (), {"min_value": 0, "max_value": x0.shape[0] - 1},
+            )
+        )
+
+        to_merge = x0[oscillators]
+        # Sum amps, phases, freqs and damping over the oscillators
+        # to be merged.
+        # keepdims ensures that the final array is [[a, φ, f, η]]
+        # rather than [a, φ, f, η]
+        new_osc = np.sum(to_merge, axis=0, keepdims=True)
+
+        # Get mean for phase, frequency and damping
+        new_osc[:, 1:] = new_osc[:, 1:] / float(len(oscillators))
+        # wrap phase
+        new_osc[:, 1] = (new_osc[:, 1] + np.pi) % (2 * np.pi) - np.pi
+
+        x0 = np.delete(x0, oscillators, axis=0)
+        x0 = np.vstack((x0, new_osc))
+
+        self._optimise_after_edit(x0, result, index)
+
+    @logger
+    def split_oscillator(
+        self,
+        oscillator: int,
+        index: int = -1,
+        separation_frequency: Optional[Iterable[float]] = None,
+        unit: str = "hz",
+        split_number: int = 2,
+        amp_ratio: Optional[Iterable[float]] = None,
+        **estimate_kwargs,
+    ) -> None:
+        """Splits an oscillator in an estimation result into multiple oscillators.
+
+        Removes an oscillator, and incorporates two or more oscillators whose
+        cumulative amplitudes match that of the removed oscillator. Then runs
+        optimisation on the updated set of oscillators.
+
+        Parameters
+        ----------
+        oscillator
+            The index of the oscillator to be split.
+
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. By default, the most recently obtained result will be
+            edited.
+
+        separation_frequency
+            The frequency separation given to adjacent oscillators formed
+            from the splitting. If ``None``, the splitting will be set to
+            ``sw / n`` in each dimension where ``sw`` is the sweep width and
+            ``n`` is the number of points in the data.
+
+        unit
+            The unit that ``separation_frequency`` is expressed in.
+
+        split_number
+            The number of peaks to split the oscillator into.
+
+        amp_ratio
+            The ratio of amplitudes to be fulfilled by the newly formed
+            peaks. If a list, ``len(amp_ratio) == split_number`` must be
+            satisfied. The first element will relate to the highest
+            frequency oscillator constructed, and the last element will
+            relate to the lowest frequency oscillator constructed. If `None`,
+            all oscillators will be given equal amplitudes.
+
+        estimate_kwargs
+            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
+            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
+            will be ignored if given.
+        """
+        sanity_check(
+            ("index", index, sfuncs.check_index, (len(self._results),)),
+            (
+                "separation_frequency", separation_frequency, sfuncs.check_float_list,
+                (), {"length": self.dim, "len_one_can_be_listless": True}, True,
+            ),
+            ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
+            ("split_number", split_number, sfuncs.check_int, (), {"min_value": 2}),
+        )
+        index = self._positive_index(index)
+        result = self._results[index]
+        x0 = result.get_params()
+        sanity_check(
+            (
+                "amp_ratio", amp_ratio, sfuncs.check_float_list, (),
+                {
+                    "length": split_number,
+                    "must_be_positive": True,
+                },
+                True,
+            ),
+            (
+                "oscillator", oscillator, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": x0.shape[0] - 1},
+            ),
+        )
+
+        if separation_frequency is None:
+            separation_frequency = [
+                sw / pts for sw, pts in zip(self.sw(unit), self.default_pts)
+            ]
+        else:
+            if isinstance(separation_frequency, int):
+                separation_frequency = [separation_frequency]
+            separation_frequency = (
+                self.convert(separation_frequency, f"{unit}->hz")
+            )
+
+        if amp_ratio is None:
+            amp_ratio = np.ones((split_number,))
+        else:
+            amp_ratio = np.array(amp_ratio)
+
+        osc = x0[oscillator]
+        amps = osc[0] * amp_ratio / amp_ratio.sum()
+        # Highest frequency of all the new oscillators
+        max_freqs = [
+            osc[i] + ((split_number - 1) * separation_frequency[i - 2] / 2)
+            for i in range(2, 2 + self.dim)
+        ]
+        # Array of all frequencies (lowest to highest)
+        freqs = np.array(
+            [
+                [max_freq - i * sep_freq for i in range(split_number)]
+                for max_freq, sep_freq in zip(max_freqs, separation_frequency)
+            ],
+            dtype="float64",
+        ).T
+
+        new_oscs = np.zeros((split_number, 2 * (1 + self.dim)), dtype="float64")
+        new_oscs[:, 0] = amps
+        new_oscs[:, 1] = osc[1]
+        new_oscs[:, 2 : 2 + self.dim] = freqs
+        new_oscs[:, 2 + self.dim :] = osc[2 + self.dim :]
+        print(new_oscs)
+
+        x0 = np.delete(x0, oscillator, axis=0)
+        x0 = np.vstack((x0, new_oscs))
+
+        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
+
+    @logger
+    def add_oscillators(
+        self,
+        params: np.ndarray,
+        index: int = -1,
+        **estimate_kwargs,
+    ) -> None:
+        """Add oscillators to an estimation result.
+
+        Optimisation is carried out afterwards, on the updated set of oscillators.
+
+        Parameters
+        ----------
+        params
+            The parameters of new oscillators to be added. Should be of shape
+            ``(n, 2 * (1 + self.dim))``, where ``n`` is the number of new
+            oscillators to add. Even when one oscillator is being added this
+            should be a 2D array, i.e.:
+
+            .. code:: python3
+
+                params = oscillators = np.array([[a, φ, f, η]])
+
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. By default, the most recently obtained result will be
+            edited.
+
+        estimate_kwargs
+            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
+            that ``"region"``, ``noise_region"``, ``"initial_guess"`` and
+            ``"region_unit"`` are set internally and will be ignored if given.
+        """
+        sanity_check(
+            (
+                "params", params, sfuncs.check_ndarray, (),
+                {"dim": 2, "shape": ((1, 2 * (self.dim + 1)),)},
+            ),
+            ("index", index, sfuncs.check_index, (len(self._results),)),
+        )
+        index = self._positive_index(index)
+        result = self._results[index]
+        x0 = np.vstack((result.get_params(), params))
+        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
+
+    @logger
+    def remove_oscillators(
+        self,
+        oscillators: Iterable[int],
+        index: int = -1,
+        **estimate_kwargs,
+    ) -> None:
+        """Remove oscillators from an estimation result.
+
+        Optimisation is carried out afterwards, on the updated set of oscillators.
+
+        Parameters
+        ----------
+        oscillators
+            A list of indices corresponding to the oscillators to be removed.
+
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. By default, the most recently obtained result will be
+            edited.
+
+        estimate_kwargs
+            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
+            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
+            will be ignored if given.
+        """
+        sanity_check(("index", index, sfuncs.check_index, (len(self._results),)))
+        index = self._positive_index(index)
+        result = self._results[index]
+        x0 = result.get_params()
+        sanity_check(
+            (
+                "oscillators", oscillators, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": x0.shape[0] - 1},
+            ),
+        )
+        x0 = np.delete(x0, oscillators, axis=0)
+        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
+
+    def _optimise_after_edit(
+        self,
+        x0: np.ndarray,
+        result: Result,
+        index: int,
+        **estimate_kwargs,
+    ) -> None:
+        for key in estimate_kwargs.keys():
+            if key in ("region", "noise_region", "region_unit", "initial_guess"):
+                del estimate_kwargs[key]
+
+        self.estimate(
+            result.get_region()[1],
+            result.get_noise_region()[1],
+            region_unit="hz",
+            initial_guess=x0,
+            fprint=False,
+            _log=False,
+            **estimate_kwargs,
+        )
+
+        del self._results[index]
+        self._results.insert(index, self._results.pop(-1))
+
+    def _positive_index(self, index: int) -> int:
+        return index % len(self._results)
 
 
 class Result(ResultFetcher):

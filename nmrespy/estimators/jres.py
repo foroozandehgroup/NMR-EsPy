@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 11 May 2022 15:16:45 BST
+# Last Edited: Wed 11 May 2022 16:16:19 BST
 
 from __future__ import annotations
 import copy
@@ -221,6 +221,7 @@ class Estimator2DJ(Estimator):
         phase_variance: bool = False,
         max_iterations: Optional[int] = None,
         fprint: bool = True,
+        _log: bool = True,
     ):
         r"""Estimate a specified region in F2 of the signal.
 
@@ -289,6 +290,9 @@ class Estimator2DJ(Estimator):
 
         fprint
             Whether of not to output information to the terminal.
+
+        _log
+            Ignore this!
         """
         sanity_check(
             (
