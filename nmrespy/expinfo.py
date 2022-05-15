@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 16:55:26 BST
+# Last Edited: Sun 15 May 2022 12:12:18 BST
 
 import re
 from typing import Any, Iterable, Optional, Tuple, Union
@@ -406,7 +406,7 @@ class ExpInfo(FrequencyConverter):
         pts: Optional[Iterable[int]] = None,
         snr: Union[float, None] = None,
         decibels: bool = True,
-        fn_mode: Optional[str] = None,
+        indirect_modulation: Optional[str] = None,
     ) -> np.ndarray:
         r"""Construct a FID, as a summation of damped complex sinusoids.
 
@@ -451,11 +451,35 @@ class ExpInfo(FrequencyConverter):
             it is taken to be simply the ratio of the singal power over the
             noise power.
 
-        fn_mode
-            Acquisition mode in indirect dimensions of mulit-dimensional experiments.
-            If the data is not 1-dimensional, this should be one of ``None``,
-            ``QF``, ``QSED``, ``TPPI``, ``States``, ``States-TPPI``, ``Echo-Anitecho``.
-            If ``None``, ``self.fn_mode`` will be used.
+        indirect_modulation
+            Acquisition mode in indirect dimension of a 2D experiment. If the
+            data is not 1-dimensional, this should be one of:
+
+            * ``None`` - :math:`y \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+            * ``"amp"`` - amplitude modulated pair:
+              :math:`y_{\mathrm{cos}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              \cos\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+              :math:`y_{\mathrm{sin}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              \sin\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+            * ``"phase"`` - phase-modulated pair:
+              :math:`y_{\mathrm{P}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+              :math:`y_{\mathrm{N}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+
+            ``None`` will lead to an array of shape ``(*pts)``. ``amp`` and ``phase``
+            will lead to an array of shape ``(2, *pts)``.
         """
         sanity_check(
             ("params", params, sfuncs.check_parameter_array, (self.dim,)),
@@ -470,18 +494,16 @@ class ExpInfo(FrequencyConverter):
             ),
             ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
             ("decibels", decibels, sfuncs.check_bool),
-            ("fn_mode", fn_mode, sfuncs.check_fn_mode, (), {}, True),
+            (
+                "indirect_modulation", indirect_modulation,
+                sfuncs.check_one_of, ("amp", "phase"), {}, True
+            ),
         )
 
         if pts is None:
             pts = self.default_pts
         else:
             pts = self._totuple(pts)
-
-        if self.dim > 1 and fn_mode is None:
-            fn_mode = self.fn_mode
-        else:
-            fn_mode = fn_mode
 
         offset = self.offset()
         amp = params[:, 0]
@@ -508,30 +530,46 @@ class ExpInfo(FrequencyConverter):
             )
 
         elif self.dim == 2:
-            phase0 = np.einsum(
-                "ik,k,kj->ij",
-                # Signal pole matrix (dimension 1)
-                np.exp(
-                    np.outer(
-                        tp[0],
-                        2j * np.pi * freq[0] - damp[0],
-                    )
-                ),
-                # Complex amplitude vector
-                amp * np.exp(1j * phase),
-                # Transposed signal pole matrix (dimension 2)
-                np.exp(
-                    np.outer(
-                        2j * np.pi * freq[1] - damp[1],
-                        tp[1],
-                    )
-                ),
+            # Signal pole matrix (dimension 1)
+            z1 = np.exp(
+                np.outer(
+                    tp[0],
+                    2j * np.pi * freq[0] - damp[0],
+                )
+            )
+            # Complex amplitude vector
+            alpha = amp * np.exp(1j * phase)
+            # Transposed signal pole matrix (dimension 2)
+            z2 = np.exp(
+                np.outer(
+                    2j * np.pi * freq[1] - damp[1],
+                    tp[1],
+                )
             )
 
-            if fn_mode == "QF":
-                fid = phase0
+            if indirect_modulation in ["amp", "phase"]:
+                fid = np.zeros((2, *pts), dtype="complex128")
+
+                if indirect_modulation == "amp":
+                    fid[0] = np.einsum("ik,k,kj->ij", z1.real, alpha, z2)
+                    fid[1] = np.einsum("ik,k,kj->ij", z1.imag, alpha, z2)
+
+                elif indirect_modulation == "phase":
+                    fid[0] = np.einsum("ik,k,kj->ij", z1, alpha, z2)
+                    fid[1] = np.einsum(
+                        "ik,k,kj->ij",
+                        np.exp(
+                            np.outer(
+                                tp[0],
+                                -2j * np.pi * freq[0] - damp[0],
+                            )
+                        ),
+                        alpha,
+                        z2,
+                    )
+
             else:
-                raise ValueError(f"{fn_mode} yet to be implemented!")
+                fid = np.einsum("ik,k,kj->ij", z1, alpha, z2)
 
         if snr is not None:
             fid += sig._make_noise(fid, snr, decibels)

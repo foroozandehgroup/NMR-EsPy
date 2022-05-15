@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 11 May 2022 17:16:54 BST
+# Last Edited: Sun 15 May 2022 11:36:01 BST
 
 from __future__ import annotations
 import abc
@@ -406,9 +406,9 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         self,
         indices: Optional[Iterable[int]] = None,
         pts: Optional[Iterable[int]] = None,
-        fn_mode: Optional[str] = None,
+        indirect_modulation: Optional[str] = None,
     ) -> np.ndarray:
-        """Construct a noiseless FID from estimation result parameters.
+        r"""Construct a noiseless FID from estimation result parameters.
 
         Parameters
         ----------
@@ -422,11 +422,35 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
             used.
 
-        fn_mode
-            Acquisition mode in indirect dimensions of mulit-dimensional experiments.
-            If the data is not 1-dimensional, this should be one of ``None``,
-            ``"QF"``, ``"QSED"``, ``"TPPI"``, ``"States"``, ``"States-TPPI"``,
-            ``"Echo-Anitecho"``. If ``None``, ``self.fn_mode`` will be used.
+        indirect_modulation
+            Acquisition mode in indirect dimension of a 2D experiment. If the
+            data is not 1-dimensional, this should be one of:
+
+            * ``None`` - :math:`y \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+            * ``"amp"`` - amplitude modulated pair:
+              :math:`y_{\mathrm{cos}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              \cos\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+              :math:`y_{\mathrm{sin}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              \sin\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+            * ``"phase"`` - phase-modulated pair:
+              :math:`y_{\mathrm{P}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+              :math:`y_{\mathrm{N}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+
+            ``None`` will lead to an array of shape ``(*pts)``. ``amp`` and ``phase``
+            will lead to an array of shape ``(2, *pts)``.
         """
         sanity_check(
             (
@@ -442,11 +466,16 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
                 },
                 True,
             ),
-            ("fn_mode", fn_mode, sfuncs.check_fn_mode, (), {}, True),
+            (
+                "indirect_modulation", indirect_modulation,
+                sfuncs.check_one_of, ("amp", "phase"), {}, True
+            ),
         )
 
         params = self.get_params(indices)
-        return super().make_fid(params, pts=pts, fn_mode=fn_mode)
+        return super().make_fid(
+            params, pts=pts, indirect_modulation=indirect_modulation,
+        )
 
     @abc.abstractmethod
     def plot_result(*args, **kwargs):
