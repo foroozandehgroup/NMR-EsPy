@@ -9,6 +9,7 @@ Things that you will need to look at
 
    expinfo
    estimator1d
+   estimator2dj
 
 Things you (probably) won't need to look at
 -------------------------------------------
