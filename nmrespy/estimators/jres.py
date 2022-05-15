@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 11 May 2022 17:16:20 BST
+# Last Edited: Sun 15 May 2022 22:09:16 BST
 
 from __future__ import annotations
 import copy
@@ -394,23 +394,51 @@ class Estimator2DJ(Estimator):
         indices: Optional[Iterable[int]] = None,
         pts: Optional[int] = None,
     ) -> np.ndarray:
+        r"""Generate the synthetic signal :math:`y_{-45^{\circ}}(t)`, where
+        :math:`t \geq 0`:
+
+        .. math::
+
+            y_{-45^{\circ}}(t) = \sum_{m=1}^M a_m \exp\left( \mathrm{i} \phi_m \right)
+            \exp\left( 2 \mathrm{i} \pi f_{1,m} t \right)
+            \exp\left( -t \left[2 \mathrm{i} \pi f_{2,m} + \eta_{2,m} \right] \right)
+
+        .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/2dj/nmrespy/images/neg_45.png  # noqa:E501
+
+        Producing this signal from parameters derived from estimation of a 2DJ dataset
+        should generate a 1D homodecoupled spectrum.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        pts
+            The number of points to construct the signal from. If ``None``,
+            ``self.default_pts`` will be used.
+        """
         sanity_check(
             (
-                "indices", indices, sfuncs.check_ints_less_than_n,
-                (len(self._results),), True,
+                "indices", indices, sfuncs.check_index,
+                (len(self._results),), {}, True,
             ),
-            ("pts", pts, sfuncs.check_positive_int, (), True),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}, True),
         )
 
-        params = self.get_results(indices)
-        offset = self._expinfo.offset[1]
-        tp = self._expinfo.get_timepoints(meshgrid=False)[1]
+        params = self.get_params(indices)
+        offset = self.offset()[1]
+
+        if pts is None:
+            _, pts = self.default_pts
+        _, tp = self.get_timepoints(pts=(1, pts), meshgrid=False)
 
         signal = (
             np.exp(  # Z1
                 np.outer(
                     tp,
-                    -2j * np.pi * params[:, 2] - params[:, 4],
+                    -2j * np.pi * params[:, 2],
                 )
             ) *
             np.exp(  # Z2
@@ -422,6 +450,78 @@ class Estimator2DJ(Estimator):
         ) @ (params[:, 0] * np.exp(1j * params[:, 1]))  # alpha
 
         return signal
+
+    def sheared_signal(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        pts: Optional[Tuple[int, int]] = None,
+        indirect_modulation: Optional[str] = None,
+    ) -> np.ndarray:
+        r"""Return an FID where direct dimension frequencies are perturbed such that:
+
+        .. math::
+
+            f_{2, m} = f_{2, m} - f_{1, m}\ \forall\ m \in \{1, \cdots, M\}
+
+        This should yeild a signal where all components in a multiplet are centered
+        at the spin's chemical shift in the direct dimenion, akin to "shearing" 2DJ
+        data.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        pts
+            The number of points to construct the signal from. If ``None``,
+            ``self.default_pts`` will be used.
+
+        indirect_modulation
+            Acquisition mode in indirect dimension of a 2D experiment. If the
+            data is not 1-dimensional, this should be one of:
+
+            * ``None`` - :math:`y \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+            * ``"amp"`` - amplitude modulated pair:
+              :math:`y_{\mathrm{cos}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              \cos\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+              :math:`y_{\mathrm{sin}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              \sin\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+            * ``"phase"`` - phase-modulated pair:
+              :math:`y_{\mathrm{P}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+              :math:`y_{\mathrm{N}} \left(t_1, t_2\right) = \sum_{m} a_m
+              e^{\mathrm{i} \phi_m}
+              e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+
+            ``None`` will lead to an array of shape ``(*pts)``. ``amp`` and ``phase``
+            will lead to an array of shape ``(2, *pts)``.
+        """
+        sanity_check(
+            (
+                "indices", indices, sfuncs.check_index,
+                (len(self._results),), {}, True,
+            ),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}, True),
+        )
+
+        edited_params = copy.deepcopy(self.get_params(indices))
+        edited_params[:, 3] -= edited_params[:, 2]
+
+        return super(Estimator, self).make_fid(
+            edited_params, pts=pts, indirect_modulation=indirect_modulation,
+        )
 
     def phase_data(self):
         pass
