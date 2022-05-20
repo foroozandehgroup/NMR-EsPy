@@ -45,7 +45,7 @@ py_exe = None
 #    "/usr/bin/pdflatex"
 #
 # Set pdflatex_exe as exactly what the output of this is
-pdflatex_exe = None
+pdflatex_exe = "None"
 # ------------------------------------------------------------------------
 
 if py_exe is None:

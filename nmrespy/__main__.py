@@ -77,6 +77,8 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    if args.pdflatex == "None":
+        args.pdflatex = None
 
     if args.install_to_topspin:
         install_to_topspin()
