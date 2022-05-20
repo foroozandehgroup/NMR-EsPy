@@ -269,7 +269,7 @@ class Estimator1D(Estimator):
             spin_system, pts, sw, offset=offset, channel=channel,
         )
         sim.simulate()
-        _, data = sim.fid
+        _, data, _ = sim.fid()
         if snr is not None:
             data += sig._make_noise(data, snr)
 
@@ -677,8 +677,7 @@ class Estimator1D(Estimator):
             self.default_pts,
         )
 
-        indices = range(len(self._results)) if indices is None else indices
-        results = [self._results[i] for i in indices]
+        results = self.get_results(indices)
         writer = ResultWriter(
             expinfo,
             [result.get_result() for result in results],
@@ -686,13 +685,16 @@ class Estimator1D(Estimator):
             description,
         )
         region_unit = "ppm" if self.hz_ppm_valid else "hz"
-        titles = [
-            f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
-            for left, right in [
-                result.get_region(region_unit)[0]
-                for result in results
-            ]
-        ]
+
+        titles = []
+        for result in results:
+            if result.get_region() is None:
+                titles.append("Full signal")
+            else:
+                left, right = result.get_region(region_unit)[0]
+                titles.append(
+                    f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
+                )
 
         writer.write(
             path=path,

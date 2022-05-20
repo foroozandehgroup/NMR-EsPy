@@ -238,7 +238,11 @@ class ResultPlotter(ExpInfo):
             stylesheet = STYLESHEETPATH
         self._update_rc(stylesheet, oscillator_colors)
 
-        region_idx = self.convert(region, f"{shifts_unit}->idx")
+        if region is None:
+            region_idx = tuple([(0, s - 1) for s in data.shape])
+        else:
+            region_idx = self.convert(region, f"{shifts_unit}->idx")
+
         self.slice_ = tuple([slice(r[0], r[1] + 1) for r in region_idx])
 
         self.shifts = self.get_shifts(unit=shifts_unit)[0][self.slice_]

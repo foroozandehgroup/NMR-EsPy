@@ -311,6 +311,8 @@ class Result(ResultFetcher):
         sanity_check(
             ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
         )
+        if self.region is None:
+            return None
         return self.convert(self.region, f"hz->{unit}")
 
     def get_noise_region(self, unit: str = "hz"):
