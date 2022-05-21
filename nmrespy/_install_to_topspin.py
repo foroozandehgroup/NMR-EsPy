@@ -1,7 +1,7 @@
 # _install_to_topspin.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:11:36 BST
+# Last Edited: Sat 21 May 2022 15:34:36 BST
 
 import glob
 import pathlib
@@ -112,34 +112,30 @@ def get_pdflatex_executable(opsys):
     If no executable can be found, `None` is returned
     """
     # Check pdflatex exists (return code will be 0 if it does).
-    if (
-        subprocess.run(
-            "pdflatex -v", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        ).returncode
-        == 0
-    ):
-        if opsys == "unix":
-            command = "which"
-        elif opsys == "windows":
-            command = "where"
+    if opsys == "unix":
+        command = "which"
+    elif opsys == "windows":
+        command = "where"
 
-        pdflatex_exe = (
-            subprocess.run(
-                f"{command} pdflatex",
-                shell=True,
-                stdout=subprocess.PIPE,
-            )
+    which_pdflatex = subprocess.run(
+        f"{command} pdflatex",
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+
+    if which_pdflatex.errorcode == 0:
+        return (
+            which_pdflatex
             .stdout.decode("utf-8")
             .rstrip("\n\r")
             .replace("\\", "\\\\")
         )
 
-        return pdflatex_exe
-
     else:
         print(
             "I was unable to find a pdflatex executable on your"
-            "system. YOu will not be able to generate PDF's of your "
+            "system. You will not be able to generate PDF's of your "
             "results"
         )
         return None
