@@ -1,7 +1,7 @@
 # _install_to_topspin.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sat 21 May 2022 15:34:36 BST
+# Last Edited: Mon 23 May 2022 11:34:19 BST
 
 import glob
 import pathlib
@@ -124,7 +124,7 @@ def get_pdflatex_executable(opsys):
         stderr=subprocess.DEVNULL,
     )
 
-    if which_pdflatex.errorcode == 0:
+    if which_pdflatex.returncode == 0:
         return (
             which_pdflatex
             .stdout.decode("utf-8")
@@ -178,9 +178,12 @@ def main():
     with open(path, "r") as fh:
         txt = fh.read()
 
-    txt = txt.replace("py_exe = None", f'py_exe = "{py_exe}"')
+    txt = txt.replace("py_exe = None", f"py_exe = \"{py_exe}\"")
     if pdflatex_exe is not None:
-        txt = txt.replace("pdflatex_exe = None", f'pdflatex_exe = "{pdflatex_exe}"')
+        txt = txt.replace(
+            "pdflatex_exe = \"None\"",
+            f"pdflatex_exe = \"{pdflatex_exe}\"",
+        )
 
     install(install_paths, txt)
 

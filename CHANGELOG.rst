@@ -21,3 +21,4 @@ Bug and Error Fixes
 ^^^^^^^^^^^^^^^^^^^
 
 * ``Estimator1D.write_result`` and ``Estimator1D.plot_result`` now work when estimated region is ``None``.
+* Fixed bug involving ``pdflatex`` being ``None`` in the topspin GUI script: [https://github.com/foroozandehgroup/NMR-EsPy/issues/1]
