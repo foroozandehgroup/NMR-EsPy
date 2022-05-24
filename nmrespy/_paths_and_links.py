@@ -1,11 +1,11 @@
 # _paths_and_links.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 11:03:06 GMT
+# Last Edited: Tue 24 May 2022 14:28:08 BST
 
 from pathlib import Path
 
-NMRESPYPATH = Path(__file__).parent
+NMRESPYPATH = Path(__file__).parent.resolve()
 STYLESHEETPATH = NMRESPYPATH / "config/nmrespy_custom.mplstyle"
 IMAGESPATH = NMRESPYPATH / "images"
 MFLOGOPATH = IMAGESPATH / "mf_logo.png"
