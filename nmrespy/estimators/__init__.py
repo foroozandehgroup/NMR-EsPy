@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 15 May 2022 11:36:01 BST
+# Last Edited: Tue 24 May 2022 10:14:20 BST
 
 from __future__ import annotations
 import abc
@@ -886,13 +886,18 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             description,
         )
         region_unit = "ppm" if self.hz_ppm_valid else "hz"
-        titles = [
-            f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
-            for left, right in [
-                result.get_region(region_unit)[-1]
-                for result in results
-            ]
-        ]
+
+        # TODO:
+        # This will work for 1D and 2DJ. Will have to tweak for other 2D datasets
+        titles = []
+        for result in results:
+            if result.get_region() is None:
+                titles.append("Full signal")
+            else:
+                left, right = result.get_region(region_unit)[-1]
+                titles.append(
+                    f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
+                )
 
         writer.write(
             path=path,
