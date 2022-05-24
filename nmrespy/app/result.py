@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 03 May 2022 13:39:47 BST
+# Last Edited: Tue 24 May 2022 11:36:18 BST
 
 import ast
 import copy
@@ -98,7 +98,7 @@ class Result(wd.MyToplevel):
         cf.Restrictor(self.result_plot.ax, x=lambda x: x >= xlim[1])
 
     def update_plot(self):
-        result = self.master.estimator._results[-1].get_result()
+        result = self.master.estimator._results[-1].get_params()
         self.result_plot.result = result
         self.result_plot._make_ydata()
         self.result_plot._create_artists()
@@ -165,7 +165,7 @@ class EditParametersFrame(wd.MyToplevel):
 
         self.history = [
             (
-                self.ctrl.estimator._results[-1].get_result(),
+                self.ctrl.estimator._results[-1].get_params(),
                 self.ctrl.estimator._results[-1].get_errors(),
             )
         ]
@@ -179,7 +179,7 @@ class EditParametersFrame(wd.MyToplevel):
         ]
         self.result = self.ctrl.estimator._results[-1]
         # Parameters in ppm - to be added to the table
-        contents = self.result.get_result(funit="ppm")
+        contents = self.result.get_params(funit="ppm")
         # Region of interest, in ppm. Used to ensure any newly frequency
         # satisfies the selected region of interest
         region = self.result.get_region(unit="ppm")
@@ -325,7 +325,7 @@ class EditParametersFrame(wd.MyToplevel):
         estimator.result"""
         self.history.append(
             (
-                self.ctrl.estimator._results[-1].get_result(),
+                self.ctrl.estimator._results[-1].get_params(),
                 self.ctrl.estimator._results[-1].get_errors(),
             )
         )
@@ -339,7 +339,7 @@ class EditParametersFrame(wd.MyToplevel):
         self.table.selected_rows = []
         self.table.selected_number.set(0)
         self.table.reconstruct(
-            contents=self.ctrl.estimator._results[-1].get_result(funit="ppm"),
+            contents=self.ctrl.estimator._results[-1].get_params(funit="ppm"),
             top=0,
         )
 

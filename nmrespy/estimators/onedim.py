@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 11 May 2022 17:23:02 BST
+# Last Edited: Tue 24 May 2022 11:39:16 BST
 
 from __future__ import annotations
 import copy
@@ -726,7 +726,7 @@ class Estimator1D(Estimator):
         return [
             ResultPlotter(
                 self._data,
-                result.get_result(funit="hz"),
+                result.get_params(funit="hz"),
                 expinfo,
                 region=result.get_region(unit=shifts_unit),
                 shifts_unit=shifts_unit,
