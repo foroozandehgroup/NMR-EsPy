@@ -1,3 +1,8 @@
+# _topspin.py
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
+# Last Edited: Mon 23 May 2022 11:40:14 BST
+
 # Jython script for accessing the NMR-EsPy GUI from inside TopSpin
 # Should be set to the path topspinx.y.z/exp/stan/nmr/py/user/nmrespy.py
 # Runs nmrespy.__main__
@@ -6,7 +11,7 @@
 # simon.hulse@chem.ox.ac.uk
 
 import os
-from subprocess import *
+from subprocess import Popen, PIPE
 
 # ---PYTHON EXECUTABLE----------------------------------------------------
 # exe should be set as the path to the Python executable that you use for
@@ -45,7 +50,7 @@ py_exe = None
 #    "/usr/bin/pdflatex"
 #
 # Set pdflatex_exe as exactly what the output of this is
-pdflatex_exe = None
+pdflatex_exe = "None"
 # ------------------------------------------------------------------------
 
 if py_exe is None:
