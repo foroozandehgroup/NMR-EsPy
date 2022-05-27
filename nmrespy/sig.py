@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 30 Mar 2022 16:43:32 BST
+# Last Edited: Sun 15 May 2022 12:05:04 BST
 
 """Manipulating and processing NMR signals."""
 
@@ -270,24 +270,24 @@ def ift(
 
 
 def proc_amp_modulated(data: np.ndarray) -> np.ndarray:
-    """Generate a frequency-dscrimiated signal from amp-modulated 2D FIDs.
+    """Generate a frequency-discrimiated signal from amplitude-modulated 2D FIDs.
 
     Parameters
     ----------
     data
         cos-modulated signal and sin-modulated signal, stored in a 3D numpy array,
-        such that ``data[:, :, 0]`` is the the cos signal and ``data[:, :, 1]``
-        is the sin signal.
+        such that ``data[0]`` is the the cos signal and ``data[1]`` is the sin
+        signal.
 
     Returns
     -------
     spectrum: np.ndarray
-        Frequency-dsicrimiated spectrum.
+        Frequency-discrimiated spectrum.
     """
     sanity_check(
-        ("data", data, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(2, 2)]}),
+        ("data", data, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(0, 2)]}),
     )
-    cos_t1_f2, sin_t1_f2 = [ft(x, axes=1).real for x in (data[..., 0], data[..., 1])]
+    cos_t1_f2, sin_t1_f2 = [ft(x, axes=1).real for x in (data[0], data[1])]
     return ft(cos_t1_f2 + 1j * sin_t1_f2, axes=0)
 
 
@@ -300,20 +300,19 @@ def proc_phase_modulated(data: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     data
-        P-type signal and N-type signal, stored in a 3D numpy array,
-        such that ``data[:, :, 0]`` is the the P signal and ``data[:, :, 1]``
-        is the N signal.
+        P-type signal and N-type signal, stored in a 3D numpy array, such that
+        ``data[0]`` is the the P signal and ``data[1]`` is the N signal.
 
     Returns
     -------
     spectra
-        3D array with ``spectra.shape[2] == 4``. The sub-arrays in axis 2 correspond
+        3D array with ``spectra.shape[0] == 4``. The sub-arrays in axis 0 correspond
         to the following signals:
 
-        * ``spectra[:, :, 0]``: RR
-        * ``spectra[:, :, 1]``: RI
-        * ``spectra[:, :, 2]``: IR
-        * ``spectra[:, :, 3]``: II
+        * ``spectra[0]``: RR
+        * ``spectra[1]``: RI
+        * ``spectra[2]``: IR
+        * ``spectra[3]``: II
 
     References
     ----------
@@ -323,19 +322,19 @@ def proc_phase_modulated(data: np.ndarray) -> np.ndarray:
            vol. 98, no. 1, pp. 207–216, 1992.
     """
     sanity_check(
-        ("data", data, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(2, 2)]}),
+        ("data", data, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(0, 2)]}),
     )
-    p_t1_f2, n_t1_f2 = [ft(x, axes=1) for x in (data[..., 0], data[..., 1])]
+    p_t1_f2, n_t1_f2 = [ft(x, axes=1) for x in (data[0], data[1])]
 
-    spectra = np.zeros((*data.shape[:2], 4))
+    spectra = np.zeros((4, *data.shape[1:]))
 
     # Generating RR and IR
     plus_f1_f2 = ft(0.5 * (p_t1_f2 + n_t1_f2.conj()), axes=0)  # S⁺(f₁,f₂)
-    spectra[..., 0], spectra[..., 2] = plus_f1_f2.real, plus_f1_f2.imag
+    spectra[0], spectra[2] = plus_f1_f2.real, plus_f1_f2.imag
 
     # Generating RI and II
-    minus_f1_f2 = ft(-0.5 * 1j * (p_t1_f2 - n_t1_f2.conj()), axes=0)  # S⁻(f₁,f₂)
-    spectra[..., 1], spectra[..., 3] = minus_f1_f2.real, minus_f1_f2.imag
+    minus_f1_f2 = ft(-0.5j * (p_t1_f2 - n_t1_f2.conj()), axes=0)  # S⁻(f₁,f₂)
+    spectra[1], spectra[3] = minus_f1_f2.real, minus_f1_f2.imag
 
     return spectra
 

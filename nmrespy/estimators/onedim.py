@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 06 May 2022 14:41:29 BST
+# Last Edited: Tue 24 May 2022 11:39:16 BST
 
 from __future__ import annotations
 import copy
@@ -17,10 +17,7 @@ from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._files import (
-    check_existent_dir,
-    check_saveable_path,
-)
+from nmrespy._files import check_existent_dir
 
 from nmrespy._sanity import (
     sanity_check,
@@ -31,7 +28,6 @@ from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
 from nmrespy.plot import ResultPlotter
-from nmrespy.write import ResultWriter
 
 from . import logger, Estimator, Result
 
@@ -518,7 +514,7 @@ class Estimator1D(Estimator):
                     signal[:mpm_trim],
                     oscillators=oscillators,
                     fprint=fprint,
-                ).get_result()
+                ).get_params()
 
             final_result = NonlinearProgramming(
                 expinfo,
@@ -560,7 +556,7 @@ class Estimator1D(Estimator):
                     cut_signal[:mpm_trim],
                     oscillators=oscillators,
                     fprint=fprint,
-                ).get_result()
+                ).get_params()
 
             cut_result = NonlinearProgramming(
                 cut_expinfo,
@@ -570,7 +566,7 @@ class Estimator1D(Estimator):
                 method=method,
                 max_iterations=max_iterations,
                 fprint=fprint,
-            ).get_result()
+            ).get_params()
 
             final_result = NonlinearProgramming(
                 uncut_expinfo,
@@ -584,127 +580,12 @@ class Estimator1D(Estimator):
 
         self._results.append(
             Result(
-                final_result.get_result(),
+                final_result.get_params(),
                 final_result.get_errors(),
                 region,
                 noise_region,
                 self.sfo,
             )
-        )
-
-    @logger
-    def write_result(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        path: Union[Path, str] = "./nmrespy_result",
-        fmt: str = "txt",
-        description: Optional[str] = None,
-        sig_figs: Optional[int] = 5,
-        sci_lims: Optional[Tuple[int, int]] = (-2, 3),
-        force_overwrite: bool = False,
-        fprint: bool = True,
-        pdflatex_exe: Optional[Union[str, Path]] = None,
-    ) -> None:
-        """Write estimation results to text and PDF files.
-
-        Parameters
-        ----------
-        indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
-
-        path
-            Path to save the result file to.
-
-        fmt
-            Must be one of ``"txt"`` or ``"pdf"``.
-
-        description
-            A description to add to the result file.
-
-        sig_figs
-            The number of significant figures to give to parameters. If
-            ``None``, the full value will be used.
-
-        sci_lims
-            Given a value ``(-x, y)``, for ints ``x`` and ``y``, any parameter ``p``
-            with a value which satisfies ``p < 10 ** -x`` or ``p >= 10 ** y`` will be
-            expressed in scientific notation, rather than explicit notation.
-            If ``None``, all values will be expressed explicitely.
-
-        force_overwrite
-            If the file specified already exists, and this is set to ``False``, the
-            user will be prompted to specify that they are happy overwriting the
-            current file.
-
-        fprint
-            Specifies whether or not to print information to the terminal.
-
-        pdflatex_exe
-            The path to the system's ``pdflatex`` executable.
-
-            .. note::
-
-               You are unlikely to need to set this manually. It is primarily
-               present to specify the path to ``pdflatex.exe`` on Windows when
-               the NMR-EsPy GUI has been loaded from TopSpin.
-        """
-        sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {
-                    "must_be_positive": True,
-                    "max_value": len(self._results) - 1,
-                },
-                True,
-            ),
-            ("fmt", fmt, sfuncs.check_one_of, ("txt", "pdf")),
-            ("description", description, sfuncs.check_str, (), {}, True),
-            ("sig_figs", sig_figs, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("sci_lims", sci_lims, sfuncs.check_sci_lims, (), {}, True),
-            ("force_overwrite", force_overwrite, sfuncs.check_bool),
-            ("fprint", fprint, sfuncs.check_bool),
-        )
-        sanity_check(("path", path, check_saveable_path, (fmt, force_overwrite)))
-
-        expinfo = ExpInfo(
-            1,
-            self.sw(),
-            self.offset(),
-            self.sfo,
-            self.nuclei,
-            self.default_pts,
-        )
-
-        results = self.get_results(indices)
-        writer = ResultWriter(
-            expinfo,
-            [result.get_result() for result in results],
-            [result.get_errors() for result in results],
-            description,
-        )
-        region_unit = "ppm" if self.hz_ppm_valid else "hz"
-
-        titles = []
-        for result in results:
-            if result.get_region() is None:
-                titles.append("Full signal")
-            else:
-                left, right = result.get_region(region_unit)[0]
-                titles.append(
-                    f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
-                )
-
-        writer.write(
-            path=path,
-            fmt=fmt,
-            titles=titles,
-            parameters_sig_figs=sig_figs,
-            parameters_sci_lims=sci_lims,
-            force_overwrite=True,
-            fprint=fprint,
-            pdflatex_exe=pdflatex_exe,
         )
 
     @logger
@@ -845,7 +726,7 @@ class Estimator1D(Estimator):
         return [
             ResultPlotter(
                 self._data,
-                result.get_result(funit="hz"),
+                result.get_params(funit="hz"),
                 expinfo,
                 region=result.get_region(unit=shifts_unit),
                 shifts_unit=shifts_unit,
@@ -862,303 +743,3 @@ class Estimator1D(Estimator):
             )
             for result in results
         ]
-
-    def _positive_index(self, index: int) -> int:
-        return index % len(self._results)
-
-    @logger
-    def merge_oscillators(
-        self,
-        oscillators: Iterable[int],
-        index: int = -1,
-        **estimate_kwargs,
-    ) -> None:
-        """Merge oscillators in an estimation result.
-
-        Removes the osccilators specified, and constructs a single new
-        oscillator with a cumulative amplitude, and averaged phase,
-        frequency and damping. Then runs optimisation on the updated set of
-        oscillators.
-
-        Parameters
-        ----------
-        oscillators
-            A list of indices corresponding to the oscillators to be merged.
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. By default, the most recently obtained result will be
-            edited.
-
-        estimate_kwargs
-            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
-            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
-            will be ignored if given.
-
-        Notes
-        -----
-        Assuming that an estimation result contains a subset of oscillators
-        denoted by indices :math:`\\{m_1, m_2, \\cdots, m_J\\}`, where :math:`J
-        \\leq M`, the new oscillator formed by the merging of the oscillator
-        subset will possess the following parameters prior to re-running estimation:
-
-            * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`
-            * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
-              \\phi_{m_i}`
-            * :math:`f_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J f_{m_i}`
-            * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
-              \\eta_{m_i}`
-        """
-        sanity_check(
-            ("index", index, sfuncs.check_index, (len(self._results),)),
-        )
-        index = self._positive_index(index)
-        result = self._results[index]
-        x0 = result.get_result()
-        sanity_check(
-            (
-                "oscillators", oscillators, sfuncs.check_int_list,
-                (), {"min_value": 0, "max_value": x0.shape[0] - 1},
-            )
-        )
-
-        to_merge = x0[oscillators]
-        # Sum amps, phases, freqs and damping over the oscillators
-        # to be merged.
-        # keepdims ensures that the final array is [[a, φ, f, η]]
-        # rather than [a, φ, f, η]
-        new_osc = np.sum(to_merge, axis=0, keepdims=True)
-
-        # Get mean for phase, frequency and damping
-        new_osc[:, 1:] = new_osc[:, 1:] / float(len(oscillators))
-        # wrap phase
-        new_osc[:, 1] = (new_osc[:, 1] + np.pi) % (2 * np.pi) - np.pi
-
-        x0 = np.delete(x0, oscillators, axis=0)
-        x0 = np.vstack((x0, new_osc))
-
-        self._optimise_after_edit(x0, result, index)
-
-    @logger
-    def split_oscillator(
-        self,
-        oscillator: int,
-        index: int = -1,
-        separation_frequency: Optional[float] = None,
-        unit: str = "hz",
-        split_number: int = 2,
-        amp_ratio: Optional[Iterable[float]] = None,
-        **estimate_kwargs,
-    ) -> None:
-        """Splits an oscillator in an estimation result into multiple oscillators.
-
-        Removes an oscillator, and incorporates two or more oscillators whose
-        cumulative amplitudes match that of the removed oscillator. Then runs
-        optimisation on the updated set of oscillators.
-
-        Parameters
-        ----------
-        oscillator
-            The index of the oscillator to be split.
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. By default, the most recently obtained result will be
-            edited.
-
-        separation_frequency
-            The frequency separation given to adjacent oscillators formed
-            from the splitting. If ``None``, the splitting will be set to
-            ``sw / n`` where ``sw`` is the sweep width and ``n`` is the number
-            of points in the data.
-
-        unit
-            The unit that ``separation_frequency`` is expressed in.
-
-        split_number
-            The number of peaks to split the oscillator into.
-
-        amp_ratio
-            The ratio of amplitudes to be fulfilled by the newly formed
-            peaks. If a list, ``len(amp_ratio) == split_number`` must be
-            satisfied. The first element will relate to the highest
-            frequency oscillator constructed, and the last element will
-            relate to the lowest frequency oscillator constructed. If `None`,
-            all oscillators will be given equal amplitudes.
-
-        estimate_kwargs
-            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
-            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
-            will be ignored if given.
-        """
-        sanity_check(
-            ("index", index, sfuncs.check_index, (len(self._results),)),
-            (
-                "separation_frequency", separation_frequency, sfuncs.check_float,
-                (), {}, True,
-            ),
-            ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
-            ("split_number", split_number, sfuncs.check_int, (), {"min_value": 2}),
-        )
-        index = self._positive_index(index)
-        result = self._results[index]
-        x0 = result.get_result()
-        sanity_check(
-            (
-                "amp_ratio", amp_ratio, sfuncs.check_float_list, (),
-                {
-                    "length": split_number,
-                    "must_be_positive": True,
-                },
-                True,
-            ),
-            (
-                "oscillator", oscillator, sfuncs.check_int, (),
-                {"min_value": 0, "max_value": x0.shape[0] - 1},
-            ),
-        )
-
-        if separation_frequency is None:
-            separation_frequency = self.sw("hz")[0] / self.default_pts[0]
-        else:
-            separation_frequency = (
-                self.convert([separation_frequency], f"{unit}->hz")[0]
-            )
-
-        if amp_ratio is None:
-            amp_ratio = np.ones((split_number,))
-        else:
-            amp_ratio = np.array(amp_ratio)
-
-        # Of form: [a, φ, f, η] (i.e. 1D array)
-        osc = x0[oscillator]
-        amps = osc[0] * amp_ratio / amp_ratio.sum()
-        # Highest frequency of all the new oscillators
-        max_freq = osc[2] + ((split_number - 1) * separation_frequency / 2)
-        # Array of all frequencies (lowest to highest)
-        freqs = [max_freq - i * separation_frequency for i in range(split_number)]
-
-        new_oscs = np.zeros((split_number, 4), dtype="float64")
-        new_oscs[:, 0] = amps
-        new_oscs[:, 1] = osc[1]
-        new_oscs[:, 2] = freqs
-        new_oscs[:, 3] = osc[3]
-
-        x0 = np.delete(x0, oscillator, axis=0)
-        x0 = np.vstack((x0, new_oscs))
-
-        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
-
-    @logger
-    def add_oscillators(
-        self,
-        params: np.ndarray,
-        index: int = -1,
-        **estimate_kwargs,
-    ) -> None:
-        """Add oscillators to an estimation result.
-
-        Optimisation is carried out afterwards, on the updated set of oscillators.
-
-        Parameters
-        ----------
-        params
-            The parameters of new oscillators to be added. Should be of shape
-            ``(n, 4)``, where ``n`` is the number of new oscillators to add. Even
-            when one oscillator is being added this should be a 2D array, i.e.:
-
-            .. code:: python3
-
-                params = oscillators = np.array([[a, φ, f, η]])
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. By default, the most recently obtained result will be
-            edited.
-
-        estimate_kwargs
-            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
-            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
-            will be ignored if given.
-        """
-        sanity_check(
-            (
-                "params", params, sfuncs.check_ndarray, (),
-                {"dim": 2, "shape": ((1, 4),)},
-            ),
-            ("index", index, sfuncs.check_index, (len(self._results),)),
-        )
-        index = self._positive_index(index)
-        result = self._results[index]
-        x0 = np.vstack((result.get_result(), params))
-        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
-
-    @logger
-    def remove_oscillators(
-        self,
-        oscillators: Iterable[int],
-        index: int = -1,
-        **estimate_kwargs,
-    ) -> None:
-        """Remove oscillators from an estimation result.
-
-        Optimisation is carried out afterwards, on the updated set of oscillators.
-
-        Parameters
-        ----------
-        oscillators
-            A list of indices corresponding to the oscillators to be removed.
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. By default, the most recently obtained result will be
-            edited.
-
-        estimate_kwargs
-            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
-            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
-            will be ignored if given.
-        """
-        sanity_check(("index", index, sfuncs.check_index, (len(self._results),)))
-        index = self._positive_index(index)
-        result = self._results[index]
-        x0 = result.get_result()
-        sanity_check(
-            (
-                "oscillators", oscillators, sfuncs.check_int_list, (),
-                {"min_value": 0, "max_value": x0.shape[0] - 1},
-            ),
-        )
-        x0 = np.delete(x0, oscillators, axis=0)
-        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
-
-    def _optimise_after_edit(
-        self,
-        x0: np.ndarray,
-        result: Result,
-        index: int,
-        **estimate_kwargs,
-    ) -> None:
-        for key in estimate_kwargs.keys():
-            if key in ("region_unit", "initial_guess", "fprint"):
-                del estimate_kwargs[key]
-
-        if getattr(estimate_kwargs, "fprint", None) is None:
-            estimate_kwargs["fprint"] = True
-
-        self.estimate(
-            result.get_region(),
-            result.get_noise_region(),
-            region_unit="hz",
-            initial_guess=x0,
-            _log=False,
-            **estimate_kwargs,
-        )
-
-        del self._results[index]
-        self._results.insert(index, self._results.pop(-1))
-        print([r.result for r in self._results])

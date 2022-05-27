@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 03 May 2022 16:57:11 BST
+# Last Edited: Fri 27 May 2022 16:26:30 BST
 
 import os
 import sys
@@ -15,7 +15,6 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "NMR-EsPy"
 copyright = "2022, Simon Hulse & Mohammadali Foroozandeh"
 author = "Simon Hulse & Mohammadali Foroozandeh"
-version = nmrespy.__version__
 
 extensions = [
     "sphinx.ext.autodoc",

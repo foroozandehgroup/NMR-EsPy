@@ -1,37 +1,21 @@
 # _result_fetcher.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Apr 2022 16:10:37 BST
+# Last Edited: Tue 10 May 2022 16:04:25 BST
 
 import copy
 import re
-from typing import Any, Iterable, Optional
+from typing import Iterable, Optional
 
 import numpy as np
 
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._freqconverter import FrequencyConverter
-from nmrespy._sanity import sanity_check
-from nmrespy._sanity.funcs import check_frequency_unit
+from nmrespy._sanity import sanity_check, funcs as sfuncs
 
 if USE_COLORAMA:
     import colorama
     colorama.init()
-
-
-def check_sort_by(obj: Any, dim: int) -> Optional[str]:
-    if not isinstance(obj, str):
-        return "Should be a str."
-
-    valids = (
-        ["a", "p", "f-1", "d-1"] +
-        ([f"f{i}" for i in range(1, dim + 1)] if dim > 1 else ["f", "f1"]) +
-        ([f"d{i}" for i in range(1, dim + 1)] if dim > 1 else ["d", "d1"])
-    )
-
-    if obj not in valids:
-        valid_list = ", ".join(valids)
-        return f"Invalid value. Should be one of: {valid_list}."
 
 
 class ResultFetcher(FrequencyConverter):
@@ -42,12 +26,12 @@ class ResultFetcher(FrequencyConverter):
     ) -> None:
         super().__init__(sfo=sfo)
 
-    def get_result(
+    def get_params(
         self,
         funit: str = "hz",
         sort_by: str = "f-1",
     ) -> np.ndarray:
-        """Returns the estimation result
+        """Returns the estimation result parameters.
 
         Parameters
         ----------
@@ -62,19 +46,24 @@ class ResultFetcher(FrequencyConverter):
             final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
             can be used to specify the frequency or damping factor.
         """
-        dim = (self.result.shape[1] - 2) // 2
+        dim = (self.params.shape[1] - 2) // 2
         sanity_check(
-            ("funit", funit, check_frequency_unit, (self.hz_ppm_valid,)),
-            ("sort_by", sort_by, check_sort_by, (dim,)),
+            ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
+            ("sort_by", sort_by, sfuncs.check_sort_by, (dim,)),
         )
-        return self._get_array("result", funit, sort_by)
+        return self._get_array("params", funit, sort_by)
 
     def get_errors(
         self,
         funit: str = "hz",
         sort_by: str = "f-1",
     ) -> np.ndarray:
-        """Returns the errors of the estimation result.
+        """Returns the estimation result errors.
+
+        .. note::
+
+            The errors are sorted according to how their respective parameters
+            are sorted.
 
         Parameters
         ----------
@@ -89,10 +78,10 @@ class ResultFetcher(FrequencyConverter):
             final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
             can be used to specify the frequency or damping factor.
         """
-        dim = (self.result.shape[1] - 2) // 2
+        dim = (self.params.shape[1] - 2) // 2
         sanity_check(
-            ("funit", funit, check_frequency_unit, (self.hz_ppm_valid,)),
-            ("sort_by", sort_by, check_sort_by, (dim,)),
+            ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
+            ("sort_by", sort_by, sfuncs.check_sort_by, (dim,)),
         )
         return self._get_array("errors", funit, sort_by)
 
@@ -118,7 +107,7 @@ class ResultFetcher(FrequencyConverter):
             ).T
 
         sort_idx = self._process_sort_by(sort_by, dim)
-        return array[np.argsort(array[:, sort_idx])]
+        return array[np.argsort(self.params[:, sort_idx])]
 
     @staticmethod
     def _process_sort_by(sort_by: str, ndim: int) -> int:
