@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 24 May 2022 10:48:53 BST
+# Last Edited: Sat 28 May 2022 12:57:47 BST
 
 """NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
 

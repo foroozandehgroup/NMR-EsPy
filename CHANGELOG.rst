@@ -37,15 +37,3 @@ Features
   amplitude-modulated signal construction.
 * Refactoring of estimator classes: various methods moved from `Estimator1D`
   into the parent `Estimator` class as these behave in a general fashion.
-
-Version 1.1.2 → Version 1.2
----------------------------
-
-Features
-^^^^^^^^
-
-* Created ``Estimator2DJ``, an estimator class for treating J-resolved (2DJ)
-  NMR data.
-* Support for generating amplitude- and phase-modulated signals using the
-  ``make_fid`` method. Also, routines for processing such signals to derive
-  spectral data.
