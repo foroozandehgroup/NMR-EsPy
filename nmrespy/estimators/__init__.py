@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 24 May 2022 10:14:20 BST
+# Last Edited: Fri 27 May 2022 19:20:35 BST
 
 from __future__ import annotations
 import abc
@@ -640,7 +640,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
                 sw / pts for sw, pts in zip(self.sw(unit), self.default_pts)
             ]
         else:
-            if isinstance(separation_frequency, int):
+            if isinstance(separation_frequency, float):
                 separation_frequency = [separation_frequency]
             separation_frequency = (
                 self.convert(separation_frequency, f"{unit}->hz")
@@ -672,7 +672,6 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         new_oscs[:, 1] = osc[1]
         new_oscs[:, 2 : 2 + self.dim] = freqs
         new_oscs[:, 2 + self.dim :] = osc[2 + self.dim :]
-        print(new_oscs)
 
         x0 = np.delete(x0, oscillator, axis=0)
         x0 = np.vstack((x0, new_oscs))
@@ -777,8 +776,8 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
                 del estimate_kwargs[key]
 
         self.estimate(
-            result.get_region()[1],
-            result.get_noise_region()[1],
+            result.get_region()[-1],
+            result.get_noise_region()[-1],
             region_unit="hz",
             initial_guess=x0,
             fprint=False,
