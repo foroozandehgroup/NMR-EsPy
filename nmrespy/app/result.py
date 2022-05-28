@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 24 May 2022 11:36:18 BST
+# Last Edited: Fri 27 May 2022 19:39:17 BST
 
 import ast
 import copy
@@ -348,7 +348,7 @@ class EditParametersFrame(wd.MyToplevel):
 
     def undo(self):
         # Reset result back to original
-        self.ctrl.estimator._results[-1].result = self.history[-2][0]
+        self.ctrl.estimator._results[-1].params = self.history[-2][0]
         self.ctrl.estimator._results[-1].errors = self.history[-2][1]
         # Remove last elements from history
         self.history.pop()
@@ -450,9 +450,7 @@ class AddFrame(wd.MyToplevel):
             [new_oscillators[:, 2]],
             "ppm->hz",
         )[0]
-        print(new_oscillators)
         self.ctrl.estimator.add_oscillators(new_oscillators)
-        print(self.ctrl.estimator._results[-1].result)
         self.master.changed_result()
         self.destroy()
 

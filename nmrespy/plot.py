@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 24 May 2022 10:17:19 BST
+# Last Edited: Tue 03 May 2022 15:42:56 BST
 
 """Module for plotting estimation results."""
 

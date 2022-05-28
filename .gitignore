@@ -1,4 +1,4 @@
-**/__pycache__
+**/__pycache__/
 docs/Makefile
 docs/_build
 .venv
@@ -8,3 +8,4 @@ dist
 nmrespy.egg-info/
 examples/cpmg
 *.swp
+nmrespy/app/tmp/*.pkl
