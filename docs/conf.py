@@ -1,11 +1,10 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 27 May 2022 16:26:30 BST
+# Last Edited: Tue 24 May 2022 10:46:43 BST
 
 import os
 import sys
-import nmrespy
 import sphinx_nameko_theme
 
 
