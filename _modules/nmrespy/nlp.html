@@ -47,7 +47,7 @@
 <span></span><span class="c1"># __init__.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Wed 06 Apr 2022 15:29:18 BST</span>
+<span class="c1"># Last Edited: Tue 10 May 2022 14:32:33 BST</span>
 
 <span class="sd">&quot;&quot;&quot;Nonlinear programming for generating parameter estiamtes.</span>
 
@@ -340,7 +340,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">active</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">passive</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_initial</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">objective</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hessian</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_functions</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_recursive_optimise</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merge_final</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merge_final</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_errors</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_recursive_optimise</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>

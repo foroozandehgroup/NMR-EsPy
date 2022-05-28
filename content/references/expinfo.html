@@ -205,7 +205,7 @@ corresponding to all combinations of points in each dimension.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nmrespy.ExpInfo.make_fid">
-<span class="sig-name descname"><span class="pre">make_fid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decibels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fn_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/expinfo.html#ExpInfo.make_fid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.ExpInfo.make_fid" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">make_fid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decibels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indirect_modulation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/expinfo.html#ExpInfo.make_fid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.ExpInfo.make_fid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Construct a FID, as a summation of damped complex sinusoids.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -242,10 +242,35 @@ to the FID.</p></li>
 <li><p><strong>decibels</strong> (<em>bool</em>) – If <cite>True</cite>, the snr is taken to be in units of decibels. If <cite>False</cite>,
 it is taken to be simply the ratio of the singal power over the
 noise power.</p></li>
-<li><p><strong>fn_mode</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Acquisition mode in indirect dimensions of mulit-dimensional experiments.
-If the data is not 1-dimensional, this should be one of <code class="docutils literal notranslate"><span class="pre">None</span></code>,
-<code class="docutils literal notranslate"><span class="pre">QF</span></code>, <code class="docutils literal notranslate"><span class="pre">QSED</span></code>, <code class="docutils literal notranslate"><span class="pre">TPPI</span></code>, <code class="docutils literal notranslate"><span class="pre">States</span></code>, <code class="docutils literal notranslate"><span class="pre">States-TPPI</span></code>, <code class="docutils literal notranslate"><span class="pre">Echo-Anitecho</span></code>.
-If <code class="docutils literal notranslate"><span class="pre">None</span></code>, <code class="docutils literal notranslate"><span class="pre">self.fn_mode</span></code> will be used.</p></li>
+<li><p><strong>indirect_modulation</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – <p>Acquisition mode in indirect dimension of a 2D experiment. If the
+data is not 1-dimensional, this should be one of:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">None</span></code> - <img class="math" src="../../_images/math/e2255bd530b593390504c4be3449a2efb0a6a39f.png" alt="y \left(t_1, t_2\right) = \sum_{m} a_m
+e^{\mathrm{i} \phi_m}
+e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}"/></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;amp&quot;</span></code> - amplitude modulated pair:
+<img class="math" src="../../_images/math/ea3b49cd1866d6f602e5f2e18fedce2af7a2b6af.png" alt="y_{\mathrm{cos}} \left(t_1, t_2\right) = \sum_{m} a_m
+e^{\mathrm{i} \phi_m}
+\cos\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
+e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}"/>
+<img class="math" src="../../_images/math/2a5c653b99bf5f24d8e06a778733662e11d4a818.png" alt="y_{\mathrm{sin}} \left(t_1, t_2\right) = \sum_{m} a_m
+e^{\mathrm{i} \phi_m}
+\sin\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
+e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}"/></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;phase&quot;</span></code> - phase-modulated pair:
+<img class="math" src="../../_images/math/38c167178186e5ad68de50fa832f246766367f80.png" alt="y_{\mathrm{P}} \left(t_1, t_2\right) = \sum_{m} a_m
+e^{\mathrm{i} \phi_m}
+e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}"/>
+<img class="math" src="../../_images/math/12ad51a67cadbb849ef3ffe4bc0faf6382a4cf59.png" alt="y_{\mathrm{N}} \left(t_1, t_2\right) = \sum_{m} a_m
+e^{\mathrm{i} \phi_m}
+e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}"/></p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">None</span></code> will lead to an array of shape <code class="docutils literal notranslate"><span class="pre">(*pts)</span></code>. <code class="docutils literal notranslate"><span class="pre">amp</span></code> and <code class="docutils literal notranslate"><span class="pre">phase</span></code>
+will lead to an array of shape <code class="docutils literal notranslate"><span class="pre">(2,</span> <span class="pre">*pts)</span></code>.</p>
+</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type</dt>

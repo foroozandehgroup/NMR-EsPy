@@ -47,7 +47,7 @@
 <span></span><span class="c1"># mpm.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Thu 31 Mar 2022 12:23:28 BST</span>
+<span class="c1"># Last Edited: Tue 10 May 2022 14:32:18 BST</span>
 
 <span class="sd">&quot;&quot;&quot;Computation of NMR parameter estimates using the Matrix Pencil Method.</span>
 
@@ -267,7 +267,7 @@
 
         <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_params</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">poles</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span><span class="p">)))</span>
         <span class="n">params</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="n">norm</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remove_negative_damping</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remove_negative_damping</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
 
     <span class="nd">@timer</span>
     <span class="nd">@start_end_wrapper</span><span class="p">(</span><span class="s2">&quot;MMEMP STARTED&quot;</span><span class="p">,</span> <span class="s2">&quot;MMEMP COMPLETE&quot;</span><span class="p">)</span>
@@ -383,7 +383,7 @@
 
         <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_params</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">poles</span><span class="p">)</span>
         <span class="n">params</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="n">norm</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">result</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remove_negative_damping</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remove_negative_damping</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_generate_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">poles</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Convert complex amplitudes and signal poles to parameter array.</span>

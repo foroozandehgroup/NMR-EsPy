@@ -259,7 +259,12 @@ the terminal as it runs. If <code class="docutils literal notranslate"><span cla
 <dl class="py method">
 <dt class="sig sig-object py" id="nmrespy.nlp.NonlinearProgramming.get_errors">
 <span class="sig-name descname"><span class="pre">get_errors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.nlp.NonlinearProgramming.get_errors" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the errors of the estimation result.</p>
+<dd><p>Returns the estimation result errors.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The errors are sorted according to how their respective parameters
+are sorted.</p>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -279,9 +284,9 @@ can be used to specify the frequency or damping factor.</p></li>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="nmrespy.nlp.NonlinearProgramming.get_result">
-<span class="sig-name descname"><span class="pre">get_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.nlp.NonlinearProgramming.get_result" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the estimation result</p>
+<dt class="sig sig-object py" id="nmrespy.nlp.NonlinearProgramming.get_params">
+<span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.nlp.NonlinearProgramming.get_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the estimation result parameters.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">

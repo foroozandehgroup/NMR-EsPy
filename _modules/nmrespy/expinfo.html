@@ -47,7 +47,7 @@
 <span></span><span class="c1"># expinfo.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Fri 06 May 2022 11:55:17 BST</span>
+<span class="c1"># Last Edited: Sun 15 May 2022 12:12:18 BST</span>
 
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
@@ -59,12 +59,6 @@
 <span class="kn">from</span> <span class="nn">nmrespy._freqconverter</span> <span class="kn">import</span> <span class="n">FrequencyConverter</span>
 <span class="kn">from</span> <span class="nn">nmrespy._sanity</span> <span class="kn">import</span> <span class="n">sanity_check</span><span class="p">,</span> <span class="n">funcs</span> <span class="k">as</span> <span class="n">sfuncs</span>
 <span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">sig</span>
-
-
-<span class="k">def</span> <span class="nf">check_fn_mode</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-    <span class="n">valids</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;QF&quot;</span><span class="p">,</span> <span class="s2">&quot;QSED&quot;</span><span class="p">,</span> <span class="s2">&quot;TPPI&quot;</span><span class="p">,</span> <span class="s2">&quot;States&quot;</span><span class="p">,</span> <span class="s2">&quot;States-TPPI&quot;</span><span class="p">,</span> <span class="s2">&quot;Echo-Anitecho&quot;</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">obj</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valids</span><span class="p">:</span>
-        <span class="k">return</span> <span class="s2">&quot;Should be one of &quot;</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">valids</span><span class="p">])</span>
 
 
 <div class="viewcode-block" id="ExpInfo"><a class="viewcode-back" href="../../content/references/expinfo.html#nmrespy.ExpInfo">[docs]</a><span class="k">class</span> <span class="nc">ExpInfo</span><span class="p">(</span><span class="n">FrequencyConverter</span><span class="p">):</span>
@@ -173,7 +167,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_default_pts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_totuple</span><span class="p">(</span><span class="n">default_pts</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_fn_mode</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">sanity_check</span><span class="p">((</span><span class="s2">&quot;fn_mode&quot;</span><span class="p">,</span> <span class="n">fn_mode</span><span class="p">,</span> <span class="n">check_fn_mode</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">))</span>
+            <span class="n">sanity_check</span><span class="p">((</span><span class="s2">&quot;fn_mode&quot;</span><span class="p">,</span> <span class="n">fn_mode</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_fn_mode</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">))</span>
             <span class="k">if</span> <span class="n">fn_mode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_fn_mode</span> <span class="o">=</span> <span class="s2">&quot;QF&quot;</span>
             <span class="k">else</span><span class="p">:</span>
@@ -458,7 +452,7 @@
         <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">snr</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">decibels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">fn_mode</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">indirect_modulation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Construct a FID, as a summation of damped complex sinusoids.</span>
 
@@ -503,11 +497,35 @@
 <span class="sd">            it is taken to be simply the ratio of the singal power over the</span>
 <span class="sd">            noise power.</span>
 
-<span class="sd">        fn_mode</span>
-<span class="sd">            Acquisition mode in indirect dimensions of mulit-dimensional experiments.</span>
-<span class="sd">            If the data is not 1-dimensional, this should be one of ``None``,</span>
-<span class="sd">            ``QF``, ``QSED``, ``TPPI``, ``States``, ``States-TPPI``, ``Echo-Anitecho``.</span>
-<span class="sd">            If ``None``, ``self.fn_mode`` will be used.</span>
+<span class="sd">        indirect_modulation</span>
+<span class="sd">            Acquisition mode in indirect dimension of a 2D experiment. If the</span>
+<span class="sd">            data is not 1-dimensional, this should be one of:</span>
+
+<span class="sd">            * ``None`` - :math:`y \left(t_1, t_2\right) = \sum_{m} a_m</span>
+<span class="sd">              e^{\mathrm{i} \phi_m}</span>
+<span class="sd">              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}</span>
+<span class="sd">              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`</span>
+<span class="sd">            * ``&quot;amp&quot;`` - amplitude modulated pair:</span>
+<span class="sd">              :math:`y_{\mathrm{cos}} \left(t_1, t_2\right) = \sum_{m} a_m</span>
+<span class="sd">              e^{\mathrm{i} \phi_m}</span>
+<span class="sd">              \cos\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)</span>
+<span class="sd">              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`</span>
+<span class="sd">              :math:`y_{\mathrm{sin}} \left(t_1, t_2\right) = \sum_{m} a_m</span>
+<span class="sd">              e^{\mathrm{i} \phi_m}</span>
+<span class="sd">              \sin\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)</span>
+<span class="sd">              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`</span>
+<span class="sd">            * ``&quot;phase&quot;`` - phase-modulated pair:</span>
+<span class="sd">              :math:`y_{\mathrm{P}} \left(t_1, t_2\right) = \sum_{m} a_m</span>
+<span class="sd">              e^{\mathrm{i} \phi_m}</span>
+<span class="sd">              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}</span>
+<span class="sd">              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`</span>
+<span class="sd">              :math:`y_{\mathrm{N}} \left(t_1, t_2\right) = \sum_{m} a_m</span>
+<span class="sd">              e^{\mathrm{i} \phi_m}</span>
+<span class="sd">              e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}</span>
+<span class="sd">              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`</span>
+
+<span class="sd">            ``None`` will lead to an array of shape ``(*pts)``. ``amp`` and ``phase``</span>
+<span class="sd">            will lead to an array of shape ``(2, *pts)``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sanity_check</span><span class="p">(</span>
             <span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_parameter_array</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,)),</span>
@@ -522,18 +540,16 @@
             <span class="p">),</span>
             <span class="p">(</span><span class="s2">&quot;snr&quot;</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
             <span class="p">(</span><span class="s2">&quot;decibels&quot;</span><span class="p">,</span> <span class="n">decibels</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;fn_mode&quot;</span><span class="p">,</span> <span class="n">fn_mode</span><span class="p">,</span> <span class="n">check_fn_mode</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;indirect_modulation&quot;</span><span class="p">,</span> <span class="n">indirect_modulation</span><span class="p">,</span>
+                <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;amp&quot;</span><span class="p">,</span> <span class="s2">&quot;phase&quot;</span><span class="p">),</span> <span class="p">{},</span> <span class="kc">True</span>
+            <span class="p">),</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">pts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">pts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_pts</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">pts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_totuple</span><span class="p">(</span><span class="n">pts</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">fn_mode</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">fn_mode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fn_mode</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">fn_mode</span> <span class="o">=</span> <span class="n">fn_mode</span>
 
         <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">()</span>
         <span class="n">amp</span> <span class="o">=</span> <span class="n">params</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
@@ -560,30 +576,46 @@
             <span class="p">)</span>
 
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="n">phase0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span>
-                <span class="s2">&quot;ik,k,kj-&gt;ij&quot;</span><span class="p">,</span>
-                <span class="c1"># Signal pole matrix (dimension 1)</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span>
-                        <span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                        <span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                    <span class="p">)</span>
-                <span class="p">),</span>
-                <span class="c1"># Complex amplitude vector</span>
-                <span class="n">amp</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">phase</span><span class="p">),</span>
-                <span class="c1"># Transposed signal pole matrix (dimension 2)</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span>
-                        <span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-                        <span class="n">tp</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-                    <span class="p">)</span>
-                <span class="p">),</span>
+            <span class="c1"># Signal pole matrix (dimension 1)</span>
+            <span class="n">z1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span>
+                    <span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="c1"># Complex amplitude vector</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">amp</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">phase</span><span class="p">)</span>
+            <span class="c1"># Transposed signal pole matrix (dimension 2)</span>
+            <span class="n">z2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span>
+                    <span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">tp</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="p">)</span>
             <span class="p">)</span>
 
-            <span class="k">if</span> <span class="n">fn_mode</span> <span class="o">==</span> <span class="s2">&quot;QF&quot;</span><span class="p">:</span>
-                <span class="n">fid</span> <span class="o">=</span> <span class="n">phase0</span>
+            <span class="k">if</span> <span class="n">indirect_modulation</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;amp&quot;</span><span class="p">,</span> <span class="s2">&quot;phase&quot;</span><span class="p">]:</span>
+                <span class="n">fid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="o">*</span><span class="n">pts</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex128&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">indirect_modulation</span> <span class="o">==</span> <span class="s2">&quot;amp&quot;</span><span class="p">:</span>
+                    <span class="n">fid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ik,k,kj-&gt;ij&quot;</span><span class="p">,</span> <span class="n">z1</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">z2</span><span class="p">)</span>
+                    <span class="n">fid</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ik,k,kj-&gt;ij&quot;</span><span class="p">,</span> <span class="n">z1</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">z2</span><span class="p">)</span>
+
+                <span class="k">elif</span> <span class="n">indirect_modulation</span> <span class="o">==</span> <span class="s2">&quot;phase&quot;</span><span class="p">:</span>
+                    <span class="n">fid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ik,k,kj-&gt;ij&quot;</span><span class="p">,</span> <span class="n">z1</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">z2</span><span class="p">)</span>
+                    <span class="n">fid</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span>
+                        <span class="s2">&quot;ik,k,kj-&gt;ij&quot;</span><span class="p">,</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span>
+                                <span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                <span class="o">-</span><span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">freq</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">damp</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                            <span class="p">)</span>
+                        <span class="p">),</span>
+                        <span class="n">alpha</span><span class="p">,</span>
+                        <span class="n">z2</span><span class="p">,</span>
+                    <span class="p">)</span>
+
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">fn_mode</span><span class="si">}</span><span class="s2"> yet to be implemented!&quot;</span><span class="p">)</span>
+                <span class="n">fid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ik,k,kj-&gt;ij&quot;</span><span class="p">,</span> <span class="n">z1</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">z2</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">fid</span> <span class="o">+=</span> <span class="n">sig</span><span class="o">.</span><span class="n">_make_noise</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">decibels</span><span class="p">)</span>

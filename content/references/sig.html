@@ -208,15 +208,15 @@ in each dimension.</p></li>
 <dl class="py function">
 <dt class="sig sig-object py" id="nmrespy.sig.proc_amp_modulated">
 <span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">proc_amp_modulated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#proc_amp_modulated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.proc_amp_modulated" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generate a frequency-dscrimiated signal from amp-modulated 2D FIDs.</p>
+<dd><p>Generate a frequency-discrimiated signal from amplitude-modulated 2D FIDs.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>data</strong> (<em>ndarray</em>) – cos-modulated signal and sin-modulated signal, stored in a 3D numpy array,
-such that <code class="docutils literal notranslate"><span class="pre">data[:,</span> <span class="pre">:,</span> <span class="pre">0]</span></code> is the the cos signal and <code class="docutils literal notranslate"><span class="pre">data[:,</span> <span class="pre">:,</span> <span class="pre">1]</span></code>
-is the sin signal.</p>
+such that <code class="docutils literal notranslate"><span class="pre">data[0]</span></code> is the the cos signal and <code class="docutils literal notranslate"><span class="pre">data[1]</span></code> is the sin
+signal.</p>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>spectrum</strong> – Frequency-dsicrimiated spectrum.</p>
+<dd class="field-even"><p><strong>spectrum</strong> – Frequency-discrimiated spectrum.</p>
 </dd>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p>np.ndarray</p>
@@ -232,18 +232,17 @@ is the sin signal.</p>
 processing protocol outlined in <a class="footnote-reference brackets" href="#id5" id="id4">2</a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>data</strong> (<em>ndarray</em>) – P-type signal and N-type signal, stored in a 3D numpy array,
-such that <code class="docutils literal notranslate"><span class="pre">data[:,</span> <span class="pre">:,</span> <span class="pre">0]</span></code> is the the P signal and <code class="docutils literal notranslate"><span class="pre">data[:,</span> <span class="pre">:,</span> <span class="pre">1]</span></code>
-is the N signal.</p>
+<dd class="field-odd"><p><strong>data</strong> (<em>ndarray</em>) – P-type signal and N-type signal, stored in a 3D numpy array, such that
+<code class="docutils literal notranslate"><span class="pre">data[0]</span></code> is the the P signal and <code class="docutils literal notranslate"><span class="pre">data[1]</span></code> is the N signal.</p>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><p>3D array with <code class="docutils literal notranslate"><span class="pre">spectra.shape[2]</span> <span class="pre">==</span> <span class="pre">4</span></code>. The sub-arrays in axis 2 correspond
+<dd class="field-even"><p><p>3D array with <code class="docutils literal notranslate"><span class="pre">spectra.shape[0]</span> <span class="pre">==</span> <span class="pre">4</span></code>. The sub-arrays in axis 0 correspond
 to the following signals:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">spectra[:,</span> <span class="pre">:,</span> <span class="pre">0]</span></code>: RR</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">spectra[:,</span> <span class="pre">:,</span> <span class="pre">1]</span></code>: RI</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">spectra[:,</span> <span class="pre">:,</span> <span class="pre">2]</span></code>: IR</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">spectra[:,</span> <span class="pre">:,</span> <span class="pre">3]</span></code>: II</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spectra[0]</span></code>: RR</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spectra[1]</span></code>: RI</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spectra[2]</span></code>: IR</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spectra[3]</span></code>: II</p></li>
 </ul>
 </p>
 </dd>
