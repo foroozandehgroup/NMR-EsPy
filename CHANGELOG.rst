@@ -1,6 +1,11 @@
 Changelog for NMR-EsPy
 ======================
 
+Changes involving a.b.x → a.b.y typically involve bug fixes and minor feature
+additions.
+
+Changes involving a.x → a.y typically involve more major feature additions.
+
 Version 1.0 → Version 1.1
 -------------------------
 
@@ -37,3 +42,5 @@ Features
   amplitude-modulated signal construction.
 * Refactoring of estimator classes: various methods moved from `Estimator1D`
   into the parent `Estimator` class as these behave in a general fashion.
+* For result files with multiple regions, integrals are now comparable. Thanks
+  to Fay Probert for this suggestion.

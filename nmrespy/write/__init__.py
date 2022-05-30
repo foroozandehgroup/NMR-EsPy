@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 27 Apr 2022 15:49:48 BST
+# Last Edited: Mon 30 May 2022 12:03:53 BST
 
 r"""Module for the creation of text and PDF files of estimation results.
 
@@ -210,16 +210,17 @@ class ResultWriter(ExpInfo):
             self.oscillator_integrals(
                 params,
                 self.default_pts if self.default_pts is not None else self.dim * [4096],
-                scale_relative_to=int(np.argmin(params[:, 0])),
             )
             for params in self.params
         ])
+        min_integral = min([np.amin(integrals) for integrals in self.integrals])
+        self.integrals = tuple([integrals / min_integral for integrals in self.integrals])
 
     def write(
         self,
         path: Union[str, Path],
         fmt: str = "txt",
-        titles: Iterable[str] = None,
+        titles: Optional[Iterable[str]] = None,
         experiment_info_sig_figs: Optional[int] = 5,
         parameters_sig_figs: Optional[int] = 5,
         parameters_sci_lims: Optional[Tuple[int, int]] = (-2, 3),
