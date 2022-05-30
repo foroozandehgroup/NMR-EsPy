@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>nmrespy.Estimator1D &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -64,7 +65,7 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="nmrespy-estimator1d">
-<h1>nmrespy.Estimator1D<a class="headerlink" href="#nmrespy-estimator1d" title="Permalink to this headline">¶</a></h1>
+<h1>nmrespy.Estimator1D<a class="headerlink" href="#nmrespy-estimator1d" title="Permalink to this heading">¶</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="nmrespy.Estimator1D">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nmrespy.</span></span><span class="sig-name descname"><span class="pre">Estimator1D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expinfo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datapath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D" title="Permalink to this definition">¶</a></dt>
@@ -81,15 +82,12 @@ methods:</p>
 </ul>
 </div>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> (<em>np.ndarray</em>) – Time-domain data to estimate.</p></li>
 <li><p><strong>expinfo</strong> (<a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.ExpInfo"><em>ExpInfo</em></a>) – Experiment information.</p></li>
 <li><p><strong>datapath</strong> (<em>Optional</em><em>[</em><em>Path</em><em>]</em>) – If applicable, the path that the data was derived from.</p></li>
 </ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>None</p>
 </dd>
 </dl>
 <dl class="py method">
@@ -98,7 +96,7 @@ methods:</p>
 <dd><p>Add oscillators to an estimation result.</p>
 <p>Optimisation is carried out afterwards, on the updated set of oscillators.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>params</strong> (<em>ndarray</em>) – <p>The parameters of new oscillators to be added. Should be of shape
 <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">(1</span> <span class="pre">+</span> <span class="pre">self.dim))</span></code>, where <code class="docutils literal notranslate"><span class="pre">n</span></code> is the number of new
@@ -117,7 +115,7 @@ that <code class="docutils literal notranslate"><span class="pre">&quot;region&q
 <code class="docutils literal notranslate"><span class="pre">&quot;region_unit&quot;</span></code> are set internally and will be ignored if given.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -125,7 +123,7 @@ that <code class="docutils literal notranslate"><span class="pre">&quot;region&q
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nmrespy.Estimator1D.data">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#nmrespy.Estimator1D.data" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#nmrespy.Estimator1D.data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the data assocaited with the estimator.</p>
 </dd></dl>
 
@@ -154,7 +152,7 @@ corresponding to the specified region.</p></li>
 parameters</p></li>
 </ul>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>region</strong> (<em>Optional</em><em>[</em><em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em><em>]</em>) – The frequency range of interest. Should be of the form <code class="docutils literal notranslate"><span class="pre">[left,</span> <span class="pre">right]</span></code>
 where <code class="docutils literal notranslate"><span class="pre">left</span></code> and <code class="docutils literal notranslate"><span class="pre">right</span></code> are the left and right bounds of the region
@@ -207,7 +205,7 @@ the signal. If an int, and the filtered signal has a size greater than
 <li><p><strong>cut_ratio</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -224,13 +222,13 @@ the signal. If an int, and the filtered signal has a size greater than
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_pickle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.from_pickle" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a pickled estimator instance.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>Path</em><em>]</em>) – The path to the pickle file.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>estimator</strong></p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Estimator</span></code></p>
 </dd>
 </dl>
@@ -260,7 +258,7 @@ and the resulting output is not an instance of
 <span class="sig-name descname"><span class="pre">get_errors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.get_errors" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return estimation result errors.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>indices</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The indices of results to extract errors from. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to
 the first result obtained using the estimator, <code class="docutils literal notranslate"><span class="pre">1</span></code> corresponds to
@@ -277,7 +275,7 @@ final (direct) dimension will be used. For 1D data, <code class="docutils litera
 can be used to specify the frequency or damping factor.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Union</em>[<em>Iterable</em>[<em>ndarray</em>], <em>ndarray</em>]</p>
 </dd>
 </dl>
@@ -288,7 +286,7 @@ can be used to specify the frequency or damping factor.</p></li>
 <span class="sig-name descname"><span class="pre">get_log</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.get_log" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the log for the estimator instance.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>str</p>
 </dd>
 </dl>
@@ -299,7 +297,7 @@ can be used to specify the frequency or damping factor.</p></li>
 <span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">merge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.get_params" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return estimation result parameters.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>indices</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The indices of results to extract parameters from. Index <code class="docutils literal notranslate"><span class="pre">0</span></code>
 corresponds to the first result obtained using the estimator, <code class="docutils literal notranslate"><span class="pre">1</span></code>
@@ -317,7 +315,7 @@ final (direct) dimension will be used. For 1D data, <code class="docutils litera
 can be used to specify the frequency or damping factor.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Union</em>[<em>Iterable</em>[<em>ndarray</em>], <em>ndarray</em>]</p>
 </dd>
 </dl>
@@ -329,12 +327,12 @@ can be used to specify the frequency or damping factor.</p></li>
 <dd><p>Obtain a subset of the estimation results obtained.</p>
 <p>By default, all results are returned, in the order in which they are obtained.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>indices</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The indices of results to return. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to the first
 result obtained using the estimator, <code class="docutils literal notranslate"><span class="pre">1</span></code> corresponds to the next, etc.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all results will be returned.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Iterable</em>[<em>Result</em>]</p>
 </dd>
 </dl>
@@ -345,7 +343,7 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <span class="sig-name descname"><span class="pre">get_shifts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meshgrid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.get_shifts" title="Permalink to this definition">¶</a></dt>
 <dd><p>Construct chemical shifts which reflect the experiment parameters.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>pts</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The number of points to construct the time-points with in each dimesnion.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, and <code class="docutils literal notranslate"><span class="pre">self.default_pts</span></code> is a tuple of ints, it will be
@@ -359,7 +357,7 @@ corresponding to all combinations of points in each dimension.
 plot/contour plot.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Iterable</em>[<em>ndarray</em>]</p>
 </dd>
 </dl>
@@ -370,7 +368,7 @@ plot/contour plot.</p></li>
 <span class="sig-name descname"><span class="pre">get_timepoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meshgrid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.get_timepoints" title="Permalink to this definition">¶</a></dt>
 <dd><p>Construct time-points which reflect the experiment parameters.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>pts</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The number of points to construct the time-points with in each dimesnion.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, and <code class="docutils literal notranslate"><span class="pre">self.default_pts</span></code> is a tuple of ints, it will be
@@ -387,7 +385,7 @@ setting this argument to <code class="docutils literal notranslate"><span class=
 corresponding to all combinations of points in each dimension.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Iterable</em>[<em>ndarray</em>]</p>
 </dd>
 </dl>
@@ -409,7 +407,7 @@ corresponding to all combinations of points in each dimension.</p></li>
 <span class="sig-name descname"><span class="pre">make_fid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indirect_modulation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.make_fid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Construct a noiseless FID from estimation result parameters.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>indices</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The indices of results to extract errors from. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to
 the first result obtained using the estimator, <code class="docutils literal notranslate"><span class="pre">1</span></code> corresponds to
@@ -448,7 +446,7 @@ will lead to an array of shape <code class="docutils literal notranslate"><span 
 </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -463,7 +461,7 @@ oscillator with a cumulative amplitude, and averaged phase,
 frequency and damping. Then runs optimisation on the updated set of
 oscillators.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>oscillators</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – A list of indices corresponding to the oscillators to be merged.</p></li>
 <li><p><strong>index</strong> (<em>int</em>) – The index of the result to edit. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to the
@@ -475,7 +473,7 @@ that <code class="docutils literal notranslate"><span class="pre">&quot;initial_
 will be ignored if given.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -501,7 +499,7 @@ subset will possess the following parameters prior to re-running estimation:</p>
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">new_bruker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ask_convdta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.new_bruker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.new_bruker" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new instance from Bruker-formatted data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>directory</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>Path</em><em>]</em>) – Absolute path to data directory.</p></li>
 <li><p><strong>ask_convdta</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, the user will be warned that the data should have its
@@ -510,7 +508,7 @@ is from an <code class="docutils literal notranslate"><span class="pre">fid</spa
 warned.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="#nmrespy.Estimator1D" title="nmrespy.estimators.onedim.Estimator1D"><em>Estimator1D</em></a></p>
 </dd>
 </dl>
@@ -549,7 +547,7 @@ should use in <code class="docutils literal notranslate"><span class="pre">direc
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">new_synthetic_from_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sfo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.new_synthetic_from_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.new_synthetic_from_parameters" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate an estimator instance from an array of oscillator parameters.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>params</strong> (<em>ndarray</em>) – <p>Parameter array with the following structure:</p>
 <blockquote>
@@ -571,7 +569,7 @@ should use in <code class="docutils literal notranslate"><span class="pre">direc
 to the FID.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="#nmrespy.Estimator1D" title="nmrespy.estimators.onedim.Estimator1D"><em>Estimator1D</em></a></p>
 </dd>
 </dl>
@@ -586,7 +584,7 @@ simulation.</p>
 <a class="reference external" href="https://foroozandehgroup.github.io/nmr_sims/content/references/experiments/pa.html#nmr_sims.experiments.pa.PulseAcquireSimulation">nmr_sims.experiments.pa.PulseAcquireSimulation</a>
 class.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>spin_system</strong> (<em>SpinSystem</em>) – Specification of the spin system to run simulations on.
 <a class="reference external" href="https://foroozandehgroup.github.io/nmr_sims/content/references/spin_system.html#nmr_sims.spin_system.SpinSystem.__init__">See here</a>
@@ -603,7 +601,7 @@ be either <code class="docutils literal notranslate"><span class="pre">&quot;hz&
 produces a noiseless signal.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="#nmrespy.Estimator1D" title="nmrespy.estimators.onedim.Estimator1D"><em>Estimator1D</em></a></p>
 </dd>
 </dl>
@@ -620,10 +618,10 @@ produces a noiseless signal.</p></li>
 <span class="sig-name descname"><span class="pre">offset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.offset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the transmitter offset frequency.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>unit</strong> (<em>str</em>) – Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Iterable</em>[float]</p>
 </dd>
 </dl>
@@ -634,14 +632,14 @@ produces a noiseless signal.</p></li>
 <span class="sig-name descname"><span class="pre">phase_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pivot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.phase_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.phase_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Apply first-order phae correction to the estimator’s data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>p0</strong> (<em>float</em>) – Zero-order phase correction, in radians.</p></li>
 <li><p><strong>p1</strong> (<em>float</em>) – First-order phase correction, in radians.</p></li>
 <li><p><strong>pivot</strong> (<em>int</em>) – Index of the pivot.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -652,7 +650,7 @@ produces a noiseless signal.</p></li>
 <span class="sig-name descname"><span class="pre">plot_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_residual</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">residual_shift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_shift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shifts_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ppm'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#000000'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">residual_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#808080'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#808080'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oscillator_colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stylesheet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.plot_result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.plot_result" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write estimation results to text and PDF files.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>indices</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The indices of results to include. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to the first
 result obtained using the estimator, <code class="docutils literal notranslate"><span class="pre">1</span></code> corresponds to the next, etc.
@@ -712,7 +710,7 @@ customaisation of the plot. See <a class="reference external" href="https://matp
 information on stylesheets.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Iterable</em>[<a class="reference internal" href="plot.html#nmrespy.plot.ResultPlotter" title="nmrespy.plot.ResultPlotter"><em>ResultPlotter</em></a>]</p>
 </dd>
 </dl>
@@ -724,7 +722,7 @@ information on stylesheets.</p></li>
 <dd><p>Remove oscillators from an estimation result.</p>
 <p>Optimisation is carried out afterwards, on the updated set of oscillators.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>oscillators</strong> (<em>Iterable</em><em>[</em><em>int</em><em>]</em>) – A list of indices corresponding to the oscillators to be removed.</p></li>
 <li><p><strong>index</strong> (<em>int</em>) – The index of the result to edit. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to the
@@ -736,7 +734,7 @@ that <code class="docutils literal notranslate"><span class="pre">&quot;initial_
 will be ignored if given.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -747,7 +745,7 @@ will be ignored if given.</p></li>
 <span class="sig-name descname"><span class="pre">save_log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./espy_logfile'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.save_log" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save the estimator’s log.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>Path</em><em>]</em>) – The path to save the log to.</p></li>
 <li><p><strong>force_overwrite</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">path</span></code> already exists, <code class="docutils literal notranslate"><span class="pre">force_overwrite</span></code> set to <code class="docutils literal notranslate"><span class="pre">True</span></code> will get
@@ -756,7 +754,7 @@ If <code class="docutils literal notranslate"><span class="pre">False</span></co
 <li><p><strong>fprint</strong> (<em>bool</em>) – Specifies whether or not to print infomation to the terminal.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -776,7 +774,7 @@ If <code class="docutils literal notranslate"><span class="pre">False</span></co
 cumulative amplitudes match that of the removed oscillator. Then runs
 optimisation on the updated set of oscillators.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>oscillator</strong> (<em>int</em>) – The index of the oscillator to be split.</p></li>
 <li><p><strong>index</strong> (<em>int</em>) – The index of the result to edit. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to the
@@ -800,7 +798,7 @@ that <code class="docutils literal notranslate"><span class="pre">&quot;initial_
 will be ignored if given.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -811,10 +809,10 @@ will be ignored if given.</p></li>
 <span class="sig-name descname"><span class="pre">sw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.sw" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the sweep width.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>unit</strong> (<em>str</em>) – Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Iterable</em>[float]</p>
 </dd>
 </dl>
@@ -825,7 +823,7 @@ will be ignored if given.</p></li>
 <span class="sig-name descname"><span class="pre">to_pickle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.to_pickle" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save the estimator to a byte stream using Python’s pickling protocol.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>path</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>Path</em><em>]</em><em>]</em>) – Path of file to save the byte stream to. <cite>‘.pkl’</cite> is added to the end of
 the path if this is not given by the user. If <code class="docutils literal notranslate"><span class="pre">None</span></code>,
@@ -842,7 +840,7 @@ overwritten without prompt.</p></li>
 <li><p><strong>fprint</strong> (<em>bool</em>) – Specifies whether or not to print infomation to the terminal.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -868,14 +866,14 @@ overwritten without prompt.</p></li>
 <span class="sig-name descname"><span class="pre">view_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'freq'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'real'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.view_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.view_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>View the data.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>domain</strong> (<em>str</em>) – Must be <code class="docutils literal notranslate"><span class="pre">&quot;freq&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;time&quot;</span></code>.</p></li>
 <li><p><strong>components</strong> (<em>str</em>) – Must be <code class="docutils literal notranslate"><span class="pre">&quot;real&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;imag&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;both&quot;</span></code>.</p></li>
 <li><p><strong>freq_unit</strong> (<em>str</em>) – Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -886,7 +884,7 @@ overwritten without prompt.</p></li>
 <span class="sig-name descname"><span class="pre">write_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'./nmrespy_result'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fmt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig_figs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sci_lims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(-</span> <span class="pre">2,</span> <span class="pre">3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pdflatex_exe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.write_result" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write estimation results to text and PDF files.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>indices</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The indices of results to include. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to the first
 result obtained using the estimator, <code class="docutils literal notranslate"><span class="pre">1</span></code> corresponds to the next, etc.
@@ -914,7 +912,7 @@ the NMR-EsPy GUI has been loaded from TopSpin.</p>
 </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -992,7 +990,7 @@ the NMR-EsPy GUI has been loaded from TopSpin.</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

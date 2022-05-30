@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>Loading the GUI &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
     <script src="../../../_static/jquery.js"></script>
     <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -65,7 +66,7 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="loading-the-gui">
-<h1>Loading the GUI<a class="headerlink" href="#loading-the-gui" title="Permalink to this headline">¶</a></h1>
+<h1>Loading the GUI<a class="headerlink" href="#loading-the-gui" title="Permalink to this heading">¶</a></h1>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>On this page, <code class="docutils literal notranslate"><span class="pre">&lt;pyexe&gt;</span></code> denotes the symbolic link/path to the Python
@@ -75,7 +76,7 @@ executable you are using.</p>
 TopSpin provided the GUI loader has been installed
 (see <a class="reference internal" href="../topspin_install.html"><span class="doc">Integrating the GUI into TopSpin</span></a>).</p>
 <section id="from-a-terminal">
-<h2>From a terminal<a class="headerlink" href="#from-a-terminal" title="Permalink to this headline">¶</a></h2>
+<h2>From a terminal<a class="headerlink" href="#from-a-terminal" title="Permalink to this heading">¶</a></h2>
 <p>To set-up an estimation routine from the terminal/command prompt,
 enter the following command:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ &lt;pyexe&gt; -m nmrespy --estimate &lt;path_to_bruker_data&gt;
@@ -92,7 +93,7 @@ enter the following command:</p>
 </ul>
 </section>
 <section id="from-topspin">
-<h2>From TopSpin<a class="headerlink" href="#from-topspin" title="Permalink to this headline">¶</a></h2>
+<h2>From TopSpin<a class="headerlink" href="#from-topspin" title="Permalink to this heading">¶</a></h2>
 <p>To load the GUI from TopSpin, simply select the data you wish to look at,
 and then enter the command <code class="docutils literal notranslate"><span class="pre">nmrespy</span></code> into the prompt in the bottom left
 corner.</p>
@@ -183,7 +184,7 @@ raw time-domain data, or the processed data):</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

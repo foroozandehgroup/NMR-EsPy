@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>nmrespy.load &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -64,14 +65,14 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="module-nmrespy.load">
-<span id="nmrespy-load"></span><h1>nmrespy.load<a class="headerlink" href="#module-nmrespy.load" title="Permalink to this headline">¶</a></h1>
+<span id="nmrespy-load"></span><h1>nmrespy.load<a class="headerlink" href="#module-nmrespy.load" title="Permalink to this heading">¶</a></h1>
 <p>Provides functionality for importing NMR data.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="nmrespy.load.load_bruker">
 <span class="sig-prename descclassname"><span class="pre">nmrespy.load.</span></span><span class="sig-name descname"><span class="pre">load_bruker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ask_convdta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/load.html#load_bruker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.load.load_bruker" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load data and experiment information from Bruker format.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>directory</strong> (<em>str</em>) – Absolute path to data directory.</p></li>
 <li><p><strong>ask_convdta</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, the user will be warned that the data should have its
@@ -80,7 +81,7 @@ is from an <code class="docutils literal notranslate"><span class="pre">fid</spa
 warned.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><ul class="simple">
 <li><p><em>data</em> – The associated data.</p></li>
 <li><p><em>expinfo</em> – Experiment information. As well as the normal associated properties
@@ -90,7 +91,7 @@ dataset.</p></li>
 </ul>
 </p>
 </dd>
-<dt class="field-odd">Raises</dt>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>OSError</strong> – If the directory specified does not exist.</p></li>
 <li><p><strong>ValueError</strong> – If the directroy specified does not have the requisite data and
@@ -98,7 +99,7 @@ dataset.</p></li>
 <li><p><strong>MoreThanTwoDimError</strong> – If the dataset specified has more than 2 dimensions.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Tuple</em>[<em>ndarray</em>, <a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.expinfo.ExpInfo"><em>ExpInfo</em></a>]</p>
 </dd>
 </dl>
@@ -285,7 +286,7 @@ performed <code class="docutils literal notranslate"><span class="pre">convdta</
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

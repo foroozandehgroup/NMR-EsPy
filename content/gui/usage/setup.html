@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>Estimation Set-up &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
     <script src="../../../_static/jquery.js"></script>
     <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -65,17 +66,17 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="estimation-set-up">
-<h1>Estimation Set-up<a class="headerlink" href="#estimation-set-up" title="Permalink to this headline">¶</a></h1>
+<h1>Estimation Set-up<a class="headerlink" href="#estimation-set-up" title="Permalink to this heading">¶</a></h1>
 <p>The following is a screenshot of the NMR-EsPy GUI calculation set-up window.
 Key features of the window are annotated:</p>
 <img alt="../../../_images/setup_window.png" class="align-center" src="../../../_images/setup_window.png" style="width: 636.0px; height: 706.8px;" />
 <section id="plot-navigation">
-<h2>Plot Navigation<a class="headerlink" href="#plot-navigation" title="Permalink to this headline">¶</a></h2>
+<h2>Plot Navigation<a class="headerlink" href="#plot-navigation" title="Permalink to this heading">¶</a></h2>
 <p>The Plot navigation toolbar enables you to change the view of the data.
 It is an edited version of
 <a class="reference external" href="https://matplotlib.org/3.2.2/users/navigation_toolbar.html">matplotlib’s toolbar</a>,
 with the following available buttons:</p>
-<table class="colwidths-given docutils align-default">
+<table class="docutils align-default">
 <colgroup>
 <col style="width: 9%" />
 <col style="width: 91%" />
@@ -110,7 +111,7 @@ with the following available buttons:</p>
 </table>
 </section>
 <section id="phase-correction">
-<h2>Phase Correction<a class="headerlink" href="#phase-correction" title="Permalink to this headline">¶</a></h2>
+<h2>Phase Correction<a class="headerlink" href="#phase-correction" title="Permalink to this heading">¶</a></h2>
 <p>The GUI has the following appearance when the <cite>Phase Correction</cite> tab is
 selected:</p>
 <img alt="../../../_images/setup_window_phase_tab.png" class="align-center" src="../../../_images/setup_window_phase_tab.png" style="width: 636.0px; height: 640.8px;" />
@@ -157,7 +158,7 @@ box has not be validated, you will be prevented from doing so:
    :scale: 80%</div>
 </section>
 <section id="region-selection">
-<h2>Region Selection<a class="headerlink" href="#region-selection" title="Permalink to this headline">¶</a></h2>
+<h2>Region Selection<a class="headerlink" href="#region-selection" title="Permalink to this heading">¶</a></h2>
 <p>For typical NMR signals, the estimation routine used in NMR-EsPy is
 too expensive to analyse the entire signal. For this reason, it is typically
 necessary to generate a signal which has been frequency-filtered, drastically
@@ -175,7 +176,7 @@ to bear.</p>
 in the <cite>Region Selection</cite> tab.</p>
 </section>
 <section id="advanced-estimation-settings">
-<h2>Advanced Estimation Settings<a class="headerlink" href="#advanced-estimation-settings" title="Permalink to this headline">¶</a></h2>
+<h2>Advanced Estimation Settings<a class="headerlink" href="#advanced-estimation-settings" title="Permalink to this heading">¶</a></h2>
 <p>Clicking the <cite>Advanced Settings</cite> button will load a window enabling a few
 more advanced aspects of the estimation routine to be tweaked:</p>
 <img alt="../../../_images/advanced_settings_window.png" class="align-center" src="../../../_images/advanced_settings_window.png" style="width: 315.15px; height: 288.15px;" />
@@ -186,7 +187,7 @@ more advanced aspects of the estimation routine to be tweaked:</p>
 provided will be suitable.</p>
 </div>
 <section id="matrix-pencil-method-options">
-<h3>Matrix Pencil Method Options<a class="headerlink" href="#matrix-pencil-method-options" title="Permalink to this headline">¶</a></h3>
+<h3>Matrix Pencil Method Options<a class="headerlink" href="#matrix-pencil-method-options" title="Permalink to this heading">¶</a></h3>
 <blockquote>
 <div><p>The Matrix Pencil Method (MPM) is a singular-value decomposition-based approach
 for estimating signal parameters. It is used in NMR-EsPy to generate an
@@ -202,7 +203,7 @@ This can only be specified if <cite>Use MDL</cite> is unticked.</p></li>
 </div></blockquote>
 </section>
 <section id="nonlinear-programming-options">
-<h3>Nonlinear Programming Options<a class="headerlink" href="#nonlinear-programming-options" title="Permalink to this headline">¶</a></h3>
+<h3>Nonlinear Programming Options<a class="headerlink" href="#nonlinear-programming-options" title="Permalink to this heading">¶</a></h3>
 <blockquote>
 <div><p>The result of the Matrix Pencil Method is fed into a nonlinear programming
 (NLP) routine to determine the final signal parameter estimate.</p>
@@ -315,7 +316,7 @@ runs.</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>nmrespy.sig &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -64,7 +65,7 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="module-nmrespy.sig">
-<span id="nmrespy-sig"></span><h1>nmrespy.sig<a class="headerlink" href="#module-nmrespy.sig" title="Permalink to this headline">¶</a></h1>
+<span id="nmrespy-sig"></span><h1>nmrespy.sig<a class="headerlink" href="#module-nmrespy.sig" title="Permalink to this heading">¶</a></h1>
 <p>Manipulating and processing NMR signals.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="nmrespy.sig.ft">
@@ -75,7 +76,7 @@ left to right/down to up. This function utilises the
 <a class="reference external" href="https://numpy.org/doc/stable/reference/routines.fft.html">numpy.fft</a>
 module to carry out the Fourier Transformation.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>fid</strong> (<em>ndarray</em>) – Time-domain data.</p></li>
 <li><p><strong>axes</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>, </em><em>int</em><em>]</em><em>]</em>) – The axes to apply Fourier Transformation to. By default (<code class="docutils literal notranslate"><span class="pre">None</span></code>), FT is
@@ -85,7 +86,7 @@ If a list of ints, FT will be applied to this subset of axes.</p></li>
 dimension.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -99,7 +100,7 @@ dimension.</p></li>
 <a class="reference external" href="https://numpy.org/doc/stable/reference/routines.fft.html">numpy.fft</a>
 module to carry out the Fourier Transformation.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>spectrum</strong> (<em>numpy.ndarray</em>) – Spectrum</p></li>
 <li><p><strong>axes</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>, </em><em>int</em><em>]</em><em>]</em>) – The axes to apply IFT to. By default (<code class="docutils literal notranslate"><span class="pre">None</span></code>), IFT is
@@ -109,7 +110,7 @@ If a list of ints, IFT will be applied to this subset of axes.</p></li>
 Fourier Transform.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -118,11 +119,11 @@ Fourier Transform.</p></li>
 <dl class="py function">
 <dt class="sig sig-object py" id="nmrespy.sig.make_virtual_echo">
 <span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">make_virtual_echo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">twodim_dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#make_virtual_echo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.make_virtual_echo" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generate a virtual echo <a class="footnote-reference brackets" href="#id3" id="id2">1</a> from a time-domain signal.</p>
+<dd><p>Generate a virtual echo <a class="footnote-reference brackets" href="#id3" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> from a time-domain signal.</p>
 <p>A vitrual echo is a signal with a purely real Fourier-Tranform and
 absorption mode line shape if the data is phased.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> (<em>ndarray</em>) – The data to construct the virtual echo from. If the data comprises a pair
 of amplitude/phase modulated signals, these should be stored in a single
@@ -140,18 +141,17 @@ modulated pair.</p></li>
 </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
 <p class="rubric">References</p>
-<dl class="footnote brackets">
-<dt class="label" id="id3"><span class="brackets"><a class="fn-backref" href="#id2">1</a></span></dt>
-<dd><p>M. Mayzel, K. Kazimierczuk, V. Y. Orekhov, The causality principle
+<aside class="footnote brackets" id="id3" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">1</a><span class="fn-bracket">]</span></span>
+<p>M. Mayzel, K. Kazimierczuk, V. Y. Orekhov, The causality principle
 in the reconstruction of sparse nmr spectra, Chem. Commun. 50 (64)
 (2014) 8947–8950.</p>
-</dd>
-</dl>
+</aside>
 </dd></dl>
 
 <dl class="py function">
@@ -163,14 +163,14 @@ in the reconstruction of sparse nmr spectra, Chem. Commun. 50 (64)
 <p>Only 1D spectral data is currently supported.</p>
 </div>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>spectrum</strong> (<em>ndarray</em>) – Spectral data of interest.</p></li>
 <li><p><strong>max_p1</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>float</em><em>]</em><em>]</em>) – Specifies the range of first-order phases permitted.
 Bounds are set as <code class="docutils literal notranslate"><span class="pre">[-max_p1,</span> <span class="pre">max_p1]</span></code>.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><ul class="simple">
 <li><p><em>p0</em> – Zero-order phase correction in each dimension, in radians. If the
 user chooses to cancel rather than save, this is set to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
@@ -179,7 +179,7 @@ user chooses to cancel rather than save, this is set to <code class="docutils li
 </ul>
 </p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>Tuple</em>[<em>Optional</em>[<em>Iterable</em>[float]], <em>Optional</em>[<em>Iterable</em>[float]]]</p>
 </dd>
 </dl>
@@ -190,7 +190,7 @@ user chooses to cancel rather than save, this is set to <code class="docutils li
 <span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">phase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pivot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#phase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.phase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Apply a linear phase correction to a signal.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> (<em>ndarray</em>) – Data to be phased.</p></li>
 <li><p><strong>p0</strong> (<em>Iterable</em><em>[</em><em>float</em><em>]</em>) – Zero-order phase correction in each dimension, in radians.</p></li>
@@ -199,7 +199,7 @@ user chooses to cancel rather than save, this is set to <code class="docutils li
 in each dimension.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -210,15 +210,15 @@ in each dimension.</p></li>
 <span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">proc_amp_modulated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#proc_amp_modulated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.proc_amp_modulated" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate a frequency-discrimiated signal from amplitude-modulated 2D FIDs.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>data</strong> (<em>ndarray</em>) – cos-modulated signal and sin-modulated signal, stored in a 3D numpy array,
 such that <code class="docutils literal notranslate"><span class="pre">data[0]</span></code> is the the cos signal and <code class="docutils literal notranslate"><span class="pre">data[1]</span></code> is the sin
 signal.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>spectrum</strong> – Frequency-discrimiated spectrum.</p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>np.ndarray</p>
 </dd>
 </dl>
@@ -229,13 +229,13 @@ signal.</p>
 <span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">proc_phase_modulated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#proc_phase_modulated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.proc_phase_modulated" title="Permalink to this definition">¶</a></dt>
 <dd><p>Process phase modulated 2D FIDs.</p>
 <p>This function generates the set of spectra corresponding to the
-processing protocol outlined in <a class="footnote-reference brackets" href="#id5" id="id4">2</a>.</p>
+processing protocol outlined in <a class="footnote-reference brackets" href="#id5" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>data</strong> (<em>ndarray</em>) – P-type signal and N-type signal, stored in a 3D numpy array, such that
 <code class="docutils literal notranslate"><span class="pre">data[0]</span></code> is the the P signal and <code class="docutils literal notranslate"><span class="pre">data[1]</span></code> is the N signal.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><p>3D array with <code class="docutils literal notranslate"><span class="pre">spectra.shape[0]</span> <span class="pre">==</span> <span class="pre">4</span></code>. The sub-arrays in axis 0 correspond
 to the following signals:</p>
 <ul class="simple">
@@ -246,19 +246,18 @@ to the following signals:</p>
 </ul>
 </p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>spectra</p>
 </dd>
 </dl>
 <p class="rubric">References</p>
-<dl class="footnote brackets">
-<dt class="label" id="id5"><span class="brackets"><a class="fn-backref" href="#id4">2</a></span></dt>
-<dd><p>A. L. Davis, J. Keeler, E. D. Laue, and D. Moskau, “Experiments for
+<aside class="footnote brackets" id="id5" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">2</a><span class="fn-bracket">]</span></span>
+<p>A. L. Davis, J. Keeler, E. D. Laue, and D. Moskau, “Experiments for
 recording pure-absorption heteronuclear correlation spectra using
 pulsed field gradients,” Journal of Magnetic Resonance (1969),
 vol. 98, no. 1, pp. 207–216, 1992.</p>
-</dd>
-</dl>
+</aside>
 </dd></dl>
 
 <dl class="py function">
@@ -266,10 +265,10 @@ vol. 98, no. 1, pp. 207–216, 1992.</p>
 <span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">zf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#zf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.zf" title="Permalink to this definition">¶</a></dt>
 <dd><p>Zero-fill data to the next power of 2 in each dimension.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>data</strong> (<em>ndarray</em>) – Signal to zero-fill.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -345,7 +344,7 @@ vol. 98, no. 1, pp. 207–216, 1992.</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>Figure Customisation &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -55,7 +56,7 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="figure-customisation">
-<h1>Figure Customisation<a class="headerlink" href="#figure-customisation" title="Permalink to this headline">¶</a></h1>
+<h1>Figure Customisation<a class="headerlink" href="#figure-customisation" title="Permalink to this heading">¶</a></h1>
 <p>On this page, you can find out how to customise result figures to suit your
 preferences. It will help to have some experience with
 <a class="reference external" href="https://matplotlib.org/stable/index.html">matplotlib</a>.</p>
@@ -70,7 +71,7 @@ scripts for the full estimation process, you can jump to
 <a class="reference internal" href="#generate-the-estimation-figure">Generate the Estimation Figure</a></p>
 </div>
 <section id="getting-started">
-<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h2>
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this heading">¶</a></h2>
 <p>If you are using the GUI, when saving the result of an estimation routine, make
 sure you “pickle” the estimator (see the section <em>Saving the Result</em> on
 <a class="reference internal" href="../gui/usage/result.html"><span class="doc">this page</span></a>).</p>
@@ -89,7 +90,7 @@ sure you “pickle” the estimator (see the section <em>Saving the Result</em> 
 </div>
 </section>
 <section id="load-the-estimator">
-<h2>Load the Estimator<a class="headerlink" href="#load-the-estimator" title="Permalink to this headline">¶</a></h2>
+<h2>Load the Estimator<a class="headerlink" href="#load-the-estimator" title="Permalink to this heading">¶</a></h2>
 <p>To load the estimator, include the following line:</p>
 <div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span> <span class="o">=</span> <span class="n">Estimator</span><span class="o">.</span><span class="n">from_pickle</span><span class="p">(</span><span class="s2">&quot;path/to/estimator&quot;</span><span class="p">)</span>
 </pre></div>
@@ -98,7 +99,7 @@ sure you “pickle” the estimator (see the section <em>Saving the Result</em> 
 file. <strong>DO NOT INCLUDE THE</strong> <code class="docutils literal notranslate"><span class="pre">.pkl</span></code> <strong>EXTENSION</strong>.</p>
 </section>
 <section id="generate-the-estimation-figure">
-<span id="id1"></span><h2>Generate the Estimation Figure<a class="headerlink" href="#generate-the-estimation-figure" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h2>Generate the Estimation Figure<a class="headerlink" href="#generate-the-estimation-figure" title="Permalink to this heading">¶</a></h2>
 <p>To generate the estimator figure, add the following line:</p>
 <div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">plot</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">plot_result</span><span class="p">()</span>
 </pre></div>
@@ -139,11 +140,11 @@ be used (the others are automatically determined internally by the
 </ul>
 </section>
 <section id="further-customisation">
-<h2>Further Customisation<a class="headerlink" href="#further-customisation" title="Permalink to this headline">¶</a></h2>
+<h2>Further Customisation<a class="headerlink" href="#further-customisation" title="Permalink to this heading">¶</a></h2>
 <p>If there are further features you would like to customise, this can be done
 by editing <code class="docutils literal notranslate"><span class="pre">plot</span></code>.</p>
 <section id="general-guidance">
-<h3>General Guidance<a class="headerlink" href="#general-guidance" title="Permalink to this headline">¶</a></h3>
+<h3>General Guidance<a class="headerlink" href="#general-guidance" title="Permalink to this heading">¶</a></h3>
 <p><code class="xref py py-meth docutils literal notranslate"><span class="pre">nmrespy.onedim.Estimator.plot_result()</span></code> produces a list of
 <a class="reference internal" href="../references/plot.html#nmrespy.plot.ResultPlotter" title="nmrespy.plot.ResultPlotter"><code class="xref py py-class docutils literal notranslate"><span class="pre">nmrespy.plot.ResultPlotter</span></code></a> instances.</p>
 <ul class="simple">
@@ -170,7 +171,7 @@ change its line-width to 2 px, you should use
 (same as oscillator keys in the <cite>lines</cite> dictionary).</p>
 </section>
 <section id="specific-things">
-<h3>Specific Things<a class="headerlink" href="#specific-things" title="Permalink to this headline">¶</a></h3>
+<h3>Specific Things<a class="headerlink" href="#specific-things" title="Permalink to this heading">¶</a></h3>
 <p>I have written some “convenience methods” to achieve certain things that
 I anticipate users will frequently want to carry out.</p>
 <ul>
@@ -252,7 +253,7 @@ or <a class="reference external" href="mailto:simon&#46;hulse&#37;&#52;&#48;chem
 </section>
 </section>
 <section id="save-the-figure">
-<h2>Save the Figure<a class="headerlink" href="#save-the-figure" title="Permalink to this headline">¶</a></h2>
+<h2>Save the Figure<a class="headerlink" href="#save-the-figure" title="Permalink to this heading">¶</a></h2>
 <p>Once you have completed all the desired customisation, the <code class="docutils literal notranslate"><span class="pre">fig</span></code> object can be
 saved using <a class="reference external" href="https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.savefig.html">matplotlib.savefig</a>:</p>
 <div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">plot</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;&lt;path/to/figure&gt;&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
@@ -343,7 +344,7 @@ saved using <a class="reference external" href="https://matplotlib.org/stable/ap
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>Integrating the GUI into TopSpin &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -64,7 +65,7 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="integrating-the-gui-into-topspin">
-<h1>Integrating the GUI into TopSpin<a class="headerlink" href="#integrating-the-gui-into-topspin" title="Permalink to this headline">¶</a></h1>
+<h1>Integrating the GUI into TopSpin<a class="headerlink" href="#integrating-the-gui-into-topspin" title="Permalink to this heading">¶</a></h1>
 <p>It is possible to directly load the NMR-EsPy GUI from within TopSpin. The GUI
 can be installed to TopSpin either at the point of installing NMR-EsPy using
 <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code>, or at any subsequent point.</p>
@@ -74,7 +75,7 @@ can be installed to TopSpin either at the point of installing NMR-EsPy using
 executable you are using.</p>
 </div>
 <section id="automatic-installation">
-<h2>Automatic installation<a class="headerlink" href="#automatic-installation" title="Permalink to this headline">¶</a></h2>
+<h2>Automatic installation<a class="headerlink" href="#automatic-installation" title="Permalink to this heading">¶</a></h2>
 <p>After installing NMR-EsPy using <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code>, you can set up the TopSpin
 GUI loader by entering the following into a terminal:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ &lt;pyexe&gt; -m nmrespy --install-to-topspin
@@ -114,12 +115,12 @@ SUCCESS:
 </div>
 </section>
 <section id="manual-installation">
-<h2>Manual Installation<a class="headerlink" href="#manual-installation" title="Permalink to this headline">¶</a></h2>
+<h2>Manual Installation<a class="headerlink" href="#manual-installation" title="Permalink to this heading">¶</a></h2>
 <p>If automatic installation failed, perhaps because TopSpin isn’t installed in
 the default location, you can still easily get the TopSpin GUI loader
 up-and-running with the following steps.</p>
 <section id="copying-the-loader-script">
-<h3>Copying the loader script<a class="headerlink" href="#copying-the-loader-script" title="Permalink to this headline">¶</a></h3>
+<h3>Copying the loader script<a class="headerlink" href="#copying-the-loader-script" title="Permalink to this heading">¶</a></h3>
 <p>Open a terminal/command prompt and enter the following to
 determine where the GUI loading script is located:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ &lt;pyexe&gt; -c &quot;import nmrespy; print(nmrespy.TOPSPINPATH)&quot;
@@ -151,7 +152,7 @@ by <code class="docutils literal notranslate"><span class="pre">&lt;Return&gt;</
 </div>
 </section>
 <section id="editing-the-loader-script">
-<h3>Editing the loader script<a class="headerlink" href="#editing-the-loader-script" title="Permalink to this headline">¶</a></h3>
+<h3>Editing the loader script<a class="headerlink" href="#editing-the-loader-script" title="Permalink to this heading">¶</a></h3>
 <p>Now you need to open the newly created file:</p>
 <ol class="arabic simple">
 <li><p>Load TopSpin</p></li>
@@ -298,7 +299,7 @@ should now work.</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

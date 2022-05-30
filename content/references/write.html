@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>nmrespy.write &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -64,10 +65,10 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="module-nmrespy.write">
-<span id="nmrespy-write"></span><span id="write"></span><h1>nmrespy.write<a class="headerlink" href="#module-nmrespy.write" title="Permalink to this headline">¶</a></h1>
+<span id="nmrespy-write"></span><span id="write"></span><h1>nmrespy.write<a class="headerlink" href="#module-nmrespy.write" title="Permalink to this heading">¶</a></h1>
 <p>Module for the creation of text and PDF files of estimation results.</p>
 <section id="requirements-for-pdf-creation">
-<h2>Requirements for PDF creation<a class="headerlink" href="#requirements-for-pdf-creation" title="Permalink to this headline">¶</a></h2>
+<h2>Requirements for PDF creation<a class="headerlink" href="#requirements-for-pdf-creation" title="Permalink to this heading">¶</a></h2>
 <p>To generate PDF result files, it is necessary to have a LaTeX installation
 set up on your system. For a simple to set up implementation that is
 supported on all major operating systems, consider <a class="reference external" href="https://www.tug.org/texlive/">TexLive</a>. To ensure that you have a functioning
@@ -136,7 +137,7 @@ follows:</p>
 <li><p><a class="reference download internal" download="" href="../../_downloads/b412945e6ad57e670895a0e75d3d51fe/result.pdf"><code class="xref download docutils literal notranslate"><span class="pre">result.pdf</span></code></a></p></li>
 </ul>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>expinfo</strong> (<a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.expinfo.ExpInfo"><em>ExpInfo</em></a>) – Experiment information.</p></li>
 <li><p><strong>params</strong> (<em>Iterable</em><em>[</em><em>ndarray</em><em>]</em>) – Parameters derived from estimation.</p></li>
@@ -145,16 +146,13 @@ follows:</p>
 <li><p><strong>description</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – A description to be added to the top of result files.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>None</p>
-</dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="nmrespy.write.ResultWriter.write">
 <span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fmt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'txt'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">titles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment_info_sig_figs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters_sig_figs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters_sci_lims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(-</span> <span class="pre">2,</span> <span class="pre">3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pdflatex_exe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/write.html#ResultWriter.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.write.ResultWriter.write" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write result to text file or PDF.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>path</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>Path</em><em>]</em>) – Path to save the result file to.</p></li>
 <li><p><strong>fmt</strong> (<em>str</em>) – Must be one of <code class="docutils literal notranslate"><span class="pre">&quot;txt&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;pdf&quot;</span></code>.</p></li>
@@ -181,7 +179,7 @@ the NMR-EsPy GUI has been loaded from TopSpin.</p>
 </p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
@@ -270,7 +268,7 @@ the NMR-EsPy GUI has been loaded from TopSpin.</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

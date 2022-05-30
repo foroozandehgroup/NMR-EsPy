@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>Estimation Result &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
     <script src="../../../_static/jquery.js"></script>
     <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -65,7 +66,7 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="estimation-result">
-<h1>Estimation Result<a class="headerlink" href="#estimation-result" title="Permalink to this headline">¶</a></h1>
+<h1>Estimation Result<a class="headerlink" href="#estimation-result" title="Permalink to this heading">¶</a></h1>
 <p>Once the routine is complete, a new window will load with the following
 appearance:</p>
 <img alt="../../../_images/result_window.png" class="align-center" src="../../../_images/result_window.png" />
@@ -78,7 +79,7 @@ Each of these is given a numerical label.</p></li>
 <li><p>The residual between the data and the model (<span class="grey">grey</span>).</p></li>
 </ul>
 <section id="tweaking-and-re-optimising-the-result">
-<h2>Tweaking and Re-optimising the result<a class="headerlink" href="#tweaking-and-re-optimising-the-result" title="Permalink to this headline">¶</a></h2>
+<h2>Tweaking and Re-optimising the result<a class="headerlink" href="#tweaking-and-re-optimising-the-result" title="Permalink to this heading">¶</a></h2>
 <p>There may be circumstances where you feel that the estimation result has not
 succeeded in describing certain aspects of the data well. For example, it may
 fit two very closely-separated resonances with a single oscillator.</p>
@@ -111,7 +112,7 @@ label whilst holding <code class="docutils literal notranslate"><span class="pre
 <p>When more than one oscillator is selected, the <em>Merge</em> button is activated,
 along with the Remove button.</p>
 <section id="the-add-button">
-<h3>The Add Button<a class="headerlink" href="#the-add-button" title="Permalink to this headline">¶</a></h3>
+<h3>The Add Button<a class="headerlink" href="#the-add-button" title="Permalink to this heading">¶</a></h3>
 <p>The Add button allows you to add an oscillator with arbitrary parameters to
 the estimation result. The main circumstance that this may be useful is when
 there is a low-intensity oscillator in the data which the estimation routine
@@ -141,7 +142,7 @@ to append the changes to the result. If you want to quit the window without
 making any changes, press <em>Cancel</em>.</p>
 </section>
 <section id="the-remove-button">
-<h3>The Remove Button<a class="headerlink" href="#the-remove-button" title="Permalink to this headline">¶</a></h3>
+<h3>The Remove Button<a class="headerlink" href="#the-remove-button" title="Permalink to this heading">¶</a></h3>
 <p>If one or more oscillators are selected, the Remove button will purge these
 from the result.</p>
 <div class="admonition note">
@@ -151,7 +152,7 @@ from the result.</p>
 </div>
 </section>
 <section id="the-merge-button">
-<h3>The Merge Button<a class="headerlink" href="#the-merge-button" title="Permalink to this headline">¶</a></h3>
+<h3>The Merge Button<a class="headerlink" href="#the-merge-button" title="Permalink to this heading">¶</a></h3>
 <p>With more than one oscillator selected, the merge button will remove all
 selected oscillators, and create a single oscillator with parameters that
 reflect the selected oscillators. The new oscillator’s amplitude will be
@@ -166,7 +167,7 @@ are modelling a single resonance in the data.</p>
 </div>
 </section>
 <section id="the-split-button">
-<h3>The Split Button<a class="headerlink" href="#the-split-button" title="Permalink to this headline">¶</a></h3>
+<h3>The Split Button<a class="headerlink" href="#the-split-button" title="Permalink to this heading">¶</a></h3>
 <p>With one oscillator selected, the Split button will purge the oscillator
 and in its place create a series of “child” oscillators.</p>
 <div class="admonition note">
@@ -198,7 +199,7 @@ ratio box should match <code class="regexp docutils literal notranslate"><span c
 <p>To enact the splitting, click <em>Confirm</em>.</p>
 </section>
 <section id="re-running-the-optimiser">
-<h3>Re-running the Optimiser<a class="headerlink" href="#re-running-the-optimiser" title="Permalink to this headline">¶</a></h3>
+<h3>Re-running the Optimiser<a class="headerlink" href="#re-running-the-optimiser" title="Permalink to this heading">¶</a></h3>
 <p>If you have made any changes to the estimation result, you will notice that
 the bottom right button has changed from <em>Close</em> to <em>Re-run optimiser</em>. As well
 as this, the <em>Reset</em> button to the left has been activated. NMR-EsPy does
@@ -208,17 +209,17 @@ changes made, you have to re-run nonlinear programming with the current result
 as the initial guess.</p>
 </section>
 <section id="undoing-changes">
-<h3>Undoing changes<a class="headerlink" href="#undoing-changes" title="Permalink to this headline">¶</a></h3>
+<h3>Undoing changes<a class="headerlink" href="#undoing-changes" title="Permalink to this heading">¶</a></h3>
 <p>If you decide that you want to undo all the changes made in the
 <cite>Edit Parameter Estimate</cite> window, simply click the Reset button.</p>
 </section>
 </section>
 <section id="saving-the-result">
-<h2>Saving the result<a class="headerlink" href="#saving-the-result" title="Permalink to this headline">¶</a></h2>
+<h2>Saving the result<a class="headerlink" href="#saving-the-result" title="Permalink to this heading">¶</a></h2>
 <p>Clicking the <em>Save</em> button loads the following window:</p>
 <img alt="../../../_images/save_window.png" class="align-center" src="../../../_images/save_window.png" style="width: 322.0px; height: 740.5px;" />
 <section id="result-figure">
-<h3>Result Figure<a class="headerlink" href="#result-figure" title="Permalink to this headline">¶</a></h3>
+<h3>Result Figure<a class="headerlink" href="#result-figure" title="Permalink to this heading">¶</a></h3>
 <blockquote>
 <div><p>This section is used for specifying whether to save a result figure, and
 for customising some simple figure settings.</p>
@@ -245,7 +246,7 @@ I intend to provide support of for in a future version.</p>
 </div></blockquote>
 </section>
 <section id="result-files">
-<h3>Result Files<a class="headerlink" href="#result-files" title="Permalink to this headline">¶</a></h3>
+<h3>Result Files<a class="headerlink" href="#result-files" title="Permalink to this heading">¶</a></h3>
 <blockquote>
 <div><p>Used for saving a table of result parameters to various file formats.
 For each of the valid formats (<code class="docutils literal notranslate"><span class="pre">txt</span></code> and <code class="docutils literal notranslate"><span class="pre">pdf</span></code>), the associated
@@ -257,7 +258,7 @@ to the estimation, which will be added to the result file(s).</p>
 </div></blockquote>
 </section>
 <section id="estimator">
-<h3>Estimator<a class="headerlink" href="#estimator" title="Permalink to this headline">¶</a></h3>
+<h3>Estimator<a class="headerlink" href="#estimator" title="Permalink to this heading">¶</a></h3>
 <blockquote>
 <div><p>Used for saving (<a class="reference external" href="https://docs.python.org/3/library/pickle.html">“pickling”</a>)
 the <a class="reference internal" href="../../references/estimator1d.html#nmrespy.Estimator1D" title="nmrespy.estimators.onedim.Estimator1D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Estimator1D</span></code></a> class instance, associated with the
@@ -270,7 +271,7 @@ binary file.</p></li>
 </div></blockquote>
 </section>
 <section id="directory">
-<h3>Directory<a class="headerlink" href="#directory" title="Permalink to this headline">¶</a></h3>
+<h3>Directory<a class="headerlink" href="#directory" title="Permalink to this heading">¶</a></h3>
 <blockquote>
 <div><p>The entry box is used to specify the path to the directory to save <strong>all</strong>
 specified files to. The full path can either be typed out manually, or
@@ -378,7 +379,7 @@ paths. The application will also be closed.</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

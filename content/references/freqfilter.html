@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>nmrespy.freqfilter &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -64,10 +65,10 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="module-nmrespy.freqfilter">
-<span id="nmrespy-freqfilter"></span><h1>nmrespy.freqfilter<a class="headerlink" href="#module-nmrespy.freqfilter" title="Permalink to this headline">¶</a></h1>
+<span id="nmrespy-freqfilter"></span><h1>nmrespy.freqfilter<a class="headerlink" href="#module-nmrespy.freqfilter" title="Permalink to this heading">¶</a></h1>
 <p>Frequecy filtration of NMR data using super-Gaussian band-pass filters.</p>
 <section id="mwe">
-<h2>MWE<a class="headerlink" href="#mwe" title="Permalink to this headline">¶</a></h2>
+<h2>MWE<a class="headerlink" href="#mwe" title="Permalink to this heading">¶</a></h2>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
@@ -149,7 +150,7 @@
 <dd><p>Object with tools to generate frequency-filtered NMR data.</p>
 <p>Initialise an instance of the class.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>fid</strong> (<em>np.ndarray</em>) – Time-domain data to derive frequency-filtered data from.</p></li>
 <li><p><strong>expinfo</strong> (<a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.ExpInfo"><em>ExpInfo</em></a>) – Experiment Information.</p></li>
@@ -162,9 +163,6 @@ given in. Should be one of <code class="docutils literal notranslate"><span clas
 the filter.</p></li>
 <li><p><strong>twodim_dtype</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – </p></li>
 </ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>None</p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
@@ -187,10 +185,10 @@ example, as regions are expected in Hz by default.</p>
 <span class="sig-name descname"><span class="pre">get_bw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/freqfilter.html#Filter.get_bw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.freqfilter.Filter.get_bw" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the bandwidth of the super-Gaussian filter.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>unit</strong> (<em>str</em>) – Unit specifier. Should be one of <code class="docutils literal notranslate"><span class="pre">'idx'</span></code>, <code class="docutils literal notranslate"><span class="pre">'hz'</span></code>, <code class="docutils literal notranslate"><span class="pre">'ppm'</span></code>.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Iterable</em>[<em>Optional</em>[<em>Union</em>[int, float]]]</p>
 </dd>
 </dl>
@@ -201,10 +199,10 @@ example, as regions are expected in Hz by default.</p>
 <span class="sig-name descname"><span class="pre">get_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/freqfilter.html#Filter.get_center"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.freqfilter.Filter.get_center" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the center of the super-Gaussian filter.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>unit</strong> (<em>str</em>) – Unit specifier. Should be one of <code class="docutils literal notranslate"><span class="pre">'idx'</span></code>, <code class="docutils literal notranslate"><span class="pre">'hz'</span></code>, <code class="docutils literal notranslate"><span class="pre">'ppm'</span></code>.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Iterable</em>[<em>Optional</em>[<em>Union</em>[int, float]]]</p>
 </dd>
 </dl>
@@ -215,14 +213,14 @@ example, as regions are expected in Hz by default.</p>
 <span class="sig-name descname"><span class="pre">get_filtered_fid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cut_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/freqfilter.html#Filter.get_filtered_fid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.freqfilter.Filter.get_filtered_fid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get filtered FID.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>cut_ratio</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – If a float, the filtered frequency-domain data will be trancated prior
 to IFT, reducing the number of signal points. <code class="docutils literal notranslate"><span class="pre">cut_ratio</span></code> gives the
 ratio of the cut spectrum’s bandwidth and the filter bandwidth. This
 must be greater than <code class="docutils literal notranslate"><span class="pre">1.0</span></code>. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, no spectrum truncation will
 be carried out before IFT.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Tuple</em>[<em>ndarray</em>, <a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.expinfo.ExpInfo"><em>ExpInfo</em></a>]</p>
 </dd>
 </dl>
@@ -233,21 +231,21 @@ be carried out before IFT.</p>
 <span class="sig-name descname"><span class="pre">get_filtered_spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/freqfilter.html#Filter.get_filtered_spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.freqfilter.Filter.get_filtered_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get filtered spectrum.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>cut_ratio</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – If a float, the filtered frequency-domain data will be trancated
 reducing the number of signal points. <code class="docutils literal notranslate"><span class="pre">cut_ratio</span></code> gives the ratio of
 the cut spectrum’s bandwidth and the filter bandwidth. This should be
 greater than <code class="docutils literal notranslate"><span class="pre">1.0</span></code>. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, no spectrum truncation will be carried
 out.</p>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><ul class="simple">
 <li><p><em>filtered_spectrum</em> – Filtered spectrum.</p></li>
 <li><p><em>expinfo</em> – Experiment information corresponding to the filtered signal.</p></li>
 </ul>
 </p>
 </dd>
-<dt class="field-odd">Return type</dt>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><em>Tuple</em>[<em>ndarray</em>, <a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.expinfo.ExpInfo"><em>ExpInfo</em></a>]</p>
 </dd>
 </dl>
@@ -258,10 +256,10 @@ out.</p>
 <span class="sig-name descname"><span class="pre">get_noise_region</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/freqfilter.html#Filter.get_noise_region"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.freqfilter.Filter.get_noise_region" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get selected spectral noise region for filtration.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>unit</strong> (<em>str</em>) – Unit specifier. Should be one of <code class="docutils literal notranslate"><span class="pre">'hz'</span></code>, <code class="docutils literal notranslate"><span class="pre">'ppm'</span></code>, <code class="docutils literal notranslate"><span class="pre">'idx'</span></code>.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Union</em>[<em>Iterable</em>[<em>Optional</em>[<em>Tuple</em>[int, int]]], <em>Tuple</em>[int, int], <em>Iterable</em>[<em>Optional</em>[<em>Tuple</em>[float, float]]], <em>Tuple</em>[float, float]]</p>
 </dd>
 </dl>
@@ -272,10 +270,10 @@ out.</p>
 <span class="sig-name descname"><span class="pre">get_region</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/freqfilter.html#Filter.get_region"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.freqfilter.Filter.get_region" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get selected spectral region for filtration.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>unit</strong> (<em>str</em>) – Unit specifier. Should be one of <code class="docutils literal notranslate"><span class="pre">'hz'</span></code>, <code class="docutils literal notranslate"><span class="pre">'ppm'</span></code>, <code class="docutils literal notranslate"><span class="pre">'idx'</span></code>.</p>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Union</em>[<em>Iterable</em>[<em>Optional</em>[<em>Tuple</em>[int, int]]], <em>Tuple</em>[int, int], <em>Iterable</em>[<em>Optional</em>[<em>Tuple</em>[float, float]]], <em>Tuple</em>[float, float]]</p>
 </dd>
 </dl>
@@ -283,13 +281,13 @@ out.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nmrespy.freqfilter.Filter.sg">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#nmrespy.freqfilter.Filter.sg" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#nmrespy.freqfilter.Filter.sg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get super-Gaussian filter.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nmrespy.freqfilter.Filter.sg_noise">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sg_noise</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#nmrespy.freqfilter.Filter.sg_noise" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sg_noise</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#nmrespy.freqfilter.Filter.sg_noise" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get additive noise vector.</p>
 </dd></dl>
 
@@ -307,7 +305,7 @@ out.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nmrespy.freqfilter.Filter.spectrum">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spectrum</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#nmrespy.freqfilter.Filter.spectrum" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spectrum</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#nmrespy.freqfilter.Filter.spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get unfiltered spectrum.</p>
 </dd></dl>
 
@@ -394,7 +392,7 @@ out.</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

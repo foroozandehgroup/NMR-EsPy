@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>nmrespy.nlp &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -64,10 +65,10 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="module-nmrespy.nlp">
-<span id="nmrespy-nlp"></span><h1>nmrespy.nlp<a class="headerlink" href="#module-nmrespy.nlp" title="Permalink to this headline">¶</a></h1>
+<span id="nmrespy-nlp"></span><h1>nmrespy.nlp<a class="headerlink" href="#module-nmrespy.nlp" title="Permalink to this heading">¶</a></h1>
 <p>Nonlinear programming for generating parameter estiamtes.</p>
 <section id="mwe">
-<h2>MWE<a class="headerlink" href="#mwe" title="Permalink to this headline">¶</a></h2>
+<h2>MWE<a class="headerlink" href="#mwe" title="Permalink to this heading">¶</a></h2>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">uniform</span>
 
@@ -143,7 +144,7 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nmrespy.nlp.</span></span><span class="sig-name descname"><span class="pre">NonlinearProgramming</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expinfo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase_variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gauss-newton'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'apfd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp_thold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq_thold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">negative_amps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'remove'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/nlp.html#NonlinearProgramming"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.nlp.NonlinearProgramming" title="Permalink to this definition">¶</a></dt>
 <dd><p>Object to facilitate numerical optimisation of NMR signal parameters.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>expinfo</strong> (<a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.expinfo.ExpInfo"><em>ExpInfo</em></a>) – Experiment information.</p></li>
 <li><p><strong>data</strong> (<em>ndarray</em>) – Signal to be considered.</p></li>
@@ -214,8 +215,8 @@ of maximum iterations is set (<code class="docutils literal notranslate"><span c
 Specifies which types of parameters should be considered for optimisation.</p></li>
 <li><p><strong>amp_thold</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – A value that imposes a threshold for deleting oscillators of
 negligible ampltiude. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, does nothing. If a float,
-oscillators with amplitudes satisfying <img class="math" src="../../_images/math/c84d1b95714b6f83dbf42158541a85aa57f6d93f.png" alt="a_m &lt;
-a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2"/> will be
+oscillators with amplitudes satisfying <img class="math" src="../../_images/math/1ee1b909c2df81675fc5359e6edc23359b0c7985.png" alt="a_m &lt;
+a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2`"/> will be
 removed from the parameter array, where <img class="math" src="../../_images/math/30c2dbf01cf69a6741c2a2c7706cf24e334036ad.png" alt="\lVert
 \boldsymbol{a} \rVert_2"/> is the Euclidian norm of the vector of
 all the oscillator amplitudes. It is advised to set <code class="docutils literal notranslate"><span class="pre">amp_thold</span></code>
@@ -252,9 +253,6 @@ and a π radians phase shift will be applied.</p></li>
 the terminal as it runs. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the method will run silently.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>None</p>
-</dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="nmrespy.nlp.NonlinearProgramming.get_errors">
@@ -266,7 +264,7 @@ the terminal as it runs. If <code class="docutils literal notranslate"><span cla
 are sorted.</p>
 </div>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>funit</strong> (<em>str</em>) – The unit to express the frequencies in. Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p></li>
 <li><p><strong>sort_by</strong> (<em>str</em>) – Specifies the parameter by which the oscillators are ordered by.
@@ -277,7 +275,7 @@ final (direct) dimension will be used. For 1D data, <code class="docutils litera
 can be used to specify the frequency or damping factor.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -288,7 +286,7 @@ can be used to specify the frequency or damping factor.</p></li>
 <span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.nlp.NonlinearProgramming.get_params" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the estimation result parameters.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>funit</strong> (<em>str</em>) – The unit to express the frequencies in. Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p></li>
 <li><p><strong>sort_by</strong> (<em>str</em>) – Specifies the parameter by which the oscillators are ordered by.
@@ -299,7 +297,7 @@ final (direct) dimension will be used. For 1D data, <code class="docutils litera
 can be used to specify the frequency or damping factor.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -388,7 +386,7 @@ can be used to specify the frequency or damping factor.</p></li>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>

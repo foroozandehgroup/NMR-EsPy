@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>nmrespy.mpm &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -12,6 +12,7 @@
     <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -64,10 +65,10 @@
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
 </style><section id="module-nmrespy.mpm">
-<span id="nmrespy-mpm"></span><h1>nmrespy.mpm<a class="headerlink" href="#module-nmrespy.mpm" title="Permalink to this headline">¶</a></h1>
+<span id="nmrespy-mpm"></span><h1>nmrespy.mpm<a class="headerlink" href="#module-nmrespy.mpm" title="Permalink to this heading">¶</a></h1>
 <p>Computation of NMR parameter estimates using the Matrix Pencil Method.</p>
 <section id="mwe">
-<h2>MWE<a class="headerlink" href="#mwe" title="Permalink to this headline">¶</a></h2>
+<h2>MWE<a class="headerlink" href="#mwe" title="Permalink to this heading">¶</a></h2>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">ExpInfo</span>
@@ -151,39 +152,42 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">nmrespy.mpm.</span></span><span class="sig-name descname"><span class="pre">MatrixPencil</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expinfo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oscillators</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_point</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/mpm.html#MatrixPencil"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.mpm.MatrixPencil" title="Permalink to this definition">¶</a></dt>
 <dd><p>Matrix Pencil Method with model order selection.</p>
 <p>Model order selection achieved using the Minimum Description Length
-(MDL) <a class="footnote-reference brackets" href="#id6" id="id1">1</a>. Supports analysis of one-dimensional <a class="footnote-reference brackets" href="#id7" id="id2">2</a> <a class="footnote-reference brackets" href="#id8" id="id3">3</a> or
-two-dimensional data <a class="footnote-reference brackets" href="#id9" id="id4">4</a> <a class="footnote-reference brackets" href="#id10" id="id5">5</a></p>
+(MDL) <a class="footnote-reference brackets" href="#id6" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>. Supports analysis of one-dimensional <a class="footnote-reference brackets" href="#id7" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> <a class="footnote-reference brackets" href="#id8" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> or
+two-dimensional data <a class="footnote-reference brackets" href="#id9" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></a> <a class="footnote-reference brackets" href="#id10" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></a></p>
 <p class="rubric">References</p>
-<dl class="footnote brackets">
-<dt class="label" id="id6"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
-<dd><p>M. Wax, T. Kailath, Detection of signals by information theoretic
+<aside class="footnote brackets" id="id6" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>M. Wax, T. Kailath, Detection of signals by information theoretic
 criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
 33 (2) (1985) 387–392.</p>
-</dd>
-<dt class="label" id="id7"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
-<dd><p>Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
+</aside>
+<aside class="footnote brackets" id="id7" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">2</a><span class="fn-bracket">]</span></span>
+<p>Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
 parameters of exponentially damped/undamped sinusoids in noise”. In:
 IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.</p>
-</dd>
-<dt class="label" id="id8"><span class="brackets"><a class="fn-backref" href="#id3">3</a></span></dt>
-<dd><p>Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy
+</aside>
+<aside class="footnote brackets" id="id8" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">3</a><span class="fn-bracket">]</span></span>
+<p>Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy
 NMR signals: applications to delayed acquisition data”. In: J. Magn.
 Reson. 128.1 (1997), pp. 30–41.</p>
-</dd>
-<dt class="label" id="id9"><span class="brackets"><a class="fn-backref" href="#id4">4</a></span></dt>
-<dd><p>Yingbo Hua. “Estimating two-dimensional frequencies by matrix
+</aside>
+<aside class="footnote brackets" id="id9" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">4</a><span class="fn-bracket">]</span></span>
+<p>Yingbo Hua. “Estimating two-dimensional frequencies by matrix
 enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
 International Conference on Acoustics, Speech, and Signal Processing.
 IEEE. 1991, pp. 3073–3076.</p>
-</dd>
-<dt class="label" id="id10"><span class="brackets"><a class="fn-backref" href="#id5">5</a></span></dt>
-<dd><p>Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
+</aside>
+<aside class="footnote brackets" id="id10" role="note">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">5</a><span class="fn-bracket">]</span></span>
+<p>Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
 using modified matrix pencil method”. In: IEEE Trans. Signal Process.
 55.2 (2007), pp. 718–724.</p>
-</dd>
-</dl>
+</aside>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>expinfo</strong> (<a class="reference internal" href="expinfo.html#nmrespy.ExpInfo" title="nmrespy.expinfo.ExpInfo"><em>ExpInfo</em></a>) – Experiment information.</p></li>
 <li><p><strong>data</strong> (<em>ndarray</em>) – Signal to be considered.</p></li>
@@ -198,9 +202,6 @@ zero).</p></li>
 the method runs.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>None</p>
-</dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="nmrespy.mpm.MatrixPencil.get_errors">
@@ -212,7 +213,7 @@ the method runs.</p></li>
 are sorted.</p>
 </div>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>funit</strong> (<em>str</em>) – The unit to express the frequencies in. Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p></li>
 <li><p><strong>sort_by</strong> (<em>str</em>) – Specifies the parameter by which the oscillators are ordered by.
@@ -223,7 +224,7 @@ final (direct) dimension will be used. For 1D data, <code class="docutils litera
 can be used to specify the frequency or damping factor.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -234,7 +235,7 @@ can be used to specify the frequency or damping factor.</p></li>
 <span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">funit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'f-1'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.mpm.MatrixPencil.get_params" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the estimation result parameters.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>funit</strong> (<em>str</em>) – The unit to express the frequencies in. Must be <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>.</p></li>
 <li><p><strong>sort_by</strong> (<em>str</em>) – Specifies the parameter by which the oscillators are ordered by.
@@ -245,7 +246,7 @@ final (direct) dimension will be used. For 1D data, <code class="docutils litera
 can be used to specify the frequency or damping factor.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type</dt>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>ndarray</em></p>
 </dd>
 </dl>
@@ -334,7 +335,7 @@ can be used to specify the frequency or damping factor.</p></li>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
