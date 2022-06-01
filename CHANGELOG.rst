@@ -34,6 +34,9 @@ Bug and Error Fixes
 Version 1.1.1 → Version 1.1.2
 -----------------------------
 
+**DO NOT USE THIS VERSION** `MANIFEST.in` was left out, leading to certain
+necessary files being left out of the package.
+
 Features
 ^^^^^^^^
 
@@ -44,3 +47,12 @@ Features
   into the parent `Estimator` class as these behave in a general fashion.
 * For result files with multiple regions, integrals are now comparable. Thanks
   to Fay Probert for this suggestion.
+
+Version 1.1.2 → Version 1.1.3
+-----------------------------
+
+Bug and Error Fixes
+^^^^^^^^^^^^^^^^^^^
+
+* `MANIFEST.in` was included to ensure that `images` folder is shipped with the
+  package. Thanks to Wenzheng Xiong for alerting me to this!
