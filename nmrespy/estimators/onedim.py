@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 24 May 2022 11:39:16 BST
+# Last Edited: Tue 07 Jun 2022 12:05:57 BST
 
 from __future__ import annotations
 import copy
@@ -685,6 +685,7 @@ class Estimator1D(Estimator):
             stable/tutorials/introductory/customizing.html>`__ for more
             information on stylesheets.
         """
+        self._check_results_exist()
         sanity_check(
             (
                 "indices", indices, sfuncs.check_int_list, (),

@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 27 May 2022 19:20:35 BST
+# Last Edited: Tue 07 Jun 2022 14:07:22 BST
 
 from __future__ import annotations
 import abc
@@ -87,6 +87,10 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             "=====================\n"
             f"--> Created @ {now}\n"
         )
+
+    def _check_results_exist(self) -> None:
+        if not self._results:
+            raise ValueError(f"{RED}No estimation has been carried out yet!{END}")
 
     @property
     def data(self) -> np.ndarray:
@@ -291,7 +295,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         merge: bool = True,
         funit: str = "hz",
         sort_by: str = "f-1",
-    ) -> Union[Iterable[np.ndarray], np.ndarray]:
+    ) -> Optional[Union[Iterable[np.ndarray], np.ndarray]]:
         """Return estimation result parameters.
 
         Parameters
@@ -336,7 +340,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         merge: bool = True,
         funit: str = "hz",
         sort_by: str = "f-1",
-    ) -> Union[Iterable[np.ndarray], np.ndarray]:
+    ) -> Optional[Union[Iterable[np.ndarray], np.ndarray]]:
         """Return estimation result errors.
 
         Parameters
@@ -381,8 +385,13 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         funit: str,
         sort_by: str,
         merge: bool,
-    ) -> np.ndarray:
+    ) -> Optional[np.ndarray]:
         results = self.get_results(indices)
+
+        # No estimations have been run
+        if not results:
+            return None
+
         arrays = [result._get_array(name, funit, sort_by) for result in results]
 
         if merge:
@@ -525,6 +534,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
               \\eta_{m_i}`
         """
+        self._check_results_exist()
         sanity_check(
             ("index", index, sfuncs.check_index, (len(self._results),)),
         )
@@ -608,6 +618,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             that ``"initial_guess"`` and ``"region_unit"`` are set internally and
             will be ignored if given.
         """
+        self._check_results_exist()
         sanity_check(
             ("index", index, sfuncs.check_index, (len(self._results),)),
             (
@@ -712,6 +723,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             that ``"region"``, ``noise_region"``, ``"initial_guess"`` and
             ``"region_unit"`` are set internally and will be ignored if given.
         """
+        self._check_results_exist()
         sanity_check(
             (
                 "params", params, sfuncs.check_ndarray, (),
@@ -751,6 +763,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             that ``"initial_guess"`` and ``"region_unit"`` are set internally and
             will be ignored if given.
         """
+        self._check_results_exist()
         sanity_check(("index", index, sfuncs.check_index, (len(self._results),)))
         index = self._positive_index(index)
         result = self._results[index]
@@ -849,6 +862,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
                present to specify the path to ``pdflatex.exe`` on Windows when
                the NMR-EsPy GUI has been loaded from TopSpin.
         """
+        self._check_results_exist()
         sanity_check(
             (
                 "indices", indices, sfuncs.check_int_list, (),

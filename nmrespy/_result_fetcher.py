@@ -1,7 +1,7 @@
 # _result_fetcher.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 27 May 2022 19:37:01 BST
+# Last Edited: Tue 07 Jun 2022 13:37:50 BST
 
 import copy
 import re
@@ -107,8 +107,6 @@ class ResultFetcher(FrequencyConverter):
             ).T
 
         sort_idx = self._process_sort_by(sort_by, dim)
-        print(sort_idx)
-        print(self.params.shape)
         return array[np.argsort(self.params[:, sort_idx])]
 
     @staticmethod
