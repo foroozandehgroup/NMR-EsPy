@@ -56,3 +56,13 @@ Bug and Error Fixes
 
 * `MANIFEST.in` was included to ensure that `images` folder is shipped with the
   package. Thanks to Wenzheng Xiong for alerting me to this!
+
+Version 1.1.3 → Version 1.1.4
+-----------------------------
+
+Features
+^^^^^^^^
+
+* `write_result()` now features the `intergal_mode` kwarg, enabling integrals
+  to be expressed relative to the lowest amplitude signal, or in absolute
+  terms.

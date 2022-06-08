@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Jun 2022 18:05:43 BST
+# Last Edited: Wed 08 Jun 2022 18:05:29 BST
 
 r"""Module for the creation of text and PDF files of estimation results.
 
@@ -206,10 +206,6 @@ class ResultWriter(ExpInfo):
             )
             for params in self.params
         ])
-        min_integral = min([np.amin(integrals) for integrals in self.integrals])
-        self.integrals = tuple(
-            [integrals / min_integral for integrals in self.integrals]
-        )
 
     def write(
         self,
@@ -219,6 +215,7 @@ class ResultWriter(ExpInfo):
         experiment_info_sig_figs: Optional[int] = 5,
         parameters_sig_figs: Optional[int] = 5,
         parameters_sci_lims: Optional[Tuple[int, int]] = (-2, 3),
+        integral_mode: str = "relative",
         force_overwrite: bool = False,
         fprint: bool = True,
         pdflatex_exe: Optional[Union[str, Path]] = None,
@@ -249,6 +246,12 @@ class ResultWriter(ExpInfo):
             with a value which satisfies ``p < 10 ** -x`` or ``p >= 10 ** y`` will be
             expressed in scientific notation, rather than explicit notation.
             If ``None``, all values will be expressed explicitely.
+
+        integral_mode
+            One of ``"relative"`` or ``"absolute"``. With ``"relative"``, the smallest
+            integral will be set to ``1``, and all other integrals will be scaled
+            accordingly. With ``"absolute"``, the absolute integral will be computed.
+            This should be used if you wish to directly compare different datasets.
 
         force_overwrite
             If the file specified already exists, and this is set to ``False``, the
@@ -285,6 +288,10 @@ class ResultWriter(ExpInfo):
                 "parameters_sci_lims", parameters_sci_lims, sfuncs.check_sci_lims,
                 (), {}, True,
             ),
+            (
+                "integral_mode", integral_mode, sfuncs.check_one_of,
+                ("relative", "absolute"),
+            ),
             ("force_overwrite", force_overwrite, sfuncs.check_bool),
             ("fprint", fprint, sfuncs.check_bool),
         )
@@ -307,6 +314,7 @@ class ResultWriter(ExpInfo):
                 experiment_info_sig_figs,
                 parameters_sig_figs,
                 parameters_sci_lims,
+                integral_mode,
             ),
             path,
             fprint=fprint,
@@ -409,6 +417,7 @@ class ResultWriter(ExpInfo):
         self,
         sig_figs: int,
         sci_lims: Tuple[int, int],
+        integral_mode: str,
     ) -> List[List[str]]:
         """Create Table of parameters."""
         tables = []
@@ -421,13 +430,25 @@ class ResultWriter(ExpInfo):
             else self._fmtstr(p, sig_figs, sci_lims)
         )
 
-        for params, errors, integrals in zip(self.params, self.errors, self.integrals):
+        if integral_mode == "relative":
+            min_integral = min([np.amin(integrals) for integrals in self.integrals])
+        elif integral_mode == "absolute":
+            min_integral = 1.0
+
+        integrals = tuple(
+            [
+                [x / min_integral for x in integs]
+                for integs in self.integrals
+            ]
+        )
+
+        for params, errors, integs in zip(self.params, self.errors, integrals):
             table = [titles]
             if errors is None:
                 errors = tuple(len(params) * [None])
 
             for i, (p, e, integ) in enumerate(
-                zip(params, errors, integrals),
+                zip(params, errors, integs),
                 start=1,
             ):
                 subtable = [str(i)]
@@ -472,6 +493,7 @@ class ResultWriter(ExpInfo):
         experiment_info_sig_figs: int,
         parameters_sig_figs: int,
         parameters_sci_lims: Tuple[int, int],
+        integral_mode: str,
     ) -> None:
         if fmt == "txt":
             module = textfile
@@ -482,6 +504,7 @@ class ResultWriter(ExpInfo):
         tables = self._construct_parameters(
             parameters_sig_figs,
             parameters_sci_lims,
+            integral_mode,
         )
 
         paramtables = '\n\n'.join(
