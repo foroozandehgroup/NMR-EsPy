@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 27 May 2022 19:20:35 BST
+# Last Edited: Wed 08 Jun 2022 17:45:42 BST
 
 from __future__ import annotations
 import abc
@@ -800,6 +800,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         description: Optional[str] = None,
         sig_figs: Optional[int] = 5,
         sci_lims: Optional[Tuple[int, int]] = (-2, 3),
+        integral_mode: str = "relative",
         force_overwrite: bool = False,
         fprint: bool = True,
         pdflatex_exe: Optional[Union[str, Path]] = None,
@@ -832,6 +833,12 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             expressed in scientific notation, rather than explicit notation.
             If ``None``, all values will be expressed explicitely.
 
+        integral_mode
+            One of ``"relative"`` or ``"absolute"``. With ``"relative"``, the smallest
+            integral will be set to ``1``, and all other integrals will be scaled
+            accordingly. With ``"absolute"``, the absolute integral will be computed.
+            This should be used if you wish to directly compare different datasets.
+
         force_overwrite
             If the file specified already exists, and this is set to ``False``, the
             user will be prompted to specify that they are happy overwriting the
@@ -862,6 +869,10 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             ("description", description, sfuncs.check_str, (), {}, True),
             ("sig_figs", sig_figs, sfuncs.check_int, (), {"min_value": 1}, True),
             ("sci_lims", sci_lims, sfuncs.check_sci_lims, (), {}, True),
+            (
+                "integral_mode", integral_mode, sfuncs.check_one_of,
+                ("relative", "absolute"),
+            ),
             ("force_overwrite", force_overwrite, sfuncs.check_bool),
             ("fprint", fprint, sfuncs.check_bool),
         )
@@ -904,6 +915,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             titles=titles,
             parameters_sig_figs=sig_figs,
             parameters_sci_lims=sci_lims,
+            integral_mode=integral_mode,
             force_overwrite=True,
             fprint=fprint,
             pdflatex_exe=pdflatex_exe,
