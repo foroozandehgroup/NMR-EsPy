@@ -1,0 +1,113 @@
+\documentclass[8pt]{article}
+\usepackage[a4paper,landscape,margin=1in]{geometry}
+\usepackage{cmbright}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{xcolor}
+\definecolor{urlblue}{HTML}{0000ee}
+\usepackage{hyperref}
+\hypersetup{%
+colorlinks = true,%
+urlcolor   = urlblue,%
+}
+\usepackage{tcolorbox}
+\usepackage{varwidth}
+\setlength\parindent{0pt}
+\pagenumbering{gobble}
+\begin{document}
+\begin{figure}[!ht]
+% MF group logo
+\begin{minipage}[b][2.5cm][c]{.72\textwidth}
+\href{http://foroozandeh.chem.ox.ac.uk/home}%
+{\includegraphics[scale=1.8]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/nmrespy/images/mf_logo.png}}
+\end{minipage}
+% NMR-EsPy logo
+\begin{minipage}[b][2.5cm][c]{.27\textwidth}
+\href{https://foroozandehgroup.github.io/NMR-EsPy}%
+{\includegraphics[scale=0.5]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/nmrespy/images/nmrespy_full.png}}
+\end{minipage}
+\end{figure}
+\texttt{19:47:01 09-06-22}
+
+Andrographolide dataset
+
+\section*{Experiment Information}
+\begin{longtable}[l]{c c}
+\toprule
+Parameter & F1\\
+\midrule
+Nucleus & ¹H\\
+Transmitter Frequency (MHz) & $\num{500.13}$\\
+Sweep Width (Hz) & $\num{5000}$\\
+Sweep Width (ppm) & $\num{9.9974}$\\
+Transmitter Offset (Hz) & $\num{2000.5}$\\
+Transmitter Offset (ppm) & $\num{4}$\\
+\bottomrule
+\end{longtable}
+
+\section*{6.665 - 6.590 ppm}
+\begin{longtable}[l]{c c c c c c c}
+\toprule
+Osc. & $a$ & $\phi$ ($^{\circ}$) & $f ($Hz) & $f ($ppm) & $\eta ($s$^{-1}$) & $\int$\\
+\midrule
+$\num{1}$ & \begin{tabular}[c]{@{}c@{}}$\num{37.191}$ \\ $\pm\num{0.20668}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.0261}$ \\ $\pm\num{0.31841}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{3.3073e+3}$ \\ $\pm\num{3.0833e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.6128}$ \\ $\pm\num{6.165e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{4.8784}$ \\ $\pm\num{1.9373e-2}$\end{tabular} & $\num{1.6722}$\\
+$\num{2}$ & \begin{tabular}[c]{@{}c@{}}$\num{63.456}$ \\ $\pm\num{0.27245}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.9139}$ \\ $\pm\num{0.246}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{3.309e+3}$ \\ $\pm\num{3.3199e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.6162}$ \\ $\pm\num{6.6381e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.6805}$ \\ $\pm\num{2.086e-2}$\end{tabular} & $\num{2.7541}$\\
+$\num{3}$ & \begin{tabular}[c]{@{}c@{}}$\num{94.14}$ \\ $\pm\num{0.24448}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.2418}$ \\ $\pm\num{0.1488}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{3.3141e+3}$ \\ $\pm\num{1.443e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.6264}$ \\ $\pm\num{2.8852e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{5.0848}$ \\ $\pm\num{9.0664e-3}$\end{tabular} & $\num{4.2135}$\\
+$\num{4}$ & \begin{tabular}[c]{@{}c@{}}$\num{117.72}$ \\ $\pm\num{0.27318}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.8198}$ \\ $\pm\num{0.13296}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{3.3158e+3}$ \\ $\pm\num{1.5008e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.6299}$ \\ $\pm\num{3.0009e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{5.8845}$ \\ $\pm\num{9.4301e-3}$\end{tabular} & $\num{5.1836}$\\
+$\num{5}$ & \begin{tabular}[c]{@{}c@{}}$\num{58.877}$ \\ $\pm\num{0.30398}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.15939}$ \\ $\pm\num{0.29582}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{3.3209e+3}$ \\ $\pm\num{3.6855e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.6401}$ \\ $\pm\num{7.3691e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.5374}$ \\ $\pm\num{2.3157e-2}$\end{tabular} & $\num{2.5618}$\\
+$\num{6}$ & \begin{tabular}[c]{@{}c@{}}$\num{46.45}$ \\ $\pm\num{0.25439}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.18452}$ \\ $\pm\num{0.31378}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{3.3227e+3}$ \\ $\pm\num{3.4428e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.6436}$ \\ $\pm\num{6.8837e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{5.7537}$ \\ $\pm\num{2.1632e-2}$\end{tabular} & $\num{2.0505}$\\
+\bottomrule
+\end{longtable}
+
+\section*{2.380 - 2.280 ppm}
+\begin{longtable}[l]{c c c c c c c}
+\toprule
+Osc. & $a$ & $\phi$ ($^{\circ}$) & $f ($Hz) & $f ($ppm) & $\eta ($s$^{-1}$) & $\int$\\
+\midrule
+$\num{1}$ & \begin{tabular}[c]{@{}c@{}}$\num{51.184}$ \\ $\pm\num{0.47098}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.1676}$ \\ $\pm\num{0.52723}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.1533e+3}$ \\ $\pm\num{6.3549e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.306}$ \\ $\pm\num{1.2707e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{7.6739}$ \\ $\pm\num{3.9929e-2}$\end{tabular} & $\num{2.1863}$\\
+$\num{2}$ & \begin{tabular}[c]{@{}c@{}}$\num{69.706}$ \\ $\pm\num{1.5469}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.88673}$ \\ $\pm\num{1.2715}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.1556e+3}$ \\ $\pm\num{1.298e-2}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.3106}$ \\ $\pm\num{2.5953e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{7.9588}$ \\ $\pm\num{8.1556e-2}$\end{tabular} & $\num{2.9649}$\\
+$\num{3}$ & \begin{tabular}[c]{@{}c@{}}$\num{68.13}$ \\ $\pm\num{1.568}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.48838}$ \\ $\pm\num{1.3187}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.1574e+3}$ \\ $\pm\num{1.3249e-2}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.3143}$ \\ $\pm\num{2.6491e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{7.8995}$ \\ $\pm\num{8.3246e-2}$\end{tabular} & $\num{2.9004}$\\
+$\num{4}$ & \begin{tabular}[c]{@{}c@{}}$\num{53.452}$ \\ $\pm\num{0.50169}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{-4.0107e-2}$ \\ $\pm\num{0.53776}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.1598e+3}$ \\ $\pm\num{5.7548e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.319}$ \\ $\pm\num{1.1506e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.9911}$ \\ $\pm\num{3.6158e-2}$\end{tabular} & $\num{2.3079}$\\
+$\num{5}$ & \begin{tabular}[c]{@{}c@{}}$\num{46.805}$ \\ $\pm\num{0.39598}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.0755}$ \\ $\pm\num{0.48473}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.166e+3}$ \\ $\pm\num{5.2471e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.3314}$ \\ $\pm\num{1.0491e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{6.6178}$ \\ $\pm\num{3.2969e-2}$\end{tabular} & $\num{2.0336}$\\
+$\num{6}$ & \begin{tabular}[c]{@{}c@{}}$\num{64.016}$ \\ $\pm\num{1.4015}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.3593}$ \\ $\pm\num{1.2544}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.1685e+3}$ \\ $\pm\num{1.2481e-2}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.3364}$ \\ $\pm\num{2.4955e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{7.7368}$ \\ $\pm\num{7.8419e-2}$\end{tabular} & $\num{2.7319}$\\
+$\num{7}$ & \begin{tabular}[c]{@{}c@{}}$\num{55.995}$ \\ $\pm\num{1.4453}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.12828}$ \\ $\pm\num{1.4789}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.1703e+3}$ \\ $\pm\num{1.4689e-2}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.34}$ \\ $\pm\num{2.937e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{7.69}$ \\ $\pm\num{9.2292e-2}$\end{tabular} & $\num{2.3912}$\\
+$\num{8}$ & \begin{tabular}[c]{@{}c@{}}$\num{44.148}$ \\ $\pm\num{0.44218}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{-0.17126}$ \\ $\pm\num{0.57387}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.1726e+3}$ \\ $\pm\num{6.884e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{2.3446}$ \\ $\pm\num{1.3764e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{7.5003}$ \\ $\pm\num{4.3253e-2}$\end{tabular} & $\num{1.8908}$\\
+\bottomrule
+\end{longtable}
+
+\section*{1.430 - 1.290 ppm}
+\begin{longtable}[l]{c c c c c c c}
+\toprule
+Osc. & $a$ & $\phi$ ($^{\circ}$) & $f ($Hz) & $f ($ppm) & $\eta ($s$^{-1}$) & $\int$\\
+\midrule
+$\num{1}$ & \begin{tabular}[c]{@{}c@{}}$\num{29.779}$ \\ $\pm\num{0.10986}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.40049}$ \\ $\pm\num{0.21138}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{657.12}$ \\ $\pm\num{4.8573e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.3139}$ \\ $\pm\num{9.7119e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{8.4864}$ \\ $\pm\num{3.0519e-2}$\end{tabular} & $\num{1.2572}$\\
+$\num{2}$ & \begin{tabular}[c]{@{}c@{}}$\num{33.191}$ \\ $\pm\num{0.11999}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{0.33246}$ \\ $\pm\num{0.20713}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{661.28}$ \\ $\pm\num{4.3471e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.3222}$ \\ $\pm\num{8.6919e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{8.1158}$ \\ $\pm\num{2.7314e-2}$\end{tabular} & $\num{1.4085}$\\
+$\num{3}$ & \begin{tabular}[c]{@{}c@{}}$\num{86.337}$ \\ $\pm\num{0.1284}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{-0.20101}$ \\ $\pm\num{8.5209e-2}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{670.12}$ \\ $\pm\num{1.7721e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.3399}$ \\ $\pm\num{3.5433e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{8.2588}$ \\ $\pm\num{1.1134e-2}$\end{tabular} & $\num{3.6565}$\\
+$\num{4}$ & \begin{tabular}[c]{@{}c@{}}$\num{85.676}$ \\ $\pm\num{0.12597}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{-0.56365}$ \\ $\pm\num{8.4239e-2}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{674.31}$ \\ $\pm\num{1.68e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.3483}$ \\ $\pm\num{3.3591e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{7.9341}$ \\ $\pm\num{1.0556e-2}$\end{tabular} & $\num{3.6455}$\\
+$\num{5}$ & \begin{tabular}[c]{@{}c@{}}$\num{82.459}$ \\ $\pm\num{0.13249}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{3.4106e-2}$ \\ $\pm\num{9.2058e-2}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{683.14}$ \\ $\pm\num{1.8853e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.3659}$ \\ $\pm\num{3.7696e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{8.2456}$ \\ $\pm\num{1.1846e-2}$\end{tabular} & $\num{3.4929}$\\
+$\num{6}$ & \begin{tabular}[c]{@{}c@{}}$\num{79.721}$ \\ $\pm\num{0.13226}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{-0.96147}$ \\ $\pm\num{9.5056e-2}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{687.31}$ \\ $\pm\num{1.9808e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.3743}$ \\ $\pm\num{3.9605e-6}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{8.3566}$ \\ $\pm\num{1.2446e-2}$\end{tabular} & $\num{3.3716}$\\
+$\num{7}$ & \begin{tabular}[c]{@{}c@{}}$\num{27.021}$ \\ $\pm\num{0.11568}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{-0.32133}$ \\ $\pm\num{0.2453}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{696.16}$ \\ $\pm\num{5.1493e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.392}$ \\ $\pm\num{1.0296e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{8.0118}$ \\ $\pm\num{3.2354e-2}$\end{tabular} & $\num{1.1484}$\\
+$\num{8}$ & \begin{tabular}[c]{@{}c@{}}$\num{23.519}$ \\ $\pm\num{0.10287}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{-0.82978}$ \\ $\pm\num{0.25059}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{700.29}$ \\ $\pm\num{5.4969e-3}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{1.4002}$ \\ $\pm\num{1.0991e-5}$\end{tabular} & \begin{tabular}[c]{@{}c@{}}$\num{7.9849}$ \\ $\pm\num{3.4538e-2}$\end{tabular} & $\num{1}$\\
+\bottomrule
+\end{longtable}
+
+\small
+\begin{tcolorbox}[hbox]
+\begin{varwidth}{12cm}
+Estimation performed using \textsc{NMR-EsPy}.\\
+Author: Simon Hulse\\
+For more information:\\[5pt]
+{\raisebox{-4pt}{\includegraphics[scale=0.029]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/nmrespy/images/book_icon.png}}}\hspace{1em}\href{https://foroozandehgroup.github.io/NMR-EsPy}{\texttt{https://foroozandehgroup.github.io/NMR-EsPy}}\\[5pt]
+{\raisebox{-4pt}{\includegraphics[scale=0.12]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/nmrespy/images/github.png}}}\hspace{1em}\href{https://github.com/foroozandehgroup/NMR-EsPy}{\texttt{https://github.com/foroozandehgroup/NMR-EsPy}}\\[5pt]
+{\raisebox{-3pt}{\includegraphics[scale=0.015]{/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy/nmrespy/images/email_icon.png}}}\hspace{1em}\href{mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy query}{\texttt{simon.hulse@chem.ox.ac.uk}}\\[5pt]
+If used in a publication, please cite:\\
+\begin{itemize}[leftmargin=*, nosep, label={}]
+\item Simon G. Hulse, Mohammadali Foroozandeh. \textit{``Newton meets Ockham: Parameter estimation and model selection of NMR data with NMR-EsPy"}. J. Magn. Reson. 338 (2022) 107173.\\ \href{https://doi.org/10.1016/j.jmr.2022.107173}{https://doi.org/10.1016/j.jmr.2022.107173}
+\end{itemize}
+\end{varwidth}
+\end{tcolorbox}
+\end{document}

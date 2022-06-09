@@ -1,0 +1,28 @@
+##TITLE= Parameter file, TopSpin 3.6.2
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= nmr-user
+$$ 2020-06-01 00:51:50.156 +0800  CHEM\nmr-user@GOLDFISH-CRL
+$$ C:/NMR/data/mfgroup/nmr/jy-200531-poptpy-testdata/1/pdata/1/clevels
+$$ process C:\Bruker\TopSpin3.6.2\prog\mod\dirdata.exe
+##$LEVELS= (0..255)
+-102164707.616026 -56758170.897792 -31532317.16544 -17517953.9808 -9732196.656
+-5406775.92 -3003764.4 -1668758 1668758 3003764.4 5406775.92 9732196.656
+17517953.9808 31532317.16544 56758170.897792 102164707.616026 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+##$LEVSIGN= 3
+##$MAXLEV= 8
+##$METHOD= 0
+##$NEGBASE= -1668758
+##$NEGINCR= 1.8
+##$POSBASE= 1668758
+##$POSINCR= 1.8
+##END=
