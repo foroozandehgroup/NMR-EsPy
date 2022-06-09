@@ -1,14 +1,14 @@
-##TITLE= Parameter file, TopSpin 3.6.2
+##TITLE= Parameter file, TopSpin 4.0.8
 ##JCAMPDX= 5.0
 ##DATATYPE= Parameter Values
 ##NPOINTS= 7	$$ modification sequence number
 ##ORIGIN= Bruker BioSpin GmbH
-##OWNER= nmr-user
-$$ 2020-06-01 01:01:19.790 +0800  CHEM\nmr-user@GOLDFISH-CRL
-$$ C:/NMR/data/mfgroup/nmr/jy-200531-poptpy-testdata/1/pdata/1/procs
-$$ process C:\Bruker\TopSpin3.6.2\prog\mod\proc1d.exe
-##$ABSF1= 8.9987
-##$ABSF2= -0.9987001
+##OWNER= Administrator
+$$ 2020-07-20 19:51:42.105 +0100  simon@precision
+$$ /opt/topspin4.0.8/examdata/exam1d_1H/1/pdata/1/procs
+$$ process /opt/topspin4.0.8/prog/mod/dataserver
+##$ABSF1= 9.99032
+##$ABSF2= -0.9958344
 ##$ABSG= 5
 ##$ABSL= 3
 ##$ALPHA= 0
@@ -17,7 +17,7 @@ $$ process C:\Bruker\TopSpin3.6.2\prog\mod\proc1d.exe
 ##$ASSFACI= 0
 ##$ASSFACX= 0
 ##$ASSWID= 0
-##$AUNMP= <proc_1d_crl_np>
+##$AUNMP= <proc_1d>
 ##$AXLEFT= 0
 ##$AXNAME= <>
 ##$AXNUC= <1H>
@@ -36,10 +36,10 @@ $$ process C:\Bruker\TopSpin3.6.2\prog\mod\proc1d.exe
 ##$DFILT= <>
 ##$DTYPP= 0
 ##$ERETIC= no
-##$F1P= 0
-##$F2P= 0
+##$F1P= 5.04740305849404
+##$F2P= 4.75746253434732
 ##$FCOR= 1
-##$FTSIZE= 65536
+##$FTSIZE= 32768
 ##$FT_mod= 6
 ##$GAMMA= 0
 ##$GB= 0
@@ -85,10 +85,10 @@ $$ process C:\Bruker\TopSpin3.6.2\prog\mod\proc1d.exe
 ##$NSP= 0
 ##$NTH_PI= 0
 ##$NZP= 0
-##$OFFSET= 8.9987
+##$OFFSET= 9.99032
 ##$PC= 1
-##$PHC0= 112.4502
-##$PHC1= -21.94199
+##$PHC0= -296.1665
+##$PHC1= 1.796566
 ##$PH_mod= 1
 ##$PKNL= yes
 ##$PPARMOD= 0
@@ -106,34 +106,34 @@ $$ process C:\Bruker\TopSpin3.6.2\prog\mod\proc1d.exe
 ##$RDPOS= 0
 ##$REVERSE= no
 ##$SF= 500.13
-##$SI= 65536
+##$SI= 32768
 ##$SIGF1= 0
 ##$SIGF2= 0
-##$SINO= 0
-##$SIOLD= 65536
+##$SINO= 400
+##$SIOLD= 32768
 ##$SPECTYP= <>
 ##$SREF_mod= 1
 ##$SREGLST= <1H.CDCl3>
 ##$SSB= 0
-##$STSI= 65536
+##$STSI= 32768
 ##$STSR= 0
-##$SW_p= 5000
+##$SW_p= 5494.5054945055
 ##$SYMM= 0
 ##$S_DEV= 0
-##$TDeff= 32768
+##$TDeff= 65536
 ##$TDoff= 0
 ##$TI= <>
 ##$TILT= no
 ##$TM1= 0
 ##$TM2= 0
 ##$TOPLEV= 0
-##$USERP1= <>
-##$USERP2= <>
-##$USERP3= <>
-##$USERP4= <>
-##$USERP5= <>
+##$USERP1= <user>
+##$USERP2= <user>
+##$USERP3= <user>
+##$USERP4= <user>
+##$USERP5= <user>
 ##$WDW= 1
 ##$XDIM= 0
-##$YMAX_p= 321045564
-##$YMIN_p= -232300
+##$YMAX_p= 463291639
+##$YMIN_p= -167862
 ##END=
