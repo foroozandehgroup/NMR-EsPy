@@ -1,13 +1,16 @@
 # ex1.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 09 Jun 2022 19:50:20 BST
+# Last Edited: Thu 09 Jun 2022 23:41:52 BST
 
 # EXAMPLE 1:
 # Estimation applied to 3 selected regions of a 1D andrographolide proton spectrum
 
 from pathlib import Path
+import matplotlib as mpl
 import nmrespy as ne
+
+mpl.rcdefaults()
 
 BESPOKE_PLOT = True
 
@@ -57,22 +60,22 @@ for region, plot in zip(regions, plots):
 # ===============================================================================
 
 # Below, I generate a more sopisticated "publication-worthy" figure.
-# If you do not wish to run tbhis code, change line 14 to `BESPOKE_PLOT = False`.
+# If you wish to run this code, change line 14 to `BESPOKE_PLOT = True`.
 
 if not BESPOKE_PLOT:
     exit()
-else:
-    import matplotlib.pyplot as plt
-    import numpy as np
 
-plt.style.use("matplotlibrc")
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+mpl.rc_file_defaults()
+
 COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 FIGWIDTH = 7.22  # inches
 FIGHEIGHT = 0.4 * FIGWIDTH
-B, T, R, L = 0.1, 0.98, 0.98, 0.05  # co-ords of Bottom, Top, Right and Left of axes
+B, T, R, L = 0.15, 0.96, 0.985, 0.015  # co-ords of Bottom, Top, Right and Left of axes
 HSEP = 0.008  # horizontal separation of region panels
 RESIDUAL_SHIFT = -3000
-DISPS = iter(  # Label displacements for their default
+DISPS = iter(  # Label displacements from their default
     [
         # Plot 1
         -0.002,
@@ -107,7 +110,7 @@ def get_axes_geometries():
     region_widths = [r[0] - r[1] for r in regions]
     width_sum = sum(region_widths)
     widths = [
-        (rw / width_sum) * (R - L) - (i * HSEP) for i, rw in enumerate(region_widths)
+        (rw / width_sum) * (R - L - 2 * HSEP) for rw in region_widths
     ]
     lefts = [L + sum(widths[:i]) + (i * HSEP) for i in range(3)]
     return [(lf, B, w, T - B) for lf, w in zip(lefts, widths)]
@@ -161,19 +164,6 @@ def get_line_label_info(plots):
 
     return full_info
 
-# d["labels"].extend(
-#      [
-#          {
-#              "x": label.get_position()[0] + ld[0],
-#              "y": label.get_position()[1] + ld[1],
-#              "text": label.get_text(),
-#              "color": next(osccols),
-#          }
-#          for label, ld in zip(nlpplot.labels.values(), lab_disps)
-#      ]
-#  )
-#  info.append(d)
-
 
 def plot_lines(axs, info):
     for ax, inf in zip(axs, info):
@@ -196,6 +186,7 @@ def finishing_touches(fig, axs):
             continue
         ax.text(0.05, 0.92, f"$\\times {sf:.2f}", transform=ax.transAxes)
 
+    # Axis ticks
     for i, ax in enumerate(axs):
         low_lim, high_lim = ax.get_xlim()
         low_tick = low_lim + 0.02 - (low_lim % 0.02)
@@ -206,11 +197,14 @@ def finishing_touches(fig, axs):
         nticks = round(((high_tick - low_tick) / 0.02) + 1)
         ticks = [low_tick + i * 0.02 for i in range(nticks)]
         ax.set_xticks(ticks)
+        ax.set_yticks([])
+
+        # Flip x-axis limits (NMR convention is for decrasing shifts from right to left)
         ax.set_xlim(reversed(ax.get_xlim()))
 
     fig.text(
         0.5,
-        -0.03,
+        0.03,
         "$^{1}$H (ppm)",
         transform=fig.transFigure,
         horizontalalignment="center",
