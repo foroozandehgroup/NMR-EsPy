@@ -1,8 +1,9 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Jun 2022 18:09:37 BST
+# Last Edited: Wed 15 Jun 2022 10:40:42 BST
 
+from pathlib import Path
 import platform
 import subprocess
 
@@ -13,6 +14,19 @@ import numpy as np
 import pytest
 import utils
 mpl.use("tkAgg")
+
+VIEW_CONTENT = False
+
+
+def check_latex_exists():
+    if platform.system() == "Windows":
+        cmd = "where"
+    else:
+        cmd = "which"
+
+    return subprocess.run(
+        [cmd, "pdflatex"], stdout=subprocess.DEVNULL,
+    ).returncode == 0
 
 
 @pytest.mark.usefixtures("cleanup_files")
@@ -84,23 +98,54 @@ def test_new_synthetic_from_parameters(monkeypatch):
     for region in regions:
         estimator.estimate(region=region, noise_region=noise_region, fprint=False)
 
-    estimator.write_result()
+    to_view = []
+    write_result_options = [
+        {},
+        {
+            "indices": [0],
+            "path": "custom_path",
+            "fmt": "pdf",
+            "description": "Testing",
+            "sig_figs": 3,
+            "sci_lims": None,
+            "integral_mode": "absolute",
+        }
+    ]
+    for options in write_result_options:
+        estimator.write_result(**options)
+        to_view.append(
+            Path(
+                f"{options.get('path', 'nmrespy_result')}.{options.get('fmt', 'txt')}"
+            )
+        )
 
-    latex_exists = None
-    if platform.system() == "Linux":
-        cmd = "which"
-    elif platform.system() == "Windows":
-        cmd = "where"
-    latex_exists = subprocess.run(
-        [cmd, "pdflatex"], stdout=subprocess.DEVNULL,
-    ).returncode == 0
+    plot_result_options = [
+        {},
+        {
+            "indices": [0],
+            "plot_residual": False,
+            "plot_model": True,
+            "shifts_unit": "hz",
+            "data_color": "#b0b0b0",
+            "model_color": "#505050",
+            "oscillator_colors": "inferno",
+            "show_labels": False,
+            "stylesheet": "ggplot"
+        }
+    ]
 
-    if latex_exists:
-        estimator.write_result(fmt="pdf")
+    counter = 1
+    for options in plot_result_options:
+        plots = estimator.plot_result(**options)
+        for plot in plots:
+            plot.save(f"plot{counter}", fmt="pdf")
+            to_view.append(Path(f"plot{counter}.pdf"))
+            counter += 1
 
-    plots = estimator.plot_result()
-    assert len(plots) == 2
-    assert all([isinstance(x, ne.plot.ResultPlotter) for x in plots])
-
-    for i, plot in enumerate(plots, start=1):
-        plot.save(f"figure_{i}", fmt="png")
+    if VIEW_CONTENT:
+        for path in to_view:
+            if path.suffix == ".txt":
+                prog = "vi"
+            elif path.suffix == ".pdf":
+                prog = "evince"
+            subprocess.run([prog, str(path)])
