@@ -1,0 +1,38 @@
+name: tests
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+
+    steps:
+      - name: checkout master branch
+        uses: actions/checkout@v2
+        with:
+          ref: master
+          path: master
+
+      - name: Set up python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install master/
+
+      - name: test with pytest
+        run: |
+          cd master
+          sed -i 's/VIEW_OUTPUT = True/VIEW_OUTPUT = False/g' tests/*.py
+          sed -i 's/mpl\.use("tkAgg")//' tests/*.py
+          pytest
+

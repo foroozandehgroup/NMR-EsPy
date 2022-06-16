@@ -12,6 +12,9 @@
    .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg
       :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs
 
+   .. image:: https://github.com/foroozandehgroup/NMR-EsPy/workflows/tests/badge.svg
+      :target: https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Atests
+
    .. image:: https://img.shields.io/badge/License-MIT-yellow.svg
       :target: https://opensource.org/licenses/MIT
 

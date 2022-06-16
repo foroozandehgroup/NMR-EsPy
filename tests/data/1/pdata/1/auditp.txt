@@ -1,0 +1,36 @@
+##TITLE= Audit trail, TopSpin 3.6.2
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= nmr-user
+$$ C:/NMR/data/mfgroup/nmr/jy-200531-poptpy-testdata/1/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2020-06-01 01:01:09.072 +0800>,<CHEM\nmr-user>,<GOLDFISH-CRL>,<go4>,<TopSpin 3.6.2>,
+      <created by zg
+	started at 2020-06-01 01:00:39.225 +0800,
+	POWCHK enabled, PULCHK disabled,
+       configuration hash MD5:
+       0C 6F BE 03 29 CC A1 D9 6F BD E2 13 49 25 92 1E
+       data hash MD5: 32K
+       6D 55 C3 AD C6 16 61 63 2B 95 CD CD CF 18 BB E7>)
+(   2,<2020-06-01 01:01:19.306 +0800>,<CHEM\nmr-user>,<GOLDFISH-CRL>,<proc1d>,<TopSpin 3.6.2>,
+      <Start of raw data processing
+       efp LB = 0.3 FT_mod = 6 PKNL = 1 PHC0 = 126.2844 PHC1 = -46.01532 SI = 64K 
+       data hash MD5: 64K
+       02 4D 10 71 62 0B BB 8A 6F 17 E5 56 F6 16 BC 15>)
+(   3,<2020-06-01 01:01:19.619 +0800>,<CHEM\nmr-user>,<GOLDFISH-CRL>,<proc1d>,<TopSpin 3.6.2>,
+      <apk 
+       data hash MD5: 64K
+       27 FF 82 45 6C 14 1D 92 9F E6 EF 07 5C 8D B1 F6>)
+(   4,<2020-06-01 01:01:19.790 +0800>,<CHEM\nmr-user>,<GOLDFISH-CRL>,<proc1d>,<TopSpin 3.6.2>,
+      <abs ABSG = 5 
+       data hash MD5: 64K
+       7B 41 19 1C 37 9F EF 16 59 0F 28 79 63 C5 DB 1E>)
+(   5,<2020-06-01 01:17:38.412 +0800>,<CHEM\nmr-user>,<GOLDFISH-CRL>,<audit>,<TopSpin 3.6.2>,
+      <user comment:
+       TITLE=Normal 1HTITLE_END
+       data hash MD5: 64K
+       7B 41 19 1C 37 9F EF 16 59 0F 28 79 63 C5 DB 1E>)
+##END=
+
+$$ hash MD5
+$$ AD 67 C3 49 FB 05 51 E2 BF 40 9F F0 7B C5 5D ED

@@ -8,5 +8,6 @@ dist
 docs/_build
 docs/Makefile
 examples/cpmg
+htmlcov/
 nmrespy/app/tmp/*.pkl
 nmrespy.egg-info/

@@ -1,7 +1,7 @@
 # _freqconverter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 18:21:21 BST
+# Last Edited: Thu 16 Jun 2022 11:54:22 BST
 
 import re
 from typing import Any, Iterable, Optional, Union
@@ -117,7 +117,7 @@ class FrequencyConverter:
 
     def convert(
         self,
-        to_convert: Iterable[Optional[Union[Iterable[Union[float, int]], float, int]]],
+        to_convert: Optional[Iterable[Optional[Union[Iterable[Union[float, int]], float, int]]]],  # noqa: E501
         conversion: str,
     ) -> Iterable[Union[int, float]]:
         """Convert quantities contained within an iterable.
@@ -153,7 +153,7 @@ class FrequencyConverter:
             return to_convert
 
         sanity_check(
-            ("to_convert", to_convert, check_convertible_list, (len(self),)),
+            ("to_convert", to_convert, check_convertible_list, (len(self),), {}, True),
         )
 
         converted = []
