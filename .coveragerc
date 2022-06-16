@@ -1,0 +1,12 @@
+[run]
+omit =
+    nmrespy/app/*
+    nmrespy/__main__.py
+    nmrespy/_install_to_topspin.py
+    nmrespy/write/csvfile.py
+
+[report]
+exclude_lines =
+    @abc.abstractmethod
+    if USE_COLORAMA
+    import colorama

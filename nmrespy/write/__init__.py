@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 08 Jun 2022 17:52:11 BST
+# Last Edited: Wed 08 Jun 2022 18:05:29 BST
 
 r"""Module for the creation of text and PDF files of estimation results.
 
@@ -57,6 +57,7 @@ If a pathname appears, the package is installed to that path.
 
 import os
 from pathlib import Path
+import platform
 import re
 import subprocess
 from typing import Any, Iterable, List, Optional, Tuple, Union
@@ -67,7 +68,6 @@ from nmrespy import ExpInfo
 from nmrespy._colors import GRE, END, USE_COLORAMA
 from nmrespy._errors import LaTeXFailedError
 from nmrespy._files import (
-    check_existent_path,
     check_saveable_path,
     configure_path,
     save_file,
@@ -81,30 +81,23 @@ if USE_COLORAMA:
 
 
 def check_pdflatex_exe(obj: Any) -> Optional[str]:
-    if obj is not None:
-        path_check = check_existent_path(obj)
-        if isinstance(path_check, str):
-            return path_check
-    else:
+    if obj is None:
         obj = "pdflatex"
+    elif isinstance(obj, Path):
+        obj = str(obj.resolve())
+    elif not isinstance(obj, str):
+        return "Should be `None`, a str, or a pathlib.Path object."
 
-    try:
-        pdflatex_check = subprocess.run(
-            [str(obj), "--version"],
-            capture_output=True,
-            encoding="utf-8",
-        )
-    except Exception as exc:
-        return (
-            "The following exception was raised when trying to validate the "
-            f"executable using {obj} --version:\n{str(exc)}"
-        )
+    which_cmd = "which" if platform.system() in ["Linux", "Darwin"] else "where"
+    pdflatex_check = subprocess.run(
+        [which_cmd, obj], stdout=subprocess.DEVNULL,
+    ).returncode == 0
 
-    if "pdfTeX" not in pdflatex_check.stdout:
+    if not pdflatex_check:
         return (
-            "I do not believe the executable specified by `pdflatex_exe` "
-            f"({obj}) is actually a pdflatex executable. (No mention "
-            f"of \"pdfTeX\" in the output of `{obj} --version`"
+            f"\"{obj}\" is not recognised as an executable on your system. "
+            "Perhaps you do not have a LaTeX installation on your computer, in "
+            "which case you cannot create result files in PDF format."
         )
 
 

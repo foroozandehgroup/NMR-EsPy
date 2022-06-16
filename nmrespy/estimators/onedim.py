@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 24 May 2022 11:39:16 BST
+# Last Edited: Thu 16 Jun 2022 17:03:00 BST
 
 from __future__ import annotations
 import copy
@@ -495,6 +495,9 @@ class Estimator1D(Estimator):
         # --> Run Optimiser on cut signal
         # --> Run Optimiser on uncut signal
         if region is None:
+            region = self.convert(
+                ((0, self._data.size - 1),), "idx->hz",
+            )
             noise_region = None
 
             signal = self._data
@@ -588,6 +591,43 @@ class Estimator1D(Estimator):
             )
         )
 
+    def make_fid(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        pts: Optional[Iterable[int]] = None,
+    ) -> np.ndarray:
+        r"""Construct a noiseless FID from estimation result parameters.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to extract errors from. Index ``0`` corresponds to
+            the first result obtained using the estimator, ``1`` corresponds to
+            the next, etc.  If ``None``, all results will be used.
+
+        pts
+            The number of points to construct the time-points with in each dimesnion.
+            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
+            used.
+        """
+        sanity_check(
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {"max_value": len(self._results) - 1}, True,
+            ),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "min_value": 1,
+                },
+                True,
+            ),
+        )
+
+        return super().make_fid(indices, pts=pts)
+
     @logger
     def plot_result(
         self,
@@ -641,8 +681,8 @@ class Estimator1D(Estimator):
             a full description of valid values.
 
         residual_color
-            The colour used to plot the residual. See ``data_color`` for a
-            description of valid colors.
+            # The colour used to plot the residual. See ``data_color`` for a
+            # description of valid colors.
 
         model_color
             The colour used to plot the model. See ``data_color`` for a
@@ -685,6 +725,7 @@ class Estimator1D(Estimator):
             stable/tutorials/introductory/customizing.html>`__ for more
             information on stylesheets.
         """
+        self._check_results_exist()
         sanity_check(
             (
                 "indices", indices, sfuncs.check_int_list, (),
