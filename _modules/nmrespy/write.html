@@ -48,7 +48,7 @@
 <span></span><span class="c1"># __init__.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Wed 08 Jun 2022 17:52:11 BST</span>
+<span class="c1"># Last Edited: Wed 08 Jun 2022 18:05:29 BST</span>
 
 <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Module for the creation of text and PDF files of estimation results.</span>
 
@@ -104,6 +104,7 @@
 
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">platform</span>
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">subprocess</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
@@ -114,7 +115,6 @@
 <span class="kn">from</span> <span class="nn">nmrespy._colors</span> <span class="kn">import</span> <span class="n">GRE</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">USE_COLORAMA</span>
 <span class="kn">from</span> <span class="nn">nmrespy._errors</span> <span class="kn">import</span> <span class="n">LaTeXFailedError</span>
 <span class="kn">from</span> <span class="nn">nmrespy._files</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">check_existent_path</span><span class="p">,</span>
     <span class="n">check_saveable_path</span><span class="p">,</span>
     <span class="n">configure_path</span><span class="p">,</span>
     <span class="n">save_file</span><span class="p">,</span>
@@ -128,30 +128,23 @@
 
 
 <span class="k">def</span> <span class="nf">check_pdflatex_exe</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-    <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">path_check</span> <span class="o">=</span> <span class="n">check_existent_path</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path_check</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-            <span class="k">return</span> <span class="n">path_check</span>
-    <span class="k">else</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="s2">&quot;pdflatex&quot;</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;Should be `None`, a str, or a pathlib.Path object.&quot;</span>
 
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">pdflatex_check</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-            <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">),</span> <span class="s2">&quot;--version&quot;</span><span class="p">],</span>
-            <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">(</span>
-            <span class="s2">&quot;The following exception was raised when trying to validate the &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;executable using </span><span class="si">{</span><span class="n">obj</span><span class="si">}</span><span class="s2"> --version:</span><span class="se">\n</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="p">)</span>
+    <span class="n">which_cmd</span> <span class="o">=</span> <span class="s2">&quot;which&quot;</span> <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;Linux&quot;</span><span class="p">,</span> <span class="s2">&quot;Darwin&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;where&quot;</span>
+    <span class="n">pdflatex_check</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">which_cmd</span><span class="p">,</span> <span class="n">obj</span><span class="p">],</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">DEVNULL</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span>
 
-    <span class="k">if</span> <span class="s2">&quot;pdfTeX&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pdflatex_check</span><span class="o">.</span><span class="n">stdout</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pdflatex_check</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">(</span>
-            <span class="s2">&quot;I do not believe the executable specified by `pdflatex_exe` &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">obj</span><span class="si">}</span><span class="s2">) is actually a pdflatex executable. (No mention &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;of </span><span class="se">\&quot;</span><span class="s2">pdfTeX</span><span class="se">\&quot;</span><span class="s2"> in the output of `</span><span class="si">{</span><span class="n">obj</span><span class="si">}</span><span class="s2"> --version`&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">{</span><span class="n">obj</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2"> is not recognised as an executable on your system. &quot;</span>
+            <span class="s2">&quot;Perhaps you do not have a LaTeX installation on your computer, in &quot;</span>
+            <span class="s2">&quot;which case you cannot create result files in PDF format.&quot;</span>
         <span class="p">)</span>
 
 

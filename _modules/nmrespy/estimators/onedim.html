@@ -48,7 +48,7 @@
 <span></span><span class="c1"># onedim.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Tue 24 May 2022 11:39:16 BST</span>
+<span class="c1"># Last Edited: Thu 16 Jun 2022 17:03:00 BST</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">import</span> <span class="nn">copy</span>
@@ -542,6 +542,9 @@
         <span class="c1"># --&gt; Run Optimiser on cut signal</span>
         <span class="c1"># --&gt; Run Optimiser on uncut signal</span>
         <span class="k">if</span> <span class="n">region</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span>
+                <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),),</span> <span class="s2">&quot;idx-&gt;hz&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">noise_region</span> <span class="o">=</span> <span class="kc">None</span>
 
             <span class="n">signal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
@@ -635,6 +638,43 @@
             <span class="p">)</span>
         <span class="p">)</span></div>
 
+<div class="viewcode-block" id="Estimator1D.make_fid"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.make_fid">[docs]</a>    <span class="k">def</span> <span class="nf">make_fid</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Construct a noiseless FID from estimation result parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        indices</span>
+<span class="sd">            The indices of results to extract errors from. Index ``0`` corresponds to</span>
+<span class="sd">            the first result obtained using the estimator, ``1`` corresponds to</span>
+<span class="sd">            the next, etc.  If ``None``, all results will be used.</span>
+
+<span class="sd">        pts</span>
+<span class="sd">            The number of points to construct the time-points with in each dimesnion.</span>
+<span class="sd">            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be</span>
+<span class="sd">            used.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sanity_check</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;indices&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;pts&quot;</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span>
+                    <span class="s2">&quot;len_one_can_be_listless&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">pts</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="Estimator1D.plot_result"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.plot_result">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">plot_result</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -688,8 +728,8 @@
 <span class="sd">            a full description of valid values.</span>
 
 <span class="sd">        residual_color</span>
-<span class="sd">            The colour used to plot the residual. See ``data_color`` for a</span>
-<span class="sd">            description of valid colors.</span>
+<span class="sd">            # The colour used to plot the residual. See ``data_color`` for a</span>
+<span class="sd">            # description of valid colors.</span>
 
 <span class="sd">        model_color</span>
 <span class="sd">            The colour used to plot the model. See ``data_color`` for a</span>
@@ -732,6 +772,7 @@
 <span class="sd">            stable/tutorials/introductory/customizing.html&gt;`__ for more</span>
 <span class="sd">            information on stylesheets.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_results_exist</span><span class="p">()</span>
         <span class="n">sanity_check</span><span class="p">(</span>
             <span class="p">(</span>
                 <span class="s2">&quot;indices&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
