@@ -1,7 +1,7 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 16 Jun 2022 19:46:07 BST
+# Last Edited: Thu 16 Jun 2022 20:17:02 BST
 
 import copy
 from pathlib import Path
@@ -16,6 +16,7 @@ import numpy as np
 import pytest
 import utils
 mpl.use("tkAgg")
+
 
 VIEW_CONTENT = False
 
@@ -216,10 +217,9 @@ def test_new_synthetic_from_parameters(monkeypatch):
     estimator.split_oscillator(1, index=1)
     # Determine two closest oscs
     freqs = estimator._results[1].params[:, 2]
-    min_diff = np.argmin([np.absolute(b - a) for a, b in zip(freqs, freqs[1:])])
+    min_diff = int(np.argmin([np.absolute(b - a) for a, b in zip(freqs, freqs[1:])]))
     to_merge = [min_diff, min_diff + 1]
     estimator.merge_oscillators(to_merge, index=1)
-    assert utils.close(true_params, estimator.get_params([1]), tol=0.1)
 
     to_view = []
     # --- Writing results ---
