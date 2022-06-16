@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 08 Jun 2022 18:06:06 BST
+# Last Edited: Thu 16 Jun 2022 17:38:36 BST
 
 from __future__ import annotations
 import abc
@@ -135,7 +135,7 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         )
 
         path = configure_path(path, "log")
-        save_file(self._log, path, fprint=fprint)
+        save_file(self.get_log(), path, fprint=fprint)
 
     @classmethod
     @abc.abstractmethod

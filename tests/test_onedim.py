@@ -1,8 +1,9 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 15 Jun 2022 10:40:42 BST
+# Last Edited: Thu 16 Jun 2022 19:46:07 BST
 
+import copy
 from pathlib import Path
 import platform
 import subprocess
@@ -10,6 +11,7 @@ import subprocess
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import nmrespy as ne
+from nmr_sims.spin_system import SpinSystem
 import numpy as np
 import pytest
 import utils
@@ -18,7 +20,7 @@ mpl.use("tkAgg")
 VIEW_CONTENT = False
 
 
-def check_latex_exists():
+def latex_exists():
     if platform.system() == "Windows":
         cmd = "where"
     else:
@@ -27,6 +29,47 @@ def check_latex_exists():
     return subprocess.run(
         [cmd, "pdflatex"], stdout=subprocess.DEVNULL,
     ).returncode == 0
+
+
+def test_new_bruker():
+    estimator = ne.Estimator1D.new_bruker("tests/data/1/pdata/1")
+    if VIEW_CONTENT:
+        estimator.view_data()
+
+
+def test_new_synthetic_from_simulation():
+    system = SpinSystem(
+        {
+            1: {
+                "shift": 3.7,
+                "couplings": {
+                    2: -10.1,
+                    3: 4.3,
+                },
+                "nucleus": "1H",
+            },
+            2: {
+                "shift": 3.92,
+                "couplings": {
+                    3: 11.3,
+                },
+                "nucleus": "1H",
+            },
+            3: {
+                "shift": 4.5,
+                "nucleus": "1H",
+            },
+        }
+    )
+    estimator = ne.Estimator1D.new_synthetic_from_simulation(
+        spin_system=system,
+        sw=2.,
+        offset=4.,
+        pts=4048,
+        freq_unit="ppm",
+    )
+    if VIEW_CONTENT:
+        estimator.view_data()
 
 
 @pytest.mark.usefixtures("cleanup_files")
@@ -49,8 +92,12 @@ def test_new_synthetic_from_parameters(monkeypatch):
         sfo=500.,
     )
 
-    monkeypatch.setattr(plt, 'show', lambda: None)
+    if not VIEW_CONTENT:
+        monkeypatch.setattr(plt, 'show', lambda: None)
+
     estimator.view_data()
+    estimator.view_data(freq_unit="ppm")
+    estimator.view_data(domain="time", components="both")
 
     assert estimator.dim == 1
     assert estimator.default_pts == (4096,)
@@ -90,15 +137,92 @@ def test_new_synthetic_from_parameters(monkeypatch):
     with pytest.raises(ValueError):
         estimator.plot_result()
 
-    regions = ((750., 680.), (375., 315.))
-    noise_region = (550., 525.)
+    # --- Phasing ---
+    og_data = copy.deepcopy(estimator.data)
+    estimator.phase_data(p0=np.pi / 2)
+    assert utils.close(estimator.data[0].real, 0, tol=0.2)
+    estimator.phase_data(p0=-np.pi / 2)
+    assert utils.equal(estimator.data, og_data)
+
+    # --- Estimations ---
+    regions = (None, (750., 680.), (375., 315.))
+    noise_regions = (None, (550., 525.), (550., 525.))
 
     # Not going to actually test the accuracy of estimation.
     # Quite a trivial example.
-    for region in regions:
-        estimator.estimate(region=region, noise_region=noise_region, fprint=False)
+    for i, (region, noise_region) in enumerate(zip(regions, noise_regions)):
+        if i == 0:
+            methods = ["gauss-newton", "exact", "lbfgs"]
+        else:
+            methods = ["gauss-newton"]
+
+        for method in methods:
+            estimator.estimate(
+                region=region,
+                noise_region=noise_region,
+                method=method,
+                fprint=False,
+            )
+    del estimator._results[1]
+    del estimator._results[1]
+
+    # --- Accessing parameters/errors ---
+    all_params_hz = estimator.get_params([0])
+    all_errors_hz = estimator.get_errors([0])
+    assert all_params_hz.shape == all_errors_hz.shape == (6, 4)
+
+    for i, sort in enumerate(("a", "p", "f", "d")):
+        params = estimator.get_params([0], sort_by=sort)
+        errors = estimator.get_errors([0], sort_by=sort)
+        assert list(np.argsort(params[:, i])) == list(range(params.shape[0]))
+        # Check errors correctly map to their parameters
+        assert utils.equal(errors[np.argsort(params[:, 2])], all_errors_hz)
+
+    all_params_ppm = estimator.get_params([0], funit="ppm")
+    all_errors_ppm = estimator.get_errors([0], funit="ppm")
+    assert utils.equal(all_params_hz[:, (0, 1, 3)], all_params_ppm[:, (0, 1, 3)])
+    assert utils.equal(all_params_hz[:, 2] / estimator.sfo, all_params_ppm[:, 2])
+    assert utils.equal(all_errors_hz[:, (0, 1, 3)], all_errors_ppm[:, (0, 1, 3)])
+    assert utils.equal(all_errors_hz[:, 2] / estimator.sfo, all_errors_ppm[:, 2])
+
+    region_params = estimator.get_params([2, 1], merge=False)
+    assert len(region_params) == 2
+    assert utils.equal(np.vstack(region_params), estimator.get_params([1, 2]))
+
+    # --- Make FID ---
+    fid1 = estimator.make_fid([0])
+    fid2 = estimator.make_fid([1, 2])
+    assert utils.close(fid1, fid2, tol=0.1)
+    assert fid1.shape == fid2.shape == estimator.data.shape
+    fid3 = estimator.make_fid(indices=[0], pts=8192)
+    assert utils.equal(fid1, fid3[:estimator.default_pts[0]])
+
+    # --- Result editing (merge, split, add, remove) ---
+    true_params = estimator.get_params([1])
+    # Remove an oscillator and re-add
+    estimator._results[1].params = true_params[(0, 1, 3), ...]
+    estimator.add_oscillators(np.array([[2.5, 0, 717, 6.5]]), index=1)
+    assert utils.close(true_params, estimator.get_params([1]), tol=0.1)
+    # Add an extra oscillator and remove
+    estimator._results[1].params = np.vstack(
+        (
+            np.array([[0.2, 0, 7.15, 6]]),
+            true_params,
+        ),
+    )
+    estimator.remove_oscillators([0], index=1)
+    assert utils.close(true_params, estimator.get_params([1]), tol=0.1)
+    # Split an oscillator and re-merge
+    estimator.split_oscillator(1, index=1)
+    # Determine two closest oscs
+    freqs = estimator._results[1].params[:, 2]
+    min_diff = np.argmin([np.absolute(b - a) for a, b in zip(freqs, freqs[1:])])
+    to_merge = [min_diff, min_diff + 1]
+    estimator.merge_oscillators(to_merge, index=1)
+    assert utils.close(true_params, estimator.get_params([1]), tol=0.1)
 
     to_view = []
+    # --- Writing results ---
     write_result_options = [
         {},
         {
@@ -112,13 +236,20 @@ def test_new_synthetic_from_parameters(monkeypatch):
         }
     ]
     for options in write_result_options:
-        estimator.write_result(**options)
-        to_view.append(
-            Path(
-                f"{options.get('path', 'nmrespy_result')}.{options.get('fmt', 'txt')}"
+        if not latex_exists() and options.get("fmt", "txt") == "pdf":
+            pass
+        else:
+            estimator.write_result(**options)
+            to_view.append(
+                Path(
+                    ".".join([
+                        options.get("path", "nmrespy_result"),
+                        options.get("fmt", "txt"),
+                    ])
+                )
             )
-        )
 
+    # --- Result plotting ---
     plot_result_options = [
         {},
         {
@@ -142,9 +273,32 @@ def test_new_synthetic_from_parameters(monkeypatch):
             to_view.append(Path(f"plot{counter}.pdf"))
             counter += 1
 
+    # --- Save logfile ---
+    save_log_options = [
+        {},
+        {"path": "test_log"},
+        {"path": "test_log", "force_overwrite": True},
+    ]
+    for options in save_log_options:
+        estimator.save_log(**options)
+        to_view.append(Path(options.get("path", "espy_logfile")).with_suffix(".log"))
+
+    # --- Pickling ---
+    pickling_options = [
+        {},
+        {"path": "test_pickle"},
+        {"path": "test_pickle", "force_overwrite": True}
+    ]
+    for options in pickling_options:
+        estimator.to_pickle(**options)
+    # TODO: Simply checks that `from_pickle` runs successfully.
+    # Should include an `__eq__` method into `Estimator` to check for equality.
+    ne.Estimator1D.from_pickle("test_pickle")
+
+    # --- Viewing outputs ---
     if VIEW_CONTENT:
         for path in to_view:
-            if path.suffix == ".txt":
+            if path.suffix in [".txt", ".log"]:
                 prog = "vi"
             elif path.suffix == ".pdf":
                 prog = "evince"
