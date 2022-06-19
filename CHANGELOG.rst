@@ -66,3 +66,14 @@ Features
 * `write_result()` now features the `intergal_mode` kwarg, enabling integrals
   to be expressed relative to the lowest amplitude signal, or in absolute
   terms.
+
+Version 1.1.4 → Version 1.1.5
+-----------------------------
+
+Features
+^^^^^^^^
+
+* `Estimator1D` now provides the `spectrum` property.
+* `Esimator1D` now provides the `subband_estimate` method. This enables the
+  entire signal to be estimated by iteratively performing estimation on
+  frequency-filtered "sub-bands" of the signal.
