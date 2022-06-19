@@ -78,7 +78,7 @@ methods:</p>
 <li><p><a class="reference internal" href="#nmrespy.Estimator1D.new_bruker" title="nmrespy.Estimator1D.new_bruker"><code class="xref py py-meth docutils literal notranslate"><span class="pre">new_bruker()</span></code></a></p></li>
 <li><p><a class="reference internal" href="#nmrespy.Estimator1D.new_synthetic_from_parameters" title="nmrespy.Estimator1D.new_synthetic_from_parameters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">new_synthetic_from_parameters()</span></code></a></p></li>
 <li><p><a class="reference internal" href="#nmrespy.Estimator1D.new_synthetic_from_simulation" title="nmrespy.Estimator1D.new_synthetic_from_simulation"><code class="xref py py-meth docutils literal notranslate"><span class="pre">new_synthetic_from_simulation()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#nmrespy.Estimator1D.from_pickle" title="nmrespy.Estimator1D.from_pickle"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_pickle()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#nmrespy.Estimator1D.from_pickle" title="nmrespy.Estimator1D.from_pickle"><code class="xref py py-meth docutils literal notranslate"><span class="pre">from_pickle()</span></code></a> (re-loads a previously saved estimator).</p></li>
 </ul>
 </div>
 <dl class="field-list simple">
@@ -141,7 +141,7 @@ that <code class="docutils literal notranslate"><span class="pre">&quot;region&q
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nmrespy.Estimator1D.estimate">
-<span class="sig-name descname"><span class="pre">estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_region</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_guess</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gauss-newton'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase_variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mpm_trim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nlp_trim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.estimate" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_region</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_guess</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gauss-newton'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase_variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mpm_trim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nlp_trim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict_region_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.estimate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Estimate a specified region of the signal.</p>
 <p>The basic steps that this method carries out are:</p>
 <ul class="simple">
@@ -200,6 +200,12 @@ greater than <code class="docutils literal notranslate"><span class="pre">mpm_tr
 nonlinear programming. By default (<code class="docutils literal notranslate"><span class="pre">None</span></code>), no trimming is applied to
 the signal. If an int, and the filtered signal has a size greater than
 <code class="docutils literal notranslate"><span class="pre">nlp_trim</span></code>, this signal will be set as <code class="docutils literal notranslate"><span class="pre">signal[:nlp_trim]</span></code>.</p></li>
+<li><p><strong>strict_region_order</strong> (<em>bool</em>) – If <cite>True</cite>, the first elements of <code class="docutils literal notranslate"><span class="pre">region</span></code> and <code class="docutils literal notranslate"><span class="pre">noise_region</span></code> will
+be taken as the left bounds and the second elements will be taken
+as the right bounds, even if this leads to selecting a signal which
+wraps around itself. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the ordering of the elements is
+irrelevant, the higher frequency bound will be taken as the left bound,
+and the lower frequency will be taken as the right bound of the region.</p></li>
 <li><p><strong>fprint</strong> (<em>bool</em>) – Whether of not to output information to the terminal.</p></li>
 <li><p><strong>_log</strong> (<em>bool</em>) – Ignore this!</p></li>
 <li><p><strong>cut_ratio</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – </p></li>
@@ -737,6 +743,12 @@ If <code class="docutils literal notranslate"><span class="pre">False</span></co
 <dd><p>Get the transmitter frequency (MHz).</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="nmrespy.Estimator1D.spectrum">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">spectrum</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#nmrespy.Estimator1D.spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the spectrum corresponding to <code class="docutils literal notranslate"><span class="pre">self.data</span></code></p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="nmrespy.Estimator1D.split_oscillator">
 <span class="sig-name descname"><span class="pre">split_oscillator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">oscillator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">separation_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">split_number</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amp_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">estimate_kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nmrespy.Estimator1D.split_oscillator" title="Permalink to this definition">¶</a></dt>
@@ -767,6 +779,71 @@ all oscillators will be given equal amplitudes.</p></li>
 <li><p><strong>estimate_kwargs</strong> – Keyword arguments to provide to the call to <a class="reference internal" href="#nmrespy.Estimator1D.estimate" title="nmrespy.Estimator1D.estimate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">estimate()</span></code></a>. Note
 that <code class="docutils literal notranslate"><span class="pre">&quot;initial_guess&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;region_unit&quot;</span></code> are set internally and
 will be ignored if given.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nmrespy.Estimator1D.subband_estimate">
+<span class="sig-name descname"><span class="pre">subband_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">noise_region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_region_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nsubbands</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gauss-newton'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phase_variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mpm_trim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nlp_trim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/estimators/onedim.html#Estimator1D.subband_estimate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.Estimator1D.subband_estimate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform estiamtion on the entire signal via estimation of frequency-filtered
+sub-bands.</p>
+<p>This method splits the signal up into <code class="docutils literal notranslate"><span class="pre">nsubbands</span></code> equally-sized region
+and extracts parameters from each region before finally concatenating all
+the results together.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>noise_region</strong> (<em>Tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – Specifies a frequency range where no noticeable signals reside, i.e. only
+noise exists.</p></li>
+<li><p><strong>noise_region_unit</strong> (<em>str</em>) – One of <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>. Specifies the units that <code class="docutils literal notranslate"><span class="pre">noise_region</span></code>
+have been given in.</p></li>
+<li><p><strong>subbands</strong> – The number of sub-bands to break the signal into. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the number
+will be set as the nearest integer to the data size divided by 500.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – <p>Specifies the optimisation method.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;exact&quot;</span></code> Uses SciPy’s
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html#optimize-minimize-trustconstr">trust-constr routine</a>
+The Hessian will be exact.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;gauss-newton&quot;</span></code> Uses SciPy’s
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-trustconstr.html#optimize-minimize-trustconstr">trust-constr routine</a>
+The Hessian will be approximated based on the
+<a class="reference external" href="https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm">Gauss-Newton method</a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;lbfgs&quot;</span></code> Uses SciPy’s
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb">L-BFGS-B routine</a>.</p></li>
+</ul>
+</p></li>
+<li><p><strong>phase_variance</strong> (<em>bool</em>) – Whether or not to include the variance of oscillator phases in the cost
+function. This should be set to <code class="docutils literal notranslate"><span class="pre">True</span></code> in cases where the signal being
+considered is derived from well-phased data.</p></li>
+<li><p><strong>max_iterations</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – A value specifiying the number of iterations the routine may run
+through before it is terminated. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default number
+of maximum iterations is set (<code class="docutils literal notranslate"><span class="pre">100</span></code> if <code class="docutils literal notranslate"><span class="pre">method</span></code> is
+<code class="docutils literal notranslate"><span class="pre">&quot;exact&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;gauss-newton&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">500</span></code> if <code class="docutils literal notranslate"><span class="pre">&quot;method&quot;</span></code> is
+<code class="docutils literal notranslate"><span class="pre">&quot;lbfgs&quot;</span></code>).</p></li>
+<li><p><strong>mpm_trim</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – Specifies the maximal size allowed for the filtered signal when
+undergoing the Matrix Pencil. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, no trimming is applied
+to the signal. If an int, and the filtered signal has a size
+greater than <code class="docutils literal notranslate"><span class="pre">mpm_trim</span></code>, this signal will be set as
+<code class="docutils literal notranslate"><span class="pre">signal[:mpm_trim]</span></code>.</p></li>
+<li><p><strong>nlp_trim</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – Specifies the maximal size allowed for the filtered signal when undergoing
+nonlinear programming. By default (<code class="docutils literal notranslate"><span class="pre">None</span></code>), no trimming is applied to
+the signal. If an int, and the filtered signal has a size greater than
+<code class="docutils literal notranslate"><span class="pre">nlp_trim</span></code>, this signal will be set as <code class="docutils literal notranslate"><span class="pre">signal[:nlp_trim]</span></code>.</p></li>
+<li><p><strong>strict_region_order</strong> – If <cite>True</cite>, the first elements of <code class="docutils literal notranslate"><span class="pre">region</span></code> and <code class="docutils literal notranslate"><span class="pre">noise_region</span></code> will
+be taken as the left bounds and the second elements will be taken
+as the right bounds, even if this leads to selecting a signal which
+wraps around itself. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the ordering of the elements is
+irrelevant, the higher frequency bound will be taken as the left bound,
+and the lower frequency will be taken as the right bound of the region.</p></li>
+<li><p><strong>fprint</strong> (<em>bool</em>) – Whether of not to output information to the terminal.</p></li>
+<li><p><strong>nsubbands</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – </p></li>
+<li><p><strong>cut_ratio</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – </p></li>
+<li><p><strong>_log</strong> (<em>bool</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>

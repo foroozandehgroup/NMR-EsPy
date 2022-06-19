@@ -48,7 +48,7 @@
 <span></span><span class="c1"># freqfilter.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Tue 10 May 2022 20:06:24 BST</span>
+<span class="c1"># Last Edited: Sat 18 Jun 2022 18:15:20 BST</span>
 
 <span class="sd">&quot;&quot;&quot;Frequecy filtration of NMR data using super-Gaussian band-pass filters.</span>
 
@@ -95,6 +95,7 @@
         <span class="n">expinfo</span><span class="p">:</span> <span class="n">ExpInfo</span><span class="p">,</span>
         <span class="n">region</span><span class="p">:</span> <span class="n">Region</span><span class="p">,</span>
         <span class="n">noise_region</span><span class="p">:</span> <span class="n">Region</span><span class="p">,</span>
+        <span class="n">strict_region_order</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">region_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hz&quot;</span><span class="p">,</span>
         <span class="n">sg_power</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">,</span>
         <span class="n">twodim_dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -193,8 +194,8 @@
         <span class="c1"># to convert to array indices</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">default_pts</span> <span class="o">=</span> <span class="n">ve</span><span class="o">.</span><span class="n">shape</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_region</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">region_unit</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_noise_region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_region</span><span class="p">(</span><span class="n">noise_region</span><span class="p">,</span> <span class="n">region_unit</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_region</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">region_unit</span><span class="p">,</span> <span class="n">strict_region_order</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_noise_region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_region</span><span class="p">(</span><span class="n">noise_region</span><span class="p">,</span> <span class="n">region_unit</span><span class="p">,</span> <span class="n">strict_region_order</span><span class="p">)</span>  <span class="c1"># noqa: E501</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_spectrum</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">ve</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">axes</span><span class="p">)</span>
 
     <span class="nd">@property</span>
@@ -210,12 +211,17 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">region</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
         <span class="n">region_unit</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">strict_region_order</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">region</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
             <span class="n">region</span> <span class="o">=</span> <span class="p">[</span><span class="n">region</span><span class="p">]</span>
+
+        <span class="n">sort_func</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span> <span class="k">if</span> <span class="n">strict_region_order</span> <span class="k">else</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
-            <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">r</span><span class="p">))</span> <span class="k">if</span> <span class="n">r</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-             <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region_unit</span><span class="si">}</span><span class="s2">-&gt;idx&quot;</span><span class="p">)]</span>
+            <span class="p">[</span>
+                <span class="n">sort_func</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">if</span> <span class="n">r</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region_unit</span><span class="si">}</span><span class="s2">-&gt;idx&quot;</span><span class="p">)</span>
+            <span class="p">]</span>
         <span class="p">)</span>
 
     <span class="nd">@property</span>

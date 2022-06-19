@@ -48,7 +48,7 @@
 <span></span><span class="c1"># onedim.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Thu 16 Jun 2022 17:03:00 BST</span>
+<span class="c1"># Last Edited: Sun 19 Jun 2022 23:54:33 BST</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">import</span> <span class="nn">copy</span>
@@ -63,7 +63,7 @@
 <span class="kn">from</span> <span class="nn">nmr_sims.spin_system</span> <span class="kn">import</span> <span class="n">SpinSystem</span>
 
 <span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">ExpInfo</span><span class="p">,</span> <span class="n">sig</span>
-<span class="kn">from</span> <span class="nn">nmrespy._colors</span> <span class="kn">import</span> <span class="n">RED</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">USE_COLORAMA</span>
+<span class="kn">from</span> <span class="nn">nmrespy._colors</span> <span class="kn">import</span> <span class="n">RED</span><span class="p">,</span> <span class="n">GRE</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">USE_COLORAMA</span>
 <span class="kn">from</span> <span class="nn">nmrespy._files</span> <span class="kn">import</span> <span class="n">check_existent_dir</span>
 
 <span class="kn">from</span> <span class="nn">nmrespy._sanity</span> <span class="kn">import</span> <span class="p">(</span>
@@ -95,7 +95,7 @@
 <span class="sd">        * :py:meth:`new_bruker`</span>
 <span class="sd">        * :py:meth:`new_synthetic_from_parameters`</span>
 <span class="sd">        * :py:meth:`new_synthetic_from_simulation`</span>
-<span class="sd">        * :py:meth:`from_pickle`</span>
+<span class="sd">        * :py:meth:`from_pickle` (re-loads a previously saved estimator).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
@@ -327,6 +327,13 @@
 
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span><span class="p">)</span></div>
 
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Return the spectrum corresponding to ``self.data``&quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
 <div class="viewcode-block" id="Estimator1D.phase_data"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.phase_data">[docs]</a>    <span class="k">def</span> <span class="nf">phase_data</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">p0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
@@ -414,6 +421,7 @@
         <span class="n">cut_ratio</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.1</span><span class="p">,</span>
         <span class="n">mpm_trim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">,</span>
         <span class="n">nlp_trim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">strict_region_order</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">fprint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">_log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -495,6 +503,14 @@
 <span class="sd">            the signal. If an int, and the filtered signal has a size greater than</span>
 <span class="sd">            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.</span>
 
+<span class="sd">        strict_region_order</span>
+<span class="sd">            If `True`, the first elements of ``region`` and ``noise_region`` will</span>
+<span class="sd">            be taken as the left bounds and the second elements will be taken</span>
+<span class="sd">            as the right bounds, even if this leads to selecting a signal which</span>
+<span class="sd">            wraps around itself. If ``False``, the ordering of the elements is</span>
+<span class="sd">            irrelevant, the higher frequency bound will be taken as the left bound,</span>
+<span class="sd">            and the lower frequency will be taken as the right bound of the region.</span>
+
 <span class="sd">        fprint</span>
 <span class="sd">            Whether of not to output information to the terminal.</span>
 
@@ -504,7 +520,7 @@
         <span class="n">sanity_check</span><span class="p">(</span>
             <span class="p">(</span>
                 <span class="s2">&quot;region_unit&quot;</span><span class="p">,</span> <span class="n">region_unit</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_frequency_unit</span><span class="p">,</span>
-                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,),</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hz_ppm_valid</span><span class="p">,),</span>
             <span class="p">),</span>
             <span class="p">(</span>
                 <span class="s2">&quot;initial_guess&quot;</span><span class="p">,</span> <span class="n">initial_guess</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_initial_guess</span><span class="p">,</span>
@@ -523,6 +539,7 @@
                 <span class="s2">&quot;cut_ratio&quot;</span><span class="p">,</span> <span class="n">cut_ratio</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
                 <span class="p">{</span><span class="s2">&quot;greater_than_one&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
             <span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;strict_region_order&quot;</span><span class="p">,</span> <span class="n">strict_region_order</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
         <span class="p">)</span>
 
         <span class="n">sanity_check</span><span class="p">(</span>
@@ -565,6 +582,16 @@
                     <span class="n">oscillators</span><span class="o">=</span><span class="n">oscillators</span><span class="p">,</span>
                     <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
                 <span class="p">)</span><span class="o">.</span><span class="n">get_params</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">x0</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">Result</span><span class="p">(</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[]]),</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[]]),</span>
+                            <span class="n">region</span><span class="p">,</span>
+                            <span class="n">noise_region</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
 
             <span class="n">final_result</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
                 <span class="n">expinfo</span><span class="p">,</span>
@@ -583,6 +610,7 @@
                 <span class="n">region</span><span class="p">,</span>
                 <span class="n">noise_region</span><span class="p">,</span>
                 <span class="n">region_unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">,</span>
+                <span class="n">strict_region_order</span><span class="o">=</span><span class="n">strict_region_order</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="n">cut_signal</span><span class="p">,</span> <span class="n">cut_expinfo</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_filtered_fid</span><span class="p">()</span>
@@ -607,6 +635,17 @@
                     <span class="n">oscillators</span><span class="o">=</span><span class="n">oscillators</span><span class="p">,</span>
                     <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
                 <span class="p">)</span><span class="o">.</span><span class="n">get_params</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">x0</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">Result</span><span class="p">(</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[]]),</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[]]),</span>
+                            <span class="n">region</span><span class="p">,</span>
+                            <span class="n">noise_region</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
 
             <span class="n">cut_result</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
                 <span class="n">cut_expinfo</span><span class="p">,</span>
@@ -637,6 +676,218 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Estimator1D.subband_estimate"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.subband_estimate">[docs]</a>    <span class="nd">@logger</span>
+    <span class="k">def</span> <span class="nf">subband_estimate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">noise_region</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+        <span class="n">noise_region_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hz&quot;</span><span class="p">,</span>
+        <span class="n">nsubbands</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gauss-newton&quot;</span><span class="p">,</span>
+        <span class="n">phase_variance</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">max_iterations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cut_ratio</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.1</span><span class="p">,</span>
+        <span class="n">mpm_trim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">,</span>
+        <span class="n">nlp_trim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fprint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">_log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Perform estiamtion on the entire signal via estimation of frequency-filtered</span>
+<span class="sd">        sub-bands.</span>
+
+<span class="sd">        This method splits the signal up into ``nsubbands`` equally-sized region</span>
+<span class="sd">        and extracts parameters from each region before finally concatenating all</span>
+<span class="sd">        the results together.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        noise_region</span>
+<span class="sd">            Specifies a frequency range where no noticeable signals reside, i.e. only</span>
+<span class="sd">            noise exists.</span>
+
+<span class="sd">        noise_region_unit</span>
+<span class="sd">            One of ``&quot;hz&quot;`` or ``&quot;ppm&quot;``. Specifies the units that ``noise_region``</span>
+<span class="sd">            have been given in.</span>
+
+<span class="sd">        subbands</span>
+<span class="sd">            The number of sub-bands to break the signal into. If ``None``, the number</span>
+<span class="sd">            will be set as the nearest integer to the data size divided by 500.</span>
+
+<span class="sd">        method</span>
+<span class="sd">            Specifies the optimisation method.</span>
+
+<span class="sd">            * ``&quot;exact&quot;`` Uses SciPy&#39;s</span>
+<span class="sd">              `trust-constr routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
+<span class="sd">              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr&gt;`_</span>
+<span class="sd">              The Hessian will be exact.</span>
+<span class="sd">            * ``&quot;gauss-newton&quot;`` Uses SciPy&#39;s</span>
+<span class="sd">              `trust-constr routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
+<span class="sd">              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr&gt;`_</span>
+<span class="sd">              The Hessian will be approximated based on the</span>
+<span class="sd">              `Gauss-Newton method &lt;https://en.wikipedia.org/wiki/</span>
+<span class="sd">              Gauss%E2%80%93Newton_algorithm&gt;`_</span>
+<span class="sd">            * ``&quot;lbfgs&quot;`` Uses SciPy&#39;s</span>
+<span class="sd">              `L-BFGS-B routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
+<span class="sd">              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb&gt;`_.</span>
+
+<span class="sd">        phase_variance</span>
+<span class="sd">            Whether or not to include the variance of oscillator phases in the cost</span>
+<span class="sd">            function. This should be set to ``True`` in cases where the signal being</span>
+<span class="sd">            considered is derived from well-phased data.</span>
+
+<span class="sd">        max_iterations</span>
+<span class="sd">            A value specifiying the number of iterations the routine may run</span>
+<span class="sd">            through before it is terminated. If ``None``, the default number</span>
+<span class="sd">            of maximum iterations is set (``100`` if ``method`` is</span>
+<span class="sd">            ``&quot;exact&quot;`` or ``&quot;gauss-newton&quot;``, and ``500`` if ``&quot;method&quot;`` is</span>
+<span class="sd">            ``&quot;lbfgs&quot;``).</span>
+
+<span class="sd">        mpm_trim</span>
+<span class="sd">            Specifies the maximal size allowed for the filtered signal when</span>
+<span class="sd">            undergoing the Matrix Pencil. If ``None``, no trimming is applied</span>
+<span class="sd">            to the signal. If an int, and the filtered signal has a size</span>
+<span class="sd">            greater than ``mpm_trim``, this signal will be set as</span>
+<span class="sd">            ``signal[:mpm_trim]``.</span>
+
+<span class="sd">        nlp_trim</span>
+<span class="sd">            Specifies the maximal size allowed for the filtered signal when undergoing</span>
+<span class="sd">            nonlinear programming. By default (``None``), no trimming is applied to</span>
+<span class="sd">            the signal. If an int, and the filtered signal has a size greater than</span>
+<span class="sd">            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.</span>
+
+<span class="sd">        strict_region_order</span>
+<span class="sd">            If `True`, the first elements of ``region`` and ``noise_region`` will</span>
+<span class="sd">            be taken as the left bounds and the second elements will be taken</span>
+<span class="sd">            as the right bounds, even if this leads to selecting a signal which</span>
+<span class="sd">            wraps around itself. If ``False``, the ordering of the elements is</span>
+<span class="sd">            irrelevant, the higher frequency bound will be taken as the left bound,</span>
+<span class="sd">            and the lower frequency will be taken as the right bound of the region.</span>
+
+<span class="sd">        fprint</span>
+<span class="sd">            Whether of not to output information to the terminal.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sanity_check</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;noise_region_unit&quot;</span><span class="p">,</span> <span class="n">noise_region_unit</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_frequency_unit</span><span class="p">,</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hz_ppm_valid</span><span class="p">,),</span>
+            <span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;nsubbands&quot;</span><span class="p">,</span> <span class="n">nsubbands</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;lbfgs&quot;</span><span class="p">,</span> <span class="s2">&quot;gauss-newton&quot;</span><span class="p">,</span> <span class="s2">&quot;exact&quot;</span><span class="p">)),</span>
+            <span class="p">(</span><span class="s2">&quot;phase_variance&quot;</span><span class="p">,</span> <span class="n">phase_variance</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="n">max_iterations</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;fprint&quot;</span><span class="p">,</span> <span class="n">fprint</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;mpm_trim&quot;</span><span class="p">,</span> <span class="n">mpm_trim</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;nlp_trim&quot;</span><span class="p">,</span> <span class="n">nlp_trim</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;cut_ratio&quot;</span><span class="p">,</span> <span class="n">cut_ratio</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;greater_than_one&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="n">sanity_check</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;noise_region&quot;</span><span class="p">,</span> <span class="n">noise_region</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_region</span><span class="p">,</span>
+                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(</span><span class="n">noise_region_unit</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">noise_region_unit</span><span class="p">)),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">nsubbands</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">nsubbands</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="mi">500</span><span class="p">))</span>
+
+        <span class="n">noise_region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert</span><span class="p">([</span><span class="n">noise_region</span><span class="p">],</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">noise_region_unit</span><span class="si">}</span><span class="s2">-&gt;hz&quot;</span><span class="p">)</span>
+
+        <span class="n">idxs</span><span class="p">,</span> <span class="n">mid_idxs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_subband_indices</span><span class="p">(</span><span class="n">nsubbands</span><span class="p">)</span>
+        <span class="n">shifts</span><span class="p">,</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">()</span>
+        <span class="n">regions</span> <span class="o">=</span> <span class="p">[(</span><span class="n">shifts</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">shifts</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">idxs</span><span class="p">]</span>
+        <span class="n">mid_regions</span> <span class="o">=</span> <span class="p">[(</span><span class="n">shifts</span><span class="p">[</span><span class="n">mid_idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">shifts</span><span class="p">[</span><span class="n">mid_idx</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span> <span class="k">for</span> <span class="n">mid_idx</span> <span class="ow">in</span> <span class="n">mid_idxs</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">fprint</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting sub-band estimation using </span><span class="si">{</span><span class="n">nsubbands</span><span class="si">}</span><span class="s2"> sub-bands:&quot;</span><span class="p">)</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">region</span><span class="p">,</span> <span class="n">mid_region</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">regions</span><span class="p">,</span> <span class="n">mid_regions</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">fprint</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;--&gt; Estimating region #</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mid_region</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">mid_region</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">Hz&quot;</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hz_ppm_valid</span><span class="p">:</span>
+                    <span class="n">mid_region_ppm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert</span><span class="p">([</span><span class="n">mid_region</span><span class="p">],</span> <span class="s2">&quot;hz-&gt;ppm&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; (</span><span class="si">{</span><span class="n">mid_region_ppm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">mid_region_ppm</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">ppm)&quot;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span>
+                <span class="n">region</span><span class="p">,</span> <span class="n">noise_region</span><span class="p">,</span> <span class="n">region_unit</span><span class="o">=</span><span class="s2">&quot;hz&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+                <span class="n">phase_variance</span><span class="o">=</span><span class="n">phase_variance</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="n">max_iterations</span><span class="p">,</span>
+                <span class="n">cut_ratio</span><span class="o">=</span><span class="n">cut_ratio</span><span class="p">,</span> <span class="n">mpm_trim</span><span class="o">=</span><span class="n">mpm_trim</span><span class="p">,</span> <span class="n">nlp_trim</span><span class="o">=</span><span class="n">nlp_trim</span><span class="p">,</span>
+                <span class="n">fprint</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">strict_region_order</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">p</span><span class="p">,</span> <span class="n">e</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_keep_middle_freqs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="o">.</span><span class="n">pop</span><span class="p">(),</span> <span class="n">mid_region</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">p</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">params</span> <span class="o">=</span> <span class="n">p</span>
+                <span class="n">errors</span> <span class="o">=</span> <span class="n">e</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">params</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">params</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+                <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">errors</span><span class="p">,</span> <span class="n">e</span><span class="p">))</span>
+
+        <span class="n">sort_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">params</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">])</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">sort_idx</span><span class="p">]</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">errors</span><span class="p">[</span><span class="n">sort_idx</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">fprint</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">GRE</span><span class="si">}</span><span class="s2">Sub-band estimation complete.</span><span class="si">{</span><span class="n">END</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Result</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">errors</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">noise_region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sfo</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_subband_indices</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">nsubbands</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]:</span>
+        <span class="c1"># (nsubbands - 2) full-size regions plus 2 half-size regions on each end.</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="p">(</span><span class="n">nsubbands</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="n">mid_width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">width</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">start_factor</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">/</span> <span class="p">(</span><span class="n">nsubbands</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="n">idxs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">mid_idxs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">nsubbands</span> <span class="o">-</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">start_factor</span>
+            <span class="n">mid_start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="n">i</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">start_factor</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">nsubbands</span> <span class="o">-</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="n">idxs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">start</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">idxs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">width</span><span class="p">))</span>
+            <span class="n">mid_idxs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">mid_start</span><span class="p">,</span> <span class="n">mid_start</span> <span class="o">+</span> <span class="n">mid_width</span><span class="p">))</span>
+
+        <span class="n">idxs</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start_factor</span><span class="p">))</span>
+        <span class="n">idxs</span><span class="o">.</span><span class="n">append</span><span class="p">(((</span><span class="n">nsubbands</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">start_factor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">mid_idxs</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">mid_idxs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">mid_idxs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">mid_idxs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">idxs</span><span class="p">,</span> <span class="n">mid_idxs</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_keep_middle_freqs</span><span class="p">(</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">Result</span><span class="p">,</span>
+        <span class="n">mid_region</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="n">to_remove</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">params</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">mid_region</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span>
+            <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">params</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">mid_region</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">to_remove</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span> <span class="n">to_remove</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+        <span class="p">)</span>
 
 <div class="viewcode-block" id="Estimator1D.make_fid"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.make_fid">[docs]</a>    <span class="k">def</span> <span class="nf">make_fid</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
