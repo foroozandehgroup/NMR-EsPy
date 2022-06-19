@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 19 Jun 2022 23:54:33 BST
+# Last Edited: Mon 20 Jun 2022 00:11:28 BST
 
 from __future__ import annotations
 import copy
@@ -662,7 +662,7 @@ class Estimator1D(Estimator):
             One of ``"hz"`` or ``"ppm"``. Specifies the units that ``noise_region``
             have been given in.
 
-        subbands
+        nsubbands
             The number of sub-bands to break the signal into. If ``None``, the number
             will be set as the nearest integer to the data size divided by 500.
 
@@ -718,6 +718,9 @@ class Estimator1D(Estimator):
 
         fprint
             Whether of not to output information to the terminal.
+
+        _log
+            Ignore this!
         """
         sanity_check(
             (
