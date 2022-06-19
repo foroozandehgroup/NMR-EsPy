@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 16 Jun 2022 17:03:00 BST
+# Last Edited: Mon 20 Jun 2022 00:09:54 BST
 
 from __future__ import annotations
 import copy
@@ -16,7 +16,7 @@ from nmr_sims.nuclei import Nucleus
 from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import ExpInfo, sig
-from nmrespy._colors import RED, END, USE_COLORAMA
+from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir
 
 from nmrespy._sanity import (
@@ -48,7 +48,7 @@ class Estimator1D(Estimator):
         * :py:meth:`new_bruker`
         * :py:meth:`new_synthetic_from_parameters`
         * :py:meth:`new_synthetic_from_simulation`
-        * :py:meth:`from_pickle`
+        * :py:meth:`from_pickle` (re-loads a previously saved estimator).
     """
 
     def __init__(
@@ -280,6 +280,13 @@ class Estimator1D(Estimator):
 
         return cls(data, expinfo)
 
+    @property
+    def spectrum(self) -> np.ndarray:
+        """Return the spectrum corresponding to ``self.data``"""
+        data = copy.deepcopy(self.data)
+        data[0] /= 2
+        return sig.ft(data)
+
     def phase_data(
         self,
         p0: float = 0.0,
@@ -367,6 +374,7 @@ class Estimator1D(Estimator):
         cut_ratio: Optional[float] = 1.1,
         mpm_trim: Optional[int] = 4096,
         nlp_trim: Optional[int] = None,
+        strict_region_order: bool = False,
         fprint: bool = True,
         _log: bool = True,
     ) -> None:
@@ -448,6 +456,14 @@ class Estimator1D(Estimator):
             the signal. If an int, and the filtered signal has a size greater than
             ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
 
+        strict_region_order
+            If `True`, the first elements of ``region`` and ``noise_region`` will
+            be taken as the left bounds and the second elements will be taken
+            as the right bounds, even if this leads to selecting a signal which
+            wraps around itself. If ``False``, the ordering of the elements is
+            irrelevant, the higher frequency bound will be taken as the left bound,
+            and the lower frequency will be taken as the right bound of the region.
+
         fprint
             Whether of not to output information to the terminal.
 
@@ -457,7 +473,7 @@ class Estimator1D(Estimator):
         sanity_check(
             (
                 "region_unit", region_unit, sfuncs.check_frequency_unit,
-                (self.sfo is not None,),
+                (self.hz_ppm_valid,),
             ),
             (
                 "initial_guess", initial_guess, sfuncs.check_initial_guess,
@@ -476,6 +492,7 @@ class Estimator1D(Estimator):
                 "cut_ratio", cut_ratio, sfuncs.check_float, (),
                 {"greater_than_one": True}, True,
             ),
+            ("strict_region_order", strict_region_order, sfuncs.check_bool),
         )
 
         sanity_check(
@@ -518,6 +535,16 @@ class Estimator1D(Estimator):
                     oscillators=oscillators,
                     fprint=fprint,
                 ).get_params()
+                if x0.size == 0:
+                    return self._results.append(
+                        Result(
+                            np.array([[]]),
+                            np.array([[]]),
+                            region,
+                            noise_region,
+                            self.sfo,
+                        )
+                    )
 
             final_result = NonlinearProgramming(
                 expinfo,
@@ -536,6 +563,7 @@ class Estimator1D(Estimator):
                 region,
                 noise_region,
                 region_unit=region_unit,
+                strict_region_order=strict_region_order,
             )
 
             cut_signal, cut_expinfo = filt.get_filtered_fid()
@@ -560,6 +588,17 @@ class Estimator1D(Estimator):
                     oscillators=oscillators,
                     fprint=fprint,
                 ).get_params()
+
+                if x0.size == 0:
+                    return self._results.append(
+                        Result(
+                            np.array([[]]),
+                            np.array([[]]),
+                            region,
+                            noise_region,
+                            self.sfo,
+                        )
+                    )
 
             cut_result = NonlinearProgramming(
                 cut_expinfo,
@@ -589,6 +628,221 @@ class Estimator1D(Estimator):
                 noise_region,
                 self.sfo,
             )
+        )
+
+    @logger
+    def subband_estimate(
+        self,
+        noise_region: Tuple[float, float],
+        noise_region_unit: str = "hz",
+        nsubbands: Optional[int] = None,
+        method: str = "gauss-newton",
+        phase_variance: bool = True,
+        max_iterations: Optional[int] = None,
+        cut_ratio: Optional[float] = 1.1,
+        mpm_trim: Optional[int] = 4096,
+        nlp_trim: Optional[int] = None,
+        fprint: bool = True,
+        _log: bool = True,
+    ) -> None:
+        r"""Perform estiamtion on the entire signal via estimation of frequency-filtered
+        sub-bands.
+
+        This method splits the signal up into ``nsubbands`` equally-sized region
+        and extracts parameters from each region before finally concatenating all
+        the results together.
+
+        Parameters
+        ----------
+        noise_region
+            Specifies a frequency range where no noticeable signals reside, i.e. only
+            noise exists.
+
+        noise_region_unit
+            One of ``"hz"`` or ``"ppm"``. Specifies the units that ``noise_region``
+            have been given in.
+
+        nsubbands
+            The number of sub-bands to break the signal into. If ``None``, the number
+            will be set as the nearest integer to the data size divided by 500.
+
+        method
+            Specifies the optimisation method.
+
+            * ``"exact"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be exact.
+            * ``"gauss-newton"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be approximated based on the
+              `Gauss-Newton method <https://en.wikipedia.org/wiki/
+              Gauss%E2%80%93Newton_algorithm>`_
+            * ``"lbfgs"`` Uses SciPy's
+              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
+
+        phase_variance
+            Whether or not to include the variance of oscillator phases in the cost
+            function. This should be set to ``True`` in cases where the signal being
+            considered is derived from well-phased data.
+
+        max_iterations
+            A value specifiying the number of iterations the routine may run
+            through before it is terminated. If ``None``, the default number
+            of maximum iterations is set (``100`` if ``method`` is
+            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
+            ``"lbfgs"``).
+
+        mpm_trim
+            Specifies the maximal size allowed for the filtered signal when
+            undergoing the Matrix Pencil. If ``None``, no trimming is applied
+            to the signal. If an int, and the filtered signal has a size
+            greater than ``mpm_trim``, this signal will be set as
+            ``signal[:mpm_trim]``.
+
+        nlp_trim
+            Specifies the maximal size allowed for the filtered signal when undergoing
+            nonlinear programming. By default (``None``), no trimming is applied to
+            the signal. If an int, and the filtered signal has a size greater than
+            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
+
+        strict_region_order
+            If `True`, the first elements of ``region`` and ``noise_region`` will
+            be taken as the left bounds and the second elements will be taken
+            as the right bounds, even if this leads to selecting a signal which
+            wraps around itself. If ``False``, the ordering of the elements is
+            irrelevant, the higher frequency bound will be taken as the left bound,
+            and the lower frequency will be taken as the right bound of the region.
+
+        fprint
+            Whether of not to output information to the terminal.
+
+        _log
+            Ignore this!
+        """
+        sanity_check(
+            (
+                "noise_region_unit", noise_region_unit, sfuncs.check_frequency_unit,
+                (self.hz_ppm_valid,),
+            ),
+            ("nsubbands", nsubbands, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
+            ("phase_variance", phase_variance, sfuncs.check_bool),
+            (
+                "max_iterations", max_iterations, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            ("fprint", fprint, sfuncs.check_bool),
+            ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
+            (
+                "cut_ratio", cut_ratio, sfuncs.check_float, (),
+                {"greater_than_one": True}, True,
+            ),
+        )
+
+        sanity_check(
+            (
+                "noise_region", noise_region, sfuncs.check_region,
+                (self.sw(noise_region_unit), self.offset(noise_region_unit)), {}, True,
+            ),
+        )
+
+        if nsubbands is None:
+            nsubbands = int(np.ceil(self.data.size / 500))
+
+        noise_region = self.convert([noise_region], f"{noise_region_unit}->hz")
+
+        idxs, mid_idxs = self._get_subband_indices(nsubbands)
+        shifts, = self.get_shifts()
+        regions = [(shifts[idx[0]], shifts[idx[1]]) for idx in idxs]
+        mid_regions = [(shifts[mid_idx[0]], shifts[mid_idx[1]]) for mid_idx in mid_idxs]
+
+        if fprint:
+            print(f"Starting sub-band estimation using {nsubbands} sub-bands:")
+
+        params = None
+        errors = None
+        for i, (region, mid_region) in enumerate(zip(regions, mid_regions), start=1):
+            if fprint:
+                msg = (
+                    f"--> Estimating region #{i}: "
+                    f"{mid_region[0]:.2f} - {mid_region[1]:.2f}Hz"
+                )
+                if self.hz_ppm_valid:
+                    mid_region_ppm = self.convert([mid_region], "hz->ppm")[0]
+                    msg += f" ({mid_region_ppm[0]:.3f} - {mid_region_ppm[1]:.3f}ppm)"
+                print(msg)
+
+            self.estimate(
+                region, noise_region, region_unit="hz", method=method,
+                phase_variance=phase_variance, max_iterations=max_iterations,
+                cut_ratio=cut_ratio, mpm_trim=mpm_trim, nlp_trim=nlp_trim,
+                fprint=False, strict_region_order=True, _log=False,
+            )
+            p, e = self._keep_middle_freqs(self._results.pop(), mid_region)
+
+            if p is None:
+                continue
+            if params is None:
+                params = p
+                errors = e
+            else:
+                params = np.vstack((params, p))
+                errors = np.vstack((errors, e))
+
+        sort_idx = np.argsort(params[:, 2])
+        params = params[sort_idx]
+        errors = errors[sort_idx]
+
+        if fprint:
+            print(f"{GRE}Sub-band estimation complete.{END}")
+        self._results.append(
+            Result(params, errors, region=None, noise_region=None, sfo=self.sfo)
+        )
+
+    def _get_subband_indices(
+        self,
+        nsubbands: int,
+    ) -> Tuple[Iterable[Tuple[int, int]], Iterable[Tuple[int, int]]]:
+        # (nsubbands - 2) full-size regions plus 2 half-size regions on each end.
+        width = int(np.ceil(2 * self.data.size / (nsubbands - 1)))
+        mid_width = int(np.ceil(width / 2))
+        start_factor = int(np.ceil(self.data.size / (nsubbands - 1)))
+        idxs = []
+        mid_idxs = []
+        for i in range(0, nsubbands - 2):
+            start = i * start_factor
+            mid_start = int(np.ceil((i + 0.5) * start_factor))
+            if i == nsubbands - 3:
+                idxs.append((start, self.data.size - 1))
+            else:
+                idxs.append((start, start + width))
+            mid_idxs.append((mid_start, mid_start + mid_width))
+
+        idxs.insert(0, (0, start_factor))
+        idxs.append(((nsubbands - 2) * start_factor, self.data.size - 1))
+        mid_idxs.insert(0, (0, mid_idxs[0][0]))
+        mid_idxs.append((mid_idxs[-1][-1], self.data.size - 1))
+
+        return idxs, mid_idxs
+
+    @staticmethod
+    def _keep_middle_freqs(
+        result: Result,
+        mid_region: Tuple[float, float],
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        if result.params.size == 0:
+            return None, None
+        to_remove = (
+            list(np.nonzero(result.params[:, 2] >= mid_region[0])[0]) +
+            list(np.nonzero(result.params[:, 2] < mid_region[1])[0])
+        )
+        return (
+            np.delete(result.params, to_remove, axis=0),
+            np.delete(result.errors, to_remove, axis=0),
         )
 
     def make_fid(

@@ -1,7 +1,7 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sat 18 Jun 2022 14:19:53 BST
+# Last Edited: Sun 19 Jun 2022 23:52:08 BST
 
 import copy
 from pathlib import Path
@@ -33,17 +33,19 @@ def view_files(to_view):
 
 class DefaultEstimator:
 
+    params = np.array(
+        [
+            [15, 0, 340, 7],
+            [15, 0, 350, 7],
+            [1, 0, 700, 7],
+            [3, 0, 710, 7],
+            [3, 0, 720, 7],
+            [1, 0, 730, 7],
+        ]
+    )
+
     _before_estimation = ne.Estimator1D.new_synthetic_from_parameters(
-        params=np.array(
-            [
-                [15, 0, 340, 7],
-                [15, 0, 350, 7],
-                [1, 0, 700, 7],
-                [3, 0, 710, 7],
-                [3, 0, 720, 7],
-                [1, 0, 730, 7],
-            ]
-        ),
+        params=params,
         pts=4096,
         sw=1000.,
         offset=500.,
@@ -125,7 +127,7 @@ def test_new_synthetic_from_simulation(monkeypatch):
         spin_system=system,
         sw=2.,
         offset=4.,
-        pts=4048,
+        pts=4096,
         freq_unit="ppm",
     )
 
@@ -370,3 +372,9 @@ def test_pickle():
     # TODO: Simply checks that `from_pickle` runs successfully.
     # Should include an `__eq__` method into `Estimator` to check for equality.
     assert isinstance(ne.Estimator1D.from_pickle("test_pickle"), ne.Estimator1D)
+
+
+def test_subband_estimate():
+    estimator = DefaultEstimator.before_estimation()
+    estimator.subband_estimate((550., 525.))
+    assert utils.close(estimator.get_params(), DefaultEstimator.params, tol=0.2)

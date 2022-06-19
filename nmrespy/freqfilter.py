@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 20:06:24 BST
+# Last Edited: Sat 18 Jun 2022 18:15:20 BST
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters.
 
@@ -48,6 +48,7 @@ class Filter(ExpInfo):
         expinfo: ExpInfo,
         region: Region,
         noise_region: Region,
+        strict_region_order: bool = False,
         region_unit: str = "hz",
         sg_power: float = 40.0,
         twodim_dtype: Optional[str] = None,
@@ -146,8 +147,8 @@ class Filter(ExpInfo):
         # to convert to array indices
         self.default_pts = ve.shape
 
-        self._region = self._process_region(region, region_unit)
-        self._noise_region = self._process_region(noise_region, region_unit)
+        self._region = self._process_region(region, region_unit, strict_region_order)
+        self._noise_region = self._process_region(noise_region, region_unit, strict_region_order)  # noqa: E501
         self._spectrum = sig.ft(ve, axes=self.axes)
 
     @property
@@ -163,12 +164,17 @@ class Filter(ExpInfo):
         self,
         region: Union[Iterable[Optional[Tuple[float, float]]], Tuple[float, float]],
         region_unit: str,
+        strict_region_order: bool,
     ) -> Iterable[Tuple[int, int]]:
         if self.dim == 1 and len(region) == 2:
             region = [region]
+
+        sort_func = lambda r: r if strict_region_order else tuple(sorted(r))
         return tuple(
-            [tuple(sorted(r)) if r is not None else None
-             for r in self.convert(region, f"{region_unit}->idx")]
+            [
+                sort_func(r) if r is not None else None
+                for r in self.convert(region, f"{region_unit}->idx")
+            ]
         )
 
     @property
