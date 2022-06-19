@@ -802,7 +802,7 @@ the results together.</p>
 noise exists.</p></li>
 <li><p><strong>noise_region_unit</strong> (<em>str</em>) – One of <code class="docutils literal notranslate"><span class="pre">&quot;hz&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;ppm&quot;</span></code>. Specifies the units that <code class="docutils literal notranslate"><span class="pre">noise_region</span></code>
 have been given in.</p></li>
-<li><p><strong>subbands</strong> – The number of sub-bands to break the signal into. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the number
+<li><p><strong>nsubbands</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – The number of sub-bands to break the signal into. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the number
 will be set as the nearest integer to the data size divided by 500.</p></li>
 <li><p><strong>method</strong> (<em>str</em>) – <p>Specifies the optimisation method.</p>
 <ul>
@@ -841,9 +841,8 @@ wraps around itself. If <code class="docutils literal notranslate"><span class="
 irrelevant, the higher frequency bound will be taken as the left bound,
 and the lower frequency will be taken as the right bound of the region.</p></li>
 <li><p><strong>fprint</strong> (<em>bool</em>) – Whether of not to output information to the terminal.</p></li>
-<li><p><strong>nsubbands</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – </p></li>
+<li><p><strong>_log</strong> (<em>bool</em>) – Ignore this!</p></li>
 <li><p><strong>cut_ratio</strong> (<em>Optional</em><em>[</em><em>float</em><em>]</em>) – </p></li>
-<li><p><strong>_log</strong> (<em>bool</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>

@@ -48,7 +48,7 @@
 <span></span><span class="c1"># onedim.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Sun 19 Jun 2022 23:54:33 BST</span>
+<span class="c1"># Last Edited: Mon 20 Jun 2022 00:09:54 BST</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">import</span> <span class="nn">copy</span>
@@ -709,7 +709,7 @@
 <span class="sd">            One of ``&quot;hz&quot;`` or ``&quot;ppm&quot;``. Specifies the units that ``noise_region``</span>
 <span class="sd">            have been given in.</span>
 
-<span class="sd">        subbands</span>
+<span class="sd">        nsubbands</span>
 <span class="sd">            The number of sub-bands to break the signal into. If ``None``, the number</span>
 <span class="sd">            will be set as the nearest integer to the data size divided by 500.</span>
 
@@ -765,6 +765,9 @@
 
 <span class="sd">        fprint</span>
 <span class="sd">            Whether of not to output information to the terminal.</span>
+
+<span class="sd">        _log</span>
+<span class="sd">            Ignore this!</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sanity_check</span><span class="p">(</span>
             <span class="p">(</span>
