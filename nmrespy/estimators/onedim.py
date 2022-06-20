@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 20 Jun 2022 00:11:28 BST
+# Last Edited: Tue 21 Jun 2022 00:20:49 BST
 
 from __future__ import annotations
 import copy
@@ -369,6 +369,7 @@ class Estimator1D(Estimator):
         region_unit: str = "hz",
         initial_guess: Optional[Union[np.ndarray, int]] = None,
         method: str = "gauss-newton",
+        mode: str = "apfd",
         phase_variance: bool = True,
         max_iterations: Optional[int] = None,
         cut_ratio: Optional[float] = 1.1,
@@ -431,6 +432,11 @@ class Estimator1D(Estimator):
               `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
               optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
+        mode
+            A string containing a subset of the characters ``"a"`` (amplitudes),
+            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
+            Specifies which types of parameters should be considered for optimisation.
+
         phase_variance
             Whether or not to include the variance of oscillator phases in the cost
             function. This should be set to ``True`` in cases where the signal being
@@ -481,6 +487,7 @@ class Estimator1D(Estimator):
             ),
             ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
             ("phase_variance", phase_variance, sfuncs.check_bool),
+            ("mode", mode, sfuncs.check_optimiser_mode),
             (
                 "max_iterations", max_iterations, sfuncs.check_int, (),
                 {"min_value": 1}, True,
@@ -552,6 +559,7 @@ class Estimator1D(Estimator):
                 x0,
                 phase_variance=phase_variance,
                 method=method,
+                mode=mode,
                 max_iterations=max_iterations,
                 fprint=fprint,
             )
@@ -605,6 +613,7 @@ class Estimator1D(Estimator):
                 cut_signal[:mpm_trim],
                 x0,
                 phase_variance=phase_variance,
+                mode=mode,
                 method=method,
                 max_iterations=max_iterations,
                 fprint=fprint,
@@ -615,6 +624,7 @@ class Estimator1D(Estimator):
                 uncut_signal[:nlp_trim],
                 cut_result,
                 phase_variance=phase_variance,
+                mode=mode,
                 method=method,
                 max_iterations=max_iterations,
                 fprint=fprint,

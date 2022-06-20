@@ -1,7 +1,7 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 19 Jun 2022 23:52:08 BST
+# Last Edited: Tue 21 Jun 2022 00:17:47 BST
 
 import copy
 from pathlib import Path
@@ -41,7 +41,8 @@ class DefaultEstimator:
             [3, 0, 710, 7],
             [3, 0, 720, 7],
             [1, 0, 730, 7],
-        ]
+        ],
+        dtype="float64",
     )
 
     _before_estimation = ne.Estimator1D.new_synthetic_from_parameters(
@@ -216,6 +217,12 @@ def test_estimate():
             method=method,
             fprint=False,
         )
+
+    initial_guess = copy.deepcopy(DefaultEstimator.params)
+    initial_guess[:, 0] += np.random.uniform(low=-0.5, high=0.5)
+    initial_guess[:, 2] += np.random.uniform(low=-2, high=2)
+    estimator.estimate(mode="af", initial_guess=initial_guess, fprint=False)
+    assert np.isnan(estimator.get_errors(indices=[-1])[:, (1, 3)]).all()
 
 
 def test_get_params_and_errors():
