@@ -1,7 +1,7 @@
 # bbqchili.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 22 Jun 2022 00:36:59 BST
+# Last Edited: Wed 22 Jun 2022 20:01:12 BST
 
 from __future__ import annotations
 from pathlib import Path
@@ -13,6 +13,7 @@ from nmrespy._files import check_existent_dir
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 import nmrglue as ng
 import numpy as np
+from scipy.optimize import minimize, Bounds
 
 from . import logger
 
@@ -22,6 +23,13 @@ if USE_COLORAMA:
 
 
 class BBQChili(ne.Estimator1D):
+    """Estimator class for implementing the BBQChili technique.
+
+    .. note::
+
+        To create an instance of ``BBQChili`` from Bruker data, use
+        :py:meth:`new_from_bruker`.
+    """
 
     def __init__(
         self,
@@ -32,6 +40,44 @@ class BBQChili(ne.Estimator1D):
         prescan_delay: float,
         datapath: Optional[Path] = None,
     ) -> None:
+        """
+        Parameters
+        ----------
+        data
+            Time-domain data to consider.
+
+        expinfo
+            Experiment information.
+
+        pulse_length
+            The length of the chirp pulse.
+
+        pulse_bandwidth
+            The bandwidth of the chirp pulse.
+
+        prescan_delay
+            The delay between the chirp pulse and acquisition.
+
+        datapath
+            If applicable, the path that the data was derived from.
+        """
+        sanity_check(
+            ("data", data, sfuncs.check_ndarray, (), {"dim": 1}),
+            ("expinfo", expinfo, sfuncs.check_expinfo, (), {"dim": 1}),
+            (
+                "pulse_length", pulse_length, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            (
+                "pulse_bandwidth", pulse_bandwidth, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            (
+                "prescan_delay", prescan_delay, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            ("datapath", datapath, check_existent_dir, (), {}, True),
+        )
         self.pulse_length = pulse_length
         self.pulse_bandwidth = pulse_bandwidth
         self.prescan_delay = prescan_delay
@@ -44,6 +90,19 @@ class BBQChili(ne.Estimator1D):
         pulse_bandwidth: float,
         directory: Union[str, Path],
     ) -> BBQChili:
+        """Set up a ``BBQChili`` instance from Bruker data.
+
+        Parameters
+        ----------
+        pulse_length
+            The length of the chirp pulse.
+
+        pulse_bandwidth
+            The bandwidth of the chirp pulse.
+
+        directory
+            The directory under which the data of interest is stored.
+        """
         sanity_check(
             (
                 "pulse_length", pulse_length, sfuncs.check_float, (),
@@ -77,18 +136,22 @@ class BBQChili(ne.Estimator1D):
 
     @logger
     def estimate(self, **kwargs) -> None:
-        """See :py:meth:`nmrespy.Estimator1D.estimate`. N.B. ``phase_variance``
-        will be ignored if you give it explicitly. This will always be set to
-        ``False``"""
+        """See :py:meth:`nmrespy.Estimator1D.estimate`.
+
+        N.B. ``phase_variance`` will be ignored if you give it explicitly. This
+        will always be set to ``False``
+        """
         kwargs["phase_variance"] = False
         kwargs["_log"] = False
         super().estimate(**kwargs)
 
     @logger
     def subband_estimate(self, noise_region: Tuple[float, float], **kwargs) -> None:
-        """See :py:meth:`nmrespy.Estimator1D.subband_estimate`. N.B.
-        ``phase_variance`` will be ignored if you give it explicitly. This will
-        always be set to ``False``"""
+        """See :py:meth:`nmrespy.Estimator1D.subband_estimate`.
+
+        N.B.  ``phase_variance`` will be ignored if you give it explicitly.
+        This will always be set to ``False``
+        """
         kwargs["phase_variance"] = False
         kwargs["_log"] = False
         super().subband_estimate(noise_region, **kwargs)
@@ -122,7 +185,7 @@ class BBQChili(ne.Estimator1D):
             timepoints = base_timepoints - self._time_offset(f)
             fid += a * np.exp(1j * p) * np.exp((2j * np.pi * f - d) * timepoints)
 
-        return fid
+        return self._zero_order_phase_correction(fid)
 
     def _time_offset(self, freq: float) -> float:
         """Calculate the time-zero for an oscillator of a particular frequency.
@@ -139,3 +202,26 @@ class BBQChili(ne.Estimator1D):
                 )
             )
         )
+
+    def _zero_order_phase_correction(self, data: np.ndarray) -> np.ndarray:
+        """Zero-order phase correction on time-domain data.
+
+        Determines the phase which maximises the real component of the initial point.
+
+        Parameters
+        ----------
+        data
+            Data to phase.
+        """
+        def cost(phi0, data):
+            return -(data[0] * np.exp(-1j * phi0)).real
+
+        result = minimize(
+            fun=cost,
+            x0=np.array([0], dtype="float64"),
+            args=(data,),
+            method="L-BFGS-B",
+            jac=None,
+            bounds=Bounds(-np.pi, np.pi),
+        )["x"]
+        return data * np.exp(-1j * result)
