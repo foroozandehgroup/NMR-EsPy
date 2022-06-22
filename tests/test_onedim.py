@@ -1,7 +1,7 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Jun 2022 00:17:47 BST
+# Last Edited: Wed 22 Jun 2022 11:08:27 BST
 
 import copy
 from pathlib import Path

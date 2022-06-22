@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 16 Jun 2022 17:38:36 BST
+# Last Edited: Wed 22 Jun 2022 11:06:18 BST
 
 from __future__ import annotations
 import abc
@@ -12,7 +12,7 @@ from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
 
-from nmrespy import ExpInfo
+import nmrespy as ne
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import (
     check_saveable_path,
@@ -24,6 +24,7 @@ from nmrespy._files import (
 from nmrespy._result_fetcher import ResultFetcher
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy.write import ResultWriter
+from nmrespy.write.textfile import experiment_info, titled_table
 
 if USE_COLORAMA:
     import colorama
@@ -44,13 +45,13 @@ def logger(f: callable):
     return inner
 
 
-class Estimator(ExpInfo, metaclass=abc.ABCMeta):
+class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
     """Base estimation class."""
 
     def __init__(
         self,
         data: np.ndarray,
-        expinfo: ExpInfo,
+        expinfo: ne.ExpInfo,
         datapath: Optional[Path] = None,
     ) -> None:
         """Initialise a class instance.
@@ -88,9 +89,53 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
             f"--> Created @ {now}\n"
         )
 
+    def __str__(self) -> str:
+        writer = ResultWriter(
+            self.expinfo,
+            [params for params in self.get_params(merge=False)]
+            if self._results else None,
+            [errors for errors in self.get_errors(merge=False)]
+            if self._results else None,
+            None,
+        )
+        acqu_table = experiment_info(writer._construct_experiment_info(sig_figs=5))
+        if self._results:
+            titles = [
+                f"{r.region[0][0]:.2f} - {r.region[0][1]:.2f}Hz"
+                if r.region is not None else "Full signal"
+                for r in self.get_results()
+            ]
+            param_tables = "\n\n" + "\n\n".join([
+                titled_table(title, params) for title, params in zip(
+                    titles,
+                    writer._construct_parameters(
+                        sig_figs=5, sci_lims=(-2, 3), integral_mode="relative",
+                    )
+                )
+            ])
+        else:
+            param_tables = "\n\nNo estimation performed yet."
+
+        return (
+            f"<{self.__class__.__name__} object at {hex(id(self))}>\n\n"
+            f"{acqu_table}{param_tables}"
+        )
+
     def _check_results_exist(self) -> None:
         if not self._results:
             raise ValueError(f"{RED}No estimation has been carried out yet!{END}")
+
+    @property
+    def expinfo(self) -> ne.ExpInfo:
+        return ne.ExpInfo(
+            self.dim,
+            self.sw(),
+            self.offset(),
+            self.sfo,
+            self.nuclei,
+            self.default_pts,
+            self.fn_mode,
+        )
 
     @property
     def data(self) -> np.ndarray:
@@ -892,19 +937,10 @@ class Estimator(ExpInfo, metaclass=abc.ABCMeta):
         )
         sanity_check(("path", path, check_saveable_path, (fmt, force_overwrite)))
 
-        expinfo = ExpInfo(
-            self.dim,
-            self.sw(),
-            self.offset(),
-            self.sfo,
-            self.nuclei,
-            self.default_pts,
-        )
-
         indices = range(len(self._results)) if indices is None else indices
         results = [self._results[i] for i in indices]
         writer = ResultWriter(
-            expinfo,
+            self.expinfo,
             [result.get_params() for result in results],
             [result.get_errors() for result in results],
             description,

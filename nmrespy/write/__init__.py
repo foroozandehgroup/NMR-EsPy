@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 08 Jun 2022 18:05:29 BST
+# Last Edited: Wed 22 Jun 2022 11:00:15 BST
 
 r"""Module for the creation of text and PDF files of estimation results.
 
@@ -193,9 +193,9 @@ class ResultWriter(ExpInfo):
         def makeiter(obj):
             return (obj,) if isinstance(obj, np.ndarray) else obj
 
-        self.params = makeiter(params)
-        self.errors = makeiter(errors)
-        if self.errors is None:
+        self.params = makeiter(params) if params is not None else None
+        self.errors = makeiter(errors) if errors is not None else None
+        if self.errors is None and self.params is not None:
             self.errors = tuple(len(self.params) * [None])
 
         self.description = description if description is not None else ""
@@ -205,7 +205,7 @@ class ResultWriter(ExpInfo):
                 self.default_pts if self.default_pts is not None else self.dim * [4096],
             )
             for params in self.params
-        ])
+        ]) if self.params is not None else None
 
     def write(
         self,
