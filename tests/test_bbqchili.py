@@ -1,7 +1,7 @@
 # test_bbqchili.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 22 Jun 2022 20:03:28 BST
+# Last Edited: Wed 22 Jun 2022 20:19:48 BST
 
 import copy
 import matplotlib as mpl
@@ -84,12 +84,4 @@ def test_estimate():
 
 def test_back_extrapolate():
     estimator = DefaultEstimator.after_estimation()
-    fid = estimator.back_extrapolate()
-    fid[0] /= 2
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    shifts, = estimator.get_shifts()
-    spectrum = ne.sig.ft(fid)
-    ax.plot(shifts, spectrum)
-    ax.set_xlim(shifts[0], shifts[-1])
-    plt.show()
+    estimator.back_extrapolate()
