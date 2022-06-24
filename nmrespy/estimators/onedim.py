@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 20 Jun 2022 00:09:54 BST
+# Last Edited: Thu 23 Jun 2022 21:35:42 BST
 
 from __future__ import annotations
 import copy
@@ -75,7 +75,7 @@ class Estimator1D(Estimator):
     def new_bruker(
         cls,
         directory: Union[str, Path],
-        ask_convdta: bool = True,
+        convdta: bool = True,
     ) -> Estimator1D:
         """Create a new instance from Bruker-formatted data.
 
@@ -84,11 +84,9 @@ class Estimator1D(Estimator):
         directory
             Absolute path to data directory.
 
-        ask_convdta
-            If ``True``, the user will be warned that the data should have its
-            digitial filter removed prior to importing if the data to be impoprted
-            is from an ``fid`` or ``ser`` file. If ``False``, the user is not
-            warned.
+        convdta
+            If ``True`` and the data is derived from an ``fid`` file, removal of
+            the FID's digital filter will be carried out.
 
         Notes
         -----
@@ -108,24 +106,14 @@ class Estimator1D(Estimator):
           + ``directory/1r``
           + ``directory/../../acqus``
           + ``directory/procs``
-
-        **Digital Filters**
-
-        If you are importing raw FID data, make sure the path specified
-        corresponds to an ``fid`` file which has had its group delay artefact
-        removed. To do this, open the data you wish to analyse in TopSpin, and
-        enter ``convdta`` in the bottom-left command line. You will be prompted
-        to enter a value for the new data directory. It is this value you
-        should use in ``directory``, not the one corresponding to the original
-        (uncorrected) signal.
         """
         sanity_check(
             ("directory", directory, check_existent_dir),
-            ("ask_convdta", ask_convdta, sfuncs.check_bool),
+            ("convdta", convdta, sfuncs.check_bool),
         )
 
         directory = Path(directory).expanduser()
-        data, expinfo = load_bruker(directory, ask_convdta=ask_convdta)
+        data, expinfo = load_bruker(directory)
 
         if data.ndim != 1:
             raise ValueError(f"{RED}Data dimension should be 1.{END}")
@@ -133,6 +121,10 @@ class Estimator1D(Estimator):
         if directory.parent.name == "pdata":
             slice_ = slice(0, data.shape[0] // 2)
             data = (2 * sig.ift(data))[slice_]
+
+        elif convdta:
+            grpdly = expinfo.parameters["acqus"]["GRPDLY"]
+            data = sig.convdta(data, grpdly)
 
         return cls(data, expinfo, directory)
 

@@ -1,7 +1,7 @@
 # load.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 18:02:41 GMT
+# Last Edited: Thu 23 Jun 2022 21:27:39 BST
 
 """Provides functionality for importing NMR data."""
 
@@ -47,19 +47,13 @@ class _BrukerDatasetForNmrespy(bruker_utils.BrukerDataset):
         )
 
 
-def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, ExpInfo]:
+def load_bruker(directory: str) -> Tuple[np.ndarray, ExpInfo]:
     """Load data and experiment information from Bruker format.
 
     Parameters
     ----------
     directory
         Absolute path to data directory.
-
-    ask_convdta
-        If ``True``, the user will be warned that the data should have its
-        digitial filter removed prior to importing if the data to be impoprted
-        is from an ``fid`` or ``ser`` file. If ``False``, the user is not
-        warned.
 
     Returns
     -------
@@ -123,24 +117,6 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
         + ``directory/procs``
         + ``directory/proc2s``
 
-    **Digital Filters**
-
-    If you are importing raw FID data, make sure the path
-    specified corresponds to an ``fid`` or ``ser`` file which has had its
-    group delay artefact removed. To do this, open the data you wish to analyse in
-    TopSpin, and enter ``convdta`` in the bottom-left command line. You will be
-    prompted to enter a value for the new data directory. It is this value you
-    should use in ``directory``, not the one corresponding to the original
-    (uncorrected) signal.
-
-    **For Development**
-
-    .. todo::
-
-        Incorporate functionality to phase correct data to remove group delay.
-        This would circumvent the need to ask the user to ensure they have
-        performed ``convdta`` prior to importing.
-
     Example
     -------
     .. code:: pycon
@@ -203,24 +179,7 @@ def load_bruker(directory: str, ask_convdta: bool = True) -> Tuple[np.ndarray, E
     if dataset.dim > 2:
         raise MoreThanTwoDimError()
 
-    if dataset.dtype == "fid" and ask_convdta:
-        msg = (
-            f"{ORA}You should ensure you data has had its group delay "
-            "artefact removed. Prior to dealing with the data in NMR-EsPy, "
-            "you should call the `CONVDTA` command on the dataset. If this "
-            "has already been done, feel free to proceed. If not, quit the "
-            f"program.\nContinue?{END}"
-        )
-
-        response = get_yes_no(msg)
-        if not response:
-            exit()
-
-    data = dataset.data
-    expinfo = dataset.expinfo
-    expinfo._default_pts = data.shape
-
-    return data, expinfo
+    return dataset.data, dataset.expinfo
 
 
 # =================================================
