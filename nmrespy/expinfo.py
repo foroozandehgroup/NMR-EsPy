@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 15 May 2022 12:12:18 BST
+# Last Edited: Fri 24 Jun 2022 12:18:01 BST
 
 import re
 from typing import Any, Iterable, Optional, Tuple, Union
@@ -166,6 +166,16 @@ class ExpInfo(FrequencyConverter):
     def sfo(self) -> Optional[Iterable[Optional[float]]]:
         "Get the transmitter frequency (MHz)."
         return self._sfo
+
+    @property
+    def bf(self) -> Optional[Iterable[Optional[float]]]:
+        "Get the basic frequency (MHz)."
+        if self.sfo is None:
+            return None
+        else:
+            return tuple(
+                [sfo - 1e-6 * offset for sfo, offset in zip(self._sfo, self._offset)]
+            )
 
     @property
     def nuclei(self) -> Optional[Iterable[Optional[str]]]:

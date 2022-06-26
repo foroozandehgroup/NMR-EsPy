@@ -1,7 +1,7 @@
 # _files.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 05 Apr 2022 14:29:27 BST
+# Last Edited: Fri 24 Jun 2022 13:29:37 BST
 
 from pathlib import Path
 import pickle
@@ -23,7 +23,7 @@ def append_suffix(path: Path, suffix: Optional[str]) -> Path:
     return path
 
 
-def configure_path(path: Union[str, Path], suffix: str) -> Path:
+def configure_path(path: Union[str, Path], suffix: Optional[str] = None) -> Path:
     return append_suffix(Path(path).expanduser(), suffix)
 
 
@@ -88,3 +88,22 @@ def check_existent_dir(obj: Any) -> Optional[str]:
 
     if not path.is_dir():
         return f"Path {path} is not a directory."
+
+
+def check_saveable_dir(
+    obj: Any,
+    force_overwrite: bool,
+) -> Optional[str]:
+    if isinstance(obj, (Path, str)):
+        path = configure_path(obj)
+    else:
+        return "Should be a pathlib.Path object or a str specifying a path."
+
+    parent = path.parent
+    if not parent.is_dir():
+        return f"The parent directory {parent} doesn't exist."
+
+    if not force_overwrite and path.is_dir():
+        response = get_yes_no(f"Directory {path} already exists. Overwrite?")
+        if not response:
+            return "Overwrite not permitted."
