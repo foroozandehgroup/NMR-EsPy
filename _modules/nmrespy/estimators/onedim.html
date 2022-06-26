@@ -48,11 +48,13 @@
 <span></span><span class="c1"># onedim.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Mon 20 Jun 2022 00:09:54 BST</span>
+<span class="c1"># Last Edited: Fri 24 Jun 2022 20:18:21 BST</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -65,7 +67,7 @@
 <span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">ExpInfo</span><span class="p">,</span> <span class="n">sig</span>
 <span class="kn">from</span> <span class="nn">nmrespy._colors</span> <span class="kn">import</span> <span class="n">RED</span><span class="p">,</span> <span class="n">GRE</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">USE_COLORAMA</span>
 <span class="kn">from</span> <span class="nn">nmrespy._files</span> <span class="kn">import</span> <span class="n">check_existent_dir</span>
-
+<span class="kn">from</span> <span class="nn">nmrespy._paths_and_links</span> <span class="kn">import</span> <span class="n">NMRESPYPATH</span>
 <span class="kn">from</span> <span class="nn">nmrespy._sanity</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">sanity_check</span><span class="p">,</span>
     <span class="n">funcs</span> <span class="k">as</span> <span class="n">sfuncs</span><span class="p">,</span>
@@ -122,7 +124,7 @@
     <span class="k">def</span> <span class="nf">new_bruker</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span>
         <span class="n">directory</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
-        <span class="n">ask_convdta</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">convdta</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Estimator1D</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Create a new instance from Bruker-formatted data.</span>
 
@@ -131,11 +133,9 @@
 <span class="sd">        directory</span>
 <span class="sd">            Absolute path to data directory.</span>
 
-<span class="sd">        ask_convdta</span>
-<span class="sd">            If ``True``, the user will be warned that the data should have its</span>
-<span class="sd">            digitial filter removed prior to importing if the data to be impoprted</span>
-<span class="sd">            is from an ``fid`` or ``ser`` file. If ``False``, the user is not</span>
-<span class="sd">            warned.</span>
+<span class="sd">        convdta</span>
+<span class="sd">            If ``True`` and the data is derived from an ``fid`` file, removal of</span>
+<span class="sd">            the FID&#39;s digital filter will be carried out.</span>
 
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
@@ -155,24 +155,14 @@
 <span class="sd">          + ``directory/1r``</span>
 <span class="sd">          + ``directory/../../acqus``</span>
 <span class="sd">          + ``directory/procs``</span>
-
-<span class="sd">        **Digital Filters**</span>
-
-<span class="sd">        If you are importing raw FID data, make sure the path specified</span>
-<span class="sd">        corresponds to an ``fid`` file which has had its group delay artefact</span>
-<span class="sd">        removed. To do this, open the data you wish to analyse in TopSpin, and</span>
-<span class="sd">        enter ``convdta`` in the bottom-left command line. You will be prompted</span>
-<span class="sd">        to enter a value for the new data directory. It is this value you</span>
-<span class="sd">        should use in ``directory``, not the one corresponding to the original</span>
-<span class="sd">        (uncorrected) signal.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sanity_check</span><span class="p">(</span>
             <span class="p">(</span><span class="s2">&quot;directory&quot;</span><span class="p">,</span> <span class="n">directory</span><span class="p">,</span> <span class="n">check_existent_dir</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;ask_convdta&quot;</span><span class="p">,</span> <span class="n">ask_convdta</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;convdta&quot;</span><span class="p">,</span> <span class="n">convdta</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
         <span class="p">)</span>
 
         <span class="n">directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
-        <span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span> <span class="o">=</span> <span class="n">load_bruker</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">ask_convdta</span><span class="o">=</span><span class="n">ask_convdta</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span> <span class="o">=</span> <span class="n">load_bruker</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">RED</span><span class="si">}</span><span class="s2">Data dimension should be 1.</span><span class="si">{</span><span class="n">END</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -180,6 +170,10 @@
         <span class="k">if</span> <span class="n">directory</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;pdata&quot;</span><span class="p">:</span>
             <span class="n">slice_</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
             <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sig</span><span class="o">.</span><span class="n">ift</span><span class="p">(</span><span class="n">data</span><span class="p">))[</span><span class="n">slice_</span><span class="p">]</span>
+
+        <span class="k">elif</span> <span class="n">convdta</span><span class="p">:</span>
+            <span class="n">grpdly</span> <span class="o">=</span> <span class="n">expinfo</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;acqus&quot;</span><span class="p">][</span><span class="s2">&quot;GRPDLY&quot;</span><span class="p">]</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">convdta</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">grpdly</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span><span class="p">,</span> <span class="n">directory</span><span class="p">)</span></div>
 
@@ -928,6 +922,90 @@
         <span class="p">)</span>
 
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">pts</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">write_to_topspin</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
+        <span class="n">expno</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">force_overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">res_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">)</span>
+        <span class="n">sanity_check</span><span class="p">(</span>
+            <span class="p">(</span><span class="s2">&quot;expno&quot;</span><span class="p">,</span> <span class="n">expno</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}),</span>
+            <span class="p">(</span><span class="s2">&quot;force_overwrite&quot;</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;indices&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="o">-</span><span class="n">res_len</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="n">res_len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;pts&quot;</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span>
+                    <span class="s2">&quot;len_one_can_be_listless&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="kc">True</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="n">fid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">pts</span><span class="p">)</span>
+        <span class="n">fid_uncomplex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">fid</span><span class="o">.</span><span class="n">size</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float64&quot;</span><span class="p">)</span>
+        <span class="n">fid_uncomplex</span><span class="p">[::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">real</span>
+        <span class="n">fid_uncomplex</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">imag</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">NMRESPYPATH</span> <span class="o">/</span> <span class="s2">&quot;ts_templates/acqus&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">text</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+        <span class="n">int_regex</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;-?\d+&quot;</span>
+        <span class="n">float_regex</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;-?\d+(\.\d+)?&quot;</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+            <span class="sa">r</span><span class="s2">&quot;\$BF1= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span>
+            <span class="s2">&quot;$BF1= &quot;</span> <span class="o">+</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">500.</span> <span class="o">-</span> <span class="mf">1e-6</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">()[</span><span class="mi">0</span><span class="p">]),</span>
+            <span class="n">text</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$BYTORDA= &quot;</span> <span class="o">+</span> <span class="n">int_regex</span><span class="p">,</span> <span class="s2">&quot;$BYTORDA= 0&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$DTYPA= &quot;</span> <span class="o">+</span> <span class="n">int_regex</span><span class="p">,</span> <span class="s2">&quot;$DTYPA= 2&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$GRPDLY= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span> <span class="s2">&quot;$GRPDLY= 0&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+            <span class="sa">r</span><span class="s2">&quot;\$NUC1= &lt;\d+[a-zA-Z]+&gt;&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;$NUC1= &lt;&quot;</span> <span class="o">+</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nuclei</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nuclei</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;1H&quot;</span><span class="p">)</span> <span class="o">+</span>
+            <span class="s2">&quot;&gt;&quot;</span><span class="p">,</span>
+            <span class="n">text</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$O1= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;$O1= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+            <span class="sa">r</span><span class="s2">&quot;\$SFO1= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span>
+            <span class="s2">&quot;$SFO1= &quot;</span> <span class="o">+</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">500.0</span><span class="p">),</span>
+            <span class="n">text</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
+            <span class="sa">r</span><span class="s2">&quot;\$SW= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span>
+            <span class="s2">&quot;$SW= &quot;</span> <span class="o">+</span>
+            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hz_ppm_valid</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mf">500.0</span><span class="p">),</span>
+            <span class="n">text</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$SW_h= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;$SW_h= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$TD= &quot;</span> <span class="o">+</span> <span class="n">int_regex</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;$TD= </span><span class="si">{</span><span class="n">fid</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">expdir</span> <span class="o">:=</span> <span class="n">path</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">expno</span><span class="p">))</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">expdir</span><span class="p">)</span>
+        <span class="n">expdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">expdir</span> <span class="o">/</span> <span class="s2">&quot;acqus&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">expdir</span> <span class="o">/</span> <span class="s2">&quot;acqu&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">expdir</span> <span class="o">/</span> <span class="s2">&quot;fid&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fid_uncomplex</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;&lt;f8&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">tobytes</span><span class="p">())</span>
 
 <div class="viewcode-block" id="Estimator1D.plot_result"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.plot_result">[docs]</a>    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">plot_result</span><span class="p">(</span>

@@ -48,7 +48,7 @@
 <span></span><span class="c1"># sig.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Sun 15 May 2022 12:05:04 BST</span>
+<span class="c1"># Last Edited: Thu 23 Jun 2022 21:19:25 BST</span>
 
 <span class="sd">&quot;&quot;&quot;Manipulating and processing NMR signals.&quot;&quot;&quot;</span>
 
@@ -734,6 +734,32 @@
     <span class="c1"># The noise is constructed from the two closest arrays</span>
     <span class="c1"># to the desired SNR</span>
     <span class="k">return</span> <span class="n">instances</span><span class="p">[</span><span class="n">first</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">instances</span><span class="p">[</span><span class="n">second</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="convdta"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.convdta">[docs]</a><span class="k">def</span> <span class="nf">convdta</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">grpdly</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Remove the digital filter from time-domain Bruker data.</span>
+
+<span class="sd">    This function is inspired by nmrglue&#39;s ``nmrglue.fileio.bruker.rm_dig_filter``</span>
+<span class="sd">    function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data</span>
+<span class="sd">        Time-domain data to process.</span>
+
+<span class="sd">    grpdly</span>
+<span class="sd">        Group delay.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">phase</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">grpdly</span><span class="p">))</span>
+    <span class="n">to_rm</span> <span class="o">=</span> <span class="n">phase</span> <span class="o">+</span> <span class="mi">2</span>
+    <span class="n">to_add</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">to_rm</span> <span class="o">-</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Frequency shift by FT</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">pdata</span> <span class="o">=</span> <span class="n">ft</span><span class="p">(</span><span class="n">ift</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">phase</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">/</span> <span class="n">shape</span><span class="p">))</span>
+    <span class="n">pdata</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">to_add</span><span class="p">]</span> <span class="o">+=</span> <span class="n">pdata</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="p">(</span><span class="n">to_add</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">pdata</span> <span class="o">=</span> <span class="n">pdata</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="n">to_rm</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">pdata</span></div>
 </pre></div>
 
             <div class="clearer"></div>

@@ -68,6 +68,25 @@
 <span id="nmrespy-sig"></span><h1>nmrespy.sig<a class="headerlink" href="#module-nmrespy.sig" title="Permalink to this heading">¶</a></h1>
 <p>Manipulating and processing NMR signals.</p>
 <dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.convdta">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">convdta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grpdly</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#convdta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.convdta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove the digital filter from time-domain Bruker data.</p>
+<p>This function is inspired by nmrglue’s <code class="docutils literal notranslate"><span class="pre">nmrglue.fileio.bruker.rm_dig_filter</span></code>
+function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>ndarray</em>) – Time-domain data to process.</p></li>
+<li><p><strong>grpdly</strong> (<em>float</em>) – Group delay.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>ndarray</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="nmrespy.sig.ft">
 <span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">ft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#ft"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.ft" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fourier transformation with optional spectrum flipping.</p>

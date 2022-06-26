@@ -69,17 +69,11 @@
 <p>Provides functionality for importing NMR data.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="nmrespy.load.load_bruker">
-<span class="sig-prename descclassname"><span class="pre">nmrespy.load.</span></span><span class="sig-name descname"><span class="pre">load_bruker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ask_convdta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/load.html#load_bruker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.load.load_bruker" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">nmrespy.load.</span></span><span class="sig-name descname"><span class="pre">load_bruker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/load.html#load_bruker"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.load.load_bruker" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load data and experiment information from Bruker format.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>directory</strong> (<em>str</em>) – Absolute path to data directory.</p></li>
-<li><p><strong>ask_convdta</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, the user will be warned that the data should have its
-digitial filter removed prior to importing if the data to be impoprted
-is from an <code class="docutils literal notranslate"><span class="pre">fid</span></code> or <code class="docutils literal notranslate"><span class="pre">ser</span></code> file. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, the user is not
-warned.</p></li>
-</ul>
+<dd class="field-odd"><p><strong>directory</strong> (<em>str</em>) – Absolute path to data directory.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><ul class="simple">
@@ -148,21 +142,6 @@ data types (raw time-domain data or processed data):</p>
 </ul>
 </li>
 </ul>
-<p><strong>Digital Filters</strong></p>
-<p>If you are importing raw FID data, make sure the path
-specified corresponds to an <code class="docutils literal notranslate"><span class="pre">fid</span></code> or <code class="docutils literal notranslate"><span class="pre">ser</span></code> file which has had its
-group delay artefact removed. To do this, open the data you wish to analyse in
-TopSpin, and enter <code class="docutils literal notranslate"><span class="pre">convdta</span></code> in the bottom-left command line. You will be
-prompted to enter a value for the new data directory. It is this value you
-should use in <code class="docutils literal notranslate"><span class="pre">directory</span></code>, not the one corresponding to the original
-(uncorrected) signal.</p>
-<p><strong>For Development</strong></p>
-<div class="admonition-todo admonition" id="id1">
-<p class="admonition-title">Todo</p>
-<p>Incorporate functionality to phase correct data to remove group delay.
-This would circumvent the need to ask the user to ensure they have
-performed <code class="docutils literal notranslate"><span class="pre">convdta</span></code> prior to importing.</p>
-</div>
 <p class="rubric">Example</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">nmrespy.load</span> <span class="kn">import</span> <span class="n">load_bruker</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">load_bruker</span>

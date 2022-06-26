@@ -48,7 +48,7 @@
 <span></span><span class="c1"># load.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Thu 24 Mar 2022 18:02:41 GMT</span>
+<span class="c1"># Last Edited: Thu 23 Jun 2022 21:27:39 BST</span>
 
 <span class="sd">&quot;&quot;&quot;Provides functionality for importing NMR data.&quot;&quot;&quot;</span>
 
@@ -94,19 +94,13 @@
         <span class="p">)</span>
 
 
-<div class="viewcode-block" id="load_bruker"><a class="viewcode-back" href="../../content/references/load.html#nmrespy.load.load_bruker">[docs]</a><span class="k">def</span> <span class="nf">load_bruker</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">ask_convdta</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">ExpInfo</span><span class="p">]:</span>
+<div class="viewcode-block" id="load_bruker"><a class="viewcode-back" href="../../content/references/load.html#nmrespy.load.load_bruker">[docs]</a><span class="k">def</span> <span class="nf">load_bruker</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">ExpInfo</span><span class="p">]:</span>
     <span class="sd">&quot;&quot;&quot;Load data and experiment information from Bruker format.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    directory</span>
 <span class="sd">        Absolute path to data directory.</span>
-
-<span class="sd">    ask_convdta</span>
-<span class="sd">        If ``True``, the user will be warned that the data should have its</span>
-<span class="sd">        digitial filter removed prior to importing if the data to be impoprted</span>
-<span class="sd">        is from an ``fid`` or ``ser`` file. If ``False``, the user is not</span>
-<span class="sd">        warned.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -170,24 +164,6 @@
 <span class="sd">        + ``directory/procs``</span>
 <span class="sd">        + ``directory/proc2s``</span>
 
-<span class="sd">    **Digital Filters**</span>
-
-<span class="sd">    If you are importing raw FID data, make sure the path</span>
-<span class="sd">    specified corresponds to an ``fid`` or ``ser`` file which has had its</span>
-<span class="sd">    group delay artefact removed. To do this, open the data you wish to analyse in</span>
-<span class="sd">    TopSpin, and enter ``convdta`` in the bottom-left command line. You will be</span>
-<span class="sd">    prompted to enter a value for the new data directory. It is this value you</span>
-<span class="sd">    should use in ``directory``, not the one corresponding to the original</span>
-<span class="sd">    (uncorrected) signal.</span>
-
-<span class="sd">    **For Development**</span>
-
-<span class="sd">    .. todo::</span>
-
-<span class="sd">        Incorporate functionality to phase correct data to remove group delay.</span>
-<span class="sd">        This would circumvent the need to ask the user to ensure they have</span>
-<span class="sd">        performed ``convdta`` prior to importing.</span>
-
 <span class="sd">    Example</span>
 <span class="sd">    -------</span>
 <span class="sd">    .. code:: pycon</span>
@@ -250,24 +226,7 @@
     <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">dim</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">MoreThanTwoDimError</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="s2">&quot;fid&quot;</span> <span class="ow">and</span> <span class="n">ask_convdta</span><span class="p">:</span>
-        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ORA</span><span class="si">}</span><span class="s2">You should ensure you data has had its group delay &quot;</span>
-            <span class="s2">&quot;artefact removed. Prior to dealing with the data in NMR-EsPy, &quot;</span>
-            <span class="s2">&quot;you should call the `CONVDTA` command on the dataset. If this &quot;</span>
-            <span class="s2">&quot;has already been done, feel free to proceed. If not, quit the &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;program.</span><span class="se">\n</span><span class="s2">Continue?</span><span class="si">{</span><span class="n">END</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="p">)</span>
-
-        <span class="n">response</span> <span class="o">=</span> <span class="n">get_yes_no</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">response</span><span class="p">:</span>
-            <span class="n">exit</span><span class="p">()</span>
-
-    <span class="n">data</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">data</span>
-    <span class="n">expinfo</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">expinfo</span>
-    <span class="n">expinfo</span><span class="o">.</span><span class="n">_default_pts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span>
-
-    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span></div>
+    <span class="k">return</span> <span class="n">dataset</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">expinfo</span></div>
 
 
 <span class="c1"># =================================================</span>
