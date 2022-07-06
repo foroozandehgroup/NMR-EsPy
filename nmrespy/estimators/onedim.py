@@ -1,11 +1,13 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Jun 2022 00:20:49 BST
+# Last Edited: Wed 06 Jul 2022 11:29:52 BST
 
 from __future__ import annotations
 import copy
 from pathlib import Path
+import re
+import shutil
 from typing import Any, Iterable, Optional, Tuple, Union
 
 import numpy as np
@@ -18,7 +20,7 @@ from nmr_sims.spin_system import SpinSystem
 from nmrespy import ExpInfo, sig
 from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir
-
+from nmrespy._paths_and_links import NMRESPYPATH
 from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
@@ -75,7 +77,7 @@ class Estimator1D(Estimator):
     def new_bruker(
         cls,
         directory: Union[str, Path],
-        ask_convdta: bool = True,
+        convdta: bool = True,
     ) -> Estimator1D:
         """Create a new instance from Bruker-formatted data.
 
@@ -84,11 +86,9 @@ class Estimator1D(Estimator):
         directory
             Absolute path to data directory.
 
-        ask_convdta
-            If ``True``, the user will be warned that the data should have its
-            digitial filter removed prior to importing if the data to be impoprted
-            is from an ``fid`` or ``ser`` file. If ``False``, the user is not
-            warned.
+        convdta
+            If ``True`` and the data is derived from an ``fid`` file, removal of
+            the FID's digital filter will be carried out.
 
         Notes
         -----
@@ -108,24 +108,14 @@ class Estimator1D(Estimator):
           + ``directory/1r``
           + ``directory/../../acqus``
           + ``directory/procs``
-
-        **Digital Filters**
-
-        If you are importing raw FID data, make sure the path specified
-        corresponds to an ``fid`` file which has had its group delay artefact
-        removed. To do this, open the data you wish to analyse in TopSpin, and
-        enter ``convdta`` in the bottom-left command line. You will be prompted
-        to enter a value for the new data directory. It is this value you
-        should use in ``directory``, not the one corresponding to the original
-        (uncorrected) signal.
         """
         sanity_check(
             ("directory", directory, check_existent_dir),
-            ("ask_convdta", ask_convdta, sfuncs.check_bool),
+            ("convdta", convdta, sfuncs.check_bool),
         )
 
         directory = Path(directory).expanduser()
-        data, expinfo = load_bruker(directory, ask_convdta=ask_convdta)
+        data, expinfo = load_bruker(directory)
 
         if data.ndim != 1:
             raise ValueError(f"{RED}Data dimension should be 1.{END}")
@@ -133,6 +123,10 @@ class Estimator1D(Estimator):
         if directory.parent.name == "pdata":
             slice_ = slice(0, data.shape[0] // 2)
             data = (2 * sig.ift(data))[slice_]
+
+        elif convdta:
+            grpdly = expinfo.parameters["acqus"]["GRPDLY"]
+            data = sig.convdta(data, grpdly)
 
         return cls(data, expinfo, directory)
 
@@ -891,6 +885,90 @@ class Estimator1D(Estimator):
         )
 
         return super().make_fid(indices, pts=pts)
+
+    def write_to_topspin(
+        self,
+        path: Union[str, Path],
+        expno: int,
+        force_overwrite: bool = False,
+        indices: Optional[Iterable[int]] = None,
+        pts: Optional[Iterable[int]] = None,
+    ) -> None:
+        res_len = len(self._results)
+        sanity_check(
+            ("expno", expno, sfuncs.check_int, (), {"min_value": 1}),
+            ("force_overwrite", force_overwrite, sfuncs.check_bool),
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {"min_value": -res_len, "max_value": res_len - 1}, True,
+            ),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "min_value": 1,
+                },
+                True,
+            ),
+        )
+
+        fid = self.make_fid(indices, pts)
+        fid_uncomplex = np.zeros((2 * fid.size,), dtype="float64")
+        fid_uncomplex[::2] = fid.real
+        fid_uncomplex[1::2] = fid.imag
+
+        with open(NMRESPYPATH / "ts_templates/acqus", "r") as fh:
+            text = fh.read()
+
+        int_regex = r"-?\d+"
+        float_regex = r"-?\d+(\.\d+)?"
+        text = re.sub(
+            r"\$BF1= " + float_regex,
+            "$BF1= " +
+            str(self.bf[0] if self.bf is not None else 500. - 1e-6 * self.offset()[0]),
+            text,
+        )
+        text = re.sub(r"\$BYTORDA= " + int_regex, "$BYTORDA= 0", text)
+        text = re.sub(r"\$DTYPA= " + int_regex, "$DTYPA= 2", text)
+        text = re.sub(r"\$GRPDLY= " + float_regex, "$GRPDLY= 0", text)
+        text = re.sub(
+            r"\$NUC1= <\d+[a-zA-Z]+>",
+            "$NUC1= <" +
+            (self.nuclei[0] if self.nuclei is not None else "1H") +
+            ">",
+            text,
+        )
+        text = re.sub(r"\$O1= " + float_regex, f"$O1= {self.offset()[0]}", text)
+        text = re.sub(
+            r"\$SFO1= " + float_regex,
+            "$SFO1= " +
+            str(self.sfo[0] if self.sfo is not None else 500.0),
+            text,
+        )
+        text = re.sub(
+            r"\$SW= " + float_regex,
+            "$SW= " +
+            str(self.sw(unit="ppm")[0] if self.hz_ppm_valid else self.sw()[0] / 500.0),
+            text,
+        )
+        text = re.sub(r"\$SW_h= " + float_regex, f"$SW_h= {self.sw()[0]}", text)
+        text = re.sub(r"\$TD= " + int_regex, f"$TD= {fid.size}", text)
+
+        path = Path(path).expanduser()
+        if not path.is_dir():
+            path.mkdir()
+        if (expdir := path / str(expno)).is_dir():
+            shutil.rmtree(expdir)
+        expdir.mkdir()
+
+        with open(expdir / "acqus", "w") as fh:
+            fh.write(text)
+        with open(expdir / "acqu", "w") as fh:
+            fh.write(text)
+
+        with open(expdir / "fid", "wb") as fh:
+            fh.write(fid_uncomplex.astype("<f8").tobytes())
 
     @logger
     def plot_result(

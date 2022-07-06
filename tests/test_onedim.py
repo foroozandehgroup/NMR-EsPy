@@ -1,7 +1,7 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 22 Jun 2022 11:08:27 BST
+# Last Edited: Wed 06 Jul 2022 11:29:36 BST
 
 import copy
 from pathlib import Path
@@ -385,3 +385,8 @@ def test_subband_estimate():
     estimator = DefaultEstimator.before_estimation()
     estimator.subband_estimate((550., 525.))
     assert utils.close(estimator.get_params(), DefaultEstimator.params, tol=0.2)
+
+
+def test_write_to_bruker():
+    estimator = DefaultEstimator.after_estimation()
+    estimator.write_to_topspin("hello", 3)

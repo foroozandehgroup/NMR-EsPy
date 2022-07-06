@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 15 May 2022 12:05:04 BST
+# Last Edited: Thu 23 Jun 2022 21:19:25 BST
 
 """Manipulating and processing NMR signals."""
 
@@ -687,3 +687,29 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
     # The noise is constructed from the two closest arrays
     # to the desired SNR
     return instances[first] + 1j * instances[second]
+
+
+def convdta(data: np.ndarray, grpdly: float) -> np.ndarray:
+    """Remove the digital filter from time-domain Bruker data.
+
+    This function is inspired by nmrglue's ``nmrglue.fileio.bruker.rm_dig_filter``
+    function.
+
+    Parameters
+    ----------
+    data
+        Time-domain data to process.
+
+    grpdly
+        Group delay.
+    """
+    phase = int(np.floor(grpdly))
+    to_rm = phase + 2
+    to_add = max(to_rm - 6, 0)
+
+    # Frequency shift by FT
+    shape = data.shape[-1]
+    pdata = ft(ift(data) * np.exp(2j * np.pi * phase * np.arange(shape) / shape))
+    pdata[..., :to_add] += pdata[..., :-(to_add + 1) : -1]
+    pdata = pdata[..., :-to_rm]
+    return pdata
