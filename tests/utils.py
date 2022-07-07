@@ -1,17 +1,15 @@
 # utils.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Jun 2022 16:51:19 BST
+# Last Edited: Wed 06 Jul 2022 14:29:29 BST
 
-import builtins
-import io
-import os
 from pathlib import Path
+import platform
 import re
+import subprocess
 from typing import Iterable
 
 import numpy as np
-import pytest
 
 __logBase10of2 = 3.010299956639811952137388947244930267681898814621085413104274611e-1
 
@@ -40,14 +38,39 @@ def sigfigs(arr: np.ndarray, x: int) -> np.ndarray:
     return result
 
 
-def equal(a: np.ndarray, b: np.ndarray) -> bool:
+def aequal(a: np.ndarray, b: np.ndarray) -> bool:
     return np.allclose(a, b, rtol=0, atol=1e-8)
+
+
+def equal(a: np.ndarray, b: np.ndarray) -> bool:
+    return all([abs(xa - xb) <= 1e-8 if xa is not None and xb is not None
+                else (xa is None and xb is None)
+                for xa, xb in zip(a, b)])
 
 
 def close(a: np.ndarray, b: np.ndarray, tol: float) -> bool:
     return np.allclose(a, b, rtol=0, atol=tol)
 
 
+def view_files(to_view: Iterable[Path], view_content: bool) -> None:
+    if view_content:
+        for path in to_view:
+            if path.suffix in [".txt", ".log"]:
+                prog = "vi"
+            elif path.suffix == ".pdf":
+                prog = "evince"
+            subprocess.run([prog, str(path)])
+
+
+def latex_exists():
+    if platform.system() == "Windows":
+        cmd = "where"
+    else:
+        cmd = "which"
+
+    return subprocess.run(
+        [cmd, "pdflatex"], stdout=subprocess.DEVNULL,
+    ).returncode == 0
 
 
 def extract_params_from_txt(path) -> np.ndarray:

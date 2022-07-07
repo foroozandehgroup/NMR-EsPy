@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Jun 2022 12:18:01 BST
+# Last Edited: Wed 06 Jul 2022 14:45:00 BST
 
 import re
 from typing import Any, Iterable, Optional, Tuple, Union
@@ -221,7 +221,7 @@ class ExpInfo(FrequencyConverter):
         ]
 
         return tuple([
-            f"\\textsuperscript{{{c[0]}}}{{{c[1]}}}" if c is not None
+            f"\\textsuperscript{{{c[0]}}}{c[1]}" if c is not None
             else None
             for c in components
         ])
@@ -401,7 +401,8 @@ class ExpInfo(FrequencyConverter):
             sanity_check(("meshgrid", meshgrid, sfuncs.check_bool))
 
         shifts = tuple([
-            np.linspace((-sw / 2) + offset, (sw / 2) + offset, pt)
+            None if sw is None
+            else np.linspace((-sw / 2) + offset, (sw / 2) + offset, pt)
             for pt, sw, offset in zip(pts, self.sw(unit), self.offset(unit))
         ])
 

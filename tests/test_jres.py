@@ -1,7 +1,7 @@
-# test_onedim.py
+# test_jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 14:03:02 BST
+# Last Edited: Wed 06 Jul 2022 15:50:06 BST
 
 import copy
 from pathlib import Path
@@ -14,71 +14,15 @@ import numpy as np
 import pytest
 import utils
 mpl.use("tkAgg")
+mpl.rcParams["text.usetex"] = False
 
 
-VIEW_CONTENT = False
+VIEW_CONTENT = True
 
 
 class DefaultEstimator:
 
-    params = np.array(
-        [
-            [15, 0, 340, 7],
-            [15, 0, 350, 7],
-            [1, 0, 700, 7],
-            [3, 0, 710, 7],
-            [3, 0, 720, 7],
-            [1, 0, 730, 7],
-        ],
-        dtype="float64",
-    )
-
-    _before_estimation = ne.Estimator1D.new_synthetic_from_parameters(
-        params=params,
-        pts=4096,
-        sw=1000.,
-        offset=500.,
-        sfo=500.,
-    )
-
-    @classmethod
-    def before_estimation(cls):
-        return copy.deepcopy(cls._before_estimation)
-
-    @classmethod
-    def after_estimation(cls):
-        if hasattr(cls, "_after_estimation"):
-            return copy.deepcopy(cls._after_estimation)
-        else:
-            cls._after_estimation = cls.before_estimation()
-            regions = ((750., 680.), (375., 315.))
-            noise_regions = ((550., 525.), (550., 525.))
-
-            for region, noise_region in zip(regions, noise_regions):
-                cls._after_estimation.estimate(
-                    region=region,
-                    noise_region=noise_region,
-                    fprint=False,
-                )
-
-            return cls.after_estimation()
-
-
-def test_new_bruker(monkeypatch):
-    if not VIEW_CONTENT:
-        monkeypatch.setattr(plt, 'show', lambda: None)
-
-    estimator = ne.Estimator1D.new_bruker("tests/data/1/pdata/1")
-    estimator.view_data()
-    estimator.view_data(freq_unit="ppm")
-    estimator.view_data(domain="time", components="both")
-
-
-def test_new_synthetic_from_simulation(monkeypatch):
-    if not VIEW_CONTENT:
-        monkeypatch.setattr(plt, 'show', lambda: None)
-
-    system = SpinSystem(
+    spin_system = SpinSystem(
         {
             1: {
                 "shift": 3.7,
@@ -99,22 +43,56 @@ def test_new_synthetic_from_simulation(monkeypatch):
                 "shift": 4.5,
                 "nucleus": "1H",
             },
-        }
-    )
-    estimator = ne.Estimator1D.new_synthetic_from_simulation(
-        spin_system=system,
-        sw=2.,
-        offset=4.,
-        pts=4096,
-        freq_unit="ppm",
+        },
     )
 
+    _before_estimation = ne.Estimator2DJ.new_synthetic_from_simulation(
+        spin_system,
+        sweep_widths=[30., 1.],
+        offset=4.1,
+        pts=[128, 512],
+        channel="1H",
+        f2_unit="ppm",
+    )
+
+    @classmethod
+    def before_estimation(cls):
+        return copy.deepcopy(cls._before_estimation)
+
+    @classmethod
+    def after_estimation(cls):
+        if hasattr(cls, "_after_estimation"):
+            return copy.deepcopy(cls._after_estimation)
+        else:
+            cls._after_estimation = cls.before_estimation()
+            regions = ((4.1, 3.6), (4.6, 4.4))
+            initial_guesses = (8, 4)
+            noise_region = (4.25, 4.2)
+
+            for region, initial_guess in zip(regions, initial_guesses):
+                cls._after_estimation.estimate(
+                    region=region,
+                    noise_region=noise_region,
+                    fprint=False,
+                    region_unit="ppm",
+                    initial_guess=initial_guess,
+                )
+
+            return cls.after_estimation()
+
+
+@pytest.mark.xfail
+def test_new_bruker(monkeypatch):
+    if not VIEW_CONTENT:
+        monkeypatch.setattr(plt, 'show', lambda: None)
+
+    estimator = ne.Estimator2DJ.new_bruker("tests/data/1/pdata/1")
     estimator.view_data()
     estimator.view_data(freq_unit="ppm")
     estimator.view_data(domain="time", components="both")
 
 
-def test_new_synthetic_from_parameters(monkeypatch):
+def test_new_synthetic_from_simulation(monkeypatch):
     if not VIEW_CONTENT:
         monkeypatch.setattr(plt, 'show', lambda: None)
 
@@ -122,63 +100,56 @@ def test_new_synthetic_from_parameters(monkeypatch):
 
     estimator.view_data()
     estimator.view_data(freq_unit="ppm")
+    estimator.view_data(abs_=True)
     estimator.view_data(domain="time", components="both")
 
 
 def test_basic_parameters():
     estimator = DefaultEstimator.before_estimation()
-    assert estimator.dim == 1
-    assert estimator.default_pts == (4096,)
-    assert estimator.sw() == estimator.sw(unit="hz") == (1000.,)
-    assert estimator.sw(unit="ppm") == (2.,)
-    assert estimator.offset() == estimator.offset(unit="hz") == (500.,)
-    assert estimator.offset(unit="ppm") == (1.,)
-    assert estimator.sfo == (500.,)
-    assert estimator.nuclei is None
-    assert estimator.latex_nuclei is None
-    assert estimator.unicode_nuclei is None
-    assert estimator.fn_mode is None
+    assert estimator.dim == 2
+    assert estimator.default_pts == (128, 512)
+    assert utils.equal(estimator.sw(unit="hz"), (30., 500.))
+    assert utils.equal(estimator.sw(unit="ppm"), (None, 1.))
+    assert utils.equal(estimator.offset(unit="hz"), (0., 2050.))
+    assert utils.equal(estimator.offset(unit="ppm"), (None, 4.1,))
+    assert utils.equal(estimator.sfo, (None, 500.))
+    assert estimator.nuclei == (None, "1H")
+    assert estimator.latex_nuclei == (None, "\\textsuperscript{1}H")
+    assert estimator.unicode_nuclei == (None, "¹H")
+    assert estimator.fn_mode == "QF"
 
 
 def test_timepoints():
     estimator = DefaultEstimator.before_estimation()
-    tp = estimator.get_timepoints()
+    tp = estimator.get_timepoints(meshgrid=False)
     assert isinstance(tp, tuple)
-    assert len(tp) == 1
-    assert utils.equal(tp[0], np.linspace(0, 4095 / 1000, 4096))
+    assert len(tp) == 2
+    assert utils.aequal(tp[0], np.linspace(0, 127 / 30, 128))
+    assert utils.aequal(tp[1], np.linspace(0, 511 / 500, 512))
 
-    tp = estimator.get_timepoints(pts=8192, start_time="20dt")
-    assert utils.equal(tp[0], np.linspace(20 / 1000, 8211 / 1000, 8192))
+    tp = estimator.get_timepoints(
+        pts=(256, 1024), start_time=[0., "10dt"], meshgrid=False,
+    )
+    assert utils.aequal(tp[0], np.linspace(0, 255 / 30, 256))
+    assert utils.aequal(tp[1], np.linspace(10 / 500, 1033 / 500, 1024))
+
+    tp_mesh = estimator.get_timepoints()
+    assert tp_mesh[0].shape == (128, 512)
 
 
 def test_shifts():
     estimator = DefaultEstimator.before_estimation()
-    shifts = estimator.get_shifts()
+    shifts = estimator.get_shifts(meshgrid=False)
     assert isinstance(shifts, tuple)
-    assert len(shifts) == 1
-    assert utils.equal(shifts[0], np.linspace(1000, 0, 4096))
+    assert len(shifts) == 2
+    assert utils.aequal(shifts[0], np.linspace(15, -15, 128))
+    assert utils.aequal(shifts[1], np.linspace(2300, 1800, 512))
 
-    shifts = estimator.get_shifts(pts=8192, unit="ppm", flip=False)
-    assert utils.equal(shifts[0], np.linspace(0, 2, 8192))
-
-    assert estimator.get_results() is None
-    assert estimator.get_params() is None
-    assert estimator.get_errors() is None
-
-
-def test_phase_data():
-    estimator = DefaultEstimator.before_estimation()
-    og_data = copy.deepcopy(estimator.data)
-    estimator.phase_data(p0=np.pi / 2)
-    assert utils.close(estimator.data[0].real, 0, tol=0.2)
-    estimator.phase_data(p0=-np.pi / 2)
-    assert utils.equal(estimator.data, og_data)
-
-    with pytest.raises(ValueError):
-        estimator.write_result()
-
-    with pytest.raises(ValueError):
-        estimator.plot_result()
+    shifts = estimator.get_shifts(
+        pts=(256, 1024), unit="ppm", flip=False, meshgrid=False,
+    )
+    assert shifts[0] is None
+    assert utils.aequal(shifts[1], np.linspace(3.6, 4.6, 1024))
 
 
 def test_estimate():
@@ -193,13 +164,9 @@ def test_estimate():
             noise_region=None,
             method=method,
             fprint=False,
+            initial_guess=12,
         )
-
-    initial_guess = copy.deepcopy(DefaultEstimator.params)
-    initial_guess[:, 0] += np.random.uniform(low=-0.5, high=0.5)
-    initial_guess[:, 2] += np.random.uniform(low=-2, high=2)
-    estimator.estimate(mode="af", initial_guess=initial_guess, fprint=False)
-    assert np.isnan(estimator.get_errors(indices=[-1])[:, (1, 3)]).all()
+    print(estimator.get_params([2]))
 
 
 def test_get_params_and_errors():
@@ -264,7 +231,6 @@ def test_result_editing():
 
 
 @pytest.mark.usefixtures("cleanup_files")
-@pytest.mark.xfail
 def test_write_result():
     estimator = DefaultEstimator.after_estimation()
     to_view = []
@@ -282,7 +248,7 @@ def test_write_result():
         }
     ]
     for options in write_result_options:
-        if not utils.latex_exists() and options.get("fmt", "txt") == "pdf":
+        if not latex_exists() and options.get("fmt", "txt") == "pdf":
             pass
         else:
             estimator.write_result(**options)
@@ -325,7 +291,7 @@ def test_plot_result():
             to_view.append(Path(f"plot{counter}.pdf"))
             counter += 1
 
-    utils.view_files(to_view, VIEW_CONTENT)
+    utils.hview_files(to_view)
 
 
 @pytest.mark.usefixtures("cleanup_files")
@@ -341,7 +307,7 @@ def test_save_log():
         estimator.save_log(**options)
         to_view.append(Path(options.get("path", "espy_logfile")).with_suffix(".log"))
 
-    utils.view_files(to_view, VIEW_CONTENT)
+    view_files(to_view)
 
 
 @pytest.mark.usefixtures("cleanup_files")
@@ -362,9 +328,10 @@ def test_pickle():
 def test_subband_estimate():
     estimator = DefaultEstimator.before_estimation()
     estimator.subband_estimate((550., 525.))
-    assert utils.close(estimator.get_params(), DefaultEstimator.params, tol=0.4)
+    assert utils.close(estimator.get_params(), DefaultEstimator.params, tol=0.2)
 
 
 def test_write_to_bruker():
     estimator = DefaultEstimator.after_estimation()
     estimator.write_to_topspin("hello", 3)
+

@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 15 May 2022 22:09:16 BST
+# Last Edited: Wed 06 Jul 2022 15:59:12 BST
 
 from __future__ import annotations
 import copy
@@ -329,6 +329,12 @@ class Estimator2DJ(Estimator):
             ),
         )
 
+        if region is not None:
+            region = (None, region)
+            noise_region = (None, noise_region)
+        else:
+            noise_region = None
+
         # The plan of action:
         # --> Derive filtered signals (both cut and uncut)
         # --> Run the MDL followed by MPM for an initial guess on cut signal
@@ -337,8 +343,8 @@ class Estimator2DJ(Estimator):
         filt = Filter(
             self._data,
             ExpInfo(2, self.sw(), self.offset(), self.sfo),
-            (None, region),
-            (None, noise_region),
+            region,
+            noise_region,
             region_unit=region_unit,
             twodim_dtype="jres",
         )

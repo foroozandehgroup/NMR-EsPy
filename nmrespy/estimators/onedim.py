@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 11:29:52 BST
+# Last Edited: Wed 06 Jul 2022 19:40:48 BST
 
 from __future__ import annotations
 import copy
@@ -517,38 +517,58 @@ class Estimator1D(Estimator):
                 ((0, self._data.size - 1),), "idx->hz",
             )
             noise_region = None
+            mpm_signal = self._data, self.expinfo
+            uncut_size = uncut_signal.size
+            cut_signal, cut_expinfo cut_size = None, None, None
 
-            signal = self._data
-            if (mpm_trim is None) or (mpm_trim > signal.size):
-                mpm_trim = signal.size
-            if (nlp_trim is None) or (nlp_trim > signal.size):
-                nlp_trim = signal.size
+        else:
+            filt = Filter(
+                self._data,
+                self.expinfo,
+                region,
+                noise_region,
+                region_unit=region_unit,
+                strict_region_order=strict_region_order,
+            )
 
-            expinfo = ExpInfo(1, self.sw(), self.offset(), self.sfo)
+            cut_signal, cut_expinfo = filt.get_filtered_fid()
+            cut_size = cut_signal.size
+            uncut_signal, uncut_expinfo = filt.get_filtered_fid(cut_ratio=None)
+            uncut_size = uncut_signal.size
+            region = filt.get_region()
+            noise_region = filt.get_noise_region()
 
-            if isinstance(initial_guess, np.ndarray):
-                x0 = initial_guess
-            else:
-                oscillators = initial_guess if isinstance(initial_guess, int) else 0
-                x0 = MatrixPencil(
-                    expinfo,
-                    signal[:mpm_trim],
-                    oscillators=oscillators,
-                    fprint=fprint,
-                ).get_params()
-                if x0.size == 0:
-                    return self._results.append(
-                        Result(
-                            np.array([[]]),
-                            np.array([[]]),
-                            region,
-                            noise_region,
-                            self.sfo,
-                        )
+        if (
+            (mpm_trim is None) or
+            (mpm_trim > (cut_size if cut_size is not None else uncut_size))
+        ):
+            mpm_trim = (cut_signal if cut_signal is not None else uncut_signal).size
+        if (nlp_trim is None) or (nlp_trim > uncut_signal.size):
+            nlp_trim = uncut_signal.size
+
+        if isinstance(initial_guess, np.ndarray):
+            x0 = initial_guess
+        else:
+            oscillators = initial_guess if isinstance(initial_guess, int) else 0
+            x0 = MatrixPencil(
+                self.expinfo,
+                signal[:mpm_trim],
+                oscillators=oscillators,
+                fprint=fprint,
+            ).get_params()
+            if x0.size == 0:
+                return self._results.append(
+                    Result(
+                        np.array([[]]),
+                        np.array([[]]),
+                        region,
+                        noise_region,
+                        self.sfo,
                     )
+                )
 
             final_result = NonlinearProgramming(
-                expinfo,
+                self.expinfo,
                 signal[:nlp_trim],
                 x0,
                 phase_variance=phase_variance,
@@ -558,22 +578,6 @@ class Estimator1D(Estimator):
                 fprint=fprint,
             )
 
-        else:
-            filt = Filter(
-                self._data,
-                ExpInfo(1, self.sw(), self.offset(), self.sfo),
-                region,
-                noise_region,
-                region_unit=region_unit,
-                strict_region_order=strict_region_order,
-            )
-
-            cut_signal, cut_expinfo = filt.get_filtered_fid()
-            uncut_signal, uncut_expinfo = filt.get_filtered_fid(cut_ratio=None)
-            region = filt.get_region()
-            noise_region = filt.get_noise_region()
-
-            cut_size = cut_signal.size
             uncut_size = uncut_signal.size
             if (mpm_trim is None) or (mpm_trim > cut_size):
                 mpm_trim = cut_size
