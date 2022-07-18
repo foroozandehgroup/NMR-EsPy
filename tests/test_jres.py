@@ -1,7 +1,7 @@
 # test_jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 15:50:06 BST
+# Last Edited: Thu 14 Jul 2022 17:48:56 BST
 
 import copy
 from pathlib import Path

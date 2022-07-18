@@ -1,7 +1,7 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 14:03:02 BST
+# Last Edited: Thu 14 Jul 2022 17:42:11 BST
 
 import copy
 from pathlib import Path
@@ -60,6 +60,7 @@ class DefaultEstimator:
                     noise_region=noise_region,
                     fprint=False,
                 )
+                print(cls._after_estimation._results[-1].get_params())
 
             return cls.after_estimation()
 
@@ -194,6 +195,7 @@ def test_estimate():
             method=method,
             fprint=False,
         )
+        print(estimator._results[-1].get_params())
 
     initial_guess = copy.deepcopy(DefaultEstimator.params)
     initial_guess[:, 0] += np.random.uniform(low=-0.5, high=0.5)
@@ -210,21 +212,19 @@ def test_get_params_and_errors():
     for i, sort in enumerate(("a", "p", "f", "d")):
         params = estimator.get_params([0], sort_by=sort)
         errors = estimator.get_errors([0], sort_by=sort)
-        assert list(np.argsort(params[:, i])) == list(range(params.shape[0]))
-        # Check errors correctly map to their parameters
-        assert utils.equal(errors[np.argsort(params[:, 2])], errors_hz)
+        assert utils.aequal(np.argsort(params_hz[:, i]), params)
 
     params_ppm = estimator.get_params([0], funit="ppm")
     errors_ppm = estimator.get_errors([0], funit="ppm")
-    assert utils.equal(params_hz[:, (0, 1, 3)], params_ppm[:, (0, 1, 3)])
-    assert utils.equal(params_hz[:, 2] / estimator.sfo, params_ppm[:, 2])
-    assert utils.equal(errors_hz[:, (0, 1, 3)], errors_ppm[:, (0, 1, 3)])
-    assert utils.equal(errors_hz[:, 2] / estimator.sfo, errors_ppm[:, 2])
+    assert utils.aequal(params_hz[:, (0, 1, 3)], params_ppm[:, (0, 1, 3)])
+    assert utils.aequal(params_hz[:, 2] / estimator.sfo, params_ppm[:, 2])
+    assert utils.aequal(errors_hz[:, (0, 1, 3)], errors_ppm[:, (0, 1, 3)])
+    assert utils.aequal(errors_hz[:, 2] / estimator.sfo, errors_ppm[:, 2])
 
     # Ensure freqs in order
     all_region_params = estimator.get_params([1, 0], merge=False)
     assert len(all_region_params) == 2
-    assert utils.equal(np.vstack(all_region_params), estimator.get_params())
+    assert utils.aequal(np.vstack(all_region_params), estimator.get_params())
 
 
 def test_make_fid():

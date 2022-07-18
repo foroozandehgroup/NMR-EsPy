@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 19:40:48 BST
+# Last Edited: Thu 14 Jul 2022 17:46:09 BST
 
 from __future__ import annotations
 import copy
@@ -513,13 +513,10 @@ class Estimator1D(Estimator):
         # --> Run Optimiser on cut signal
         # --> Run Optimiser on uncut signal
         if region is None:
-            region = self.convert(
-                ((0, self._data.size - 1),), "idx->hz",
-            )
+            region = self.convert(((0, self._data.size - 1),), "idx->hz")
             noise_region = None
-            mpm_signal = self._data, self.expinfo
-            uncut_size = uncut_signal.size
-            cut_signal, cut_expinfo cut_size = None, None, None
+            mpm_signal = nlp_signal = self._data
+            mpm_expinfo = nlp_expinfo = self.expinfo
 
         else:
             filt = Filter(
@@ -531,31 +528,28 @@ class Estimator1D(Estimator):
                 strict_region_order=strict_region_order,
             )
 
-            cut_signal, cut_expinfo = filt.get_filtered_fid()
-            cut_size = cut_signal.size
-            uncut_signal, uncut_expinfo = filt.get_filtered_fid(cut_ratio=None)
-            uncut_size = uncut_signal.size
+            mpm_signal, mpm_expinfo = filt.get_filtered_fid()
+            nlp_signal, nlp_expinfo = filt.get_filtered_fid(cut_ratio=None)
             region = filt.get_region()
             noise_region = filt.get_noise_region()
 
-        if (
-            (mpm_trim is None) or
-            (mpm_trim > (cut_size if cut_size is not None else uncut_size))
-        ):
-            mpm_trim = (cut_signal if cut_signal is not None else uncut_signal).size
-        if (nlp_trim is None) or (nlp_trim > uncut_signal.size):
-            nlp_trim = uncut_signal.size
+        if (mpm_trim is None) or (mpm_trim > mpm_signal.size):
+            mpm_trim = mpm_signal.size
+        if (nlp_trim is None) or (nlp_trim > nlp_signal.size):
+            nlp_trim = nlp_signal.size
 
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
         else:
             oscillators = initial_guess if isinstance(initial_guess, int) else 0
+
             x0 = MatrixPencil(
-                self.expinfo,
-                signal[:mpm_trim],
+                mpm_expinfo,
+                mpm_signal[:mpm_trim],
                 oscillators=oscillators,
                 fprint=fprint,
             ).get_params()
+
             if x0.size == 0:
                 return self._results.append(
                     Result(
@@ -567,71 +561,21 @@ class Estimator1D(Estimator):
                     )
                 )
 
-            final_result = NonlinearProgramming(
-                self.expinfo,
-                signal[:nlp_trim],
-                x0,
-                phase_variance=phase_variance,
-                method=method,
-                mode=mode,
-                max_iterations=max_iterations,
-                fprint=fprint,
-            )
-
-            uncut_size = uncut_signal.size
-            if (mpm_trim is None) or (mpm_trim > cut_size):
-                mpm_trim = cut_size
-            if (nlp_trim is None) or (nlp_trim > uncut_size):
-                nlp_trim = uncut_size
-
-            if isinstance(initial_guess, np.ndarray):
-                x0 = initial_guess
-            else:
-                oscillators = initial_guess if isinstance(initial_guess, int) else 0
-                x0 = MatrixPencil(
-                    cut_expinfo,
-                    cut_signal[:mpm_trim],
-                    oscillators=oscillators,
-                    fprint=fprint,
-                ).get_params()
-
-                if x0.size == 0:
-                    return self._results.append(
-                        Result(
-                            np.array([[]]),
-                            np.array([[]]),
-                            region,
-                            noise_region,
-                            self.sfo,
-                        )
-                    )
-
-            cut_result = NonlinearProgramming(
-                cut_expinfo,
-                cut_signal[:mpm_trim],
-                x0,
-                phase_variance=phase_variance,
-                mode=mode,
-                method=method,
-                max_iterations=max_iterations,
-                fprint=fprint,
-            ).get_params()
-
-            final_result = NonlinearProgramming(
-                uncut_expinfo,
-                uncut_signal[:nlp_trim],
-                cut_result,
-                phase_variance=phase_variance,
-                mode=mode,
-                method=method,
-                max_iterations=max_iterations,
-                fprint=fprint,
-            )
+        result = NonlinearProgramming(
+            nlp_expinfo,
+            nlp_signal[:nlp_trim],
+            x0,
+            phase_variance=phase_variance,
+            method=method,
+            mode=mode,
+            max_iterations=max_iterations,
+            fprint=fprint,
+        )
 
         self._results.append(
             Result(
-                final_result.get_params(),
-                final_result.get_errors(),
+                result.get_params(),
+                result.get_errors(),
                 region,
                 noise_region,
                 self.sfo,
