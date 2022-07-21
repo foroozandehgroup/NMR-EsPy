@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 14 Jul 2022 17:46:09 BST
+# Last Edited: Wed 20 Jul 2022 15:06:05 BST
 
 from __future__ import annotations
 import copy
@@ -507,11 +507,6 @@ class Estimator1D(Estimator):
             ),
         )
 
-        # The plan of action:
-        # --> Derive filtered signals (both cut and uncut)
-        # --> Run the MDL followed by MPM for an initial guess on cut signal
-        # --> Run Optimiser on cut signal
-        # --> Run Optimiser on uncut signal
         if region is None:
             region = self.convert(((0, self._data.size - 1),), "idx->hz")
             noise_region = None

@@ -1,7 +1,7 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 14 Jul 2022 17:42:11 BST
+# Last Edited: Wed 20 Jul 2022 14:17:32 BST
 
 import copy
 from pathlib import Path
@@ -60,7 +60,6 @@ class DefaultEstimator:
                     noise_region=noise_region,
                     fprint=False,
                 )
-                print(cls._after_estimation._results[-1].get_params())
 
             return cls.after_estimation()
 
@@ -195,7 +194,6 @@ def test_estimate():
             method=method,
             fprint=False,
         )
-        print(estimator._results[-1].get_params())
 
     initial_guess = copy.deepcopy(DefaultEstimator.params)
     initial_guess[:, 0] += np.random.uniform(low=-0.5, high=0.5)
@@ -212,7 +210,8 @@ def test_get_params_and_errors():
     for i, sort in enumerate(("a", "p", "f", "d")):
         params = estimator.get_params([0], sort_by=sort)
         errors = estimator.get_errors([0], sort_by=sort)
-        assert utils.aequal(np.argsort(params_hz[:, i]), params)
+        assert utils.aequal(params_hz[np.argsort(params_hz[:, i])], params)
+        assert utils.aequal(errors_hz[np.argsort(params_hz[:, i])], errors)
 
     params_ppm = estimator.get_params([0], funit="ppm")
     errors_ppm = estimator.get_errors([0], funit="ppm")

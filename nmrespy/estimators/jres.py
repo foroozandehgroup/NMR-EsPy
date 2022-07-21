@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 15:59:12 BST
+# Last Edited: Thu 21 Jul 2022 11:44:45 BST
 
 from __future__ import annotations
 import copy
@@ -218,8 +218,10 @@ class Estimator2DJ(Estimator):
         region_unit: str = "ppm",
         initial_guess: Optional[Union[np.ndarray, int]] = None,
         method: str = "gauss-newton",
-        phase_variance: bool = False,
+        phase_variance: bool = True,
         max_iterations: Optional[int] = None,
+        mpm_trim: Optional[int] = 256,
+        nlp_trim: Optional[int] = 1024,
         fprint: bool = True,
         _log: bool = True,
     ):
@@ -288,6 +290,20 @@ class Estimator2DJ(Estimator):
             ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
             ``"lbfgs"``).
 
+        mpm_trim
+            Specifies the maximal size in the direct dimension allowed for the
+            filtered signal when undergoing the Matrix Pencil. If ``None``, no
+            trimming is applied to the signal. If an int, and the direct
+            dimension filtered signal has a size greater than ``mpm_trim``,
+            this signal will be set as ``signal[:, :mpm_trim]``.
+
+        nlp_trim
+            Specifies the maximal size allowed in the direct dimension for the
+            filtered signal when undergoing nonlinear programming. By default
+            (``None``), no trimming is applied to the signal. If an int, and
+            the direct dimension filtered signal has a size greater than
+            ``nlp_trim``, this signal will be set as ``signal[:, :nlp_trim]``.
+
         fprint
             Whether of not to output information to the terminal.
 
@@ -309,6 +325,8 @@ class Estimator2DJ(Estimator):
                 "max_iterations", max_iterations, sfuncs.check_int, (),
                 {"min_value": 1}, True,
             ),
+            ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
             ("fprint", fprint, sfuncs.check_bool),
         )
 
@@ -329,56 +347,64 @@ class Estimator2DJ(Estimator):
             ),
         )
 
-        if region is not None:
+        if region is None:
+            region = self.convert(
+                ((0, self._data.shape[0] - 1), (0, self._data.shape[1] - 1)),
+                "idx->hz",
+            )
+            noise_region = None
+            mpm_signal = nlp_signal = self._data
+            mpm_expinfo = nlp_expinfo = self.expinfo
+
+        else:
             region = (None, region)
             noise_region = (None, noise_region)
-        else:
-            noise_region = None
 
-        # The plan of action:
-        # --> Derive filtered signals (both cut and uncut)
-        # --> Run the MDL followed by MPM for an initial guess on cut signal
-        # --> Run Optimiser on cut signal
-        # --> Run Optimiser on uncut signal
-        filt = Filter(
-            self._data,
-            ExpInfo(2, self.sw(), self.offset(), self.sfo),
-            region,
-            noise_region,
-            region_unit=region_unit,
-            twodim_dtype="jres",
-        )
+            filt = Filter(
+                self._data,
+                self.expinfo,
+                region,
+                noise_region,
+                region_unit=region_unit,
+                twodim_dtype="jres",
+            )
 
-        cut_signal, cut_expinfo = filt.get_filtered_fid()
-        uncut_signal, uncut_expinfo = filt.get_filtered_fid(cut_ratio=None)
-        region = filt.get_region()
-        noise_region = filt.get_noise_region()
+            mpm_signal, mpm_expinfo = filt.get_filtered_fid()
+            nlp_signal, nlp_expinfo = filt.get_filtered_fid(cut_ratio=None)
+            region = filt.get_region()
+            noise_region = filt.get_noise_region()
+
+        if (mpm_trim is None) or (mpm_trim > mpm_signal.shape[1]):
+            mpm_trim = mpm_signal.shape[1]
+        if (nlp_trim is None) or (nlp_trim > nlp_signal.shape[1]):
+            nlp_trim = nlp_signal.shape[1]
 
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
         else:
             oscillators = initial_guess if isinstance(initial_guess, int) else 0
             x0 = MatrixPencil(
-                cut_expinfo,
-                cut_signal,
+                mpm_expinfo,
+                mpm_signal[:, :mpm_trim],
                 oscillators=oscillators,
                 fprint=fprint,
             ).get_params()
 
-        cut_result = NonlinearProgramming(
-            cut_expinfo,
-            cut_signal,
-            x0,
-            phase_variance=phase_variance,
-            method=method,
-            max_iterations=max_iterations,
-            fprint=fprint,
-        ).get_params()
+            if x0.size == 0:
+                return self._results.append(
+                    Result(
+                        np.array([[]]),
+                        np.array([[]]),
+                        region,
+                        noise_region,
+                        self.sfo,
+                    )
+                )
 
-        final_result = NonlinearProgramming(
-            uncut_expinfo,
-            uncut_signal,
-            cut_result,
+        result = NonlinearProgramming(
+            nlp_expinfo,
+            nlp_signal[:, :nlp_trim],
+            x0,
             phase_variance=phase_variance,
             method=method,
             max_iterations=max_iterations,
@@ -387,8 +413,8 @@ class Estimator2DJ(Estimator):
 
         self._results.append(
             Result(
-                final_result.get_params(),
-                final_result.get_errors(),
+                result.get_params(),
+                result.get_errors(),
                 region,
                 noise_region,
                 self.sfo,
@@ -409,7 +435,7 @@ class Estimator2DJ(Estimator):
             \exp\left( 2 \mathrm{i} \pi f_{1,m} t \right)
             \exp\left( -t \left[2 \mathrm{i} \pi f_{2,m} + \eta_{2,m} \right] \right)
 
-        .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/2dj/nmrespy/images/neg_45.png  # noqa:E501
+        .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/2dj/nmrespy/images/neg_45.png
 
         Producing this signal from parameters derived from estimation of a 2DJ dataset
         should generate a 1D homodecoupled spectrum.
@@ -427,8 +453,14 @@ class Estimator2DJ(Estimator):
         """
         sanity_check(
             (
-                "indices", indices, sfuncs.check_index,
-                (len(self._results),), {}, True,
+                "indices", indices, sfuncs.check_int_list, (),
+                {
+                    "len_one_can_be_listless": True,
+                    "min_value": -len(self._results),
+                    "max_value": len(self._results) - 1,
+                },
+                True,
+
             ),
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}, True),
         )
@@ -437,23 +469,19 @@ class Estimator2DJ(Estimator):
         offset = self.offset()[1]
 
         if pts is None:
-            _, pts = self.default_pts
-        _, tp = self.get_timepoints(pts=(1, pts), meshgrid=False)
+            pts = self.default_pts[1]
+        tp = self.get_timepoints(pts=(1, pts), meshgrid=False)[1]
 
-        signal = (
-            np.exp(  # Z1
+        signal = np.einsum(
+            "ij,j->i",
+            np.exp(
                 np.outer(
                     tp,
-                    -2j * np.pi * params[:, 2],
+                    2j * np.pi * (params[:, 3] - params[:, 2] - offset) - params[:, 5],
                 )
-            ) *
-            np.exp(  # Z2
-                np.outer(
-                    tp,
-                    2j * np.pi * (params[:, 3] - offset) - params[:, 5],
-                )
-            )
-        ) @ (params[:, 0] * np.exp(1j * params[:, 1]))  # alpha
+            ),
+            params[:, 0] * np.exp(1j * params[:, 1])
+        )
 
         return signal
 
