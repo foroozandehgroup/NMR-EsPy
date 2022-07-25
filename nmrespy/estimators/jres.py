@@ -1,21 +1,27 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 21 Jul 2022 11:44:45 BST
+# Last Edited: Mon 25 Jul 2022 17:38:26 BST
 
 from __future__ import annotations
 import copy
 from pathlib import Path
+import re
+import tkinter as tk
 from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk,
+)
 
 from nmr_sims.experiments.jres import JresSimulation
 from nmr_sims.nuclei import Nucleus
 from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import ExpInfo, sig
+from nmrespy.app.custom_widgets import MyEntry
 from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
@@ -138,8 +144,6 @@ class Estimator2DJ(Estimator):
     def view_data(
         self,
         domain: str = "freq",
-        components: str = "real",
-        freq_unit: str = "hz",
         abs_: bool = False,
     ) -> None:
         """View the data.
@@ -149,66 +153,39 @@ class Estimator2DJ(Estimator):
         domain
             Must be ``"freq"`` or ``"time"``.
 
-        components
-            Must be ``"real"``, ``"imag"``, or ``"both"``.
-
-        freq_unit
-            Must be ``"hz"`` or ``"ppm"``.
-
         abs_
             Whether or not to display frequency-domain data in absolute-value mode.
         """
         sanity_check(
             ("domain", domain, sfuncs.check_one_of, ("freq", "time")),
-            ("components", components, sfuncs.check_one_of, ("real", "imag", "both")),
-            ("freq_unit", freq_unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
             ("abs_", abs_, sfuncs.check_bool),
         )
 
         fig = plt.figure()
         ax = fig.add_subplot(projection="3d")
-        z = copy.deepcopy(self._data)
+        data_cp = copy.deepcopy(self._data)
 
         if domain == "freq":
-            x, y = self.get_shifts(unit=freq_unit)
-            z[0, 0] /= 2
-            z = sig.ft(z)
+            data_cp[0, 0] /= 2
+            spectrum = sig.ft(data_cp)
 
             if abs_:
-                z = np.abs(z)
+                spectrum = np.abs(spectrum)
 
-            if self.nuclei is None:
-                pass
-            else:
-                freq_units = ("Hz", freq_unit.replace("h", "H"))
-                nuclei = [
-                    nuc if nuc is not None else "$\\omega$"
-                    for nuc in self.latex_nuclei
-                ]
-                xlabel, ylabel = [
-                    f"{nuc} ({fu})" for nuc, fu in zip(nuclei, freq_units)
+            app = ContourApp(spectrum, self.expinfo)
+            app.mainloop()
 
-                ]
         elif domain == "time":
             x, y = self.get_timepoints()
             xlabel, ylabel = [f"$t_{i}$ (s)" for i in range(1, 3)]
 
-        if components in ("real", "both"):
-            ax.plot_wireframe(
-                x, y, z.real, color="k", lw=0.2, rstride=1, cstride=1,
-            )
-        if components in ("imag", "both"):
-            ax.plot_wireframe(
-                x, y, z.imag, color="#808080", lw=0.2, rstride=1, cstride=1,
-            )
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.set_xlim(reversed(ax.get_xlim()))
+            ax.set_ylim(reversed(ax.get_ylim()))
+            ax.set_zticks([])
 
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_xlim(reversed(ax.get_xlim()))
-        ax.set_ylim(reversed(ax.get_ylim()))
-        ax.set_zticks([])
-
-        plt.show()
+            plt.show()
 
     @logger
     def estimate(
@@ -693,3 +670,176 @@ class Estimator2DJ(Estimator):
 
     def plot_result(self):
         pass
+
+
+class ContourApp(tk.Tk):
+    """Tk app for viewing 2D spectra as contour plots."""
+
+    def __init__(self, data: np.ndarray, expinfo) -> None:
+        super().__init__()
+        self.shifts = list(reversed(
+            [s.T for s in expinfo.get_shifts(data.shape, unit="ppm")]
+        ))
+        nuclei = expinfo.nuclei
+        units = ["ppm" if sfo is not None else "Hz" for sfo in expinfo.sfo]
+        self.f1_label, self.f2_label = [
+            f"{nuc} ({unit})" if nuc is not None
+            else unit
+            for nuc, unit in zip(nuclei, units)
+        ]
+
+        self.data = data.T.real
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        self.fig = plt.figure(dpi=160, frameon=True)
+        self._color_fig_frame()
+
+        self.ax = self.fig.add_axes([0.1, 0.1, 0.87, 0.87])
+        self.ax.set_xlim(self.shifts[0][0][0], self.shifts[0][-1][0])
+        self.ax.set_ylim(self.shifts[1][0][0], self.shifts[1][0][-1])
+
+        self.cmap = tk.StringVar(self, "bwr")
+        self.nlevels = 10
+        self.factor = 1.3
+        self.base = np.amax(np.abs(self.data)) / 10
+        self.update_plot()
+
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().grid(
+            row=0,
+            column=0,
+            padx=10,
+            pady=10,
+            sticky="nsew",
+        )
+
+        self.toolbar = NavigationToolbar2Tk(
+            self.canvas,
+            self,
+            pack_toolbar=False,
+        )
+        self.toolbar.grid(row=1, column=0, pady=(0, 10), sticky="w")
+
+        self.widget_frame = tk.Frame(self)
+        self._add_widgets()
+        self.widget_frame.grid(
+            row=2,
+            column=0,
+            padx=10,
+            pady=(0, 10),
+            sticky="nsew",
+        )
+        self.close_button = tk.Button(
+            self, text="Close", command=self.quit,
+        )
+        self.close_button.grid(row=3, column=0, padx=10, pady=(0, 10), sticky="w")
+
+    def _color_fig_frame(self) -> None:
+        r, g, b = [x >> 8 for x in self.winfo_rgb(self.cget("bg"))]
+        color = f"#{r:02x}{g:02x}{b:02x}"
+        if not re.match(r"^#[0-9a-f]{6}$", color):
+            color = "#d9d9d9"
+
+        self.fig.patch.set_facecolor(color)
+
+    def _add_widgets(self) -> None:
+        # Colormap selection
+        self.cmap_label = tk.Label(self.widget_frame, text="Colormap:")
+        self.cmap_label.grid(row=0, column=0, padx=(0, 10))
+        self.cmap_widget = tk.OptionMenu(
+            self.widget_frame,
+            self.cmap,
+            self.cmap.get(),
+            "PiYG",
+            "PRGn",
+            "BrBG",
+            "PuOr",
+            "RdGy",
+            "RdBu",
+            "RdYlBu",
+            "RdYlGn",
+            "Spectral",
+            "coolwarm",
+            "bwr",
+            "seismic",
+            command=lambda x: self.update_plot(),
+        )
+        self.cmap_widget.grid(row=0, column=1)
+
+        # Number of contour levels
+        self.nlevels_label = tk.Label(self.widget_frame, text="levels")
+        self.nlevels_label.grid(row=0, column=2, padx=(0, 10))
+        self.nlevels_box = MyEntry(
+            self.widget_frame,
+            return_command=self.change_levels,
+            return_args=("nlevels",),
+        )
+        self.nlevels_box.insert(0, str(self.nlevels))
+        self.nlevels_box.grid(row=0, column=3)
+
+        # Base contour level
+        self.base_label = tk.Label(self.widget_frame, text="base")
+        self.base_label.grid(row=0, column=4, padx=(0, 10))
+        self.base_box = MyEntry(
+            self.widget_frame,
+            return_command=self.change_levels,
+            return_args=("base",),
+        )
+        self.base_box.insert(0, f"{self.base:.2f}")
+        self.base_box.grid(row=0, column=5)
+
+        # Contour level scaling factor
+        self.factor_label = tk.Label(self.widget_frame, text="factor")
+        self.factor_label.grid(row=0, column=6, padx=(0, 10))
+        self.factor_box = MyEntry(
+            self.widget_frame,
+            return_command=self.change_levels,
+            return_args=("factor",),
+        )
+        self.factor_box.insert(0, f"{self.factor:.2f}")
+        self.factor_box.grid(row=0, column=7)
+
+    def change_levels(self, var: str) -> None:
+        input_ = self.__dict__[f"{var}_box"].get()
+        try:
+            if var == "nlevels":
+                value = int(input_)
+                if value <= 0.:
+                    raise ValueError
+            else:
+                value = float(input_)
+                if (
+                    value <= 1. and var == "factor" or
+                    value <= 0. and var == "base"
+                ):
+                    raise ValueError
+
+            self.__dict__[var] = value
+            self.update_plot()
+
+        except ValueError:
+            box = self.__dict__[f"{var}_box"]
+            box.delete(0, "end")
+            box.insert(0, str(self.__dict__[var]))
+
+    def make_levels(self) -> Iterable[float]:
+        levels = [self.base * self.factor ** i
+                  for i in range(self.nlevels)]
+        return [-x for x in reversed(levels)] + levels
+
+    def update_plot(self) -> None:
+        levels = self.make_levels()
+        xlim = self.ax.get_xlim()
+        ylim = self.ax.get_ylim()
+        self.ax.clear()
+        self.ax.contour(
+            *self.shifts, self.data, cmap=self.cmap.get(), levels=levels,
+        )
+        self.ax.set_xlim(xlim)
+        self.ax.set_ylim(ylim)
+        self.ax.set_xlabel(self.f2_label)
+        self.ax.set_ylabel(self.f1_label)
+        self.fig.canvas.draw_idle()

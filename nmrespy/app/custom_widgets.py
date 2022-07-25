@@ -1,7 +1,7 @@
 # custom_widgets.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 11:26:47 GMT
+# Last Edited: Mon 25 Jul 2022 16:24:20 BST
 
 """
 Customised widgets for NMR-EsPy GUI.
@@ -149,6 +149,7 @@ class MyEntry(tk.Entry):
     def bind_command(self):
         self.bind("<Key>", lambda event: self.key_press())
         self.bind("<Return>", lambda event: self.return_press())
+        self.bind("<Tab>", lambda event: None)
 
     def key_press(self):
         if self["state"] == "normal":
