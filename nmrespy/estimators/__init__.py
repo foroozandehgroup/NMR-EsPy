@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 23 Jun 2022 21:34:07 BST
+# Last Edited: Fri 22 Jul 2022 17:03:22 BST
 
 from __future__ import annotations
 import abc
@@ -13,7 +13,7 @@ from typing import Iterable, Optional, Tuple, Union
 import numpy as np
 
 import nmrespy as ne
-from nmrespy._colors import RED, END, USE_COLORAMA
+from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._files import (
     check_saveable_path,
     check_existent_path,
@@ -984,6 +984,121 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             force_overwrite=True,
             fprint=fprint,
             pdflatex_exe=pdflatex_exe,
+        )
+
+    def _get_subbands(self, nsubbands: Optional[int]):
+        # N.B. This is only appropriate for Estimator1D and Estimator2DJ
+        if nsubbands is None:
+            nsubbands = int(np.ceil(self.data.shape[-1] / 500))
+
+        idxs, mid_idxs = self._get_subband_indices(nsubbands)
+        shifts = self.get_shifts(meshgrid=False)[-1]
+        regions = [(shifts[idx[0]], shifts[idx[1]]) for idx in idxs]
+        mid_regions = [(shifts[mid_idx[0]], shifts[mid_idx[1]]) for mid_idx in mid_idxs]
+
+        return regions, mid_regions
+
+    def _get_subband_indices(
+        self,
+        nsubbands: int,
+    ) -> Tuple[Iterable[Tuple[int, int]], Iterable[Tuple[int, int]]]:
+        # (nsubbands - 2) full-size regions plus 2 half-size regions on each end.
+        size = self.data.shape[-1]
+        width = int(np.ceil(2 * size / (nsubbands - 1)))
+        mid_width = int(np.ceil(width / 2))
+        start_factor = int(np.ceil(size / (nsubbands - 1)))
+        idxs = []
+        mid_idxs = []
+        for i in range(0, nsubbands - 2):
+            start = i * start_factor
+            mid_start = int(np.ceil((i + 0.5) * start_factor))
+            if i == nsubbands - 3:
+                idxs.append((start, size - 1))
+            else:
+                idxs.append((start, start + width))
+            mid_idxs.append((mid_start, mid_start + mid_width))
+
+        idxs.insert(0, (0, start_factor))
+        idxs.append(((nsubbands - 2) * start_factor, size - 1))
+        mid_idxs.insert(0, (0, mid_idxs[0][0]))
+        mid_idxs.append((mid_idxs[-1][-1], size - 1))
+
+        return idxs, mid_idxs
+
+    def _keep_middle_freqs(
+        self,
+        result: Result,
+        mid_region: Tuple[float, float],
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        if result.params.size == 0:
+            return None, None
+        to_remove = (
+            list(np.nonzero(result.params[:, 1 + self.dim] >= mid_region[0])[0]) +
+            list(np.nonzero(result.params[:, 1 + self.dim] < mid_region[1])[0])
+        )
+        return (
+            np.delete(result.params, to_remove, axis=0),
+            np.delete(result.errors, to_remove, axis=0),
+        )
+
+    def _subband_estimate(
+        self,
+        nsubbands: Optional[int],
+        noise_region: Tuple[float, float],
+        noise_region_unit: str,
+        **kwargs,
+    ) -> None:
+        regions, mid_regions = self._get_subbands(nsubbands)
+        nsubbands = len(regions)
+        noise_region = self.convert(
+            (self.dim - 1) * [None] + [noise_region],
+            f"{noise_region_unit}->hz",
+        )[-1]
+
+        fprint = kwargs.pop("fprint")
+        if fprint:
+            print(f"Starting sub-band estimation using {nsubbands} sub-bands:")
+
+        params = None
+        errors = None
+        for i, (region, mid_region) in enumerate(zip(regions, mid_regions), start=1):
+            if fprint:
+                msg = (
+                    f"--> Estimating region #{i}: "
+                    f"{mid_region[0]:.2f} - {mid_region[1]:.2f}Hz"
+                )
+                if self.hz_ppm_valid:
+                    mid_region_ppm = self.convert(
+                        (self.dim - 1) * [None] + [mid_region],
+                        "hz->ppm"
+                    )[-1]
+                    msg += f" ({mid_region_ppm[0]:.3f} - {mid_region_ppm[1]:.3f}ppm)"
+                print(msg)
+
+            self.estimate(
+                region, noise_region, region_unit="hz", fprint=False, _log=False,
+                **kwargs,
+            )
+            p, e = self._keep_middle_freqs(self._results.pop(), mid_region)
+
+            if p is None:
+                continue
+            if params is None:
+                params = p
+                errors = e
+            else:
+                params = np.vstack((params, p))
+                errors = np.vstack((errors, e))
+
+        # Sort in order of direct-dimension freqs.
+        sort_idx = np.argsort(params[:, 1 + self.dim])
+        params = params[sort_idx]
+        errors = errors[sort_idx]
+
+        if fprint:
+            print(f"{GRE}Sub-band estimation complete.{END}")
+        self._results.append(
+            Result(params, errors, region=None, noise_region=None, sfo=self.sfo)
         )
 
 

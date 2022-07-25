@@ -220,12 +220,13 @@ class Estimator2DJ(Estimator):
         method: str = "gauss-newton",
         phase_variance: bool = True,
         max_iterations: Optional[int] = None,
+        cut_ratio: Optional[float] = 1.1,
         mpm_trim: Optional[int] = 256,
         nlp_trim: Optional[int] = 1024,
         fprint: bool = True,
         _log: bool = True,
     ):
-        r"""Estimate a specified region in F2 of the signal.
+        r"""Estimate a specified region in F2.
 
         The basic steps that this method carries out are:
 
@@ -325,6 +326,10 @@ class Estimator2DJ(Estimator):
                 "max_iterations", max_iterations, sfuncs.check_int, (),
                 {"min_value": 1}, True,
             ),
+            (
+                "cut_ratio", cut_ratio, sfuncs.check_float, (),
+                {"greater_than_one": True}, True,
+            ),
             ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
             ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
             ("fprint", fprint, sfuncs.check_bool),
@@ -369,7 +374,7 @@ class Estimator2DJ(Estimator):
                 twodim_dtype="jres",
             )
 
-            mpm_signal, mpm_expinfo = filt.get_filtered_fid()
+            mpm_signal, mpm_expinfo = filt.get_filtered_fid(cut_ratio=cut_ratio)
             nlp_signal, nlp_expinfo = filt.get_filtered_fid(cut_ratio=None)
             region = filt.get_region()
             noise_region = filt.get_noise_region()
@@ -390,7 +395,7 @@ class Estimator2DJ(Estimator):
                 fprint=fprint,
             ).get_params()
 
-            if x0.size == 0:
+            if x0 is None:
                 return self._results.append(
                     Result(
                         np.array([[]]),
@@ -421,6 +426,132 @@ class Estimator2DJ(Estimator):
             )
         )
 
+    def subband_estimate(
+        self,
+        noise_region: Tuple[float, float],
+        noise_region_unit: str = "hz",
+        nsubbands: Optional[int] = None,
+        method: str = "gauss-newton",
+        phase_variance: bool = True,
+        max_iterations: Optional[int] = None,
+        cut_ratio: Optional[float] = 1.1,
+        mpm_trim: Optional[int] = 128,
+        nlp_trim: Optional[int] = 256,
+        fprint: bool = True,
+        _log: bool = True,
+    ) -> None:
+        r"""Perform estiamtion on the entire signal via estimation of
+        frequency-filtered sub-bands.
+
+        This method splits the signal up into ``nsubbands`` equally-sized regions
+        in the direct dimension and extracts parameters from each region before
+        finally concatenating all the results together.
+
+        Parameters
+        ----------
+        noise_region
+            Specifies a direct dimension frequency range where no noticeable
+            signals reside, i.e. only noise exists.
+
+        noise_region_unit
+            One of ``"hz"`` or ``"ppm"``. Specifies the units that ``noise_region``
+            have been given in.
+
+        nsubbands
+            The number of sub-bands to break the signal into. If ``None``, the number
+            will be set as the nearest integer to the data size divided by 500.
+
+        method
+            Specifies the optimisation method.
+
+            * ``"exact"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be exact.
+            * ``"gauss-newton"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be approximated based on the
+              `Gauss-Newton method <https://en.wikipedia.org/wiki/
+              Gauss%E2%80%93Newton_algorithm>`_
+            * ``"lbfgs"`` Uses SciPy's
+              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
+
+        phase_variance
+            Whether or not to include the variance of oscillator phases in the cost
+            function. This should be set to ``True`` in cases where the signal being
+            considered is derived from well-phased data.
+
+        max_iterations
+            A value specifiying the number of iterations the routine may run
+            through before it is terminated. If ``None``, the default number
+            of maximum iterations is set (``100`` if ``method`` is
+            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
+            ``"lbfgs"``).
+
+        mpm_trim
+            Specifies the maximal size in the direct dimension allowed for the
+            filtered signal when undergoing the Matrix Pencil. If ``None``, no
+            trimming is applied to the signal. If an int, and the filtered
+            signal has a direct dimension size greater than ``mpm_trim``, this
+            signal will be set as ``signal[:, :mpm_trim]``.
+
+        nlp_trim
+            Specifies the maximal size allowed in the direct dimension for the
+            filtered signal when undergoing nonlinear programming. If ``None``,
+            no trimming is applied to the signal. If an int, and the filtered
+            signal has a direct dimension size greater than ``nlp_trim``, this
+            signal will be set as ``signal[:, :nlp_trim]``.
+
+        fprint
+            Whether of not to output information to the terminal.
+
+        _log
+            Ignore this!
+        """
+        sanity_check(
+            (
+                "noise_region_unit", noise_region_unit, sfuncs.check_frequency_unit,
+                (self.hz_ppm_valid,),
+            ),
+            ("nsubbands", nsubbands, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
+            ("phase_variance", phase_variance, sfuncs.check_bool),
+            (
+                "max_iterations", max_iterations, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            ("fprint", fprint, sfuncs.check_bool),
+            ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
+            (
+                "cut_ratio", cut_ratio, sfuncs.check_float, (),
+                {"greater_than_one": True}, True,
+            ),
+        )
+        sanity_check(
+            (
+                "noise_region", noise_region, sfuncs.check_region,
+                (
+                    (self.sw(noise_region_unit)[1],),
+                    (self.offset(noise_region_unit)[1],),
+                ), {}, True,
+            ),
+        )
+
+        kwargs = {
+            "method": method,
+            "phase_variance": phase_variance,
+            "max_iterations": max_iterations,
+            "cut_ratio": cut_ratio,
+            "mpm_trim": mpm_trim,
+            "nlp_trim": nlp_trim,
+            "fprint": fprint,
+        }
+
+        self._subband_estimate(nsubbands, noise_region, noise_region_unit, **kwargs)
+
     def negative_45_signal(
         self,
         indices: Optional[Iterable[int]] = None,
@@ -435,7 +566,7 @@ class Estimator2DJ(Estimator):
             \exp\left( 2 \mathrm{i} \pi f_{1,m} t \right)
             \exp\left( -t \left[2 \mathrm{i} \pi f_{2,m} + \eta_{2,m} \right] \right)
 
-        .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/2dj/nmrespy/images/neg_45.png
+        .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/2dj/nmrespy/images/neg_45.png  # noqa: E501
 
         Producing this signal from parameters derived from estimation of a 2DJ dataset
         should generate a 1D homodecoupled spectrum.
