@@ -1,7 +1,7 @@
 # test_jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 20 Jul 2022 15:31:29 BST
+# Last Edited: Thu 21 Jul 2022 18:44:18 BST
 
 import copy
 from pathlib import Path
@@ -66,16 +66,14 @@ class DefaultEstimator:
         else:
             cls._after_estimation = cls.before_estimation()
             regions = ((4.1, 3.6), (4.6, 4.4))
-            initial_guesses = (8, 4)
             noise_region = (4.25, 4.2)
 
-            for region, initial_guess in zip(regions, initial_guesses):
+            for region in regions:
                 cls._after_estimation.estimate(
                     region=region,
                     noise_region=noise_region,
                     fprint=False,
                     region_unit="ppm",
-                    initial_guess=initial_guess,
                 )
 
             return cls.after_estimation()
@@ -164,7 +162,6 @@ def test_estimate():
             noise_region=None,
             method=method,
             fprint=False,
-            initial_guess=12,
         )
 
 
