@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 23 Jun 2022 21:19:25 BST
+# Last Edited: Mon 25 Jul 2022 16:30:55 BST
 
 """Manipulating and processing NMR signals."""
 
@@ -155,6 +155,20 @@ def zf(data: np.ndarray) -> np.ndarray:
             zf_data = np.concatenate((zf_data, zeros), axis=i)
 
     return zf_data
+
+
+def exp_apodisation(fid: np.ndarray, k: float) -> np.ndarray:
+    """Apply exponential apodisation to an FID.
+
+    The FID is multiplied by ``np.exp(-k * np.linspace(0, 1, n))`` in each dimension,
+    where ``n`` is the size of each dimension.
+    """
+    indices = [chr(105 + i) for i in range(fid.ndim)]
+    index_notation = ",".join(indices) + "->" + "".join(indices)
+    return fid * np.einsum(
+        index_notation,
+        *[np.exp(-k * np.linspace(0, 1, n)) for n in fid.shape],
+    )
 
 
 def ft(
@@ -417,7 +431,7 @@ def manual_phase_data(
     dim = spectrum.ndim
     sanity_check(
         (
-            "max_p1", max_p1, sfuncs.check_float_list,
+            "max_p1", max_p1, sfuncs.check_float_list, (),
             {
                 "length": dim,
                 "len_one_can_be_listless": True,
@@ -624,6 +638,30 @@ class PhaseApp(tk.Tk):
         self.p0 = None
         self.p1 = None
         self.destroy()
+
+
+def add_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
+    """Add noise to an FID.
+
+    Parameters
+    ----------
+    fid
+        Noiseless FID.
+
+    snr
+        The signal-to-noise ratio.
+
+    decibels
+        If `True`, the snr is taken to be in units of decibels. If `False`,
+        it is taken to be simply the ratio of the singal power and noise
+        power.
+    """
+    sanity_check(
+        ("fid", fid, sfuncs.check_ndarray),
+        ("snr", snr, sfuncs.check_float),
+        ("decibels", decibels, sfuncs.check_bool),
+    )
+    return fid + _make_noise(fid, snr, decibels)
 
 
 def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
