@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 22 Jul 2022 17:03:22 BST
+# Last Edited: Wed 27 Jul 2022 17:13:31 BST
 
 from __future__ import annotations
 import abc
@@ -437,6 +437,16 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         )
 
         return self._get_arrays("errors", indices, funit, sort_by, merge)
+
+    def find_osc(self, params: np.ndarray) -> Tuple[int, int]:
+        for i, result in enumerate(self._results):
+            result_params = result.get_params()
+            try:
+                j = int(np.where((result_params == params).all(axis=-1))[0][0])
+                return (i, j)
+            except IndexError:
+                pass
+        return None
 
     def _get_arrays(
         self,

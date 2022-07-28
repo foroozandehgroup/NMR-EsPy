@@ -1,14 +1,14 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 25 Jul 2022 17:38:26 BST
+# Last Edited: Wed 27 Jul 2022 18:16:33 BST
 
 from __future__ import annotations
 import copy
 from pathlib import Path
 import re
 import tkinter as tk
-from typing import Iterable, Optional, Tuple, Union
+from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -559,6 +559,7 @@ class Estimator2DJ(Estimator):
             The number of points to construct the signal from. If ``None``,
             ``self.default_pts`` will be used.
         """
+        self._check_results_exist()
         sanity_check(
             (
                 "indices", indices, sfuncs.check_int_list, (),
@@ -574,12 +575,14 @@ class Estimator2DJ(Estimator):
         )
 
         params = self.get_params(indices)
-        offset = self.offset()[1]
+        multiplets = self.predict_multiplets(thold=0.5)
+        for multiplet in multiplets:
+            params[multiplet, 5] /= len(multiplet)
 
+        offset = self.offset()[1]
         if pts is None:
             pts = self.default_pts[1]
         tp = self.get_timepoints(pts=(1, pts), meshgrid=False)[1]
-
         signal = np.einsum(
             "ij,j->i",
             np.exp(
@@ -592,6 +595,123 @@ class Estimator2DJ(Estimator):
         )
 
         return signal
+
+    def predict_multiplets(
+        self, thold: Optional[float] = None,
+    ) -> Iterable[Iterable[int]]:
+        """Predict the estimated oscillators which correspond to each multiplet
+        in the signal.
+
+        Parameters
+        ----------
+        thold
+            Frequency threshold. All oscillators that make up a multiplet are assumed
+            to obey the following expression:
+
+            .. math::
+                f_c - f_t < f_{2,m} - f_{1,m} < f_c - f_t
+
+            where :math:`f_c` is the central frequency of the multiplet, and `f_t` is
+            ``thold``
+        """
+        self._check_results_exist()
+        sanity_check(
+            ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+        )
+        if thold is None:
+            thold = 0.5 * (self.default_pts[0] / self.sw()[0])
+
+        params = self.get_params()
+        groups = []
+        in_range = lambda f, g: (g - thold < f < g + thold)
+        for i, osc in enumerate(params):
+            centre_freq = osc[3] - osc[2]
+            assigned = False
+            for group in groups:
+                if in_range(centre_freq, group["freq"]):
+                    group["idx"].append(i)
+                    assigned = True
+                    break
+            if not assigned:
+                groups.append({"freq": centre_freq, "idx": [i]})
+
+        return [group["idx"] for group in groups]
+
+    def find_spurious_oscillators(
+        self,
+        thold: Optional[float] = None,
+    ) -> Dict[int, Iterable[int]]:
+        r"""Predict which oscillators are spurious.
+
+        This predicts the multiplet structures in the estimationm result, and then
+        purges all oscillators which fall into the following criteria:
+
+        * The oscillator is the only one in the multiplet.
+        * The frequency in F1 is greater than ``thold``.
+
+        Parameters
+        ----------
+        thold
+            Frequency threshold within which :math:`f_2 - f_1` of the oscillators
+            in a multiplet should agree. If ``None``, this is set to be
+            :math:`N_1 / 2 f_{\mathrm{sw}, 1}``
+
+        Returns
+        -------
+        A dictionary with int keys corresponding to result indices, and list
+        values corresponding to oscillators which are deemed spurious.
+        """
+        self._check_results_exist()
+        sanity_check(
+            ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+        )
+        if thold is None:
+            thold = 0.5 * (self.default_pts[0] / self.sw()[0])
+
+        params = self.get_params()
+        multiplets = self.predict_multiplets(thold)
+        spurious = {}
+        for multiplet in multiplets:
+            if len(multiplet) == 1 and abs(params[multiplet[0], 2]) > thold:
+                osc_loc = self.find_osc(params[multiplet[0]])
+                if osc_loc[0] in spurious:
+                    spurious[osc_loc[0]].append(osc_loc[1])
+                else:
+                    spurious[osc_loc[0]] = [osc_loc[1]]
+
+        return spurious
+
+    def remove_spurious_oscillators(
+        self,
+        thold: Optional[float] = None,
+        **estimate_kwargs,
+    ) -> None:
+        r"""Attempt to remove spurious oscillators from the estimation result.
+
+        See :py:meth:`find_spurious_oscillators` for information on how spurious
+        oscillators are predicted.
+
+        Oscillators deemed spurious are removed using :py:meth:`remove_oscillators`.
+
+        Parameters
+        ----------
+        thold
+            Frequency threshold within which :math:`f_2 - f_1` of the oscillators
+            in a multiplet should agree. If ``None``, this is set to be
+            :math:`N_1 / 2 f_{\mathrm{sw}, 1}``
+
+        estimate_kwargs
+            Keyword arguments to provide to :py:meth:`remove_oscillators`. Note
+            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
+            will be ignored if given.
+        """
+        self._check_results_exist()
+        sanity_check(
+            ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+        )
+        spurious = self.find_spurious_oscillators(thold)
+        for res_idx, osc_idx in spurious.items():
+            self.remove_oscillators(osc_idx, res_idx, **estimate_kwargs)
 
     def sheared_signal(
         self,
