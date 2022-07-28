@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 25 Jul 2022 16:30:55 BST
+# Last Edited: Thu 28 Jul 2022 09:47:40 BST
 
 """Manipulating and processing NMR signals."""
 
@@ -144,30 +144,61 @@ def zf(data: np.ndarray) -> np.ndarray:
     """
     zf_data = copy.deepcopy(data)
     for i, n in enumerate(zf_data.shape):
+        nearest_pow_2 = int(2 ** np.ceil(np.log2(n)))
         if n & (n - 1) == 0:
-            pass
-        else:
-            nearest_pow_2 = int(2 ** np.ceil(np.log2(n)))
-            pts_to_append = nearest_pow_2 - n
-            shape_to_add = list(zf_data.shape)
-            shape_to_add[i] = pts_to_append
-            zeros = np.zeros(shape_to_add, dtype="complex")
-            zf_data = np.concatenate((zf_data, zeros), axis=i)
+            nearest_pow_2 *= 2
+        pts_to_append = nearest_pow_2 - n
+        shape_to_add = list(zf_data.shape)
+        shape_to_add[i] = pts_to_append
+        zeros = np.zeros(shape_to_add, dtype="complex")
+        zf_data = np.concatenate((zf_data, zeros), axis=i)
 
     return zf_data
 
 
-def exp_apodisation(fid: np.ndarray, k: float) -> np.ndarray:
+def exp_apodisation(
+    fid: np.ndarray,
+    k: float,
+    axes: Optional[Iterable[int]] = None,
+) -> np.ndarray:
     """Apply exponential apodisation to an FID.
 
-    The FID is multiplied by ``np.exp(-k * np.linspace(0, 1, n))`` in each dimension,
-    where ``n`` is the size of each dimension.
+    The FID is multiplied by ``np.exp(-k * np.linspace(0, 1, n))`` in each dimension
+    specified by ``axes``, where ``n`` is the size of each dimension.
+
+    Parameters
+    ----------
+    fid
+        FID to process.
+
+    k
+        Line-broadening factor.
+
+    axes
+        The axes to apply the apodiisation over. If ``None``, all axes are apodised.
     """
+    sanity_check(
+        ("fid", fid, sfuncs.check_ndarray),
+        ("k", k, sfuncs.check_float, (), {"greater_than_zero": True}),
+        (
+            "axes", axes, sfuncs.check_int_list,
+            {
+                "len_one_can_be_listless": True,
+                "min_value": -fid.ndim,
+                "max_value": fid.ndim - 1,
+            },
+            True,
+        ),
+    )
+    axes = [i % fid.ndim for i in axes]
     indices = [chr(105 + i) for i in range(fid.ndim)]
     index_notation = ",".join(indices) + "->" + "".join(indices)
+
     return fid * np.einsum(
         index_notation,
-        *[np.exp(-k * np.linspace(0, 1, n)) for n in fid.shape],
+        *[np.exp(-k * np.linspace(0, 1, n)) if i in axes
+          else np.ones(n)
+          for i, n in enumerate(fid.shape)],
     )
 
 
