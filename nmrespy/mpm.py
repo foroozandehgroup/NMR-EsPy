@@ -1,6 +1,10 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+# Last Edited: Fri 22 Jul 2022 15:18:42 BST
+
+# Simon Hulse
+# simon.hulse@chem.ox.ac.uk
 # Last Edited: Tue 10 May 2022 14:32:18 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
@@ -135,6 +139,28 @@ class MatrixPencil(ResultFetcher):
         elif self.dim == 2:
             self._mpm_2d()
 
+    def _mdl_1d(self, sigma: np.ndarray, N: int) -> int:
+        """1D MDL.
+
+        Parameters
+        ----------
+        sigma
+            Singular values obtained from Hankel data matrix.
+
+        N
+            Number of points the signal is made of
+        """
+        L = sigma.size
+        self.mdl = np.zeros(L)
+        for k in range(L):
+            self.mdl[k] = (
+                -N * np.einsum("i->", np.log(sigma[k:])) +
+                N * (L - k) * np.log(np.einsum("i->", sigma[k:]) / (L - k)) +
+                k * np.log(N) * (2 * L - k) / 2
+            )
+
+        return np.argmin(self.mdl)
+
     @timer
     @start_end_wrapper("MPM STARTED", "MPM COMPLETE")
     def _mpm_1d(self) -> None:
@@ -169,7 +195,7 @@ class MatrixPencil(ResultFetcher):
         # and right singular vectors (LxL size matrix)
         if self.fprint:
             print("--> Performing Singular Value Decomposition...")
-        sigma, Vh = nlinalg.svd(Y)[1:]
+        _, sigma, Vh = nlinalg.svd(Y)
         V = Vh.T
 
         # Compute the MDL in order to estimate the number of oscillators
@@ -179,16 +205,7 @@ class MatrixPencil(ResultFetcher):
         if self.oscillators == 0:
             if self.fprint:
                 print("\tNumber of oscillators will be estimated using MDL")
-
-            self.mdl = np.zeros(L)
-            for k in range(L):
-                self.mdl[k] = (
-                    -N * np.einsum("i->", np.log(sigma[k:L])) +
-                    N * (L - k) * np.log(np.einsum("i->", sigma[k:L]) / (L - k)) +
-                    k * np.log(N) * (2 * L - k) / 2
-                )
-
-            self.oscillators = np.argmin(self.mdl)
+            self.oscillators = self._mdl_1d(sigma, N)
 
         else:
             if self.fprint:
@@ -196,6 +213,12 @@ class MatrixPencil(ResultFetcher):
 
         if self.fprint:
             print(f"\tNumber of oscillations: {self.oscillators}")
+
+        if self.oscillators == 0:
+            if self.fprint:
+                print("No oscillators detected!")
+                self.params = None
+                return
 
         # Determine signal poles
         if self.fprint:
@@ -227,24 +250,50 @@ class MatrixPencil(ResultFetcher):
     @start_end_wrapper("MMEMP STARTED", "MMEMP COMPLETE")
     def _mpm_2d(self):
         """Perform 2-dimensional Modified Matrix Enhanced Pencil Method."""
+        # Number of points
+        N1, N2 = self.data.shape
         # Normalise data
         norm = nlinalg.norm(self.data)
         normed_data = self.data / norm
 
-        # Number of points
-        N1, N2 = self.data.shape
+        if self.fprint:
+            print("--> Computing number of oscillators...")
+
+        if self.oscillators == 0:
+            if self.fprint:
+                print(
+                    "\tNumber of oscillators will be estimated using MDL on first "
+                    "t1 increment."
+                )
+            # Construct Hankel matrix of first t1 increment, and perform MDL.
+            L_mdl = int(np.floor(N2 / 3))
+            self.oscillators = self._mdl_1d(
+                nlinalg.svd(
+                    slinalg.hankel(
+                        normed_data[0, : N2 - L_mdl],
+                        normed_data[0, N2 - L_mdl - 1 :],
+                    )
+                )[1],
+                N2,
+            )
+
+        else:
+            if self.fprint:
+                print("\tNumber of oscillators has been pre-defined")
+
+        if self.fprint:
+            print(f"\tNumber of oscillators: {self.oscillators}")
+
+        if self.oscillators == 0:
+            if self.fprint:
+                print("No oscillators detected!")
+                self.params = None
+                return
 
         # Pencil parameters
         K, L = tuple([int((n + 1) / 2) for n in (N1, N2)])
         if self.fprint:
             print(f"--> Pencil parameters: {K}, {L}")
-
-        # TODO: MDL for 2D
-        if self.oscillators == 0:
-            raise ValueError(
-                f"{RED}Model order selection is not yet available for 2D "
-                f"data. Set `M` as greater than 0.{END}"
-            )
 
         # --- Enhanced Matrix ---
         X = slinalg.hankel(normed_data[0, :L], normed_data[0, L - 1 : N2])
@@ -253,7 +302,7 @@ class MatrixPencil(ResultFetcher):
             X = np.hstack((X, blk))
 
         # vertically stack rows of block matricies to get Xe
-        Xe = X[:, 0 : (N1 - K + 1) * (N2 - L + 1)]
+        Xe = X[:, : (N1 - K + 1) * (N2 - L + 1)]
 
         for k in range(1, K):
             Xe = np.vstack(
@@ -271,10 +320,10 @@ class MatrixPencil(ResultFetcher):
 
         # convert Xe to sparse matrix
         sparse_Xe = sparse.csr_matrix(Xe)
+        U, *_ = splinalg.svds(sparse_Xe, k=self.oscillators)
 
         if self.fprint:
             print("--> Performing Singular Value Decomposition...")
-        U, *_ = splinalg.svds(sparse_Xe, self.oscillators)
 
         # --- Permutation matrix ---
         if self.fprint:

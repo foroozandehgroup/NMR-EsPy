@@ -1,7 +1,7 @@
 # _freqconverter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 16 Jun 2022 11:54:22 BST
+# Last Edited: Wed 06 Jul 2022 15:55:29 BST
 
 import re
 from typing import Any, Iterable, Optional, Union

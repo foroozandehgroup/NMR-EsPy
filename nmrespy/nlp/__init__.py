@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 14:32:33 BST
+# Last Edited: Tue 21 Jun 2022 00:22:10 BST
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -46,23 +46,6 @@ if USE_COLORAMA:
 #     * `'p'`: Phases are optimised
 #     * `'f'`: Frequencies are optimised
 #     * `'d'`: Damping factors are optimised
-
-
-def check_optimiser_mode(obj: Any) -> Optional[str]:
-    if not isinstance(obj, str):
-        return "Should be a str."
-    # check if mode is empty or contains and invalid character
-    if any(c not in "apfd" for c in obj) or obj == "":
-        return "Invalid character present, or string is empty."
-    # check if mode contains a repeated character
-    count = {}
-    for c in obj:
-        if c in count.keys():
-            count[c] += 1
-        else:
-            count[c] = 1
-    if not all(map(lambda x: x == 1, count.values())):
-        return "Repeated character present."
 
 
 class NonlinearProgramming(ResultFetcher):
@@ -227,7 +210,7 @@ class NonlinearProgramming(ResultFetcher):
                 "max_iterations", max_iterations, sfuncs.check_int, (),
                 {"min_value": 1}, True
             ),
-            ("mode", mode, check_optimiser_mode),
+            ("mode", mode, sfuncs.check_optimiser_mode),
             (
                 "amp_thold", amp_thold, sfuncs.check_float, (),
                 {"greater_than_zero": True}, True,
@@ -416,7 +399,7 @@ class NonlinearProgramming(ResultFetcher):
                     active_idx.append(2 + self.dim + i)
 
         passive_idx = []
-        for i in range(2 * (self.dim * 1)):
+        for i in range(2 * (self.dim + 1)):
             if i not in active_idx:
                 passive_idx.append(i)
 
@@ -645,8 +628,15 @@ class NonlinearProgramming(ResultFetcher):
         )
 
         # Re-scale amplitude errors
-        errors[: self.m] *= self.norm
-        return errors.reshape((self.m, self.p), order="F")
+        proc_errors = np.zeros((self.m, self.p))
+        proc_errors[:, :] = np.nan
+        for n, idx in enumerate(self.active_idx):
+            if idx == 0:
+                proc_errors[:, idx] = self.norm * errors[: self.m]
+            else:
+                proc_errors[:, idx] = errors[n * self.m : (n + 1) * self.m]
+
+        return proc_errors
 
     def _check_negligible_amps(self) -> bool:
         """Determine oscillators with negligible amplitudes, and remove."""
