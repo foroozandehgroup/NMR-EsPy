@@ -4,7 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
     <title>nmrespy.sig &#8212; NMR-EsPy  documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
@@ -68,6 +68,26 @@
 <span id="nmrespy-sig"></span><h1>nmrespy.sig<a class="headerlink" href="#module-nmrespy.sig" title="Permalink to this heading">¶</a></h1>
 <p>Manipulating and processing NMR signals.</p>
 <dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.add_noise">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">add_noise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decibels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#add_noise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.add_noise" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add noise to an FID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fid</strong> (<em>ndarray</em>) – Noiseless FID.</p></li>
+<li><p><strong>snr</strong> (<em>float</em>) – The signal-to-noise ratio.</p></li>
+<li><p><strong>decibels</strong> (<em>bool</em>) – If <cite>True</cite>, the snr is taken to be in units of decibels. If <cite>False</cite>,
+it is taken to be simply the ratio of the singal power and noise
+power.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>ndarray</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="nmrespy.sig.convdta">
 <span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">convdta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grpdly</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#convdta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.convdta" title="Permalink to this definition">¶</a></dt>
 <dd><p>Remove the digital filter from time-domain Bruker data.</p>
@@ -78,6 +98,26 @@ function.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> (<em>ndarray</em>) – Time-domain data to process.</p></li>
 <li><p><strong>grpdly</strong> (<em>float</em>) – Group delay.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>ndarray</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.exp_apodisation">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">exp_apodisation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/nmrespy/sig.html#exp_apodisation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.exp_apodisation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply exponential apodisation to an FID.</p>
+<p>The FID is multiplied by <code class="docutils literal notranslate"><span class="pre">np.exp(-k</span> <span class="pre">*</span> <span class="pre">np.linspace(0,</span> <span class="pre">1,</span> <span class="pre">n))</span></code> in each dimension
+specified by <code class="docutils literal notranslate"><span class="pre">axes</span></code>, where <code class="docutils literal notranslate"><span class="pre">n</span></code> is the size of each dimension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fid</strong> (<em>ndarray</em>) – FID to process.</p></li>
+<li><p><strong>k</strong> (<em>float</em>) – Line-broadening factor.</p></li>
+<li><p><strong>axes</strong> (<em>Optional</em><em>[</em><em>Iterable</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The axes to apply the apodiisation over. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all axes are apodised.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -165,11 +205,13 @@ modulated pair.</p></li>
 </dd>
 </dl>
 <p class="rubric">References</p>
+<aside class="footnote-list brackets">
 <aside class="footnote brackets" id="id3" role="note">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">1</a><span class="fn-bracket">]</span></span>
 <p>M. Mayzel, K. Kazimierczuk, V. Y. Orekhov, The causality principle
 in the reconstruction of sparse nmr spectra, Chem. Commun. 50 (64)
 (2014) 8947–8950.</p>
+</aside>
 </aside>
 </dd></dl>
 
@@ -270,12 +312,14 @@ to the following signals:</p>
 </dd>
 </dl>
 <p class="rubric">References</p>
+<aside class="footnote-list brackets">
 <aside class="footnote brackets" id="id5" role="note">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">2</a><span class="fn-bracket">]</span></span>
 <p>A. L. Davis, J. Keeler, E. D. Laue, and D. Moskau, “Experiments for
 recording pure-absorption heteronuclear correlation spectra using
 pulsed field gradients,” Journal of Magnetic Resonance (1969),
 vol. 98, no. 1, pp. 207–216, 1992.</p>
+</aside>
 </aside>
 </dd></dl>
 

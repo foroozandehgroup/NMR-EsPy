@@ -48,6 +48,10 @@
 <span></span><span class="c1"># mpm.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
+<span class="c1"># Last Edited: Fri 22 Jul 2022 15:18:42 BST</span>
+
+<span class="c1"># Simon Hulse</span>
+<span class="c1"># simon.hulse@chem.ox.ac.uk</span>
 <span class="c1"># Last Edited: Tue 10 May 2022 14:32:18 BST</span>
 
 <span class="sd">&quot;&quot;&quot;Computation of NMR parameter estimates using the Matrix Pencil Method.</span>
@@ -182,6 +186,28 @@
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_mpm_2d</span><span class="p">()</span>
 
+    <span class="k">def</span> <span class="nf">_mdl_1d</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">N</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;1D MDL.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sigma</span>
+<span class="sd">            Singular values obtained from Hankel data matrix.</span>
+
+<span class="sd">        N</span>
+<span class="sd">            Number of points the signal is made of</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">.</span><span class="n">size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="o">-</span><span class="n">N</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;i-&gt;&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="n">k</span><span class="p">:]))</span> <span class="o">+</span>
+                <span class="n">N</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;i-&gt;&quot;</span><span class="p">,</span> <span class="n">sigma</span><span class="p">[</span><span class="n">k</span><span class="p">:])</span> <span class="o">/</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">))</span> <span class="o">+</span>
+                <span class="n">k</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="p">)</span>
+
     <span class="nd">@timer</span>
     <span class="nd">@start_end_wrapper</span><span class="p">(</span><span class="s2">&quot;MPM STARTED&quot;</span><span class="p">,</span> <span class="s2">&quot;MPM COMPLETE&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_mpm_1d</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -216,7 +242,7 @@
         <span class="c1"># and right singular vectors (LxL size matrix)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--&gt; Performing Singular Value Decomposition...&quot;</span><span class="p">)</span>
-        <span class="n">sigma</span><span class="p">,</span> <span class="n">Vh</span> <span class="o">=</span> <span class="n">nlinalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">Y</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">Vh</span> <span class="o">=</span> <span class="n">nlinalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span>
         <span class="n">V</span> <span class="o">=</span> <span class="n">Vh</span><span class="o">.</span><span class="n">T</span>
 
         <span class="c1"># Compute the MDL in order to estimate the number of oscillators</span>
@@ -226,16 +252,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Number of oscillators will be estimated using MDL&quot;</span><span class="p">)</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="o">-</span><span class="n">N</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;i-&gt;&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="n">k</span><span class="p">:</span><span class="n">L</span><span class="p">]))</span> <span class="o">+</span>
-                    <span class="n">N</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;i-&gt;&quot;</span><span class="p">,</span> <span class="n">sigma</span><span class="p">[</span><span class="n">k</span><span class="p">:</span><span class="n">L</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">))</span> <span class="o">+</span>
-                    <span class="n">k</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">L</span> <span class="o">-</span> <span class="n">k</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
-                <span class="p">)</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mdl</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mdl_1d</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
@@ -243,6 +260,12 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Number of oscillations: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No oscillators detected!&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">return</span>
 
         <span class="c1"># Determine signal poles</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
@@ -274,24 +297,50 @@
     <span class="nd">@start_end_wrapper</span><span class="p">(</span><span class="s2">&quot;MMEMP STARTED&quot;</span><span class="p">,</span> <span class="s2">&quot;MMEMP COMPLETE&quot;</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">_mpm_2d</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Perform 2-dimensional Modified Matrix Enhanced Pencil Method.&quot;&quot;&quot;</span>
+        <span class="c1"># Number of points</span>
+        <span class="n">N1</span><span class="p">,</span> <span class="n">N2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
         <span class="c1"># Normalise data</span>
         <span class="n">norm</span> <span class="o">=</span> <span class="n">nlinalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
         <span class="n">normed_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">/</span> <span class="n">norm</span>
 
-        <span class="c1"># Number of points</span>
-        <span class="n">N1</span><span class="p">,</span> <span class="n">N2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--&gt; Computing number of oscillators...&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Number of oscillators will be estimated using MDL on first &quot;</span>
+                    <span class="s2">&quot;t1 increment.&quot;</span>
+                <span class="p">)</span>
+            <span class="c1"># Construct Hankel matrix of first t1 increment, and perform MDL.</span>
+            <span class="n">L_mdl</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">N2</span> <span class="o">/</span> <span class="mi">3</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mdl_1d</span><span class="p">(</span>
+                <span class="n">nlinalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span>
+                    <span class="n">slinalg</span><span class="o">.</span><span class="n">hankel</span><span class="p">(</span>
+                        <span class="n">normed_data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:</span> <span class="n">N2</span> <span class="o">-</span> <span class="n">L_mdl</span><span class="p">],</span>
+                        <span class="n">normed_data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">N2</span> <span class="o">-</span> <span class="n">L_mdl</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:],</span>
+                    <span class="p">)</span>
+                <span class="p">)[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">N2</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Number of oscillators has been pre-defined&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Number of oscillators: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No oscillators detected!&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">return</span>
 
         <span class="c1"># Pencil parameters</span>
         <span class="n">K</span><span class="p">,</span> <span class="n">L</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([</span><span class="nb">int</span><span class="p">((</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">(</span><span class="n">N1</span><span class="p">,</span> <span class="n">N2</span><span class="p">)])</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;--&gt; Pencil parameters: </span><span class="si">{</span><span class="n">K</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="c1"># TODO: MDL for 2D</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">RED</span><span class="si">}</span><span class="s2">Model order selection is not yet available for 2D &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;data. Set `M` as greater than 0.</span><span class="si">{</span><span class="n">END</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
 
         <span class="c1"># --- Enhanced Matrix ---</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">slinalg</span><span class="o">.</span><span class="n">hankel</span><span class="p">(</span><span class="n">normed_data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:</span><span class="n">L</span><span class="p">],</span> <span class="n">normed_data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">L</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:</span> <span class="n">N2</span><span class="p">])</span>
@@ -300,7 +349,7 @@
             <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">X</span><span class="p">,</span> <span class="n">blk</span><span class="p">))</span>
 
         <span class="c1"># vertically stack rows of block matricies to get Xe</span>
-        <span class="n">Xe</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span> <span class="p">:</span> <span class="p">(</span><span class="n">N1</span> <span class="o">-</span> <span class="n">K</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">N2</span> <span class="o">-</span> <span class="n">L</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+        <span class="n">Xe</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="p">:</span> <span class="p">(</span><span class="n">N1</span> <span class="o">-</span> <span class="n">K</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">N2</span> <span class="o">-</span> <span class="n">L</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
 
         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">K</span><span class="p">):</span>
             <span class="n">Xe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span>
@@ -318,10 +367,10 @@
 
         <span class="c1"># convert Xe to sparse matrix</span>
         <span class="n">sparse_Xe</span> <span class="o">=</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">Xe</span><span class="p">)</span>
+        <span class="n">U</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">splinalg</span><span class="o">.</span><span class="n">svds</span><span class="p">(</span><span class="n">sparse_Xe</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;--&gt; Performing Singular Value Decomposition...&quot;</span><span class="p">)</span>
-        <span class="n">U</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">splinalg</span><span class="o">.</span><span class="n">svds</span><span class="p">(</span><span class="n">sparse_Xe</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">oscillators</span><span class="p">)</span>
 
         <span class="c1"># --- Permutation matrix ---</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fprint</span><span class="p">:</span>
