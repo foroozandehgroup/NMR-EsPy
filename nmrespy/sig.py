@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 28 Jul 2022 09:47:40 BST
+# Last Edited: Fri 29 Jul 2022 11:31:49 BST
 
 """Manipulating and processing NMR signals."""
 
@@ -181,7 +181,7 @@ def exp_apodisation(
         ("fid", fid, sfuncs.check_ndarray),
         ("k", k, sfuncs.check_float, (), {"greater_than_zero": True}),
         (
-            "axes", axes, sfuncs.check_int_list,
+            "axes", axes, sfuncs.check_int_list, (),
             {
                 "len_one_can_be_listless": True,
                 "min_value": -fid.ndim,
@@ -190,7 +190,10 @@ def exp_apodisation(
             True,
         ),
     )
-    axes = [i % fid.ndim for i in axes]
+    if axes is None:
+        axes = list(range(fid.ndim))
+    else:
+        axes = [i % fid.ndim for i in axes]
     indices = [chr(105 + i) for i in range(fid.ndim)]
     index_notation = ",".join(indices) + "->" + "".join(indices)
 
