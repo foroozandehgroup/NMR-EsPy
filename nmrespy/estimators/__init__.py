@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 27 Jul 2022 17:13:31 BST
+# Last Edited: Fri 29 Jul 2022 11:33:43 BST
 
 from __future__ import annotations
 import abc
@@ -73,12 +73,12 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             self._bruker_params = expinfo.parameters
 
         super().__init__(
-            dim=self._data.ndim,
+            dim=expinfo.dim,
             sw=expinfo.sw(),
             offset=expinfo.offset(),
             sfo=expinfo.sfo,
             nuclei=expinfo.nuclei,
-            default_pts=self._data.shape,
+            default_pts=expinfo.default_pts,
             fn_mode=expinfo.fn_mode,
         )
 
