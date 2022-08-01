@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 16:54:54 BST
+# Last Edited: Tue 21 Jun 2022 00:20:11 BST
 
 from pathlib import Path
 import re
@@ -573,3 +573,20 @@ def check_fn_mode(obj: Any) -> Optional[str]:
     valids = ["QF", "QSED", "TPPI", "States", "States-TPPI", "Echo-Anitecho"]
     if obj not in valids:
         return "Should be one of " + ", ".join([f"\"{x}\"" for x in valids])
+
+
+def check_optimiser_mode(obj: Any) -> Optional[str]:
+    if not isinstance(obj, str):
+        return "Should be a str."
+    # check if mode is empty or contains and invalid character
+    if any(c not in "apfd" for c in obj) or obj == "":
+        return "Invalid character present, or string is empty."
+    # check if mode contains a repeated character
+    count = {}
+    for c in obj:
+        if c in count.keys():
+            count[c] += 1
+        else:
+            count[c] = 1
+    if not all(map(lambda x: x == 1, count.values())):
+        return "Repeated character present."

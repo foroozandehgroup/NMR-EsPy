@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 15 May 2022 12:05:04 BST
+# Last Edited: Fri 29 Jul 2022 11:31:49 BST
 
 """Manipulating and processing NMR signals."""
 
@@ -144,17 +144,65 @@ def zf(data: np.ndarray) -> np.ndarray:
     """
     zf_data = copy.deepcopy(data)
     for i, n in enumerate(zf_data.shape):
+        nearest_pow_2 = int(2 ** np.ceil(np.log2(n)))
         if n & (n - 1) == 0:
-            pass
-        else:
-            nearest_pow_2 = int(2 ** np.ceil(np.log2(n)))
-            pts_to_append = nearest_pow_2 - n
-            shape_to_add = list(zf_data.shape)
-            shape_to_add[i] = pts_to_append
-            zeros = np.zeros(shape_to_add, dtype="complex")
-            zf_data = np.concatenate((zf_data, zeros), axis=i)
+            nearest_pow_2 *= 2
+        pts_to_append = nearest_pow_2 - n
+        shape_to_add = list(zf_data.shape)
+        shape_to_add[i] = pts_to_append
+        zeros = np.zeros(shape_to_add, dtype="complex")
+        zf_data = np.concatenate((zf_data, zeros), axis=i)
 
     return zf_data
+
+
+def exp_apodisation(
+    fid: np.ndarray,
+    k: float,
+    axes: Optional[Iterable[int]] = None,
+) -> np.ndarray:
+    """Apply exponential apodisation to an FID.
+
+    The FID is multiplied by ``np.exp(-k * np.linspace(0, 1, n))`` in each dimension
+    specified by ``axes``, where ``n`` is the size of each dimension.
+
+    Parameters
+    ----------
+    fid
+        FID to process.
+
+    k
+        Line-broadening factor.
+
+    axes
+        The axes to apply the apodiisation over. If ``None``, all axes are apodised.
+    """
+    sanity_check(
+        ("fid", fid, sfuncs.check_ndarray),
+        ("k", k, sfuncs.check_float, (), {"greater_than_zero": True}),
+        (
+            "axes", axes, sfuncs.check_int_list, (),
+            {
+                "len_one_can_be_listless": True,
+                "min_value": -fid.ndim,
+                "max_value": fid.ndim - 1,
+            },
+            True,
+        ),
+    )
+    if axes is None:
+        axes = list(range(fid.ndim))
+    else:
+        axes = [i % fid.ndim for i in axes]
+    indices = [chr(105 + i) for i in range(fid.ndim)]
+    index_notation = ",".join(indices) + "->" + "".join(indices)
+
+    return fid * np.einsum(
+        index_notation,
+        *[np.exp(-k * np.linspace(0, 1, n)) if i in axes
+          else np.ones(n)
+          for i, n in enumerate(fid.shape)],
+    )
 
 
 def ft(
@@ -417,7 +465,7 @@ def manual_phase_data(
     dim = spectrum.ndim
     sanity_check(
         (
-            "max_p1", max_p1, sfuncs.check_float_list,
+            "max_p1", max_p1, sfuncs.check_float_list, (),
             {
                 "length": dim,
                 "len_one_can_be_listless": True,
@@ -626,6 +674,30 @@ class PhaseApp(tk.Tk):
         self.destroy()
 
 
+def add_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
+    """Add noise to an FID.
+
+    Parameters
+    ----------
+    fid
+        Noiseless FID.
+
+    snr
+        The signal-to-noise ratio.
+
+    decibels
+        If `True`, the snr is taken to be in units of decibels. If `False`,
+        it is taken to be simply the ratio of the singal power and noise
+        power.
+    """
+    sanity_check(
+        ("fid", fid, sfuncs.check_ndarray),
+        ("snr", snr, sfuncs.check_float),
+        ("decibels", decibels, sfuncs.check_bool),
+    )
+    return fid + _make_noise(fid, snr, decibels)
+
+
 def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
     r"""Generate an array of white Guassian complex noise.
 
@@ -687,3 +759,29 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
     # The noise is constructed from the two closest arrays
     # to the desired SNR
     return instances[first] + 1j * instances[second]
+
+
+def convdta(data: np.ndarray, grpdly: float) -> np.ndarray:
+    """Remove the digital filter from time-domain Bruker data.
+
+    This function is inspired by nmrglue's ``nmrglue.fileio.bruker.rm_dig_filter``
+    function.
+
+    Parameters
+    ----------
+    data
+        Time-domain data to process.
+
+    grpdly
+        Group delay.
+    """
+    phase = int(np.floor(grpdly))
+    to_rm = phase + 2
+    to_add = max(to_rm - 6, 0)
+
+    # Frequency shift by FT
+    shape = data.shape[-1]
+    pdata = ft(ift(data) * np.exp(2j * np.pi * phase * np.arange(shape) / shape))
+    pdata[..., :to_add] += pdata[..., :-(to_add + 1) : -1]
+    pdata = pdata[..., :-to_rm]
+    return pdata

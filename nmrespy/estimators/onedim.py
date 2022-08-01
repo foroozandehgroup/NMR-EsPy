@@ -1,11 +1,13 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 20 Jun 2022 00:09:54 BST
+# Last Edited: Fri 22 Jul 2022 15:29:50 BST
 
 from __future__ import annotations
 import copy
 from pathlib import Path
+import re
+import shutil
 from typing import Any, Iterable, Optional, Tuple, Union
 
 import numpy as np
@@ -16,9 +18,9 @@ from nmr_sims.nuclei import Nucleus
 from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import ExpInfo, sig
-from nmrespy._colors import RED, GRE, END, USE_COLORAMA
+from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir
-
+from nmrespy._paths_and_links import NMRESPYPATH
 from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
@@ -75,7 +77,7 @@ class Estimator1D(Estimator):
     def new_bruker(
         cls,
         directory: Union[str, Path],
-        ask_convdta: bool = True,
+        convdta: bool = True,
     ) -> Estimator1D:
         """Create a new instance from Bruker-formatted data.
 
@@ -84,11 +86,9 @@ class Estimator1D(Estimator):
         directory
             Absolute path to data directory.
 
-        ask_convdta
-            If ``True``, the user will be warned that the data should have its
-            digitial filter removed prior to importing if the data to be impoprted
-            is from an ``fid`` or ``ser`` file. If ``False``, the user is not
-            warned.
+        convdta
+            If ``True`` and the data is derived from an ``fid`` file, removal of
+            the FID's digital filter will be carried out.
 
         Notes
         -----
@@ -108,24 +108,14 @@ class Estimator1D(Estimator):
           + ``directory/1r``
           + ``directory/../../acqus``
           + ``directory/procs``
-
-        **Digital Filters**
-
-        If you are importing raw FID data, make sure the path specified
-        corresponds to an ``fid`` file which has had its group delay artefact
-        removed. To do this, open the data you wish to analyse in TopSpin, and
-        enter ``convdta`` in the bottom-left command line. You will be prompted
-        to enter a value for the new data directory. It is this value you
-        should use in ``directory``, not the one corresponding to the original
-        (uncorrected) signal.
         """
         sanity_check(
             ("directory", directory, check_existent_dir),
-            ("ask_convdta", ask_convdta, sfuncs.check_bool),
+            ("convdta", convdta, sfuncs.check_bool),
         )
 
         directory = Path(directory).expanduser()
-        data, expinfo = load_bruker(directory, ask_convdta=ask_convdta)
+        data, expinfo = load_bruker(directory)
 
         if data.ndim != 1:
             raise ValueError(f"{RED}Data dimension should be 1.{END}")
@@ -133,6 +123,10 @@ class Estimator1D(Estimator):
         if directory.parent.name == "pdata":
             slice_ = slice(0, data.shape[0] // 2)
             data = (2 * sig.ift(data))[slice_]
+
+        elif convdta:
+            grpdly = expinfo.parameters["acqus"]["GRPDLY"]
+            data = sig.convdta(data, grpdly)
 
         return cls(data, expinfo, directory)
 
@@ -369,12 +363,12 @@ class Estimator1D(Estimator):
         region_unit: str = "hz",
         initial_guess: Optional[Union[np.ndarray, int]] = None,
         method: str = "gauss-newton",
+        mode: str = "apfd",
         phase_variance: bool = True,
         max_iterations: Optional[int] = None,
         cut_ratio: Optional[float] = 1.1,
         mpm_trim: Optional[int] = 4096,
         nlp_trim: Optional[int] = None,
-        strict_region_order: bool = False,
         fprint: bool = True,
         _log: bool = True,
     ) -> None:
@@ -431,6 +425,11 @@ class Estimator1D(Estimator):
               `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
               optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
+        mode
+            A string containing a subset of the characters ``"a"`` (amplitudes),
+            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
+            Specifies which types of parameters should be considered for optimisation.
+
         phase_variance
             Whether or not to include the variance of oscillator phases in the cost
             function. This should be set to ``True`` in cases where the signal being
@@ -456,14 +455,6 @@ class Estimator1D(Estimator):
             the signal. If an int, and the filtered signal has a size greater than
             ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
 
-        strict_region_order
-            If `True`, the first elements of ``region`` and ``noise_region`` will
-            be taken as the left bounds and the second elements will be taken
-            as the right bounds, even if this leads to selecting a signal which
-            wraps around itself. If ``False``, the ordering of the elements is
-            irrelevant, the higher frequency bound will be taken as the left bound,
-            and the lower frequency will be taken as the right bound of the region.
-
         fprint
             Whether of not to output information to the terminal.
 
@@ -481,6 +472,7 @@ class Estimator1D(Estimator):
             ),
             ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
             ("phase_variance", phase_variance, sfuncs.check_bool),
+            ("mode", mode, sfuncs.check_optimiser_mode),
             (
                 "max_iterations", max_iterations, sfuncs.check_int, (),
                 {"min_value": 1}, True,
@@ -492,7 +484,6 @@ class Estimator1D(Estimator):
                 "cut_ratio", cut_ratio, sfuncs.check_float, (),
                 {"greater_than_one": True}, True,
             ),
-            ("strict_region_order", strict_region_order, sfuncs.check_bool),
         )
 
         sanity_check(
@@ -506,124 +497,69 @@ class Estimator1D(Estimator):
             ),
         )
 
-        # The plan of action:
-        # --> Derive filtered signals (both cut and uncut)
-        # --> Run the MDL followed by MPM for an initial guess on cut signal
-        # --> Run Optimiser on cut signal
-        # --> Run Optimiser on uncut signal
         if region is None:
-            region = self.convert(
-                ((0, self._data.size - 1),), "idx->hz",
-            )
+            region = self.convert(((0, self._data.size - 1),), "idx->hz")
             noise_region = None
-
-            signal = self._data
-            if (mpm_trim is None) or (mpm_trim > signal.size):
-                mpm_trim = signal.size
-            if (nlp_trim is None) or (nlp_trim > signal.size):
-                nlp_trim = signal.size
-
-            expinfo = ExpInfo(1, self.sw(), self.offset(), self.sfo)
-
-            if isinstance(initial_guess, np.ndarray):
-                x0 = initial_guess
-            else:
-                oscillators = initial_guess if isinstance(initial_guess, int) else 0
-                x0 = MatrixPencil(
-                    expinfo,
-                    signal[:mpm_trim],
-                    oscillators=oscillators,
-                    fprint=fprint,
-                ).get_params()
-                if x0.size == 0:
-                    return self._results.append(
-                        Result(
-                            np.array([[]]),
-                            np.array([[]]),
-                            region,
-                            noise_region,
-                            self.sfo,
-                        )
-                    )
-
-            final_result = NonlinearProgramming(
-                expinfo,
-                signal[:nlp_trim],
-                x0,
-                phase_variance=phase_variance,
-                method=method,
-                max_iterations=max_iterations,
-                fprint=fprint,
-            )
+            mpm_signal = nlp_signal = self._data
+            mpm_expinfo = nlp_expinfo = self.expinfo
 
         else:
             filt = Filter(
                 self._data,
-                ExpInfo(1, self.sw(), self.offset(), self.sfo),
+                self.expinfo,
                 region,
                 noise_region,
                 region_unit=region_unit,
-                strict_region_order=strict_region_order,
             )
 
-            cut_signal, cut_expinfo = filt.get_filtered_fid()
-            uncut_signal, uncut_expinfo = filt.get_filtered_fid(cut_ratio=None)
+            mpm_signal, mpm_expinfo = filt.get_filtered_fid(cut_ratio=cut_ratio)
+            nlp_signal, nlp_expinfo = filt.get_filtered_fid(cut_ratio=None)
             region = filt.get_region()
             noise_region = filt.get_noise_region()
 
-            cut_size = cut_signal.size
-            uncut_size = uncut_signal.size
-            if (mpm_trim is None) or (mpm_trim > cut_size):
-                mpm_trim = cut_size
-            if (nlp_trim is None) or (nlp_trim > uncut_size):
-                nlp_trim = uncut_size
+        if (mpm_trim is None) or (mpm_trim > mpm_signal.size):
+            mpm_trim = mpm_signal.size
+        if (nlp_trim is None) or (nlp_trim > nlp_signal.size):
+            nlp_trim = nlp_signal.size
 
-            if isinstance(initial_guess, np.ndarray):
-                x0 = initial_guess
-            else:
-                oscillators = initial_guess if isinstance(initial_guess, int) else 0
-                x0 = MatrixPencil(
-                    cut_expinfo,
-                    cut_signal[:mpm_trim],
-                    oscillators=oscillators,
-                    fprint=fprint,
-                ).get_params()
+        if isinstance(initial_guess, np.ndarray):
+            x0 = initial_guess
+        else:
+            oscillators = initial_guess if isinstance(initial_guess, int) else 0
 
-                if x0.size == 0:
-                    return self._results.append(
-                        Result(
-                            np.array([[]]),
-                            np.array([[]]),
-                            region,
-                            noise_region,
-                            self.sfo,
-                        )
-                    )
-
-            cut_result = NonlinearProgramming(
-                cut_expinfo,
-                cut_signal[:mpm_trim],
-                x0,
-                phase_variance=phase_variance,
-                method=method,
-                max_iterations=max_iterations,
+            x0 = MatrixPencil(
+                mpm_expinfo,
+                mpm_signal[:mpm_trim],
+                oscillators=oscillators,
                 fprint=fprint,
             ).get_params()
 
-            final_result = NonlinearProgramming(
-                uncut_expinfo,
-                uncut_signal[:nlp_trim],
-                cut_result,
-                phase_variance=phase_variance,
-                method=method,
-                max_iterations=max_iterations,
-                fprint=fprint,
-            )
+            if x0 is None:
+                return self._results.append(
+                    Result(
+                        np.array([[]]),
+                        np.array([[]]),
+                        region,
+                        noise_region,
+                        self.sfo,
+                    )
+                )
+
+        result = NonlinearProgramming(
+            nlp_expinfo,
+            nlp_signal[:nlp_trim],
+            x0,
+            phase_variance=phase_variance,
+            method=method,
+            mode=mode,
+            max_iterations=max_iterations,
+            fprint=fprint,
+        )
 
         self._results.append(
             Result(
-                final_result.get_params(),
-                final_result.get_errors(),
+                result.get_params(),
+                result.get_errors(),
                 region,
                 noise_region,
                 self.sfo,
@@ -708,14 +644,6 @@ class Estimator1D(Estimator):
             the signal. If an int, and the filtered signal has a size greater than
             ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
 
-        strict_region_order
-            If `True`, the first elements of ``region`` and ``noise_region`` will
-            be taken as the left bounds and the second elements will be taken
-            as the right bounds, even if this leads to selecting a signal which
-            wraps around itself. If ``False``, the ordering of the elements is
-            irrelevant, the higher frequency bound will be taken as the left bound,
-            and the lower frequency will be taken as the right bound of the region.
-
         fprint
             Whether of not to output information to the terminal.
 
@@ -750,100 +678,17 @@ class Estimator1D(Estimator):
             ),
         )
 
-        if nsubbands is None:
-            nsubbands = int(np.ceil(self.data.size / 500))
+        kwargs = {
+            "method": method,
+            "phase_variance": phase_variance,
+            "max_iterations": max_iterations,
+            "cut_ratio": cut_ratio,
+            "mpm_trim": mpm_trim,
+            "nlp_trim": nlp_trim,
+            "fprint": fprint,
+        }
 
-        noise_region = self.convert([noise_region], f"{noise_region_unit}->hz")
-
-        idxs, mid_idxs = self._get_subband_indices(nsubbands)
-        shifts, = self.get_shifts()
-        regions = [(shifts[idx[0]], shifts[idx[1]]) for idx in idxs]
-        mid_regions = [(shifts[mid_idx[0]], shifts[mid_idx[1]]) for mid_idx in mid_idxs]
-
-        if fprint:
-            print(f"Starting sub-band estimation using {nsubbands} sub-bands:")
-
-        params = None
-        errors = None
-        for i, (region, mid_region) in enumerate(zip(regions, mid_regions), start=1):
-            if fprint:
-                msg = (
-                    f"--> Estimating region #{i}: "
-                    f"{mid_region[0]:.2f} - {mid_region[1]:.2f}Hz"
-                )
-                if self.hz_ppm_valid:
-                    mid_region_ppm = self.convert([mid_region], "hz->ppm")[0]
-                    msg += f" ({mid_region_ppm[0]:.3f} - {mid_region_ppm[1]:.3f}ppm)"
-                print(msg)
-
-            self.estimate(
-                region, noise_region, region_unit="hz", method=method,
-                phase_variance=phase_variance, max_iterations=max_iterations,
-                cut_ratio=cut_ratio, mpm_trim=mpm_trim, nlp_trim=nlp_trim,
-                fprint=False, strict_region_order=True, _log=False,
-            )
-            p, e = self._keep_middle_freqs(self._results.pop(), mid_region)
-
-            if p is None:
-                continue
-            if params is None:
-                params = p
-                errors = e
-            else:
-                params = np.vstack((params, p))
-                errors = np.vstack((errors, e))
-
-        sort_idx = np.argsort(params[:, 2])
-        params = params[sort_idx]
-        errors = errors[sort_idx]
-
-        if fprint:
-            print(f"{GRE}Sub-band estimation complete.{END}")
-        self._results.append(
-            Result(params, errors, region=None, noise_region=None, sfo=self.sfo)
-        )
-
-    def _get_subband_indices(
-        self,
-        nsubbands: int,
-    ) -> Tuple[Iterable[Tuple[int, int]], Iterable[Tuple[int, int]]]:
-        # (nsubbands - 2) full-size regions plus 2 half-size regions on each end.
-        width = int(np.ceil(2 * self.data.size / (nsubbands - 1)))
-        mid_width = int(np.ceil(width / 2))
-        start_factor = int(np.ceil(self.data.size / (nsubbands - 1)))
-        idxs = []
-        mid_idxs = []
-        for i in range(0, nsubbands - 2):
-            start = i * start_factor
-            mid_start = int(np.ceil((i + 0.5) * start_factor))
-            if i == nsubbands - 3:
-                idxs.append((start, self.data.size - 1))
-            else:
-                idxs.append((start, start + width))
-            mid_idxs.append((mid_start, mid_start + mid_width))
-
-        idxs.insert(0, (0, start_factor))
-        idxs.append(((nsubbands - 2) * start_factor, self.data.size - 1))
-        mid_idxs.insert(0, (0, mid_idxs[0][0]))
-        mid_idxs.append((mid_idxs[-1][-1], self.data.size - 1))
-
-        return idxs, mid_idxs
-
-    @staticmethod
-    def _keep_middle_freqs(
-        result: Result,
-        mid_region: Tuple[float, float],
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        if result.params.size == 0:
-            return None, None
-        to_remove = (
-            list(np.nonzero(result.params[:, 2] >= mid_region[0])[0]) +
-            list(np.nonzero(result.params[:, 2] < mid_region[1])[0])
-        )
-        return (
-            np.delete(result.params, to_remove, axis=0),
-            np.delete(result.errors, to_remove, axis=0),
-        )
+        self._subband_estimate(nsubbands, noise_region, noise_region_unit, **kwargs)
 
     def make_fid(
         self,
@@ -881,6 +726,90 @@ class Estimator1D(Estimator):
         )
 
         return super().make_fid(indices, pts=pts)
+
+    def write_to_topspin(
+        self,
+        path: Union[str, Path],
+        expno: int,
+        force_overwrite: bool = False,
+        indices: Optional[Iterable[int]] = None,
+        pts: Optional[Iterable[int]] = None,
+    ) -> None:
+        res_len = len(self._results)
+        sanity_check(
+            ("expno", expno, sfuncs.check_int, (), {"min_value": 1}),
+            ("force_overwrite", force_overwrite, sfuncs.check_bool),
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {"min_value": -res_len, "max_value": res_len - 1}, True,
+            ),
+            (
+                "pts", pts, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "min_value": 1,
+                },
+                True,
+            ),
+        )
+
+        fid = self.make_fid(indices, pts)
+        fid_uncomplex = np.zeros((2 * fid.size,), dtype="float64")
+        fid_uncomplex[::2] = fid.real
+        fid_uncomplex[1::2] = fid.imag
+
+        with open(NMRESPYPATH / "ts_templates/acqus", "r") as fh:
+            text = fh.read()
+
+        int_regex = r"-?\d+"
+        float_regex = r"-?\d+(\.\d+)?"
+        text = re.sub(
+            r"\$BF1= " + float_regex,
+            "$BF1= " +
+            str(self.bf[0] if self.bf is not None else 500. - 1e-6 * self.offset()[0]),
+            text,
+        )
+        text = re.sub(r"\$BYTORDA= " + int_regex, "$BYTORDA= 0", text)
+        text = re.sub(r"\$DTYPA= " + int_regex, "$DTYPA= 2", text)
+        text = re.sub(r"\$GRPDLY= " + float_regex, "$GRPDLY= 0", text)
+        text = re.sub(
+            r"\$NUC1= <\d+[a-zA-Z]+>",
+            "$NUC1= <" +
+            (self.nuclei[0] if self.nuclei is not None else "1H") +
+            ">",
+            text,
+        )
+        text = re.sub(r"\$O1= " + float_regex, f"$O1= {self.offset()[0]}", text)
+        text = re.sub(
+            r"\$SFO1= " + float_regex,
+            "$SFO1= " +
+            str(self.sfo[0] if self.sfo is not None else 500.0),
+            text,
+        )
+        text = re.sub(
+            r"\$SW= " + float_regex,
+            "$SW= " +
+            str(self.sw(unit="ppm")[0] if self.hz_ppm_valid else self.sw()[0] / 500.0),
+            text,
+        )
+        text = re.sub(r"\$SW_h= " + float_regex, f"$SW_h= {self.sw()[0]}", text)
+        text = re.sub(r"\$TD= " + int_regex, f"$TD= {fid.size}", text)
+
+        path = Path(path).expanduser()
+        if not path.is_dir():
+            path.mkdir()
+        if (expdir := path / str(expno)).is_dir():
+            shutil.rmtree(expdir)
+        expdir.mkdir()
+
+        with open(expdir / "acqus", "w") as fh:
+            fh.write(text)
+        with open(expdir / "acqu", "w") as fh:
+            fh.write(text)
+
+        with open(expdir / "fid", "wb") as fh:
+            fh.write(fid_uncomplex.astype("<f8").tobytes())
 
     @logger
     def plot_result(

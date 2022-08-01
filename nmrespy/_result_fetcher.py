@@ -1,7 +1,7 @@
 # _result_fetcher.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Jun 2022 13:37:50 BST
+# Last Edited: Fri 22 Jul 2022 15:22:22 BST
 
 import copy
 import re
@@ -46,6 +46,8 @@ class ResultFetcher(FrequencyConverter):
             final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
             can be used to specify the frequency or damping factor.
         """
+        if self.params is None:
+            return None
         dim = (self.params.shape[1] - 2) // 2
         sanity_check(
             ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
@@ -78,6 +80,8 @@ class ResultFetcher(FrequencyConverter):
             final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
             can be used to specify the frequency or damping factor.
         """
+        if self.errors is None:
+            return None
         dim = (self.params.shape[1] - 2) // 2
         sanity_check(
             ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),

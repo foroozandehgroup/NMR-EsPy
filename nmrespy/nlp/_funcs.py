@@ -1,7 +1,7 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 14 Mar 2022 14:39:24 GMT
+# Last Edited: Mon 01 Aug 2022 23:42:42 BST
 
 """Definitions of fidelities, gradients, and Hessians."""
 
@@ -1197,7 +1197,7 @@ def obj_2d(active: np.ndarray, *args: args_type) -> float:
     if phasevar:
         phases = theta[m : 2 * m]
         mu = np.einsum("i->", phases) / m
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
+        obj += data.shape[0] * np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
 
     return obj
 
@@ -1292,9 +1292,9 @@ def obj_grad_2d(active: np.ndarray, *args: args_type) -> Tuple[float, np.ndarray
         phases = theta[i * m : (i + 1) * m]
         mu = np.einsum("i->", phases) / m
         # Var(φ)
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
+        obj += data.shape[0] * np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
         # ∂Var(φ)/∂φᵢ
-        grad[i * m : (i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
+        grad[i * m : (i + 1) * m] += data.shape[0] * ((2 / m) * (phases - mu)) / np.pi
 
     return obj, grad
 
@@ -1400,7 +1400,7 @@ def hess_2d(active: np.ndarray, *args: args_type) -> np.ndarray:
         hess[
             main_diag_indices[0][i * m : (i + 1) * m],
             main_diag_indices[1][i * m : (i + 1) * m],
-        ] += 2 / (np.pi * m)
+        ] += data.shape[0] * 2 / (np.pi * m)
 
     return hess
 
@@ -1536,13 +1536,30 @@ def obj_grad_gauss_newton_hess_2d(
     model = np.einsum("ijk->ij", model_per_osc)
     diff = data - model
 
+    path = ["einsum_path", (0, 1)]
     # --- ℱ(θ) ---
     # Tr(AB) = Σᵢⱼ aᵢⱼbⱼᵢ
     obj = np.real(np.einsum("ij,ij->", diff.conj(), diff))
     # --- ∇ℱ(θ) ---
-    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1))
+    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1, optimize=path))
     # --- ∇²ℱ(θ) ---
-    hess = 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1))
+    hess = 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1, optimize=path))
+
+    if phasevar:
+        i = 1 if 0 in idx else 0
+        phases = theta[i * m : (i + 1) * m]
+        mu = np.einsum("i->", phases) / m
+        # Var(φ)
+        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
+        # ∂Var(φ)/∂φᵢ
+        grad[i * m : (i + 1) * m] += ((2 / m) * (phases - mu)) / np.pi
+        # ∂²Var(φ)/∂φᵢ∂φⱼ
+        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] -= 2 / (m ** 2 * np.pi)
+        main_diagonals = _diagonal_indices(hess.shape[0], k=0)
+        hess[
+            main_diagonals[0][i * m : (i + 1) * m],
+            main_diagonals[1][i * m : (i + 1) * m],
+        ] += 2 / (np.pi * m)
 
     return obj, grad, hess
 
@@ -1630,11 +1647,12 @@ def obj_grad_true_hess_2d(active: np.ndarray, *args):
     model = np.einsum("ijk->ij", model_per_osc)
     diff = data - model
 
+    path = ["einsum_path", (0, 1)]
     # --- ℱ(θ) ---
     # Tr(AB) = Σᵢⱼ aᵢⱼbⱼᵢ
     obj = np.real(np.einsum("ij,ij->", diff.conj(), diff))
     # --- ∇ℱ(θ) ---
-    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1))
+    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1, optimize=path))
     # --- ∇²ℱ(θ) ---
     diagonals = -2 * np.real(np.einsum("ijk,ij->k", d2.conj(), diff))
     p = len(idx)
@@ -1647,7 +1665,7 @@ def obj_grad_true_hess_2d(active: np.ndarray, *args):
     # after transposition.
     hess[main_diag_indices] /= 2
     hess += hess.T
-    hess += 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1))
+    hess += 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1, optimize=path))
 
     if phasevar:
         # If 0 in idx, phases will be between m and 2m, as amps

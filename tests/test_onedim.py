@@ -1,12 +1,10 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 22 Jun 2022 11:06:56 BST
+# Last Edited: Wed 20 Jul 2022 14:17:32 BST
 
 import copy
 from pathlib import Path
-import platform
-import subprocess
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -21,16 +19,6 @@ mpl.use("tkAgg")
 VIEW_CONTENT = False
 
 
-def view_files(to_view):
-    if VIEW_CONTENT:
-        for path in to_view:
-            if path.suffix in [".txt", ".log"]:
-                prog = "vi"
-            elif path.suffix == ".pdf":
-                prog = "evince"
-            subprocess.run([prog, str(path)])
-
-
 class DefaultEstimator:
 
     params = np.array(
@@ -41,7 +29,8 @@ class DefaultEstimator:
             [3, 0, 710, 7],
             [3, 0, 720, 7],
             [1, 0, 730, 7],
-        ]
+        ],
+        dtype="float64",
     )
 
     _before_estimation = ne.Estimator1D.new_synthetic_from_parameters(
@@ -73,17 +62,6 @@ class DefaultEstimator:
                 )
 
             return cls.after_estimation()
-
-
-def latex_exists():
-    if platform.system() == "Windows":
-        cmd = "where"
-    else:
-        cmd = "which"
-
-    return subprocess.run(
-        [cmd, "pdflatex"], stdout=subprocess.DEVNULL,
-    ).returncode == 0
 
 
 def test_new_bruker(monkeypatch):
@@ -217,6 +195,12 @@ def test_estimate():
             fprint=False,
         )
 
+    initial_guess = copy.deepcopy(DefaultEstimator.params)
+    initial_guess[:, 0] += np.random.uniform(low=-0.5, high=0.5)
+    initial_guess[:, 2] += np.random.uniform(low=-2, high=2)
+    estimator.estimate(mode="af", initial_guess=initial_guess, fprint=False)
+    assert np.isnan(estimator.get_errors(indices=[-1])[:, (1, 3)]).all()
+
 
 def test_get_params_and_errors():
     estimator = DefaultEstimator.after_estimation()
@@ -226,21 +210,20 @@ def test_get_params_and_errors():
     for i, sort in enumerate(("a", "p", "f", "d")):
         params = estimator.get_params([0], sort_by=sort)
         errors = estimator.get_errors([0], sort_by=sort)
-        assert list(np.argsort(params[:, i])) == list(range(params.shape[0]))
-        # Check errors correctly map to their parameters
-        assert utils.equal(errors[np.argsort(params[:, 2])], errors_hz)
+        assert utils.aequal(params_hz[np.argsort(params_hz[:, i])], params)
+        assert utils.aequal(errors_hz[np.argsort(params_hz[:, i])], errors)
 
     params_ppm = estimator.get_params([0], funit="ppm")
     errors_ppm = estimator.get_errors([0], funit="ppm")
-    assert utils.equal(params_hz[:, (0, 1, 3)], params_ppm[:, (0, 1, 3)])
-    assert utils.equal(params_hz[:, 2] / estimator.sfo, params_ppm[:, 2])
-    assert utils.equal(errors_hz[:, (0, 1, 3)], errors_ppm[:, (0, 1, 3)])
-    assert utils.equal(errors_hz[:, 2] / estimator.sfo, errors_ppm[:, 2])
+    assert utils.aequal(params_hz[:, (0, 1, 3)], params_ppm[:, (0, 1, 3)])
+    assert utils.aequal(params_hz[:, 2] / estimator.sfo, params_ppm[:, 2])
+    assert utils.aequal(errors_hz[:, (0, 1, 3)], errors_ppm[:, (0, 1, 3)])
+    assert utils.aequal(errors_hz[:, 2] / estimator.sfo, errors_ppm[:, 2])
 
     # Ensure freqs in order
     all_region_params = estimator.get_params([1, 0], merge=False)
     assert len(all_region_params) == 2
-    assert utils.equal(np.vstack(all_region_params), estimator.get_params())
+    assert utils.aequal(np.vstack(all_region_params), estimator.get_params())
 
 
 def test_make_fid():
@@ -280,6 +263,7 @@ def test_result_editing():
 
 
 @pytest.mark.usefixtures("cleanup_files")
+@pytest.mark.xfail
 def test_write_result():
     estimator = DefaultEstimator.after_estimation()
     to_view = []
@@ -297,7 +281,7 @@ def test_write_result():
         }
     ]
     for options in write_result_options:
-        if not latex_exists() and options.get("fmt", "txt") == "pdf":
+        if not utils.latex_exists() and options.get("fmt", "txt") == "pdf":
             pass
         else:
             estimator.write_result(**options)
@@ -310,7 +294,7 @@ def test_write_result():
                 )
             )
 
-    view_files(to_view)
+    utils.view_files(to_view, VIEW_CONTENT)
 
 
 @pytest.mark.usefixtures("cleanup_files")
@@ -340,7 +324,7 @@ def test_plot_result():
             to_view.append(Path(f"plot{counter}.pdf"))
             counter += 1
 
-    view_files(to_view)
+    utils.view_files(to_view, VIEW_CONTENT)
 
 
 @pytest.mark.usefixtures("cleanup_files")
@@ -356,7 +340,7 @@ def test_save_log():
         estimator.save_log(**options)
         to_view.append(Path(options.get("path", "espy_logfile")).with_suffix(".log"))
 
-    view_files(to_view)
+    utils.view_files(to_view, VIEW_CONTENT)
 
 
 @pytest.mark.usefixtures("cleanup_files")
@@ -377,4 +361,9 @@ def test_pickle():
 def test_subband_estimate():
     estimator = DefaultEstimator.before_estimation()
     estimator.subband_estimate((550., 525.))
-    assert utils.close(estimator.get_params(), DefaultEstimator.params, tol=0.2)
+    assert utils.close(estimator.get_params(), DefaultEstimator.params, tol=0.4)
+
+
+def test_write_to_bruker():
+    estimator = DefaultEstimator.after_estimation()
+    estimator.write_to_topspin("hello", 3)
