@@ -1,7 +1,7 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Jul 2022 17:06:01 BST
+# Last Edited: Mon 01 Aug 2022 23:42:42 BST
 
 """Definitions of fidelities, gradients, and Hessians."""
 
@@ -1536,13 +1536,14 @@ def obj_grad_gauss_newton_hess_2d(
     model = np.einsum("ijk->ij", model_per_osc)
     diff = data - model
 
+    path = ["einsum_path", (0, 1)]
     # --- ℱ(θ) ---
     # Tr(AB) = Σᵢⱼ aᵢⱼbⱼᵢ
     obj = np.real(np.einsum("ij,ij->", diff.conj(), diff))
     # --- ∇ℱ(θ) ---
-    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1))
+    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1, optimize=path))
     # --- ∇²ℱ(θ) ---
-    hess = 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1))
+    hess = 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1, optimize=path))
 
     if phasevar:
         i = 1 if 0 in idx else 0
@@ -1646,11 +1647,12 @@ def obj_grad_true_hess_2d(active: np.ndarray, *args):
     model = np.einsum("ijk->ij", model_per_osc)
     diff = data - model
 
+    path = ["einsum_path", (0, 1)]
     # --- ℱ(θ) ---
     # Tr(AB) = Σᵢⱼ aᵢⱼbⱼᵢ
     obj = np.real(np.einsum("ij,ij->", diff.conj(), diff))
     # --- ∇ℱ(θ) ---
-    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1))
+    grad = -2 * np.real(np.einsum("ij,ijk->k", diff.conj(), d1, optimize=path))
     # --- ∇²ℱ(θ) ---
     diagonals = -2 * np.real(np.einsum("ijk,ij->k", d2.conj(), diff))
     p = len(idx)
@@ -1663,7 +1665,7 @@ def obj_grad_true_hess_2d(active: np.ndarray, *args):
     # after transposition.
     hess[main_diag_indices] /= 2
     hess += hess.T
-    hess += 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1))
+    hess += 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1, optimize=path))
 
     if phasevar:
         # If 0 in idx, phases will be between m and 2m, as amps
