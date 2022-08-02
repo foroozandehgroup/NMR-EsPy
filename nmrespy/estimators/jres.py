@@ -1,16 +1,18 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 27 Jul 2022 18:16:33 BST
+# Last Edited: Tue 02 Aug 2022 01:43:45 BST
 
 from __future__ import annotations
 import copy
+import itertools
 from pathlib import Path
 import re
 import tkinter as tk
 from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk,
@@ -186,6 +188,19 @@ class Estimator2DJ(Estimator):
             ax.set_zticks([])
 
             plt.show()
+
+    @property
+    def spectrum_zero_t1(self) -> np.ndarray:
+        """Generate a 1D spectrum of the first time-slice in the indirect dimension."""
+        data = self.data[0]
+        data[0] *= 0.5
+        return sig.ft(data)
+
+    @property
+    def spectrum(self) -> np.ndarray:
+        data = copy.deepcopy(self.data)
+        data[0, 0] *= 0.5
+        return sig.ft(data)
 
     @logger
     def estimate(
@@ -790,6 +805,106 @@ class Estimator2DJ(Estimator):
 
     def plot_result(self):
         pass
+
+    # TODO: Expand functionality
+    def plot_multiplets(
+        self,
+        shifts_unit: str = "hz",
+    ) -> mpl.figure.Figure:
+        sanity_check(
+            (
+                "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
+                (self.hz_ppm_valid,),
+            ),
+        )
+
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        _, f2_shifts = self.get_shifts(unit=shifts_unit, meshgrid=False)
+        ax.plot(f2_shifts, self.spectrum_zero_t1.real, color="k")
+
+        params = self.get_params()
+        multiplets = self.predict_multiplets()
+        rainbow = itertools.cycle(
+            ["red", "orange", "yellow", "green", "blue", "indigo", "violet"]
+        )
+        expinfo_1d = ExpInfo(
+            dim=1,
+            sw=self.sw()[1],
+            offset=self.offset()[1],
+            sfo=self.sfo[1],
+            nuclei=self.nuclei[1],
+            default_pts=self.default_pts[1],
+        )
+        for multiplet in multiplets:
+            color = next(rainbow)
+            for i in multiplet:
+                osc = np.expand_dims(params[i][[0, 1, 3, 5]], axis=0)
+                fid = expinfo_1d.make_fid(osc)
+                fid[0] *= 0.5
+                ax.plot(f2_shifts, sig.ft(fid).real, color=color)
+
+        ax.set_xlim(reversed(ax.get_xlim()))
+        ax.set_xlabel(f"{self.latex_nuclei[1]} ({shifts_unit.replace('h', 'H')})")
+        ax.set_yticks([])
+
+        return fig
+
+    def plot_contour(
+        self,
+        nlevels: Optional[int] = None,
+        base: Optional[float] = None,
+        factor: Optional[float] = None,
+        shifts_unit: str = "hz",
+    ) -> mpl.figure.Figure:
+        sanity_check(
+            ("nlevels", nlevels, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("base", base, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            (
+                "factor", factor, sfuncs.check_float, (), {"greater_than_one": True},
+                True,
+            ),
+            (
+                "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
+                (self.hz_ppm_valid,),
+            ),
+        )
+
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        shifts = self.get_shifts(unit="ppm")
+
+        if any([x is None for x in (nlevels, base, factor)]):
+            levels = None
+        else:
+            levels = [base * factor ** i for i in range(nlevels)]
+            levels = [-x for x in reversed(levels)] + levels
+
+        ax.contour(
+            shifts[1].T, shifts[0].T, np.abs(self.spectrum).T, levels=levels,
+            cmap="coolwarm",
+        )
+
+        params = self.get_params(funit=shifts_unit)
+        peaks_x = params[:, 3]
+        peaks_y = params[:, 2]
+        multiplets = self.predict_multiplets()
+        rainbow = itertools.cycle(
+            ["red", "orange", "yellow", "green", "blue", "indigo", "violet"]
+        )
+        for multiplet in multiplets:
+            color = next(rainbow)
+            for i in multiplet:
+                ax.scatter(
+                    peaks_x[i], peaks_y[i], marker="x", color=color, zorder=100,
+                )
+
+        ax.set_xlim(reversed(ax.get_xlim()))
+        ax.set_xlabel(f"{self.latex_nuclei[1]} ({shifts_unit.replace('h', 'H')})")
+        ax.set_ylim(reversed(ax.get_ylim()))
+        ax.set_ylabel("Hz")
+
+        return fig
 
 
 class ContourApp(tk.Tk):
