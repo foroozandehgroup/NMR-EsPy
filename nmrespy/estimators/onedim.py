@@ -1,14 +1,14 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 22 Jul 2022 15:29:50 BST
+# Last Edited: Thu 04 Aug 2022 10:45:02 BST
 
 from __future__ import annotations
 import copy
 from pathlib import Path
 import re
 import shutil
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,10 +17,10 @@ from nmr_sims.experiments.pa import PulseAcquireSimulation
 from nmr_sims.nuclei import Nucleus
 from nmr_sims.spin_system import SpinSystem
 
-from nmrespy import ExpInfo, sig
+from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._files import check_existent_dir
-from nmrespy._paths_and_links import NMRESPYPATH
+from nmrespy._files import cd, check_existent_dir
+from nmrespy._paths_and_links import NMRESPYPATH, SPINACHPATH
 from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
@@ -37,6 +37,10 @@ from . import logger, Estimator, Result
 if USE_COLORAMA:
     import colorama
     colorama.init()
+
+if MATLAB_AVAILABLE:
+    import matlab
+    import matlab.engine
 
 
 class Estimator1D(Estimator):
@@ -129,6 +133,71 @@ class Estimator1D(Estimator):
             data = sig.convdta(data, grpdly)
 
         return cls(data, expinfo, directory)
+
+    @classmethod
+    def new_spinach(
+        cls,
+        shifts: Iterable[float],
+        pts: int,
+        sw: float,
+        offset: float,
+        field: float = 11.74,
+        field_unit: str = "tesla",
+        couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
+        channel: str = "1H",
+        nuclei: Optional[List[str]] = None,
+        tau_c: float = 200e-12,
+    ) -> None:
+        if not MATLAB_AVAILABLE:
+            raise NotImplementedError(
+                f"{RED}MATLAB isn't accessible to Python. To get up and running, "
+                "take at look here:\n"
+                "https://www.mathworks.com/help/matlab/matlab_external/"
+                f"install-the-matlab-engine-for-python.html{END}"
+            )
+
+        sanity_check(
+            ("shifts", shifts, sfuncs.check_float_list),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
+            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("offset", offset, sfuncs.check_float),
+            ("channel", channel, sfuncs.check_nucleus),
+            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
+            ("tau_c", tau_c, sfuncs.check_float, (), {"greater_than_zero": True}),
+        )
+
+        nspins = len(shifts)
+        sanity_check(
+            ("nuclei", nuclei, sfuncs.check_nucleus_list, (), {"length": nspins}, True),
+            (
+                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
+                {}, True,
+            ),
+        )
+
+        if nuclei is None:
+            nuclei = nspins * [channel]
+
+        with cd(SPINACHPATH):
+            eng = matlab.engine.start_matlab()
+            fid, sfo = eng.onedim_sim(
+                field, field_unit, nuclei, shifts, couplings, tau_c, offset,
+                sw, pts, channel, nargout=2,
+            )
+
+        fid = np.array(fid).flatten()
+
+        expinfo = ExpInfo(
+            dim=1,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            nuclei=channel,
+            default_pts=fid.shape,
+        )
+
+        return cls(fid, expinfo)
 
     @classmethod
     def new_synthetic_from_parameters(
