@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Jun 2022 00:20:11 BST
+# Last Edited: Thu 04 Aug 2022 02:04:27 BST
 
 from pathlib import Path
 import re
@@ -590,3 +590,42 @@ def check_optimiser_mode(obj: Any) -> Optional[str]:
             count[c] = 1
     if not all(map(lambda x: x == 1, count.values())):
         return "Repeated character present."
+
+
+def check_spinach_couplings(obj: Any, nspins: int) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a list or a tuple."
+    for i, elem in enumerate(obj):
+        if not (
+            isiter(elem) and
+            len(elem) == 3 and
+            isinstance(elem[0], int) and
+            isinstance(elem[1], int) and
+            isinstance(elem[2], float)
+        ):
+            return (
+                f"Issue with element {i}: Each element should be a tuple of 3"
+                "elements of the form (int, int, float)."
+            )
+
+        if not all([1 <= x <= nspins for x in elem[:2]]):
+            return (
+                f"Issue with element {i}: The first two elements should be between "
+                f"1 and {nspins}."
+            )
+
+        if elem[0] == elem[1]:
+            return (
+                f"Issue with element {i}: The first two elements should be different."
+            )
+
+    # Check for duplicate specifications
+    pairs = []
+    for elem in obj:
+        pair = sorted(elem[:2])
+        if pair in pairs:
+            return (
+                f"Coupling between spins {pair[0]} and {pair[1]} specified multiple "
+                "times! Ensure each pair is only given once to prevent ambiguity."
+            )
+        pairs.append(pair)

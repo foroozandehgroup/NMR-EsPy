@@ -1,9 +1,12 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 22 Jun 2022 10:24:49 BST
+# Last Edited: Thu 04 Aug 2022 01:18:38 BST
 
 """NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
+
+import importlib
+MATLAB_AVAILABLE = importlib.util.find_spec("matlab") is not None
 
 from nmrespy.expinfo import ExpInfo
 from nmrespy.estimators.onedim import Estimator1D
