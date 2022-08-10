@@ -1,24 +1,14 @@
 function [fid, sfo] = onedim_sim(field, field_unit, isotopes, shifts, couplings, ...
         tau_c, offset, sweep, npoints, channel)
 
-    % System
-    gamma = spin(channel);
-    if field_unit == "MHz"
-        sys.magnet = (2e6 * pi * field) / gamma;
-        sfo = field;
-    else
-        sys.magnet = field;
-        sfo = (field * gamma) / (2e6 * pi);
-    end
+    magnet, sfo = get_magnet_and_sfo(field, field_unit, channel);
+    sys.magnet = magnet;
     sys.isotopes = isotopes;
 
     % Interations
     nspins = length(shifts);
     inter.zeeman.scalar = shifts;
-    inter.coupling.scalar = cell(nspins, nspins);
-    for elem = couplings
-        inter.coupling.scalar{elem{1}{1}, elem{1}{2}} = elem{1}{3};
-    end
+    inter.coupling.scalar = get_couplings(nspins, couplings);
 
     % Basis set
     bas.formalism = 'sphten-liouv';
