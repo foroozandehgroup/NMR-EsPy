@@ -1,15 +1,17 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 02 Aug 2022 01:43:45 BST
+# Last Edited: Wed 10 Aug 2022 13:51:50 BST
 
 from __future__ import annotations
 import copy
+import io
 import itertools
+import os
 from pathlib import Path
 import re
 import tkinter as tk
-from typing import Dict, Iterable, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -22,7 +24,10 @@ from nmr_sims.experiments.jres import JresSimulation
 from nmr_sims.nuclei import Nucleus
 from nmr_sims.spin_system import SpinSystem
 
-from nmrespy import ExpInfo, sig
+from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
+from nmrespy._colors import RED, END, USE_COLORAMA
+from nmrespy._files import cd
+from nmrespy._paths_and_links import SPINACHPATH
 from nmrespy.app.custom_widgets import MyEntry
 from nmrespy._sanity import (
     sanity_check,
@@ -34,6 +39,15 @@ from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
 
 
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
+
+if MATLAB_AVAILABLE:
+    import matlab
+    import matlab.engine
+
+
 class Estimator2DJ(Estimator):
     def __init__(
         self, data: np.ndarray, expinfo: ExpInfo, datapath: Optional[Path] = None,
@@ -43,6 +57,134 @@ class Estimator2DJ(Estimator):
     @classmethod
     def new_bruker(cls):
         pass
+
+    @classmethod
+    def new_spinach(
+        cls,
+        shifts: Iterable[float],
+        pts: Tuple[int, int],
+        sw: Tuple[float, float],
+        offset: float,
+        field: float = 11.74,
+        field_unit: str = "tesla",
+        couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
+        channel: str = "1H",
+        nuclei: Optional[List[str]] = None,
+        tau_c: float = 200e-12,
+    ) -> None:
+        r"""Create a new instance from a 2DJ Spinach simulation.
+
+        Parameters
+        ----------
+        shifts
+            A list or tuple of chemical shift values for each spin.
+
+        pts
+            The number of points the signal comprises.
+
+        sw
+            The sweep width of the signal (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        field
+            The magnetic field stength, in either Tesla or MHz (see ``field_unit``).
+
+        field_unit
+            ``MHz`` or ``Tesla``. The unit that ``field`` is given as. If ``MHz``,
+            this will be taken as the Larmor frequency of the nucleus specified by
+            ``channel``.
+
+        couplings
+            The scalar couplings present in the spin system. Given ``shifts`` is of
+            length ``n``, couplings should be an iterable with entries of the form
+            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
+            the two spins involved in the coupling, and ``coupling`` is the value
+            of the scalar coupling in Hz.
+
+        channel
+            The identity of the nucleus targeted in the pulse sequence.
+
+        nuclei
+            The type of nucleus for each spin. Can be either:
+
+            * ``None``, in which case each spin will be set as the identity of
+              ``channel``.
+            * A list of length ``n``, where ``n`` is the number of spins. Each
+              entry should be a string satisfying the regular expression
+              ``"\d+[A-Z][a-z]*"``, and recognised by Spinach as a real nucleus
+              e.g. ``"1H"``, ``"13C"``, ``"195Pt"``.
+
+        tau_c
+            The isotropic rotational correlation time of the spin system in seconds.
+        """
+        if not MATLAB_AVAILABLE:
+            raise NotImplementedError(
+                f"{RED}MATLAB isn't accessible to Python. To get up and running, "
+                "take at look here:\n"
+                "https://www.mathworks.com/help/matlab/matlab_external/"
+                f"install-the-matlab-engine-for-python.html{END}"
+            )
+
+        sanity_check(
+            ("shifts", shifts, sfuncs.check_float_list),
+            ("pts", pts, sfuncs.check_int_list, (), {"length": 2}),
+            (
+                "sw", sw, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+            ("offset", offset, sfuncs.check_float),
+            ("channel", channel, sfuncs.check_nucleus),
+            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
+            ("tau_c", tau_c, sfuncs.check_float, (), {"greater_than_zero": True}),
+        )
+
+        nspins = len(shifts)
+        sanity_check(
+            ("nuclei", nuclei, sfuncs.check_nucleus_list, (), {"length": nspins}, True),
+            (
+                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
+                {}, True,
+            ),
+        )
+
+        if nuclei is None:
+            nuclei = nspins * [channel]
+
+        with cd(SPINACHPATH):
+            devnull = io.StringIO(str(os.devnull))
+            try:
+                eng = matlab.engine.start_matlab()
+                fid, sfo = eng.jres_sim(
+                    field, field_unit, nuclei, shifts, couplings, tau_c, offset,
+                    matlab.double(sw), matlab.double(pts), channel, nargout=2,
+                    stdout=devnull, stderr=devnull,
+                )
+            except matlab.engine.MatlabExecutionError:
+                msg = (
+                    f"{RED}Something went wrong in the call to Spinach. This "
+                    "is likely due to an inappropriate argument value which was not "
+                    "noticed by sanity checks. For example, you provided an isotope "
+                    "of the correct format but which is unknown. Read what is "
+                    "stated below the line \"matlab.engine.MatlabExecutionError:\" "
+                    f"for more details on the error raised.{END}"
+                )
+                raise ValueError(msg)
+
+        fid = np.array(fid)
+
+        expinfo = ExpInfo(
+            dim=2,
+            sw=sw,
+            offset=(0., offset),
+            sfo=(None, sfo),
+            nuclei=(None, channel),
+            default_pts=fid.shape,
+        )
+
+        return cls(fid, expinfo)
 
     @classmethod
     def new_synthetic_from_simulation(
