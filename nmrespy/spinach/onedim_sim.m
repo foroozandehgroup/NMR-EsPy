@@ -41,8 +41,8 @@ function [fid, sfo] = onedim_sim(field, field_unit, isotopes, shifts, couplings,
     parameters.sweep = sweep;
     parameters.npoints = npoints;
     parameters.spins = {channel};
-    parameters.coil=state(spin_system,'L+','1H');
-    parameters.rho0=state(spin_system,'L+','1H');
+    parameters.coil=state(spin_system, 'L+', channel);
+    parameters.rho0=state(spin_system, 'L+', channel);
 
     % Simulation
     fid = liquid(spin_system, @acquire, parameters, 'nmr');

@@ -1,10 +1,12 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 04 Aug 2022 10:45:02 BST
+# Last Edited: Wed 10 Aug 2022 11:04:15 BST
 
 from __future__ import annotations
 import copy
+import io
+import os
 from pathlib import Path
 import re
 import shutil
@@ -148,6 +150,53 @@ class Estimator1D(Estimator):
         nuclei: Optional[List[str]] = None,
         tau_c: float = 200e-12,
     ) -> None:
+        r"""Create a new instance from a pulse-acquire Spinach simulation.
+
+        Parameters
+        ----------
+        shifts
+            A list of tuple of chemical shift values for each spin.
+
+        pts
+            The number of points the signal comprises.
+
+        sw
+            The sweep width of the signal (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        field
+            The magnetic field stength, in either Tesla or MHz (see ``field_unit``).
+
+        field_unit
+            ``MHz`` or ``Tesla``. The unit that ``field`` is given as. If ``MHz``,
+            this will be taken as the Larmor frequency of the nucleus specified by
+            ``channel``.
+
+        couplings
+            The scalar couplings present in the spin system. Given ``shifts`` is of
+            length ``n``, couplings should be an iterable with entries of the form
+            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
+            the two spins involved in the coupling, and ``coupling`` is the value
+            of the scalar coupling in Hz.
+
+        channel
+            The identity of the nucleus targeted in the pulse sequence.
+
+        nuclei
+            The type of nucleus for each spin. Can be either:
+
+            * ``None``, in which case each spin will be set as the identity of
+              ``channel``.
+            * A list of length ``n``, where ``n`` is the number of spins. Each
+              entry should be a string satisfying the regular expression
+              ``"\d+[A-Z][a-z]*"``, and recognised by Spinach as a real nucleus
+              e.g. ``"1H"``, ``"13C"``, ``"195Pt"``.
+
+        tau_c
+            The isotropic rotational correlation time of the spin system in seconds.
+        """
         if not MATLAB_AVAILABLE:
             raise NotImplementedError(
                 f"{RED}MATLAB isn't accessible to Python. To get up and running, "
@@ -180,11 +229,23 @@ class Estimator1D(Estimator):
             nuclei = nspins * [channel]
 
         with cd(SPINACHPATH):
-            eng = matlab.engine.start_matlab()
-            fid, sfo = eng.onedim_sim(
-                field, field_unit, nuclei, shifts, couplings, tau_c, offset,
-                sw, pts, channel, nargout=2,
-            )
+            devnull = io.StringIO(str(os.devnull))
+            try:
+                eng = matlab.engine.start_matlab()
+                fid, sfo = eng.onedim_sim(
+                    field, field_unit, nuclei, shifts, couplings, tau_c, offset,
+                    sw, pts, channel, nargout=2, stdout=devnull, stderr=devnull,
+                )
+            except matlab.engine.MatlabExecutionError:
+                msg = (
+                    f"{RED}Something went wrong in the call to Spinach. This "
+                    "is likely due to an inappropriate argument value which was not "
+                    "noticed by sanity checks. For example, you provided an isotope "
+                    "of the correct format but which is unknown. Read what is "
+                    "stated below the line \"matlab.engine.MatlabExecutionError:\" "
+                    f"for more details on the error raised.{END}"
+                )
+                raise ValueError(msg)
 
         fid = np.array(fid).flatten()
 
