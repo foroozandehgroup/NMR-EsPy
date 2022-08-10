@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 29 Jul 2022 11:33:43 BST
+# Last Edited: Thu 04 Aug 2022 01:16:10 BST
 
 from __future__ import annotations
 import abc
@@ -47,6 +47,8 @@ def logger(f: callable):
 
 class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
     """Base estimation class."""
+
+    matlab_available = ne.MATLAB_AVAILABLE
 
     def __init__(
         self,

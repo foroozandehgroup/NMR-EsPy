@@ -1,8 +1,9 @@
 # _files.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Jun 2022 13:29:37 BST
+# Last Edited: Thu 04 Aug 2022 01:43:02 BST
 
+import os
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
@@ -13,6 +14,19 @@ from nmrespy._misc import get_yes_no
 if USE_COLORAMA:
     import colorama
     colorama.init()
+
+
+class cd:
+    """Context manager for changing the current working directory"""
+    def __init__(self, new_path):
+        self.new_path = os.path.expanduser(new_path)
+
+    def __enter__(self):
+        self.saved_path = os.getcwd()
+        os.chdir(self.new_path)
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.saved_path)
 
 
 def append_suffix(path: Path, suffix: Optional[str]) -> Path:
