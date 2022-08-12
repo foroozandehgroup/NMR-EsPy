@@ -1,8 +1,8 @@
-function [fid, sfo] = jres_sim(field, field_unit, isotopes, shifts, couplings, ...
-        tau_c, offset, sweep, npoints, channel)
+function [fid, sfo] = jres_sim(field, isotopes, shifts, couplings, offset, ...
+        sweep, npoints, channel)
 
-    [magnet, sfo] = get_magnet_and_sfo(field, field_unit, channel);
-    sys.magnet = magnet;
+    sfo = get_sfo(field, channel);
+    sys.magnet = field;
     sys.isotopes = isotopes;
 
     % Interations
@@ -15,12 +15,6 @@ function [fid, sfo] = jres_sim(field, field_unit, isotopes, shifts, couplings, .
     bas.approximation = 'IK-2';
     bas.connectivity = 'scalar_couplings';
     bas.space_level = 1;
-
-    % Relaxation theory parameters
-    inter.relaxation = {'redfield'};
-    inter.equilibrium = 'zero';
-    inter.rlx_keep = 'kite';
-    inter.tau_c = {tau_c};
 
     % Sequence parameters
     parameters.offset = offset;

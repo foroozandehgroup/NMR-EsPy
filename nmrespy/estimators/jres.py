@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 10 Aug 2022 13:51:50 BST
+# Last Edited: Fri 12 Aug 2022 16:52:29 BST
 
 from __future__ import annotations
 import copy
@@ -10,6 +10,7 @@ import itertools
 import os
 from pathlib import Path
 import re
+import sys
 import tkinter as tk
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
@@ -21,7 +22,6 @@ from matplotlib.backends.backend_tkagg import (
 )
 
 from nmr_sims.experiments.jres import JresSimulation
-from nmr_sims.nuclei import Nucleus
 from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
@@ -70,9 +70,163 @@ class Estimator2DJ(Estimator):
         couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
         channel: str = "1H",
         nuclei: Optional[List[str]] = None,
-        tau_c: float = 200e-12,
+        snr: Optional[float] = 20.,
+        lb: Optional[Tuple[float, float]] = (6.91, 6.91),
     ) -> None:
         r"""Create a new instance from a 2DJ Spinach simulation.
+
+        Parameters
+        ----------
+        shifts
+            A list or tuple of chemical shift values for each spin.
+
+        pts
+            The number of points the signal comprises.
+
+        sw
+            The sweep width of the signal (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        field
+            The magnetic field stength, in either Tesla or MHz (see ``field_unit``).
+
+        field_unit
+            ``MHz`` or ``Tesla``. The unit that ``field`` is given as. If ``MHz``,
+            this will be taken as the Larmor frequency of proton.
+
+        couplings
+            The scalar couplings present in the spin system. Given ``shifts`` is of
+            length ``n``, couplings should be an iterable with entries of the form
+            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
+            the two spins involved in the coupling, and ``coupling`` is the value
+            of the scalar coupling in Hz.
+
+        channel
+            The identity of the nucleus targeted in the pulse sequence.
+
+        nuclei
+            The type of nucleus for each spin. Can be either:
+
+            * ``None``, in which case each spin will be set as the identity of
+              ``channel``.
+            * A list of length ``n``, where ``n`` is the number of spins. Each
+              entry should be a string satisfying the regular expression
+              ``"\d+[A-Z][a-z]*"``, and recognised by Spinach as a real nucleus
+              e.g. ``"1H"``, ``"13C"``, ``"195Pt"``.
+
+        snr
+            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
+            produces a noiseless signal.
+
+        lb
+            Line broadening (exponential damping) to apply to the signal. If a tuple
+            of two floats, damping in T1 will be dictated by ``lb[0]`` and damping
+            in T2 will be dictated by ``lb[1]``. Note that the first point will be
+            unaffected by damping, and the final point will be multiplied by
+            ``np.exp(-lb[i])`` for each dimension. The default results in the final
+            point being decreased in value by a factor of roughly 1000.
+        """
+        if not MATLAB_AVAILABLE:
+            raise NotImplementedError(
+                f"{RED}MATLAB isn't accessible to Python. To get up and running, "
+                "take at look here:\n"
+                "https://www.mathworks.com/help/matlab/matlab_external/"
+                f"install-the-matlab-engine-for-python.html{END}"
+            )
+
+        sanity_check(
+            ("shifts", shifts, sfuncs.check_float_list),
+            ("pts", pts, sfuncs.check_int_list, (), {"length": 2}),
+            (
+                "sw", sw, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+            ("offset", offset, sfuncs.check_float),
+            ("channel", channel, sfuncs.check_nucleus),
+            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
+            ("snr", snr, sfuncs.check_float),
+            (
+                "lb", lb, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+        )
+
+        nspins = len(shifts)
+        sanity_check(
+            ("nuclei", nuclei, sfuncs.check_nucleus_list, (), {"length": nspins}, True),
+            (
+                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
+                {}, True,
+            ),
+        )
+
+        if nuclei is None:
+            nuclei = nspins * [channel]
+
+        if field_unit == "MHz":
+            field = (2e6 * np.pi * field) / 2.6752218744e8
+
+        with cd(SPINACHPATH):
+            devnull = io.StringIO(str(os.devnull))
+            try:
+                eng = matlab.engine.start_matlab()
+                fid, sfo = eng.jres_sim(
+                    field, nuclei, shifts, couplings, offset,
+                    matlab.double(sw), matlab.double(pts), channel, nargout=2,
+                    stdout=devnull, stderr=devnull,
+                )
+            except matlab.engine.MatlabExecutionError:
+                raise ValueError(
+                    f"{RED}Something went wrong in trying to run Spinach. This "
+                    "is likely due to one of two things:\n"
+                    "1. An inappropriate argument was given which was not noticed by "
+                    "sanity checks. For example, you provided an isotope of the "
+                    "correct format but which is unknown\n"
+                    "2. You have not correctly configured Spinach.\n"
+                    "Read what is stated below the line "
+                    "\"matlab.engine.MatlabExecutionError:\" "
+                    f"for more details on the error raised.{END}"
+                )
+
+        fid = sig.phase(np.array(fid), (0., np.pi / 2), (0., 0.))
+
+        # Apply exponential damping
+        for i, k in enumerate(lb):
+            fid = sig.exp_apodisation(fid, k, axes=[i])
+
+        if snr is not None:
+            fid = sig.add_noise(fid, snr)
+
+        expinfo = ExpInfo(
+            dim=2,
+            sw=sw,
+            offset=(0., offset),
+            sfo=(None, sfo),
+            nuclei=(None, channel),
+            default_pts=fid.shape,
+        )
+
+        return cls(fid, expinfo)
+
+    @classmethod
+    def new_nmrsims(
+        cls,
+        shifts: Iterable[float],
+        pts: Tuple[int, int],
+        sw: Tuple[float, float],
+        offset: float,
+        field: float = 11.74,
+        field_unit: str = "tesla",
+        couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
+        channel: str = "1H",
+        nuclei: Optional[List[str]] = None,
+        snr: Optional[float] = 20.,
+        lb: Optional[Tuple[float, float]] = (6.91, 6.91),
+    ) -> Estimator2DJ:
+        r"""Create a new instance from a 2DJ NMR Sims simulation.
 
         Parameters
         ----------
@@ -113,20 +267,21 @@ class Estimator2DJ(Estimator):
               ``channel``.
             * A list of length ``n``, where ``n`` is the number of spins. Each
               entry should be a string satisfying the regular expression
-              ``"\d+[A-Z][a-z]*"``, and recognised by Spinach as a real nucleus
-              e.g. ``"1H"``, ``"13C"``, ``"195Pt"``.
+              ``"\d+[A-Z][a-z]*"``, and recognised as a real nucleus e.g. ``"1H"``,
+              ``"13C"``.
 
-        tau_c
-            The isotropic rotational correlation time of the spin system in seconds.
+        snr
+            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
+            produces a noiseless signal.
+
+        lb
+            Line broadening (exponential damping) to apply to the signal. If a tuple
+            of two floats, damping in T1 will be dictated by ``lb[0]`` and damping
+            in T2 will be dictated by ``lb[1]``. Note that the first point will be
+            unaffected by damping, and the final point will be multiplied by
+            ``np.exp(-lb[i])`` for each dimension. The default results in the final
+            point being decreased in value by a factor of roughly 1000.
         """
-        if not MATLAB_AVAILABLE:
-            raise NotImplementedError(
-                f"{RED}MATLAB isn't accessible to Python. To get up and running, "
-                "take at look here:\n"
-                "https://www.mathworks.com/help/matlab/matlab_external/"
-                f"install-the-matlab-engine-for-python.html{END}"
-            )
-
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
             ("pts", pts, sfuncs.check_int_list, (), {"length": 2}),
@@ -135,10 +290,14 @@ class Estimator2DJ(Estimator):
                 {"length": 2, "must_be_positive": True},
             ),
             ("offset", offset, sfuncs.check_float),
-            ("channel", channel, sfuncs.check_nucleus),
             ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
-            ("tau_c", tau_c, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("channel", channel, sfuncs.check_nmrsims_nucleus),
+            ("snr", snr, sfuncs.check_float),
+            (
+                "lb", lb, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True}, True,
+            ),
         )
 
         nspins = len(shifts)
@@ -153,137 +312,61 @@ class Estimator2DJ(Estimator):
         if nuclei is None:
             nuclei = nspins * [channel]
 
-        with cd(SPINACHPATH):
-            devnull = io.StringIO(str(os.devnull))
-            try:
-                eng = matlab.engine.start_matlab()
-                fid, sfo = eng.jres_sim(
-                    field, field_unit, nuclei, shifts, couplings, tau_c, offset,
-                    matlab.double(sw), matlab.double(pts), channel, nargout=2,
-                    stdout=devnull, stderr=devnull,
-                )
-            except matlab.engine.MatlabExecutionError:
-                msg = (
-                    f"{RED}Something went wrong in the call to Spinach. This "
-                    "is likely due to an inappropriate argument value which was not "
-                    "noticed by sanity checks. For example, you provided an isotope "
-                    "of the correct format but which is unknown. Read what is "
-                    "stated below the line \"matlab.engine.MatlabExecutionError:\" "
-                    f"for more details on the error raised.{END}"
-                )
-                raise ValueError(msg)
+        # Construct SpinSystem object
+        spins = {
+            i: {"shift": shift, "nucleus": nucleus}
+            for i, (shift, nucleus) in enumerate(zip(shifts, nuclei), start=1)
+        }
+        for i1, i2, coupling in couplings:
+            i1, i2 = min(i1, i2), max(i1, i2)
+            if "couplings" not in spins[i1]:
+                spins[i1]["couplings"] = {}
+            spins[i1]["couplings"][i2] = coupling
 
-        fid = np.array(fid)
+        if field_unit == "tesla":
+            field = f"{field}T"
+        elif field_unit == "MHz":
+            field = f"{field}MHz"
 
-        expinfo = ExpInfo(
-            dim=2,
-            sw=sw,
-            offset=(0., offset),
-            sfo=(None, sfo),
-            nuclei=(None, channel),
-            default_pts=fid.shape,
-        )
+        spin_system = SpinSystem(spins, field=field)
 
-        return cls(fid, expinfo)
+        # Prevent normal nmr_sims output from appearing
+        text_trap = io.StringIO()
+        sys.stdout = text_trap
 
-    @classmethod
-    def new_synthetic_from_simulation(
-        cls,
-        spin_system: SpinSystem,
-        sweep_widths: Tuple[float, float],
-        offset: float,
-        pts: Tuple[int, int],
-        channel: Union[str, Nucleus] = "1H",
-        f2_unit: str = "ppm",
-        snr: Optional[float] = 30.0,
-        lb: Optional[Tuple[float, float]] = None,
-    ) -> Estimator2DJ:
-        """Generate an estimator with data derived from a J-resolved experiment
-        simulation.
-
-        Simulations are performed using
-        `nmr_sims.experiments.jres.JresEstimator
-        <https://foroozandehgroup.github.io/nmr_sims/content/references/experiments/
-        pa.html#nmr_sims.experiments.jres.JresEstimator>`_.
-
-        Parameters
-        ----------
-        spin_system
-            Specification of the spin system to run simulations on. `See here
-            <https://foroozandehgroup.github.io/nmr_sims/content/references/
-            spin_system.html#nmr_sims.spin_system.SpinSystem.__init__>`_
-            for more details.
-
-        sweep_widths
-            The sweep width in each dimension. The first element, corresponding
-            to F1, should be in Hz. The second element, corresponding to F2,
-            should be expressed in the unit which corresponds to ``f2_unit``.
-
-        offset
-            The transmitter offset. The value's unit should correspond with
-            ``f2_unit``.
-
-        pts
-            The number of points sampled in each dimension.
-
-        channel
-            Nucleus targeted in the experiment simulation. ¹H is set as the default.
-            `See here <https://foroozandehgroup.github.io/nmr_sims/content/
-            references/nuclei.html>`__ for more information.
-
-        f2_unit
-            The unit that the sweep width and transmitter offset in F2 are given in.
-            Should be either ``"ppm"`` (default) or ``"hz"``.
-
-        snr
-            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
-            produces a noiseless signal.
-
-        lb
-            The damping (line-broadening) factor applied to the simulated FID.
-            By default, this will be set to ensure that the final point in each
-            dimension in scaled to be 1/1000 of it's un-damped value.
-        """
-        sanity_check(
-            ("spin_system", spin_system, sfuncs.check_spin_system),
-            (
-                "sweep_widths", sweep_widths, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
-            ("offset", offset, sfuncs.check_float),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
-            ("channel", channel, sfuncs.check_nmrsims_nucleus),
-            ("f2_unit", f2_unit, sfuncs.check_frequency_unit, (True,)),
-            ("snr", snr, sfuncs.check_float, (), {}, True),
-            (
-                "lb", lb, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True}, True,
-            ),
-        )
-
-        sweep_widths = [f"{sweep_widths[0]}hz", f"{sweep_widths[1]}{f2_unit}"]
-        offset = f"{offset}{f2_unit}"
-
-        sim = JresSimulation(spin_system, pts, sweep_widths, offset, channel)
+        sim = JresSimulation(spin_system, pts, sw, offset, channel)
         sim.simulate()
-        _, data, _ = sim.fid(lb=lb)
+
+        sys.stdout = sys.__stdout__
+
+        if lb is None:
+            # Determine factor to ensure that final point dampened by a factor
+            # of 1/1000
+            lb = tuple([-(1 / x) * np.log(0.001) for x in pts])
+
+        _, fid, _ = sim.fid(lb=(0., 0.))
 
         if snr is not None:
-            data += sig._make_noise(data, snr)
+            fid = sig.add_noise(fid, snr)
+
+        # Apply exponential damping
+        for i, k in enumerate(lb):
+            fid = sig.exp_apodisation(fid, k, axes=[i])
 
         expinfo = ExpInfo(
             dim=2,
             sw=sim.sweep_widths,
-            offset=[0.0, sim.offsets[0]],
-            sfo=[None, sim.sfo[0]],
-            nuclei=[None, sim.channels[0].name],
-            default_pts=data.shape,
+            offset=(0., sim.offsets[0]),
+            sfo=(None, sim.sfo[0]),
+            nuclei=(None, sim.channels[0].name),
+            default_pts=fid.shape,
             fn_mode="QF",
         )
-        return cls(data, expinfo, None)
+
+        return cls(fid, expinfo)
+
+    def new_synthetic_from_simulation(self):
+        pass
 
     def view_data(
         self,
@@ -305,21 +388,15 @@ class Estimator2DJ(Estimator):
             ("abs_", abs_, sfuncs.check_bool),
         )
 
-        fig = plt.figure()
-        ax = fig.add_subplot(projection="3d")
-        data_cp = copy.deepcopy(self._data)
-
         if domain == "freq":
-            data_cp[0, 0] /= 2
-            spectrum = sig.ft(data_cp)
-
-            if abs_:
-                spectrum = np.abs(spectrum)
-
+            spectrum = np.abs(self.spectrum) if abs_ else self.spectrum
             app = ContourApp(spectrum, self.expinfo)
             app.mainloop()
 
         elif domain == "time":
+            fig = plt.figure()
+            ax = fig.add_subplot(projection="3d")
+
             x, y = self.get_timepoints()
             xlabel, ylabel = [f"$t_{i}$ (s)" for i in range(1, 3)]
 
@@ -334,7 +411,7 @@ class Estimator2DJ(Estimator):
     @property
     def spectrum_zero_t1(self) -> np.ndarray:
         """Generate a 1D spectrum of the first time-slice in the indirect dimension."""
-        data = self.data[0]
+        data = copy.deepcopy(self.data[0])
         data[0] *= 0.5
         return sig.ft(data)
 
@@ -732,7 +809,7 @@ class Estimator2DJ(Estimator):
         )
 
         params = self.get_params(indices)
-        multiplets = self.predict_multiplets(thold=0.5)
+        multiplets = self.predict_multiplets()
         for multiplet in multiplets:
             params[multiplet, 5] /= len(multiplet)
 
@@ -1054,6 +1131,7 @@ class ContourApp(tk.Tk):
 
     def __init__(self, data: np.ndarray, expinfo) -> None:
         super().__init__()
+        self.protocol("WM_DELETE_WINDOW", self.quit)
         self.shifts = list(reversed(
             [s.T for s in expinfo.get_shifts(data.shape, unit="ppm")]
         ))
