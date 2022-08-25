@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 12 Aug 2022 16:52:29 BST
+# Last Edited: Thu 25 Aug 2022 17:01:21 BST
 
 from __future__ import annotations
 import copy
@@ -162,6 +162,9 @@ class Estimator2DJ(Estimator):
                 {}, True,
             ),
         )
+
+        if couplings is None:
+            couplings = []
 
         if nuclei is None:
             nuclei = nspins * [channel]
@@ -809,9 +812,9 @@ class Estimator2DJ(Estimator):
         )
 
         params = self.get_params(indices)
-        multiplets = self.predict_multiplets()
-        for multiplet in multiplets:
-            params[multiplet, 5] /= len(multiplet)
+        # multiplets = self.predict_multiplets()
+        # for multiplet in multiplets:
+        #     params[multiplet, 5] /= len(multiplet)
 
         offset = self.offset()[1]
         if pts is None:

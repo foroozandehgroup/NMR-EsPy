@@ -64,6 +64,7 @@ Contents
    content/install
    content/theory_overview
    content/walkthrough
+   content/jres_walkthrough
    content/gui/index
    content/references/index
    content/contributors
