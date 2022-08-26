@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 25 Aug 2022 17:01:21 BST
+# Last Edited: Fri 26 Aug 2022 15:54:14 BST
 
 from __future__ import annotations
 import copy
@@ -368,9 +368,6 @@ class Estimator2DJ(Estimator):
 
         return cls(fid, expinfo)
 
-    def new_synthetic_from_simulation(self):
-        pass
-
     def view_data(
         self,
         domain: str = "freq",
@@ -410,6 +407,18 @@ class Estimator2DJ(Estimator):
             ax.set_zticks([])
 
             plt.show()
+
+    @property
+    def direct_expinfo(self) -> ExpInfo:
+        """Return :py:meth:`~nmrespy.ExpInfo` for the direct dimension."""
+        return ExpInfo(
+            dim=1,
+            sw=self.sw()[1],
+            offset=self.offset()[1],
+            sfo=self.sfo[1],
+            nuclei=self.nuclei[1],
+            default_pts=self.default_pts[1],
+        )
 
     @property
     def spectrum_zero_t1(self) -> np.ndarray:
@@ -1007,6 +1016,7 @@ class Estimator2DJ(Estimator):
             ``None`` will lead to an array of shape ``(*pts)``. ``amp`` and ``phase``
             will lead to an array of shape ``(2, *pts)``.
         """
+        self._check_results_exist()
         sanity_check(
             (
                 "indices", indices, sfuncs.check_index,
@@ -1028,11 +1038,30 @@ class Estimator2DJ(Estimator):
     def plot_result(self):
         pass
 
-    # TODO: Expand functionality
+    def new_synthetic_from_simulation(self):
+        pass
+
     def plot_multiplets(
         self,
         shifts_unit: str = "hz",
+        merge_multiplet_oscillators: bool = True,
     ) -> mpl.figure.Figure:
+        """Display a 1D spectrum of the multiplets predicted by the estimation routine.
+
+        A figure of the first slice in T1 is plotted, along with oscillators produced
+        in the estimation. Oscillators predicted to belong to the same multiplet
+        structure are assigned the same colour.
+
+        Parameters
+        ----------
+        shifts_unit
+            ``"hz"`` or ``"ppm"``. The unit of the chemical shifts.
+
+        merge_multiplet_oscillators
+            If ``False``, each oscillator will be plotted separately. If ``True``,
+            all oscillators corresponding to one multiplet will be summed prior to
+            plotting.
+        """
         sanity_check(
             (
                 "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
@@ -1042,29 +1071,30 @@ class Estimator2DJ(Estimator):
 
         fig = plt.figure()
         ax = fig.add_subplot()
-        _, f2_shifts = self.get_shifts(unit=shifts_unit, meshgrid=False)
-        ax.plot(f2_shifts, self.spectrum_zero_t1.real, color="k")
+        expinfo_1d = self.direct_expinfo
+        shifts, = expinfo_1d.get_shifts(unit=shifts_unit)
+        ax.plot(shifts, self.spectrum_zero_t1.real, color="k")
 
         params = self.get_params()
         multiplets = self.predict_multiplets()
         rainbow = itertools.cycle(
             ["red", "orange", "yellow", "green", "blue", "indigo", "violet"]
         )
-        expinfo_1d = ExpInfo(
-            dim=1,
-            sw=self.sw()[1],
-            offset=self.offset()[1],
-            sfo=self.sfo[1],
-            nuclei=self.nuclei[1],
-            default_pts=self.default_pts[1],
-        )
+        expinfo_1d = self.direct_expinfo
         for multiplet in multiplets:
             color = next(rainbow)
-            for i in multiplet:
-                osc = np.expand_dims(params[i][[0, 1, 3, 5]], axis=0)
-                fid = expinfo_1d.make_fid(osc)
+            if merge_multiplet_oscillators:
+                mult = params[multiplet][:, [0, 1, 3, 5]]
+                fid = expinfo_1d.make_fid(mult)
                 fid[0] *= 0.5
-                ax.plot(f2_shifts, sig.ft(fid).real, color=color)
+                ax.plot(shifts, sig.ft(fid).real, color=color)
+
+            else:
+                for i in multiplet:
+                    osc = np.expand_dims(params[i][[0, 1, 3, 5]], axis=0)
+                    fid = expinfo_1d.make_fid(osc)
+                    fid[0] *= 0.5
+                    ax.plot(shifts, sig.ft(fid).real, color=color)
 
         ax.set_xlim(reversed(ax.get_xlim()))
         ax.set_xlabel(f"{self.latex_nuclei[1]} ({shifts_unit.replace('h', 'H')})")
