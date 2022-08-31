@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 26 Aug 2022 15:54:14 BST
+# Last Edited: Tue 30 Aug 2022 19:04:05 BST
 
 from __future__ import annotations
 import copy
@@ -821,10 +821,6 @@ class Estimator2DJ(Estimator):
         )
 
         params = self.get_params(indices)
-        # multiplets = self.predict_multiplets()
-        # for multiplet in multiplets:
-        #     params[multiplet, 5] /= len(multiplet)
-
         offset = self.offset()[1]
         if pts is None:
             pts = self.default_pts[1]
@@ -843,7 +839,8 @@ class Estimator2DJ(Estimator):
         return signal
 
     def predict_multiplets(
-        self, thold: Optional[float] = None,
+        self,
+        thold: Optional[float] = None,
     ) -> Iterable[Iterable[int]]:
         """Predict the estimated oscillators which correspond to each multiplet
         in the signal.
@@ -1045,6 +1042,8 @@ class Estimator2DJ(Estimator):
         self,
         shifts_unit: str = "hz",
         merge_multiplet_oscillators: bool = True,
+        thold: Optional[float] = None,
+        pts: Optional[int] = None,
     ) -> mpl.figure.Figure:
         """Display a 1D spectrum of the multiplets predicted by the estimation routine.
 
@@ -1067,6 +1066,11 @@ class Estimator2DJ(Estimator):
                 "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
                 (self.hz_ppm_valid,),
             ),
+            (
+                "merge_multiplet_oscillators", merge_multiplet_oscillators,
+                sfuncs.check_bool,
+            ),
+            ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
 
         fig = plt.figure()
@@ -1076,7 +1080,7 @@ class Estimator2DJ(Estimator):
         ax.plot(shifts, self.spectrum_zero_t1.real, color="k")
 
         params = self.get_params()
-        multiplets = self.predict_multiplets()
+        multiplets = self.predict_multiplets(thold=thold)
         rainbow = itertools.cycle(
             ["red", "orange", "yellow", "green", "blue", "indigo", "violet"]
         )
