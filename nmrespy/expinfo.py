@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 14:45:00 BST
+# Last Edited: Thu 01 Sep 2022 12:40:17 BST
 
 import re
 from typing import Any, Iterable, Optional, Tuple, Union
@@ -400,10 +400,14 @@ class ExpInfo(FrequencyConverter):
         if self.dim > 1:
             sanity_check(("meshgrid", meshgrid, sfuncs.check_bool))
 
-        shifts = tuple([
+        shifts = [
             None if sw is None
-            else np.linspace((-sw / 2) + offset, (sw / 2) + offset, pt)
+            else np.linspace((-sw / 2) + offset, (sw / 2) + offset, pt + 1)
             for pt, sw, offset in zip(pts, self.sw(unit), self.offset(unit))
+        ]
+        shifts = tuple([
+            None if shift_ax is None else shift_ax[:-1]
+            for shift_ax in shifts
         ])
 
         if self.dim > 1 and meshgrid:
