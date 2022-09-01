@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 30 Aug 2022 19:04:05 BST
+# Last Edited: Thu 01 Sep 2022 12:17:36 BST
 
 from __future__ import annotations
 import copy
@@ -147,7 +147,7 @@ class Estimator2DJ(Estimator):
             ("channel", channel, sfuncs.check_nucleus),
             ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
-            ("snr", snr, sfuncs.check_float),
+            ("snr", snr, sfuncs.check_float, (), {}, True),
             (
                 "lb", lb, sfuncs.check_float_list, (),
                 {"length": 2, "must_be_positive": True},
@@ -173,13 +173,13 @@ class Estimator2DJ(Estimator):
             field = (2e6 * np.pi * field) / 2.6752218744e8
 
         with cd(SPINACHPATH):
-            devnull = io.StringIO(str(os.devnull))
+            # devnull = io.StringIO(str(os.devnull))
             try:
                 eng = matlab.engine.start_matlab()
                 fid, sfo = eng.jres_sim(
                     field, nuclei, shifts, couplings, offset,
                     matlab.double(sw), matlab.double(pts), channel, nargout=2,
-                    stdout=devnull, stderr=devnull,
+                    # stdout=devnull, stderr=devnull,
                 )
             except matlab.engine.MatlabExecutionError:
                 raise ValueError(
@@ -775,8 +775,10 @@ class Estimator2DJ(Estimator):
 
         self._subband_estimate(nsubbands, noise_region, noise_region_unit, **kwargs)
 
-    def negative_45_signal(
+    def diagonal_signal(
         self,
+        positive_t1: bool = False,
+        positive_t2: bool = True,
         indices: Optional[Iterable[int]] = None,
         pts: Optional[int] = None,
     ) -> np.ndarray:
@@ -807,6 +809,8 @@ class Estimator2DJ(Estimator):
         """
         self._check_results_exist()
         sanity_check(
+            ("positive_t1", positive_t1, sfuncs.check_bool),
+            ("positive_t2", positive_t2, sfuncs.check_bool),
             (
                 "indices", indices, sfuncs.check_int_list, (),
                 {
@@ -825,12 +829,14 @@ class Estimator2DJ(Estimator):
         if pts is None:
             pts = self.default_pts[1]
         tp = self.get_timepoints(pts=(1, pts), meshgrid=False)[1]
+        f1 = params[:, 2] if positive_t1 else -params[:, 2]
+        f2 = params[:, 3] if positive_t2 else -params[:, 3]
         signal = np.einsum(
             "ij,j->i",
             np.exp(
                 np.outer(
                     tp,
-                    2j * np.pi * (params[:, 3] - params[:, 2] - offset) - params[:, 5],
+                    2j * np.pi * (f1 + f2 - offset) - params[:, 5],
                 )
             ),
             params[:, 0] * np.exp(1j * params[:, 1])
@@ -862,7 +868,7 @@ class Estimator2DJ(Estimator):
             ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
         if thold is None:
-            thold = 0.5 * (self.default_pts[0] / self.sw()[0])
+            thold = 0.5 * (self.sw()[0] / self.default_pts[0])
 
         params = self.get_params()
         groups = []
