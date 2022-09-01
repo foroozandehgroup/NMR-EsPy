@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 04 Aug 2022 01:16:10 BST
+# Last Edited: Fri 12 Aug 2022 17:41:10 BST
 
 from __future__ import annotations
 import abc
@@ -202,11 +202,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
     @classmethod
     @abc.abstractmethod
     def new_bruker(*args, **kwargs):
-        pass
-
-    @classmethod
-    @abc.abstractmethod
-    def new_synthetic_from_simulation(*args, **kwargs):
         pass
 
     @abc.abstractmethod
