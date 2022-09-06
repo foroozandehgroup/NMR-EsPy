@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 01 Sep 2022 12:17:36 BST
+# Last Edited: Thu 01 Sep 2022 16:07:47 BST
 
 from __future__ import annotations
 import copy
@@ -871,20 +871,24 @@ class Estimator2DJ(Estimator):
             thold = 0.5 * (self.sw()[0] / self.default_pts[0])
 
         params = self.get_params()
-        groups = []
+        groups = {}
         in_range = lambda f, g: (g - thold < f < g + thold)
         for i, osc in enumerate(params):
             centre_freq = osc[3] - osc[2]
             assigned = False
-            for group in groups:
-                if in_range(centre_freq, group["freq"]):
-                    group["idx"].append(i)
+            for freq in groups:
+                if in_range(centre_freq, freq):
+                    groups[freq].append(i)
                     assigned = True
                     break
             if not assigned:
-                groups.append({"freq": centre_freq, "idx": [i]})
+                groups[centre_freq] = [i]
 
-        return [group["idx"] for group in groups]
+        multiplets = []
+        for freq in sorted(groups):
+            multiplets.append(groups[freq])
+
+        return multiplets
 
     def find_spurious_oscillators(
         self,
