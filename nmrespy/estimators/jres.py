@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 01 Sep 2022 16:07:47 BST
+# Last Edited: Tue 06 Sep 2022 12:56:58 BST
 
 from __future__ import annotations
 import copy
@@ -26,7 +26,7 @@ from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._files import cd
+from nmrespy._files import cd, check_existent_dir
 from nmrespy._paths_and_links import SPINACHPATH
 from nmrespy.app.custom_widgets import MyEntry
 from nmrespy._sanity import (
@@ -35,6 +35,7 @@ from nmrespy._sanity import (
 )
 from nmrespy.estimators import logger, Estimator, Result
 from nmrespy.freqfilter import Filter
+from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
 
@@ -55,8 +56,60 @@ class Estimator2DJ(Estimator):
         super().__init__(data, expinfo, datapath)
 
     @classmethod
-    def new_bruker(cls):
-        pass
+    def new_bruker(
+        cls,
+        directory: Union[str, Path],
+        convdta: bool = True,
+        lb: Optional[float] = None,
+    ) -> Estimator2DJ:
+        """Create a new instance from Bruker-formatted data.
+
+        Parameters
+        ----------
+        directory
+            Absolute path to data directory.
+
+        convdta
+            If ``True``, removal of the FID's digital filter will be carried out.
+
+        Notes
+        -----
+        **Directory Requirements**
+
+        There are certain file paths expected to be found relative to ``directory``
+        which contain the data and parameter files:
+
+        * ``directory/ser``
+        * ``directory/acqus``
+        * ``directory/acqu2s``
+        """
+        sanity_check(
+            ("directory", directory, check_existent_dir),
+            ("convdta", convdta, sfuncs.check_bool),
+            ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+        )
+
+        directory = Path(directory).expanduser()
+        data, expinfo = load_bruker(directory)
+
+        if data.ndim != 2:
+            raise ValueError(f"{RED}Data dimension should be 2.{END}")
+
+        if directory.parent.name == "pdata":
+            raise ValueError(f"{RED}Importing pdata is not permitted.{END}")
+
+        if convdta:
+            grpdly = expinfo.parameters["acqus"]["GRPDLY"]
+            data = sig.convdta(data, grpdly)
+
+        if lb is not None:
+            data = sig.exp_apodisation(data, lb, axes=[1])
+
+        expinfo._offset = (0., expinfo.offset()[1])
+        expinfo._sfo = (None, expinfo.sfo[1])
+        expinfo._default_pts = data.shape
+
+        return cls(data, expinfo, directory)
 
     @classmethod
     def new_spinach(
@@ -1039,8 +1092,41 @@ class Estimator2DJ(Estimator):
             edited_params, pts=pts, indirect_modulation=indirect_modulation,
         )
 
-    def phase_data(self):
-        pass
+    def phase_data(
+        self,
+        p0: float = 0.0,
+        p1: float = 0.0,
+        pivot: int = 0,
+    ) -> None:
+        """Apply a first-order phase correction in the direct dimension.
+
+        Parameters
+        ----------
+        p0
+            Zero-order phase correction, in radians.
+
+        p1
+            First-order phase correction, in radians.
+
+        pivot
+            Index of the pivot.
+        """
+        sanity_check(
+            ("p0", p0, sfuncs.check_float),
+            ("p1", p1, sfuncs.check_float),
+            ("pivot", pivot, sfuncs.check_index, (self._data.size,)),
+        )
+        self._data = sig.phase(self._data, p0=[0., p0], p1=[0., p1], pivot=[0, pivot])
+
+    def manual_phase_data(
+        self,
+        max_p1: float = 10 * np.pi,
+    ) -> None:
+        sanity_check(
+            ("max_p1", max_p1, sfuncs.check_float, (), {"greater_than_zero": True}),
+        )
+        p0, p1 = sig.manual_phase_data(self.spectrum_zero_t1, max_p1=[max_p1])
+        self.phase_data(p0=p0[0], p1=p1[0])
 
     def plot_result(self):
         pass
