@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 29 Jul 2022 11:31:49 BST
+# Last Edited: Wed 07 Sep 2022 12:53:19 BST
 
 """Manipulating and processing NMR signals."""
 
@@ -10,12 +10,13 @@ import re
 import tkinter as tk
 from typing import Iterable, Optional, Tuple, Union
 
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import numpy as np
 from numpy.fft import fft, fftshift, ifft, ifftshift
 import numpy.random as nrandom
+import pybaselines
 
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 
@@ -785,3 +786,72 @@ def convdta(data: np.ndarray, grpdly: float) -> np.ndarray:
     pdata[..., :to_add] += pdata[..., :-(to_add + 1) : -1]
     pdata = pdata[..., :-to_rm]
     return pdata
+
+
+def baseline_correction(
+    spectrum: np.ndarray,
+    mask: Optional[np.ndarray] = None,
+    min_length: int = 50,
+) -> Tuple[np.ndarray, dict]:
+    """Apply baseline correction to a 1D dataset.
+
+    The algorithm used for correction is presented in [#]_. **CITE PYBASELINES**
+
+    Parameters
+    ----------
+    spectrum
+        Spectrum to apply baseline correction to.
+
+    mask
+        If not ``None``, a boolean array with the same size as ``spectrum``.
+        ``True`` indicates that a particular point comprises baseline, and
+        ``False`` indicates that a point comprises a peak. If ``None``,
+        this is determined automatically.
+
+    min_length
+        Any region of consecutive baseline points less than ``min_length`` is
+        considered to be a false positive and all points in the region are
+        converted to peak points.  A higher `min_length` ensures less points
+        are falsely assigned as baseline points.  Default is 2, which only
+        removes lone baseline points.
+
+    Returns
+    -------
+    fixed_spectrum
+        The baseline-corrected spectrum.
+
+    params
+        A dictionary with the items:
+
+        * ``"mask"`` A boolean array designating baseline points as ``True`` and
+          peak points as ``False``.
+        * ``"baseline"`` The computed baseline. Note that ``fixed_spectrum`` is
+          computed via ``spectrum - baseline``.
+
+    References
+    ----------
+    .. [#] Cobas, J., et al. A new general-purpose fully automatic baseline-correction
+           procedure for 1D and 2D NMR data. Journal of Magnetic Resonance,
+           2006, 183(1), 145-151.
+    """
+    sanity_check(("spectrum", spectrum, sfuncs.check_ndarray, (), {"dim": 1}))
+    sanity_check(
+        (
+            "min_length", min_length, sfuncs.check_int,
+            {"min_value": 1, "max_value": spectrum.size},
+        ),
+        (
+            "mask", mask, sfuncs.check_ndarray, (),
+            {"dim": 1, "shape": ((0, spectrum.size),)}, True,
+        ),
+    )
+
+    baseline, params = pybaselines.classification.fabc(
+        spectrum, min_length=min_length, weights=mask,
+    )
+    fixed_spectrum = spectrum - baseline
+
+    del params["weights"]
+    params["baseline"] = baseline
+
+    return fixed_spectrum, params
