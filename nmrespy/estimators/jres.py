@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 06 Sep 2022 12:56:58 BST
+# Last Edited: Wed 07 Sep 2022 18:15:20 BST
 
 from __future__ import annotations
 import copy
@@ -60,7 +60,6 @@ class Estimator2DJ(Estimator):
         cls,
         directory: Union[str, Path],
         convdta: bool = True,
-        lb: Optional[float] = None,
     ) -> Estimator2DJ:
         """Create a new instance from Bruker-formatted data.
 
@@ -1091,6 +1090,36 @@ class Estimator2DJ(Estimator):
         return super(Estimator, self).make_fid(
             edited_params, pts=pts, indirect_modulation=indirect_modulation,
         )
+
+    def exp_apodisation(self, k: float) -> None:
+        """Apply an exponential window function to the direct dimnsion of the data.
+
+        The window function is computed as ``np.exp(-k * np.linspace(0, 1, n2))``,
+        where ``n2`` is the number of points in the direct dimension.
+        """
+        sanity_check(("k", k, sfuncs.check_float, (), {"greater_than_zero": True}))
+        self._data = sig.exp_apodisation(self._data, k, axes=[1])
+
+    def baseline_correction(
+        self,
+        min_length: int = 50,
+    ) -> None:
+        sanity_check(
+            (
+                "min_length", min_length, sfuncs.check_int, (),
+                {"min_value": 1, "max_value": self.data.shape[1]},
+            ),
+        )
+        shape = self.data.shape
+        t2_size = (2 * shape[1] - 1) // 2
+        new_data = np.zeros((shape[0], t2_size), dtype="complex128")
+        for i, t2_fid in enumerate(self.data):
+            spectrum = sig.ft(sig.make_virtual_echo(t2_fid)).real
+            spectrum = sig.baseline_correction(spectrum, min_length=min_length)
+            new_data[i] = sig.ift(spectrum)[:t2_size]
+
+        self._data = new_data
+        self._default_pts = (shape[0], t2_size)
 
     def phase_data(
         self,
