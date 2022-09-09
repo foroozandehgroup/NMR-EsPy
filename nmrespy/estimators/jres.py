@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 07 Sep 2022 18:15:20 BST
+# Last Edited: Fri 09 Sep 2022 11:31:53 BST
 
 from __future__ import annotations
 import copy
@@ -898,6 +898,7 @@ class Estimator2DJ(Estimator):
 
     def predict_multiplets(
         self,
+        indices: Optional[Iterable[int]] = None,
         thold: Optional[float] = None,
     ) -> Iterable[Iterable[int]]:
         """Predict the estimated oscillators which correspond to each multiplet
@@ -910,19 +911,24 @@ class Estimator2DJ(Estimator):
             to obey the following expression:
 
             .. math::
-                f_c - f_t < f_{2,m} - f_{1,m} < f_c - f_t
+                f_c - f_t < f_{2,m} - f_{1,m} < f_c + f_t
 
             where :math:`f_c` is the central frequency of the multiplet, and `f_t` is
             ``thold``
         """
         self._check_results_exist()
+        length = len(self._results)
         sanity_check(
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": length - 1}, True,
+            ),
             ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
         if thold is None:
             thold = 0.5 * (self.sw()[0] / self.default_pts[0])
 
-        params = self.get_params()
+        params = self.get_params(indices)
         groups = {}
         in_range = lambda f, g: (g - thold < f < g + thold)
         for i, osc in enumerate(params):
@@ -1233,12 +1239,14 @@ class Estimator2DJ(Estimator):
 
     def plot_contour(
         self,
+        thold: Optional[float] = None,
         nlevels: Optional[int] = None,
         base: Optional[float] = None,
         factor: Optional[float] = None,
         shifts_unit: str = "hz",
     ) -> mpl.figure.Figure:
         sanity_check(
+            ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
             ("nlevels", nlevels, sfuncs.check_int, (), {"min_value": 1}, True),
             ("base", base, sfuncs.check_float, (), {"greater_than_zero": True}, True),
             (
@@ -1269,7 +1277,7 @@ class Estimator2DJ(Estimator):
         params = self.get_params(funit=shifts_unit)
         peaks_x = params[:, 3]
         peaks_y = params[:, 2]
-        multiplets = self.predict_multiplets()
+        multiplets = self.predict_multiplets(thold)
         rainbow = itertools.cycle(
             ["red", "orange", "yellow", "green", "blue", "indigo", "violet"]
         )
