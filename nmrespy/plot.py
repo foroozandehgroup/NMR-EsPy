@@ -1,11 +1,12 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 03 May 2022 15:42:56 BST
+# Last Edited: Fri 09 Sep 2022 18:29:38 BST
 
 """Module for plotting estimation results."""
 
 import copy
+import itertools
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
@@ -555,3 +556,19 @@ class ResultPlotter(ExpInfo):
 
         # Set x-label
         ax.set_xlabel(self.ax.get_xlabel())
+
+
+def make_color_cycle(color_input: Any, n: int) -> itertools.cycle:
+    if color_input is None:
+        iterable = ["#1063e0", "#eb9310", "#2bb539", "#d4200c"]
+        if (color := _to_hex(color_input)) is not None:
+            iterable = [color]
+    elif color_input in plt.colormaps():
+        iterable = [
+            mcolors.to_hex(c) for c in
+            cm.get_cmap(color_input)(np.linspace(0, 1, n))
+        ]
+    else:
+        iterable = [_to_hex(c) for c in color_input]
+
+    return itertools.cycle(iterable)
