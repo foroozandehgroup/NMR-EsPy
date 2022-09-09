@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 09 Sep 2022 11:31:53 BST
+# Last Edited: Fri 09 Sep 2022 18:38:13 BST
 
 from __future__ import annotations
 import copy
@@ -12,11 +12,11 @@ from pathlib import Path
 import re
 import sys
 import tkinter as tk
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib as mpl
-import matplotlib.pyplot as plt
+from matplotlib import cm, pyplot as plt
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk,
 )
@@ -25,6 +25,7 @@ from nmr_sims.experiments.jres import JresSimulation
 from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
+from nmrespy.plot import make_color_cycle
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import cd, check_existent_dir
 from nmrespy._paths_and_links import SPINACHPATH
@@ -1163,8 +1164,442 @@ class Estimator2DJ(Estimator):
         p0, p1 = sig.manual_phase_data(self.spectrum_zero_t1, max_p1=[max_p1])
         self.phase_data(p0=p0[0], p1=p1[0])
 
-    def plot_result(self):
-        pass
+    def plot_result(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        multiplet_thold: Optional[float] = None,
+        high_resolution_pts: Optional[int] = None,
+        ratio_1d_2d: Tuple[float, float] = (2., 1.),
+        figure_size: Tuple[float, float] = (8., 6.),
+        axes_left: float = 0.07,
+        axes_right: float = 0.96,
+        axes_bottom: float = 0.08,
+        axes_top: float = 0.96,
+        axes_region_separation: float = 0.05,
+        xaxis_label_height: float = 0.02,
+        xaxis_ticks: Optional[Iterable[Tuple[int, Iterable[float]]]] = None,
+        contour_base: Optional[float] = None,
+        contour_nlevels: Optional[int] = None,
+        contour_factor: Optional[float] = None,
+        contour_lw: float = 0.5,
+        contour_color: Any = "k",
+        multiplet_colors: Any = "rainbow",
+        marker_size: float = 3.,
+        marker_shape: str = "o",
+    ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
+        """Generate a figure of the estimation result.
+
+        The figure includes a contour plot of the 2DJ spectrum, a 1D plot of the
+        first slice through the indirect dimension, plots of estimated multiplets,
+        and a plot of the spectrum generated from :py:meth:`diagonal_signal`.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        multiplet_thold
+            Frequency threshold for multiplet prediction. All oscillators that make
+            up a multiplet are assumed to obey the following expression:
+
+            .. math::
+                f_c - f_t < f^{(2)} - f^{(1)} < f_c + f_t
+
+            where :math:`f_c` is the central frequency of the multiplet, and `f_t` is
+            ``multiplet_thold``
+
+        high_resolution_pts
+            Indicates the number of points used to generate the multiplet structures
+            and :py:meth:`diagonal_signal` spectrum. Should be greater than or
+            equal to ``self.default_pts[1]``.
+
+        ratio_1d_2d
+            The relative heights of the regions containing the 1D spectra and the
+            2DJ spectrum.
+
+        figure_size
+            The size of the figure in inches.
+
+        axes_left
+            The position of the left edge of the axes, in figure coordinates. Should
+            be between ``0.`` and ``1.``.
+
+        axes_right
+            The position of the right edge of the axes, in figure coordinates. Should
+            be between ``0.`` and ``1.``.
+
+        axes_top
+            The position of the top edge of the axes, in figure coordinates. Should
+            be between ``0.`` and ``1.``.
+
+        axes_bottom
+            The position of the bottom edge of the axes, in figure coordinates. Should
+            be between ``0.`` and ``1.``.
+
+        axes_region_separation
+            The extent by which adjacent regions are separated in the figure.
+
+        xaxis_label_height
+            The vertical location of the x-axis label, in figure coordinates. Should
+            be between ``0.`` and ``1.``, though you are likely to want this to be
+            slightly larger than ``0.`` typically.
+
+        xaxis_ticks
+            Specifies custom x-axis ticks for each region, overwriting the default
+            ticks. Should be of the form: ``[(i, (a, b, ...)), (j, (c, d, ...)), ...]``
+            where ``i`` and ``j`` are ints indicating the region under consideration,
+            and ``a``-``d`` are floats indicating the tick values.
+
+        contour_base
+            The lowest level for the contour levels in the 2DJ spectrum plot.
+
+        contour_nlevels
+            The number of contour levels in the 2DJ spectrum plot.
+
+        contour_factor
+            The geometric scaling factor for adjacent contours in the 2DJ spectrum
+            plot.
+
+        contour_lw
+            The linewidth of contours in the 2DJ spectrum plot.
+
+        contour_color
+            The color of the 2DJ spectrum plot.
+
+        multiplet_colors
+            **TODO**
+
+        marker_size
+            The size of markers indicating positions of peaks on the 2DJ contour plot.
+
+        marker_shape
+            The shape of markers indicating positions of peaks on the 2DJ contour plot.
+
+        Returns
+        -------
+        fig
+            The result figure
+
+        axs
+            A ``(2, N)`` NumPy array of the axes used for plotting.
+
+        Notes
+        -----
+        **Figure coordinates** are a system in which ``0.`` indicates the left/bottom
+        edge of the figure, and ``1.`` indicates the right/top.
+        """
+        sanity_check(
+            (
+                "indices", indices, sfuncs.check_int_list, (),
+                {
+                    "len_one_can_be_listless": True,
+                    "min_value": -len(self._results),
+                    "max_value": len(self._results) - 1,
+                },
+                True,
+
+            ),
+            (
+                "multiplet_thold", multiplet_thold, sfuncs.check_float, (),
+                {"greater_than_zero": True}, True,
+            ),
+            (
+                "high_resolution_pts", high_resolution_pts, sfuncs.check_int, (),
+                {"min_value": self.default_pts[1]}, True,
+            ),
+            (
+                "ratio_1d_2d", ratio_1d_2d, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+            (
+                "figure_size", figure_size, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+            (
+                "axes_left", axes_left, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_right", axes_right, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_bottom", axes_bottom, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_top", axes_top, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_region_separation", axes_region_separation, sfuncs.check_float,
+                (), {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "xaxis_label_height", xaxis_label_height, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "contour_base", contour_base, sfuncs.check_float, (),
+                {"min_value": 0.}, True,
+            ),
+            (
+                "contour_nlevels", contour_nlevels, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            (
+                "contour_factor", contour_factor, sfuncs.check_float, (),
+                {"min_value": 1.}, True,
+            ),
+            ("contour_lw", contour_lw, sfuncs.check_float, (), {"min_value": 0.}),
+            ("marker_size", marker_size, sfuncs.check_float, (), {"min_value": 0.}),
+            (
+                "multiplet_colors", multiplet_colors, sfuncs.check_oscillator_colors,
+                (), {}, True,
+            ),
+        )
+        # TODO
+        # contour_color
+        # linewidth
+        # marker_shape: str = "o",
+
+        indices = list(range(len(self._results))) if indices is None else indices
+        all_regions = [
+            result.get_region(unit="ppm")[1]
+            for result in self.get_results()
+        ]
+        merge_regions, merge_indices = self._find_merge_regions(all_regions, indices)
+        n_regions = len(merge_regions)
+
+        fig, axs = plt.subplots(
+            nrows=2,
+            ncols=n_regions,
+            gridspec_kw={
+                "left": axes_left,
+                "right": axes_right,
+                "bottom": axes_bottom,
+                "top": axes_top,
+                "wspace": axes_region_separation,
+                "hspace": 0.,
+                "width_ratios": [r[0] - r[1] for r in merge_regions],
+                "height_ratios": ratio_1d_2d,
+            },
+            figsize=figure_size,
+        )
+        if n_regions == 1:
+            axs = axs.reshape(2, 1)
+
+        if all(
+            [isinstance(x, (float, int))
+             for x in (contour_base, contour_nlevels, contour_factor)]
+        ):
+            contour_levels = [
+                contour_base * contour_factor ** i
+                for i in range(contour_nlevels)
+            ]
+        else:
+            contour_levels = None
+
+        if high_resolution_pts is None:
+            high_resolution_pts = self.default_pts[1]
+
+        expinfo_1d = self.direct_expinfo
+        expinfo_1d_highres = copy.deepcopy(expinfo_1d)
+        expinfo_1d_highres.default_pts = (high_resolution_pts,)
+        full_shifts_1d, = expinfo_1d.get_shifts(unit="ppm")
+        full_shifts_1d_highres, = expinfo_1d_highres.get_shifts(unit="ppm")
+        full_shifts_2d_y, full_shifts_2d_x = self.get_shifts(unit="ppm")
+        sfo = self.sfo[1]
+
+        shifts_2d = []
+        shifts_1d = []
+        shifts_1d_highres = []
+        spectra_2d = []
+        spectra_1d = []
+        neg_45_spectra = []
+        f1_f2 = []
+        multiplet_spectra = []
+        for idx, region in zip(merge_indices, merge_regions):
+            slice_ = slice(*expinfo_1d.convert([region], "ppm->idx")[0])
+            highres_slice = slice(*expinfo_1d_highres.convert([region], "ppm->idx")[0])
+
+            shifts_2d.append(
+                (full_shifts_2d_x[:, slice_], full_shifts_2d_y[:, slice_])
+            )
+            shifts_1d.append(full_shifts_1d[slice_])
+            shifts_1d_highres.append(full_shifts_1d_highres[highres_slice])
+
+            spectra_2d.append(np.abs(self.spectrum).real[:, slice_])
+            spectra_1d.append(self.spectrum_zero_t1.real[slice_])
+            neg_45_spectra.append(
+                sig.ft(
+                    self.diagonal_signal(indices=idx, pts=high_resolution_pts)
+                ).real[highres_slice]
+            )
+
+            params = self.get_params(indices=idx)
+            mp_params = [
+                params[i]
+                for i in self.predict_multiplets(indices=idx, thold=multiplet_thold)
+            ]
+            mp_spectra = []
+            f1_f2_region = []
+            for mp_param in reversed(mp_params):
+                f1, f2 = mp_param[:, [2, 3]].T
+                f2 /= sfo
+                f1_f2_region.append((f1, f2))
+                multiplet = expinfo_1d.make_fid(
+                    mp_param[:, [0, 1, 3, 5]],
+                    pts=high_resolution_pts,
+                )
+                multiplet[0] *= 0.5
+                mp_spectra.append(sig.ft(multiplet).real[highres_slice])
+            f1_f2.append(f1_f2_region)
+            multiplet_spectra.append(mp_spectra)
+
+        n_multiplets = sum([len(x) for x in multiplet_spectra])
+        colors = make_color_cycle(multiplet_colors, n_multiplets)
+
+        pad_factor = 1.03
+        neg_45_shift = pad_factor * max([np.amax(spectrum) for spectrum in spectra_1d])
+        mp_shift = -pad_factor * max(
+            [
+                max(
+                    [np.amax(mp) for mp in region_mp]
+                )
+                for region_mp in multiplet_spectra
+            ]
+        )
+
+        for (
+            ax_col, shifts_2d_, shifts_1d_, shifts_1d_hr, spec_2d, spec_1d,
+            neg_45_spec, f1f2, mp_spectra,
+        ) in zip(
+            axs.T, shifts_2d, shifts_1d, shifts_1d_highres, spectra_2d, spectra_1d,
+            neg_45_spectra, f1_f2, multiplet_spectra,
+        ):
+            ax_1d = ax_col[0]
+            ax_2d = ax_col[1]
+
+            ax_2d.contour(
+                *shifts_2d_,
+                spec_2d,
+                colors=contour_color,
+                linewidths=contour_lw,
+                levels=contour_levels,
+                zorder=0,
+            )
+
+            ax_1d.plot(shifts_1d_, spec_1d, color="k")
+            ax_1d.plot(shifts_1d_hr, neg_45_spec + neg_45_shift, color="k")
+            for s, f12 in zip(mp_spectra, f1f2):
+                color = next(colors)
+                ax_1d.plot(shifts_1d_hr, s + mp_shift, color=color)
+                ax_2d.scatter(
+                    *reversed(f12),
+                    s=marker_size,
+                    marker=marker_shape,
+                    color=color,
+                )
+
+        # Configure axis appearance
+        ylim0 = (
+            min([ax.get_ylim()[0] for ax in axs[0]]),
+            max([ax.get_ylim()[1] for ax in axs[0]]),
+        )
+        for ax in axs[0]:
+            ax.spines["bottom"].set_visible(False)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_ylim(ylim0)
+
+        for ax in axs[1]:
+            ax.spines["top"].set_visible(False)
+            ax.set_ylim(reversed(ax.get_ylim()))
+
+        for region, ax_col in zip(merge_regions, axs.T):
+            for ax in ax_col:
+                ax.set_xlim(*region)
+
+        if n_regions > 1:
+            for axs_col in axs[:, :-1]:
+                for ax in axs_col:
+                    ax.spines["right"].set_visible(False)
+            for axs_col in axs[:, 1:]:
+                for ax in axs_col:
+                    ax.spines["left"].set_visible(False)
+
+            break_kwargs = {
+                "marker": [(-1, -3), (1, 3)],
+                "markersize": 10,
+                "linestyle": "none",
+                "color": "k",
+                "mec": "k",
+                "mew": 1,
+                "clip_on": False,
+            }
+            for ax in axs[0, :-1]:
+                ax.plot([1], [1], transform=ax.transAxes, **break_kwargs)
+            for ax in axs[0, 1:]:
+                ax.plot([0], [1], transform=ax.transAxes, **break_kwargs)
+            for ax in axs[1, :-1]:
+                ax.plot([1], [0], transform=ax.transAxes, **break_kwargs)
+            for ax in axs[1, 1:]:
+                ax.plot([0], [0], transform=ax.transAxes, **break_kwargs)
+                ax.set_yticks([])
+
+        axs[1, 0].set_ylabel("Hz")
+        fig.text(
+            x=(axes_left + axes_right) / 2,
+            y=xaxis_label_height,
+            s=f"{self.latex_nuclei[1]} (ppm)",
+            horizontalalignment="center",
+        )
+
+        return fig, axs
+
+    @staticmethod
+    def _find_merge_regions(
+        regions: Iterable[Tuple[float, float]],
+        indices: Iterable[int],
+    ) -> Tuple[Iterable[Tuple[float, float]], Iterable[int]]:
+        merge_indices = []
+        merge_regions = []
+        for i, region in enumerate(regions):
+            if i not in indices:
+                continue
+            assigned = False
+            for j, reg in enumerate(merge_regions):
+                if max(region) >= min(reg):
+                    merge_regions[j] = (max(reg), min(region))
+                    assigned = True
+                elif min(region) >= max(reg):
+                    merge_regions[j] = (max(region), min(reg))
+                    assigned = True
+
+                if assigned:
+                    merge_indices[j].append(i)
+                    break
+
+            if not assigned:
+                merge_indices.append([i])
+                merge_regions.append(region)
+
+        # Order regions from high field to low field
+        # Probably a more efficinet "Pythonic" way of doing this...
+        # Did this without access to the internet
+        sort_merge_regions = sorted(merge_regions, reverse=True)
+        sort_idx = []
+        for region in merge_regions:
+            for i in range(len(merge_regions)):
+                if sort_merge_regions[i] == region:
+                    sort_idx.append(i)
+                    break
+        sort_merge_indices = [merge_indices[i] for i in sort_idx]
+
+        return sort_merge_regions, sort_merge_indices
 
     def new_synthetic_from_simulation(self):
         pass
