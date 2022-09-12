@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 04 Aug 2022 02:04:27 BST
+# Last Edited: Fri 09 Sep 2022 18:29:35 BST
 
 from pathlib import Path
 import re
@@ -41,6 +41,8 @@ def check_float(
     obj: Any,
     greater_than_zero: bool = False,
     greater_than_one: bool = False,
+    min_value: Optional[float] = None,
+    max_value: Optional[float] = None,
 ) -> Optional[str]:
     if not isinstance(obj, float):
         return "Should be a float."
@@ -48,6 +50,10 @@ def check_float(
         return "Should be greater than 0.0"
     if greater_than_one and obj < 1.0:
         return "Should be greater than 1.0"
+    if isfloat(min_value) and obj < min_value:
+        return f"Should be greater than or equal to {min_value}."
+    if isfloat(max_value) and obj > max_value:
+        return f"Should be less than or equal to {max_value}."
 
 
 def check_int(
@@ -629,3 +635,32 @@ def check_spinach_couplings(obj: Any, nspins: int) -> Optional[str]:
                 "times! Ensure each pair is only given once to prevent ambiguity."
             )
         pairs.append(pair)
+
+
+def check_xticks(obj: Any, regions: Iterable[Tuple[float, float]]) -> Optional[str]:
+    n_regions = len(regions)
+    if not isiter(obj):
+        return "Should be a list or tuple."
+    for i, elem in enumerate(obj):
+        msg = f"Issue with entry {i}:\n"
+        if not (isiter(elem) and len(elem) == 2):
+            return f"{msg}Each entry should be a list or tuple of length 2."
+        if not (isinstance(elem[0], int) and 0 <= elem[0] < n_regions):
+            return (
+                f"{msg}The first element of each entry should be an int between (and "
+                f"including) 0 and {n_regions - 1}."
+            )
+        print([isfloat(x) for x in elem[1]])
+        if not (isiter(elem[1]) and all([isfloat(x) for x in elem[1]])):
+            return (
+                f"{msg}The second element of each entry should be a list or tuple of "
+                "floats."
+            )
+        index = elem[0]
+        ticks = elem[1]
+        region = regions[index]
+        if not all([region[1] <= tick <= region[0] for tick in ticks]):
+            return (
+                f"{msg}All ticks should lie with in the region "
+                f"({region[0]} - {region[1]})"
+            )

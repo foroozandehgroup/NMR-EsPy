@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 10 Aug 2022 11:04:15 BST
+# Last Edited: Fri 12 Aug 2022 18:11:19 BST
 
 from __future__ import annotations
 import copy
@@ -148,7 +148,8 @@ class Estimator1D(Estimator):
         couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
         channel: str = "1H",
         nuclei: Optional[List[str]] = None,
-        tau_c: float = 200e-12,
+        snr: Optional[float] = 20.,
+        lb: float = 6.91,
     ) -> None:
         r"""Create a new instance from a pulse-acquire Spinach simulation.
 
@@ -171,8 +172,7 @@ class Estimator1D(Estimator):
 
         field_unit
             ``MHz`` or ``Tesla``. The unit that ``field`` is given as. If ``MHz``,
-            this will be taken as the Larmor frequency of the nucleus specified by
-            ``channel``.
+            this will be taken as the Larmor frequency of proton.
 
         couplings
             The scalar couplings present in the spin system. Given ``shifts`` is of
@@ -194,8 +194,15 @@ class Estimator1D(Estimator):
               ``"\d+[A-Z][a-z]*"``, and recognised by Spinach as a real nucleus
               e.g. ``"1H"``, ``"13C"``, ``"195Pt"``.
 
-        tau_c
-            The isotropic rotational correlation time of the spin system in seconds.
+        snr
+            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
+            produces a noiseless signal.
+
+        lb
+            Line broadening (exponential damping) to apply to the signal.
+            The first point will be unaffected by damping, and the final point will
+            be multiplied by ``np.exp(-lb)``. The default results in the final
+            point being decreased in value by a factor of roughly 1000.
         """
         if not MATLAB_AVAILABLE:
             raise NotImplementedError(
@@ -213,7 +220,8 @@ class Estimator1D(Estimator):
             ("channel", channel, sfuncs.check_nucleus),
             ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
-            ("tau_c", tau_c, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("snr", snr, sfuncs.check_float),
+            ("lb", lb, sfuncs.check_float, (), {"must_be_positive": True})
         )
 
         nspins = len(shifts)
@@ -228,6 +236,9 @@ class Estimator1D(Estimator):
         if nuclei is None:
             nuclei = nspins * [channel]
 
+        if field_unit == "MHz":
+            field = (2e6 * np.pi * field) / 2.6752218744e8
+
         with cd(SPINACHPATH):
             devnull = io.StringIO(str(os.devnull))
             try:
@@ -237,15 +248,17 @@ class Estimator1D(Estimator):
                     sw, pts, channel, nargout=2, stdout=devnull, stderr=devnull,
                 )
             except matlab.engine.MatlabExecutionError:
-                msg = (
-                    f"{RED}Something went wrong in the call to Spinach. This "
-                    "is likely due to an inappropriate argument value which was not "
-                    "noticed by sanity checks. For example, you provided an isotope "
-                    "of the correct format but which is unknown. Read what is "
-                    "stated below the line \"matlab.engine.MatlabExecutionError:\" "
+                raise ValueError(
+                    f"{RED}Something went wrong in trying to run Spinach. This "
+                    "is likely due to one of two things:\n"
+                    "1. An inappropriate argument was given which was not noticed by "
+                    "sanity checks. For example, you provided an isotope of the "
+                    "correct format but which is unknown\n"
+                    "2. You have not correctly configured Spinach.\n"
+                    "Read what is stated below the line "
+                    "\"matlab.engine.MatlabExecutionError:\" "
                     f"for more details on the error raised.{END}"
                 )
-                raise ValueError(msg)
 
         fid = np.array(fid).flatten()
 
