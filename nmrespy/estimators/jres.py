@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 09 Sep 2022 18:38:13 BST
+# Last Edited: Wed 14 Sep 2022 13:41:41 BST
 
 from __future__ import annotations
 import copy
@@ -1184,8 +1184,14 @@ class Estimator2DJ(Estimator):
         contour_lw: float = 0.5,
         contour_color: Any = "k",
         multiplet_colors: Any = "rainbow",
+        multiplet_lw: float = 1.,
+        multiplet_vertical_shift: float = 0.7,
+        multiplet_show_center_freq: bool = True,
+        multiplet_show_45: bool = True,
         marker_size: float = 3.,
         marker_shape: str = "o",
+        label_peaks: bool = False,
+        denote_regions: bool = False,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         """Generate a figure of the estimation result.
 
@@ -1271,6 +1277,22 @@ class Estimator2DJ(Estimator):
         multiplet_colors
             **TODO**
 
+        multiplet_lw
+            Line width of multiplet plots
+
+        multiplet_vertical_shift
+            The vertical displacement of adjacent mutliplets, as a multiple of
+            ``mutliplet_lw``. Set to ``0.`` if you want all mutliplets to lie on the
+            same line.
+
+        multiplet_show_center_freq
+            If ``True``, lines are plotted on the 2DJ spectrum indicating the central
+            frequency of each mutliplet.
+
+        multiplet_show_45
+            If ``True``, lines are plotted on the 2DJ spectrum indicating the 45° line
+            along which peaks lie in ech multiplet.
+
         marker_size
             The size of markers indicating positions of peaks on the 2DJ contour plot.
 
@@ -1299,7 +1321,6 @@ class Estimator2DJ(Estimator):
                     "max_value": len(self._results) - 1,
                 },
                 True,
-
             ),
             (
                 "multiplet_thold", multiplet_thold, sfuncs.check_float, (),
@@ -1359,18 +1380,60 @@ class Estimator2DJ(Estimator):
                 "multiplet_colors", multiplet_colors, sfuncs.check_oscillator_colors,
                 (), {}, True,
             ),
+            ("multiplet_lw", multiplet_lw, sfuncs.check_float, (), {"min_value": 0.}),
+            (
+                "multiplet_vertical_shift", multiplet_vertical_shift,
+                sfuncs.check_float, (), {"min_value": 0.},
+            ),
+            (
+                "multiplet_show_center_freq", multiplet_show_center_freq,
+                sfuncs.check_bool,
+            ),
+            ("multiplet_show_45", multiplet_show_45, sfuncs.check_bool),
+            ("denote_regions", denote_regions, sfuncs.check_bool),
         )
         # TODO
         # contour_color
         # linewidth
         # marker_shape: str = "o",
 
-        indices = list(range(len(self._results))) if indices is None else indices
-        all_regions = [
-            result.get_region(unit="ppm")[1]
-            for result in self.get_results()
-        ]
-        merge_regions, merge_indices = self._find_merge_regions(all_regions, indices)
+        # TODO use self._process_indices(indices)
+        indices = (
+            [i % len(self._results) for i in indices]
+            if indices is not None
+            else list(range(len(self._results)))
+        )
+        regions = sorted(
+            [
+                (i, result.get_region(unit="ppm")[1])
+                for i, result in enumerate(self.get_results())
+                if i in indices
+            ],
+            key=lambda x: x[1][0],
+            reverse=True,
+        )
+
+        # Megre overlapping/bordering regions
+        merge_indices = []
+        merge_regions = []
+        for idx, region in regions:
+            assigned = False
+            for i, reg in enumerate(merge_regions):
+                if max(region) >= min(reg):
+                    merge_regions[i] = (max(reg), min(region))
+                    assigned = True
+                elif min(region) >= max(reg):
+                    merge_regions[i] = (max(region), min(reg))
+                    assigned = True
+
+                if assigned:
+                    merge_indices[i].append(idx)
+                    break
+
+            if not assigned:
+                merge_indices.append([idx])
+                merge_regions.append(region)
+
         n_regions = len(merge_regions)
 
         fig, axs = plt.subplots(
@@ -1420,7 +1483,10 @@ class Estimator2DJ(Estimator):
         spectra_1d = []
         neg_45_spectra = []
         f1_f2 = []
+        center_freqs = []
         multiplet_spectra = []
+        multiplet_indices = []
+
         for idx, region in zip(merge_indices, merge_regions):
             slice_ = slice(*expinfo_1d.convert([region], "ppm->idx")[0])
             highres_slice = slice(*expinfo_1d_highres.convert([region], "ppm->idx")[0])
@@ -1440,75 +1506,146 @@ class Estimator2DJ(Estimator):
             )
 
             params = self.get_params(indices=idx)
-            mp_params = [
-                params[i]
-                for i in self.predict_multiplets(indices=idx, thold=multiplet_thold)
-            ]
-            mp_spectra = []
+            multiplet_indices.append(
+                list(
+                    reversed(
+                        self.predict_multiplets(indices=idx, thold=multiplet_thold)
+                    )
+                )
+            )
+            multiplet_params = [params[i] for i in multiplet_indices[-1]]
             f1_f2_region = []
-            for mp_param in reversed(mp_params):
-                f1, f2 = mp_param[:, [2, 3]].T
+            center_freq = []
+            for multiplet_param in multiplet_params:
+                f1, f2 = multiplet_param[:, [2, 3]].T
+                center_freq.append(np.mean(f2 - f1) / sfo)
                 f2 /= sfo
                 f1_f2_region.append((f1, f2))
+
                 multiplet = expinfo_1d.make_fid(
-                    mp_param[:, [0, 1, 3, 5]],
+                    multiplet_param[:, [0, 1, 3, 5]],
                     pts=high_resolution_pts,
                 )
                 multiplet[0] *= 0.5
-                mp_spectra.append(sig.ft(multiplet).real[highres_slice])
+                multiplet_spectra.append(sig.ft(multiplet).real)
+
             f1_f2.append(f1_f2_region)
-            multiplet_spectra.append(mp_spectra)
+            center_freqs.append(center_freq)
 
-        n_multiplets = sum([len(x) for x in multiplet_spectra])
-        colors = make_color_cycle(multiplet_colors, n_multiplets)
+        n_multiplets = len(multiplet_spectra)
 
-        pad_factor = 1.03
-        neg_45_shift = pad_factor * max([np.amax(spectrum) for spectrum in spectra_1d])
-        mp_shift = -pad_factor * max(
-            [
-                max(
-                    [np.amax(mp) for mp in region_mp]
-                )
-                for region_mp in multiplet_spectra
-            ]
-        )
+        # Plot individual mutliplets
+        for ax in axs[0]:
+            colors = make_color_cycle(multiplet_colors, n_multiplets)
+            ymax = -np.inf
+            for i, mp_spectrum in enumerate(multiplet_spectra):
+                color = next(colors)
+                x = n_multiplets - 1 - i
+                line = ax.plot(
+                    full_shifts_1d_highres,
+                    mp_spectrum + (multiplet_vertical_shift * multiplet_lw * x),
+                    color=color,
+                    lw=multiplet_lw,
+                    zorder=i,
+                )[0]
+                line_max = np.amax(line.get_ydata())
+                if line_max > ymax:
+                    ymax = line_max
+                i += 1
 
-        for (
-            ax_col, shifts_2d_, shifts_1d_, shifts_1d_hr, spec_2d, spec_1d,
-            neg_45_spec, f1f2, mp_spectra,
-        ) in zip(
-            axs.T, shifts_2d, shifts_1d, shifts_1d_highres, spectra_2d, spectra_1d,
-            neg_45_spectra, f1_f2, multiplet_spectra,
-        ):
-            ax_1d = ax_col[0]
-            ax_2d = ax_col[1]
+        # Plot 1D spectrum
+        spec_1d_low_pt = min([np.amin(spec) for spec in spectra_1d])
+        shift = 1.03 * (ymax - spec_1d_low_pt)
+        ymax = -np.inf
+        for ax, shifts, spectrum in zip(axs[0], shifts_1d, spectra_1d):
+            line = ax.plot(shifts, spectrum + shift, color="k")[0]
+            line_max = np.amax(line.get_ydata())
+            if line_max > ymax:
+                ymax = line_max
 
-            ax_2d.contour(
-                *shifts_2d_,
-                spec_2d,
+        # Plot homodecoupled spectrum
+        homo_spec_low_pt = min([np.amin(spec) for spec in neg_45_spectra])
+        shift = 1.03 * (ymax - homo_spec_low_pt)
+        for ax, shifts, spectrum in zip(axs[0], shifts_1d_highres, neg_45_spectra):
+            ax.plot(shifts, spectrum + shift, color="k")
+
+        # Plot 2DJ contour
+        for ax, shifts, spectrum in zip(axs[1], shifts_2d, spectra_2d):
+            ax.contour(
+                *shifts,
+                spectrum,
                 colors=contour_color,
                 linewidths=contour_lw,
                 levels=contour_levels,
                 zorder=0,
             )
 
-            ax_1d.plot(shifts_1d_, spec_1d, color="k")
-            ax_1d.plot(shifts_1d_hr, neg_45_spec + neg_45_shift, color="k")
-            for s, f12 in zip(mp_spectra, f1f2):
+        # Plot peak positions onto 2DJ
+        colors = make_color_cycle(multiplet_colors, n_multiplets)
+        for ax, f1f2 in zip(axs[1], f1_f2):
+            for mp_f1f2 in f1f2:
                 color = next(colors)
-                ax_1d.plot(shifts_1d_hr, s + mp_shift, color=color)
-                ax_2d.scatter(
-                    *reversed(f12),
+                f1, f2 = mp_f1f2
+                ax.scatter(
+                    x=f2,
+                    y=f1,
                     s=marker_size,
                     marker=marker_shape,
                     color=color,
+                    zorder=100,
                 )
+
+        ylim1 = (shifts_2d[0][1][0, 0], shifts_2d[0][1][-1, 0])
+        # Plot multiplet central frequencies
+        if multiplet_show_center_freq:
+            colors = make_color_cycle(multiplet_colors, n_multiplets)
+            for ax, center_freq in zip(axs[1], center_freqs):
+                for cf in center_freq:
+                    color = next(colors)
+                    ax.plot(
+                        [cf, cf],
+                        ylim1,
+                        color=color,
+                        lw=0.8,
+                        zorder=2,
+                    )
+
+        # Plot 45 lines that multiplets lie along
+        if multiplet_show_45:
+            colors = make_color_cycle(multiplet_colors, n_multiplets)
+            for ax, center_freq in zip(axs[1], center_freqs):
+                for cf in center_freq:
+                    color = next(colors)
+                    ax.plot(
+                        [cf + lim / sfo for lim in ylim1],
+                        ylim1,
+                        color=color,
+                        lw=0.8,
+                        zorder=2,
+                        ls=":",
+                    )
 
         # Configure axis appearance
         ylim0 = (
             min([ax.get_ylim()[0] for ax in axs[0]]),
             max([ax.get_ylim()[1] for ax in axs[0]]),
         )
+
+        if denote_regions:
+            for i, mi in enumerate(merge_indices):
+                if len(mi) > 1:
+                    locs_to_plot = [reg[1][0] for reg in regions if reg[0] in mi[1:]]
+                    for loc in locs_to_plot:
+                        for j, y in enumerate((ylim0, ylim1)):
+                            axs[j, i].plot(
+                                [loc, loc],
+                                y,
+                                color="#808080",
+                                ls=":",
+                            )
+
+        axs[0, 0].spines["left"].set_zorder(1000)
+        axs[0, -1].spines["right"].set_zorder(1000)
         for ax in axs[0]:
             ax.spines["bottom"].set_visible(False)
             ax.set_xticks([])
@@ -1517,7 +1654,7 @@ class Estimator2DJ(Estimator):
 
         for ax in axs[1]:
             ax.spines["top"].set_visible(False)
-            ax.set_ylim(reversed(ax.get_ylim()))
+            ax.set_ylim(ylim1)
 
         for region, ax_col in zip(merge_regions, axs.T):
             for ax in ax_col:
@@ -1550,6 +1687,10 @@ class Estimator2DJ(Estimator):
                 ax.plot([0], [0], transform=ax.transAxes, **break_kwargs)
                 ax.set_yticks([])
 
+        if xaxis_ticks is not None:
+            for i, ticks in xaxis_ticks:
+                axs[1, i].set_xticks(ticks)
+
         axs[1, 0].set_ylabel("Hz")
         fig.text(
             x=(axes_left + axes_right) / 2,
@@ -1559,47 +1700,6 @@ class Estimator2DJ(Estimator):
         )
 
         return fig, axs
-
-    @staticmethod
-    def _find_merge_regions(
-        regions: Iterable[Tuple[float, float]],
-        indices: Iterable[int],
-    ) -> Tuple[Iterable[Tuple[float, float]], Iterable[int]]:
-        merge_indices = []
-        merge_regions = []
-        for i, region in enumerate(regions):
-            if i not in indices:
-                continue
-            assigned = False
-            for j, reg in enumerate(merge_regions):
-                if max(region) >= min(reg):
-                    merge_regions[j] = (max(reg), min(region))
-                    assigned = True
-                elif min(region) >= max(reg):
-                    merge_regions[j] = (max(region), min(reg))
-                    assigned = True
-
-                if assigned:
-                    merge_indices[j].append(i)
-                    break
-
-            if not assigned:
-                merge_indices.append([i])
-                merge_regions.append(region)
-
-        # Order regions from high field to low field
-        # Probably a more efficinet "Pythonic" way of doing this...
-        # Did this without access to the internet
-        sort_merge_regions = sorted(merge_regions, reverse=True)
-        sort_idx = []
-        for region in merge_regions:
-            for i in range(len(merge_regions)):
-                if sort_merge_regions[i] == region:
-                    sort_idx.append(i)
-                    break
-        sort_merge_indices = [merge_indices[i] for i in sort_idx]
-
-        return sort_merge_regions, sort_merge_indices
 
     def new_synthetic_from_simulation(self):
         pass
