@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 09 Sep 2022 18:29:35 BST
+# Last Edited: Mon 19 Sep 2022 17:37:56 BST
 
 from pathlib import Path
 import re
@@ -144,6 +144,25 @@ def check_int_list(
         return f"All elements must be greater than or equal to {min_value}."
     if not any([isint(x) for x in obj]):
         return "At least one element must be an int, all Nones not allowed."
+
+
+def check_int_list_list(
+    obj: Any,
+    min_value: Optional[int] = None,
+    max_value: Optional[int] = None,
+) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a tuple or list."
+    for i, elem in enumerate(obj):
+        msg = f"Issue with element {i}:\n"
+        if not isiter(elem):
+            return f"{msg}Each element should be a tuple or list of ints."
+        if not all([isint(x) for x in elem]):
+            return f"{msg}Each element should be a tuple or list of ints."
+        if (isint(max_value) and not all([x <= max_value for x in elem])):
+            return f"{msg}All values must be less than or equal to {max_value}."
+        if (isint(min_value) and not all([x >= min_value for x in elem])):
+            return f"{msg}All values must be greater than or equal to {min_value}."
 
 
 def check_str_list(obj: Any, length: Optional[int] = None) -> Optional[str]:
@@ -664,3 +683,49 @@ def check_xticks(obj: Any, regions: Iterable[Tuple[float, float]]) -> Optional[s
                 f"{msg}All ticks should lie with in the region "
                 f"({region[0]} - {region[1]})"
             )
+
+
+def check_split_oscs(obj: Any, dim: int, n: int) -> Optional[str]:
+    if not isinstance(obj, dict):
+        return "Should be a dict."
+    valid_keys = ("separation", "number", "amp_ratio")
+    valid_keys_str = ", ".join([f"\"{x}\"" for x in valid_keys])
+    for key, value in obj.items():
+        if not (isint(key) and 0 <= key < n):
+            return f"Each key should be an int between 0 and {n - 1}."
+        msg = f"Issue with element with key {key}:\n"
+
+        if value is None:
+            continue
+        if not (isinstance(value, dict)):
+            return f"{msg}Should be a dict or None."
+        if not all([k in valid_keys for k in value.keys()]):
+            return f"{msg}Only valid elements are: {valid_keys_str}."
+
+        msg = f"{msg}Issue with \"<KEY>\":\n<RESULT>"
+        if "separation" in value:
+            result = check_float_list(
+                value["separation"], length=dim, len_one_can_be_listless=True,
+                must_be_positive=True,
+            )
+            if isinstance(result, str):
+                return msg.replace("<KEY>", "separation").replace("<RESULT>", result)
+
+        if "number" in value:
+            result = check_int(value["number"], min_value=2)
+            if isinstance(result, str):
+                return msg.replace("<KEY>", "number").replace("<RESULT>", result)
+
+        if "amp_ratio" in value:
+            length = value["number"] if "number" in value else None
+            result = check_float_list(
+                value["amp_ratio"], length=length, must_be_positive=True
+            )
+            if isinstance(result, str):
+                return msg.replace("<KEY>", "amp_ratio").replace("<RESULT>", result)
+            # Wouldn;t be picked up in case "number" isn't given, and a
+            # single-element list is given
+            if len(value["amp_ratio"]) == 1:
+                return msg.replace("<KEY>", "amp_ratio").replace(
+                    "<RESULT>", "Should be at least 2 elements long.",
+                )

@@ -1,7 +1,7 @@
 # test_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 20 Jul 2022 14:17:32 BST
+# Last Edited: Mon 19 Sep 2022 17:38:30 BST
 
 import copy
 from pathlib import Path
@@ -242,24 +242,37 @@ def test_result_editing():
     true_params = estimator.get_params([0])
     # Remove an oscillator and re-add
     estimator._results[0].params = true_params[(0, 1, 3), ...]
-    estimator.add_oscillators(np.array([[2.5, 0, 717, 6.5]]), index=0)
-    assert utils.close(true_params, estimator.get_params([0]), tol=0.1)
-    # Add an extra oscillator and remove
     estimator._results[0].params = np.vstack(
         (
-            np.array([[0.2, 0, 7.15, 6]]),
-            true_params,
+            np.array([[0.2, 0, 500, 6]]),
+            true_params[(0, 1, 3), ...],
         ),
     )
-    estimator.remove_oscillators([0], index=0)
+    estimator.edit_result(
+        index=0,
+        add_oscs=np.array([[2.5, 0, 717, 6.5]]),
+        rm_oscs=[0],
+    )
     assert utils.close(true_params, estimator.get_params([0]), tol=0.1)
     # Split an oscillator and re-merge
-    estimator.split_oscillator(1, index=0)
+    estimator.edit_result(
+        index=0,
+        split_oscs={
+            1: {
+                "separation": 0.5,
+                "number": 2,
+                "amp_ratio": [1., 1.],
+            }
+        },
+    )
     # Determine two closest oscs
     freqs = estimator._results[0].params[:, 2]
     min_diff = int(np.argmin([np.absolute(b - a) for a, b in zip(freqs, freqs[1:])]))
     to_merge = [min_diff, min_diff + 1]
-    estimator.merge_oscillators(to_merge, index=0)
+    estimator.edit_result(
+        index=0,
+        merge_oscs=[to_merge],
+    )
 
 
 @pytest.mark.usefixtures("cleanup_files")

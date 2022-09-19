@@ -1,14 +1,14 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 12 Aug 2022 17:41:10 BST
+# Last Edited: Mon 19 Sep 2022 17:45:01 BST
 
 from __future__ import annotations
 import abc
 import datetime
 import functools
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union
+from typing import Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 
@@ -556,6 +556,126 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def plot_result(*args, **kwargs):
         pass
+
+    @logger
+    def edit_result(
+        self,
+        index: int = -1,
+        add_oscs: Optional[np.ndarray] = None,
+        rm_oscs: Optional[Iterable[int]] = None,
+        merge_oscs: Optional[Iterable[int]] = None,
+        split_oscs: Optional[Dict[int, Optional[Dict]]] = None,
+        **estimate_kwargs,
+    ) -> None:
+        self._check_results_exist()
+        sanity_check(
+            ("index", index, sfuncs.check_index, (len(self._results),)),
+        )
+        result = self.get_results(indices=[index])[0]
+        params = result.get_params()
+        max_osc_idx = len(params) - 1
+        sanity_check(
+            (
+                "add_oscs", add_oscs, sfuncs.check_parameter_array, (self.dim,), {},
+                True,
+            ),
+            (
+                "rm_oscs", rm_oscs, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": max_osc_idx}, True,
+            ),
+            (
+                "merge_oscs", merge_oscs, sfuncs.check_int_list_list,
+                (), {"min_value": 0, "max_value": max_osc_idx}, True,
+            ),
+            (
+                "split_oscs", split_oscs, sfuncs.check_split_oscs,
+                (self.dim, max_osc_idx), {}, True,
+            ),
+        )
+
+        idx_to_remove = []
+        oscs_to_add = add_oscs
+
+        if rm_oscs is not None:
+            idx_to_remove.extend(rm_oscs)
+
+        if merge_oscs is not None:
+            for oscs in merge_oscs:
+                new_osc = np.sum(params[oscs], axis=0, keepdims=True)
+                new_osc[:, 1:] = new_osc[:, 1:] / float(len(oscs))
+                new_osc[:, 1] = (new_osc[:, 1] + np.pi) % (2 * np.pi) - np.pi
+                if oscs_to_add is None:
+                    oscs_to_add = new_osc
+                else:
+                    oscs_to_add = np.vstack(oscs_to_add, new_osc)
+
+                idx_to_remove.extend(oscs)
+
+        if split_oscs is not None:
+            def_sep = lambda x: self.sw()[x] / self.default_pts[x]
+            def_n = 2
+            def_amp_ratio = np.array([1, 1])
+            def_split_dim = self.dim - 1
+            for osc, split_info in split_oscs.items():
+                to_split = params[osc]
+                if split_info is None:
+                    n, amp_ratio, split_dim = \
+                        def_n, def_amp_ratio, def_split_dim
+                    sep = def_sep(split_dim)
+                else:
+                    if "dim" in split_info:
+                        split_dim = split_info["dim"]
+                    else:
+                        split_dim = def_split_dim
+
+                    if "separation" in split_info:
+                        sep = split_info["separation"]
+                    else:
+                        sep = def_sep(split_dim)
+
+                    if ("number" not in split_info and "amp_ratio" not in split_info):
+                        n = def_n
+                        amp_ratio = def_n
+                    elif ("number" in split_info and "amp_ratio" not in split_info):
+                        n = split_info["number"]
+                        amp_ratio = np.ones((n,))
+                    elif ("number" not in split_info and "amp_ratio" in split_info):
+                        amp_ratio = np.array(split_info["amp_ratio"])
+                        n = amp_ratio.size
+                    else:
+                        n = split_info["number"]
+                        amp_ratio = np.array(split_info["amp_ratio"])
+
+                amps = to_split[0] * amp_ratio / amp_ratio.sum()
+                # Highest frequency of all the new oscillators
+                max_freq = to_split[split_dim + 2] + 0.5 * (n - 1) * sep
+                # Array of all frequencies (lowest to highest)
+                freqs = np.array(
+                    [max_freq - i * sep for i in range(n)],
+                    dtype="float64",
+                )
+                new_oscs = np.zeros((n, 2 * (1 + self.dim)), dtype="float64")
+                new_oscs[:, 0] = amps
+                new_oscs[:, 1] = to_split[1]
+                for i in range(self.dim):
+                    if i == split_dim:
+                        new_oscs[:, 2 + i] = freqs
+                    else:
+                        new_oscs[:, 2 + i] = to_split[2 + i]
+
+                new_oscs[:, 2 + self.dim :] = to_split[2 + self.dim :]
+
+                if oscs_to_add is None:
+                    oscs_to_add = new_oscs
+                else:
+                    oscs_to_add = np.vstack(oscs_to_add, new_oscs)
+
+                idx_to_remove.append(osc)
+
+        params = np.delete(params, idx_to_remove, axis=0)
+        params = np.vstack((params, oscs_to_add))
+
+        self._optimise_after_edit(params, result, index)
 
     @logger
     def merge_oscillators(

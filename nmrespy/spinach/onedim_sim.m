@@ -2,7 +2,7 @@ function [fid, sfo] = onedim_sim(field, isotopes, shifts, couplings, offset, ...
         sweep, npoints, channel)
 
     sfo = get_sfo(field, channel);
-    sys.magnet = magnet;
+    sys.magnet = field;
     sys.isotopes = isotopes;
 
     % Interations

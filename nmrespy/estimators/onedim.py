@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 12 Aug 2022 18:11:19 BST
+# Last Edited: Mon 19 Sep 2022 18:13:58 BST
 
 from __future__ import annotations
 import copy
@@ -210,7 +210,7 @@ class Estimator1D(Estimator):
                 "take at look here:\n"
                 "https://www.mathworks.com/help/matlab/matlab_external/"
                 f"install-the-matlab-engine-for-python.html{END}"
-            )
+           )
 
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
@@ -221,7 +221,7 @@ class Estimator1D(Estimator):
             ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
             ("snr", snr, sfuncs.check_float),
-            ("lb", lb, sfuncs.check_float, (), {"must_be_positive": True})
+            ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True})
         )
 
         nspins = len(shifts)
@@ -244,7 +244,7 @@ class Estimator1D(Estimator):
             try:
                 eng = matlab.engine.start_matlab()
                 fid, sfo = eng.onedim_sim(
-                    field, field_unit, nuclei, shifts, couplings, tau_c, offset,
+                    field, nuclei, shifts, couplings, offset,
                     sw, pts, channel, nargout=2, stdout=devnull, stderr=devnull,
                 )
             except matlab.engine.MatlabExecutionError:
@@ -260,7 +260,13 @@ class Estimator1D(Estimator):
                     f"for more details on the error raised.{END}"
                 )
 
-        fid = np.array(fid).flatten()
+        fid = sig.exp_apodisation(
+            sig.add_noise(
+                np.array(fid).flatten(),
+                snr,
+            ),
+            lb,
+        )
 
         expinfo = ExpInfo(
             dim=1,
