@@ -1,13 +1,12 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 14 Sep 2022 13:41:41 BST
+# Last Edited: Tue 20 Sep 2022 15:39:13 BST
 
 from __future__ import annotations
 import copy
 import io
 import itertools
-import os
 from pathlib import Path
 import re
 import sys
@@ -16,7 +15,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib import cm, pyplot as plt
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk,
 )
@@ -86,7 +85,6 @@ class Estimator2DJ(Estimator):
         sanity_check(
             ("directory", directory, check_existent_dir),
             ("convdta", convdta, sfuncs.check_bool),
-            ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
 
         directory = Path(directory).expanduser()
@@ -101,9 +99,6 @@ class Estimator2DJ(Estimator):
         if convdta:
             grpdly = expinfo.parameters["acqus"]["GRPDLY"]
             data = sig.convdta(data, grpdly)
-
-        if lb is not None:
-            data = sig.exp_apodisation(data, lb, axes=[1])
 
         expinfo._offset = (0., expinfo.offset()[1])
         expinfo._sfo = (None, expinfo.sfo[1])
@@ -1122,7 +1117,7 @@ class Estimator2DJ(Estimator):
         new_data = np.zeros((shape[0], t2_size), dtype="complex128")
         for i, t2_fid in enumerate(self.data):
             spectrum = sig.ft(sig.make_virtual_echo(t2_fid)).real
-            spectrum = sig.baseline_correction(spectrum, min_length=min_length)
+            spectrum, _ = sig.baseline_correction(spectrum, min_length=min_length)
             new_data[i] = sig.ift(spectrum)[:t2_size]
 
         self._data = new_data
@@ -1152,17 +1147,29 @@ class Estimator2DJ(Estimator):
             ("p1", p1, sfuncs.check_float),
             ("pivot", pivot, sfuncs.check_index, (self._data.size,)),
         )
-        self._data = sig.phase(self._data, p0=[0., p0], p1=[0., p1], pivot=[0, pivot])
+        self._data = sig.ift(
+            sig.phase(
+                sig.ft(
+                    self._data,
+                    axes=[1],
+                ),
+                p0=[0., p0],
+                p1=[0., p1],
+                pivot=[0, pivot],
+            ),
+            axes=[1],
+        )
 
     def manual_phase_data(
         self,
         max_p1: float = 10 * np.pi,
-    ) -> None:
+    ) -> Tuple[float, float]:
         sanity_check(
             ("max_p1", max_p1, sfuncs.check_float, (), {"greater_than_zero": True}),
         )
         p0, p1 = sig.manual_phase_data(self.spectrum_zero_t1, max_p1=[max_p1])
         self.phase_data(p0=p0[0], p1=p1[0])
+        return p0, p1
 
     def plot_result(
         self,
@@ -1543,7 +1550,7 @@ class Estimator2DJ(Estimator):
                 x = n_multiplets - 1 - i
                 line = ax.plot(
                     full_shifts_1d_highres,
-                    mp_spectrum + (multiplet_vertical_shift * multiplet_lw * x),
+                    mp_spectrum + multiplet_vertical_shift * x,
                     color=color,
                     lw=multiplet_lw,
                     zorder=i,
@@ -1582,8 +1589,8 @@ class Estimator2DJ(Estimator):
 
         # Plot peak positions onto 2DJ
         colors = make_color_cycle(multiplet_colors, n_multiplets)
-        for ax, f1f2 in zip(axs[1], f1_f2):
-            for mp_f1f2 in f1f2:
+        for ax, f1f2, mp_idxs in zip(axs[1], f1_f2, multiplet_indices):
+            for mp_f1f2, mp_idx in zip(f1f2, mp_idxs):
                 color = next(colors)
                 f1, f2 = mp_f1f2
                 ax.scatter(
@@ -1594,6 +1601,15 @@ class Estimator2DJ(Estimator):
                     color=color,
                     zorder=100,
                 )
+                if label_peaks:
+                    for f1_, f2_, idx in zip(f1, f2, mp_idx):
+                        ax.text(
+                            x=f2_,
+                            y=f1_,
+                            s=str(idx),
+                            color=color,
+                            fontsize=8,
+                        )
 
         ylim1 = (shifts_2d[0][1][0, 0], shifts_2d[0][1][-1, 0])
         # Plot multiplet central frequencies
