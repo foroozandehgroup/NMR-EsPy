@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 19 Sep 2022 17:45:01 BST
+# Last Edited: Tue 20 Sep 2022 18:18:40 BST
 
 from __future__ import annotations
 import abc
@@ -672,10 +672,12 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
 
                 idx_to_remove.append(osc)
 
-        params = np.delete(params, idx_to_remove, axis=0)
-        params = np.vstack((params, oscs_to_add))
+        if idx_to_remove:
+            params = np.delete(params, idx_to_remove, axis=0)
+        if oscs_to_add:
+            params = np.vstack((params, oscs_to_add))
 
-        self._optimise_after_edit(params, result, index)
+        self._optimise_after_edit(params, result, index, **estimate_kwargs)
 
     @logger
     def merge_oscillators(
@@ -750,7 +752,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         x0 = np.delete(x0, oscillators, axis=0)
         x0 = np.vstack((x0, new_osc))
 
-        self._optimise_after_edit(x0, result, index)
+        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
 
     @logger
     def split_oscillator(
