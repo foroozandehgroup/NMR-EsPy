@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 20 Sep 2022 18:18:40 BST
+# Last Edited: Wed 21 Sep 2022 12:16:44 BST
 
 from __future__ import annotations
 import abc
@@ -674,7 +674,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
 
         if idx_to_remove:
             params = np.delete(params, idx_to_remove, axis=0)
-        if oscs_to_add:
+        if oscs_to_add is not None:
             params = np.vstack((params, oscs_to_add))
 
         self._optimise_after_edit(params, result, index, **estimate_kwargs)
