@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 20 Sep 2022 15:39:13 BST
+# Last Edited: Fri 23 Sep 2022 15:52:09 BST
 
 from __future__ import annotations
 import copy
@@ -976,7 +976,7 @@ class Estimator2DJ(Estimator):
             thold = 0.5 * (self.default_pts[0] / self.sw()[0])
 
         params = self.get_params()
-        multiplets = self.predict_multiplets(thold)
+        multiplets = self.predict_multiplets(thold=thold)
         spurious = {}
         for multiplet in multiplets:
             if len(multiplet) == 1 and abs(params[multiplet[0], 2]) > thold:
@@ -1168,7 +1168,8 @@ class Estimator2DJ(Estimator):
             ("max_p1", max_p1, sfuncs.check_float, (), {"greater_than_zero": True}),
         )
         p0, p1 = sig.manual_phase_data(self.spectrum_zero_t1, max_p1=[max_p1])
-        self.phase_data(p0=p0[0], p1=p1[0])
+        p0, p1 = p0[0], p1[0]
+        self.phase_data(p0=p0, p1=p1)
         return p0, p1
 
     def plot_result(
