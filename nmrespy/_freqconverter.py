@@ -1,7 +1,7 @@
 # _freqconverter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 15:55:29 BST
+# Last Edited: Sun 25 Sep 2022 13:15:37 BST
 
 import re
 from typing import Any, Iterable, Optional, Union
@@ -102,9 +102,7 @@ class FrequencyConverter:
         self._offset = offset
         self._pts = pts
         self.hz_ppm_valid = self._sfo is not None
-        self.hz_idx_valid = all(
-            [x is not None for x in (self._sw, self._offset, self._pts)]
-        )
+        self.hz_idx_valid = self._pts is not None
         self.ppm_idx_valid = self.hz_idx_valid and self.hz_ppm_valid
 
     def __len__(self) -> int:

@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 19 Sep 2022 18:13:58 BST
+# Last Edited: Sun 25 Sep 2022 17:37:32 BST
 
 from __future__ import annotations
 import copy
@@ -33,7 +33,7 @@ from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
 from nmrespy.plot import ResultPlotter
 
-from . import logger, Estimator, Result
+from . import logger, _Estimator1DProc, Result
 
 
 if USE_COLORAMA:
@@ -45,7 +45,7 @@ if MATLAB_AVAILABLE:
     import matlab.engine
 
 
-class Estimator1D(Estimator):
+class Estimator1D(_Estimator1DProc):
     """Estimator class for 1D data.
 
     .. note::
@@ -59,25 +59,8 @@ class Estimator1D(Estimator):
         * :py:meth:`from_pickle` (re-loads a previously saved estimator).
     """
 
-    def __init__(
-        self,
-        data: np.ndarray,
-        expinfo: ExpInfo,
-        datapath: Optional[Path] = None,
-    ) -> None:
-        """
-        Parameters
-        ----------
-        data
-            Time-domain data to estimate.
-
-        expinfo
-            Experiment information.
-
-        datapath
-            If applicable, the path that the data was derived from.
-        """
-        super().__init__(data, expinfo, datapath)
+    default_mpm_trim = 4096
+    default_nlp_trim = None
 
     @classmethod
     def new_bruker(
@@ -140,14 +123,12 @@ class Estimator1D(Estimator):
     def new_spinach(
         cls,
         shifts: Iterable[float],
+        couplings: Optional[Iterable[Tuple(int, int, float)]],
         pts: int,
         sw: float,
-        offset: float,
-        field: float = 11.74,
-        field_unit: str = "tesla",
-        couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
-        channel: str = "1H",
-        nuclei: Optional[List[str]] = None,
+        offset: float = 0.,
+        sfo: float = 500.,
+        nucleus: str = "1H",
         snr: Optional[float] = 20.,
         lb: float = 6.91,
     ) -> None:
@@ -158,6 +139,14 @@ class Estimator1D(Estimator):
         shifts
             A list of tuple of chemical shift values for each spin.
 
+        couplings
+            The scalar couplings present in the spin system. Given ``shifts`` is of
+            length ``n``, couplings should be an iterable with entries of the form
+            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
+            the two spins involved in the coupling, and ``coupling`` is the value
+            of the scalar coupling in Hz. ``None`` will set all spins to be
+            uncoupled.
+
         pts
             The number of points the signal comprises.
 
@@ -167,32 +156,11 @@ class Estimator1D(Estimator):
         offset
             The transmitter offset (Hz).
 
-        field
-            The magnetic field stength, in either Tesla or MHz (see ``field_unit``).
+        sfo
+            The transmitter frequency (MHz).
 
-        field_unit
-            ``MHz`` or ``Tesla``. The unit that ``field`` is given as. If ``MHz``,
-            this will be taken as the Larmor frequency of proton.
-
-        couplings
-            The scalar couplings present in the spin system. Given ``shifts`` is of
-            length ``n``, couplings should be an iterable with entries of the form
-            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
-            the two spins involved in the coupling, and ``coupling`` is the value
-            of the scalar coupling in Hz.
-
-        channel
+        nucleus
             The identity of the nucleus targeted in the pulse sequence.
-
-        nuclei
-            The type of nucleus for each spin. Can be either:
-
-            * ``None``, in which case each spin will be set as the identity of
-              ``channel``.
-            * A list of length ``n``, where ``n`` is the number of spins. Each
-              entry should be a string satisfying the regular expression
-              ``"\d+[A-Z][a-z]*"``, and recognised by Spinach as a real nucleus
-              e.g. ``"1H"``, ``"13C"``, ``"195Pt"``.
 
         snr
             The signal-to-noise ratio of the resulting signal, in decibels. ``None``
@@ -210,51 +178,34 @@ class Estimator1D(Estimator):
                 "take at look here:\n"
                 "https://www.mathworks.com/help/matlab/matlab_external/"
                 f"install-the-matlab-engine-for-python.html{END}"
-           )
+            )
 
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
             ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float),
-            ("channel", channel, sfuncs.check_nucleus),
-            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
+            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("nucleus", nucleus, sfuncs.check_nucleus),
             ("snr", snr, sfuncs.check_float),
             ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True})
         )
-
         nspins = len(shifts)
         sanity_check(
-            ("nuclei", nuclei, sfuncs.check_nucleus_list, (), {"length": nspins}, True),
-            (
-                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
-                {}, True,
-            ),
+            ("couplings", couplings, sfuncs.check_spinach_couplings, (nspins,)),
         )
-
-        if nuclei is None:
-            nuclei = nspins * [channel]
-
-        if field_unit == "MHz":
-            field = (2e6 * np.pi * field) / 2.6752218744e8
 
         with cd(SPINACHPATH):
             devnull = io.StringIO(str(os.devnull))
             try:
                 eng = matlab.engine.start_matlab()
-                fid, sfo = eng.onedim_sim(
-                    field, nuclei, shifts, couplings, offset,
-                    sw, pts, channel, nargout=2, stdout=devnull, stderr=devnull,
+                fid = eng.onedim_sim(
+                    shifts, couplings, pts, sw, offset, sfo, nucleus,
+                    stdout=devnull, stderr=devnull,
                 )
             except matlab.engine.MatlabExecutionError:
                 raise ValueError(
-                    f"{RED}Something went wrong in trying to run Spinach. This "
-                    "is likely due to one of two things:\n"
-                    "1. An inappropriate argument was given which was not noticed by "
-                    "sanity checks. For example, you provided an isotope of the "
-                    "correct format but which is unknown\n"
-                    "2. You have not correctly configured Spinach.\n"
+                    f"{RED}Something went wrong in trying to run Spinach.\n"
                     "Read what is stated below the line "
                     "\"matlab.engine.MatlabExecutionError:\" "
                     f"for more details on the error raised.{END}"
@@ -273,7 +224,7 @@ class Estimator1D(Estimator):
             sw=sw,
             offset=offset,
             sfo=sfo,
-            nuclei=channel,
+            nuclei=nucleus,
             default_pts=fid.shape,
         )
 
@@ -285,9 +236,11 @@ class Estimator1D(Estimator):
         params: np.ndarray,
         pts: int,
         sw: float,
-        offset: float = 0.0,
-        sfo: Optional[float] = None,
-        snr: float = 30.0,
+        offset: float,
+        sfo: float = 500.,
+        nucleus: str = "1H",
+        snr: Optional[float] = 20.,
+        lb: float = 6.91,
     ) -> Estimator1D:
         """Generate an estimator instance from an array of oscillator parameters.
 
@@ -322,7 +275,7 @@ class Estimator1D(Estimator):
             to the FID.
         """
         sanity_check(
-            ("params", params, sfuncs.check_ndarray, (), {"dim": 2, "shape": [(1, 4)]}),
+            ("params", params, sfuncs.check_parameter_array, (1,)),
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
             ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float, (), {}, True),
@@ -341,120 +294,12 @@ class Estimator1D(Estimator):
         data = expinfo.make_fid(params, snr=snr)
         return cls(data, expinfo)
 
-    @classmethod
-    def new_synthetic_from_simulation(
-        cls,
-        spin_system: SpinSystem,
-        sw: float,
-        offset: float,
-        pts: int,
-        freq_unit: str = "hz",
-        channel: Union[str, Nucleus] = "1H",
-        snr: Optional[float] = 30.0,
-    ) -> Estimator1D:
-        """Generate an estimator with data derived from a pulse-aquire experiment
-        simulation.
-
-        Simulations are performed using the
-        `nmr_sims.experiments.pa.PulseAcquireSimulation
-        <https://foroozandehgroup.github.io/nmr_sims/content/references/experiments/
-        pa.html#nmr_sims.experiments.pa.PulseAcquireSimulation>`_
-        class.
-
-        Parameters
-        ----------
-        spin_system
-            Specification of the spin system to run simulations on.
-            `See here <https://foroozandehgroup.github.io/nmr_sims/content/
-            references/spin_system.html#nmr_sims.spin_system.SpinSystem.__init__>`_
-            for more details. **N.B. the transmitter frequency (sfo) will
-            be determined by** ``spin_system.field``.
-
-        sw
-            The sweep width in Hz.
-
-        offset
-            The transmitter offset frequency in Hz.
-
-        pts
-            The number of points sampled.
-
-        freq_unit
-            The unit that ``sw`` and ``offset`` are expressed in. Should
-            be either ``"hz"`` or ``"ppm"``.
-
-        channel
-            Nucleus targeted in the experiment simulation. ¹H is set as the default.
-            `See here <https://foroozandehgroup.github.io/nmr_sims/content/
-            references/nuclei.html>`__ for more information.
-
-        snr
-            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
-            produces a noiseless signal.
-        """
-        sanity_check(
-            ("spin_system", spin_system, sfuncs.check_spin_system),
-            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("offset", offset, sfuncs.check_float),
-            ("pts", pts, sfuncs.check_positive_int),
-            ("freq_unit", freq_unit, sfuncs.check_one_of, ("hz", "ppm")),
-            ("channel", channel, sfuncs.check_nmrsims_nucleus),
-            ("snr", snr, sfuncs.check_float, (), {}, True),
-        )
-
-        sw = f"{sw}{freq_unit}"
-        offset = f"{offset}{freq_unit}"
-        sim = PulseAcquireSimulation(
-            spin_system, pts, sw, offset=offset, channel=channel,
-        )
-        sim.simulate()
-        _, data, _ = sim.fid()
-        if snr is not None:
-            data += sig._make_noise(data, snr)
-
-        expinfo = ExpInfo(
-            dim=1,
-            sw=sim.sweep_widths[0],
-            offset=sim.offsets[0],
-            sfo=sim.sfo[0],
-            nuclei=channel,
-            default_pts=data.shape,
-        )
-
-        return cls(data, expinfo)
-
     @property
     def spectrum(self) -> np.ndarray:
         """Return the spectrum corresponding to ``self.data``"""
         data = copy.deepcopy(self.data)
-        data[0] /= 2
+        data[0] *= 0.5
         return sig.ft(data)
-
-    def phase_data(
-        self,
-        p0: float = 0.0,
-        p1: float = 0.0,
-        pivot: int = 0,
-    ) -> None:
-        """Apply first-order phae correction to the estimator's data.
-
-        Parameters
-        ----------
-        p0
-            Zero-order phase correction, in radians.
-
-        p1
-            First-order phase correction, in radians.
-
-        pivot
-            Index of the pivot.
-        """
-        sanity_check(
-            ("p0", p0, sfuncs.check_float),
-            ("p1", p1, sfuncs.check_float),
-            ("pivot", pivot, sfuncs.check_index, (self._data.size,)),
-        )
-        self._data = sig.phase(self._data, [p0], [p1], [pivot])
 
     def view_data(
         self,
@@ -504,378 +349,6 @@ class Estimator1D(Estimator):
 
         plt.show()
 
-    @logger
-    def estimate(
-        self,
-        region: Optional[Tuple[float, float]] = None,
-        noise_region: Optional[Tuple[float, float]] = None,
-        region_unit: str = "hz",
-        initial_guess: Optional[Union[np.ndarray, int]] = None,
-        method: str = "gauss-newton",
-        mode: str = "apfd",
-        phase_variance: bool = True,
-        max_iterations: Optional[int] = None,
-        cut_ratio: Optional[float] = 1.1,
-        mpm_trim: Optional[int] = 4096,
-        nlp_trim: Optional[int] = None,
-        fprint: bool = True,
-        _log: bool = True,
-    ) -> None:
-        r"""Estimate a specified region of the signal.
-
-        The basic steps that this method carries out are:
-
-        * (Optional, but highly advised) Generate a frequency-filtered signal
-          corresponding to the specified region.
-        * (Optional) Generate an inital guess using the Matrix Pencil Method (MPM).
-        * Apply numerical optimisation to determine a final estimate of the signal
-          parameters
-
-        Parameters
-        ----------
-        region
-            The frequency range of interest. Should be of the form ``[left, right]``
-            where ``left`` and ``right`` are the left and right bounds of the region
-            of interest. If ``None``, the full signal will be considered, though
-            for sufficently large and complex signals it is probable that poor and
-            slow performance will be achieved.
-
-        noise_region
-            If ``region`` is not ``None``, this must be of the form ``[left, right]``
-            too. This should specify a frequency range where no noticeable signals
-            reside, i.e. only noise exists.
-
-        region_unit
-            One of ``"hz"`` or ``"ppm"`` Specifies the units that ``region``
-            and ``noise_region`` have been given as.
-
-        initial_guess
-            If ``None``, an initial guess will be generated using the MPM,
-            with the Minimum Descritpion Length being used to estimate the
-            number of oscilltors present. If and int, the MPM will be used to
-            compute the initial guess with the value given being the number of
-            oscillators. If a NumPy array, this array will be used as the initial
-            guess.
-
-        method
-            Specifies the optimisation method.
-
-            * ``"exact"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be exact.
-            * ``"gauss-newton"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be approximated based on the
-              `Gauss-Newton method <https://en.wikipedia.org/wiki/
-              Gauss%E2%80%93Newton_algorithm>`_
-            * ``"lbfgs"`` Uses SciPy's
-              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
-
-        mode
-            A string containing a subset of the characters ``"a"`` (amplitudes),
-            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
-            Specifies which types of parameters should be considered for optimisation.
-
-        phase_variance
-            Whether or not to include the variance of oscillator phases in the cost
-            function. This should be set to ``True`` in cases where the signal being
-            considered is derived from well-phased data.
-
-        max_iterations
-            A value specifiying the number of iterations the routine may run
-            through before it is terminated. If ``None``, the default number
-            of maximum iterations is set (``100`` if ``method`` is
-            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
-            ``"lbfgs"``).
-
-        mpm_trim
-            Specifies the maximal size allowed for the filtered signal when
-            undergoing the Matrix Pencil. If ``None``, no trimming is applied
-            to the signal. If an int, and the filtered signal has a size
-            greater than ``mpm_trim``, this signal will be set as
-            ``signal[:mpm_trim]``.
-
-        nlp_trim
-            Specifies the maximal size allowed for the filtered signal when undergoing
-            nonlinear programming. By default (``None``), no trimming is applied to
-            the signal. If an int, and the filtered signal has a size greater than
-            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
-
-        fprint
-            Whether of not to output information to the terminal.
-
-        _log
-            Ignore this!
-        """
-        sanity_check(
-            (
-                "region_unit", region_unit, sfuncs.check_frequency_unit,
-                (self.hz_ppm_valid,),
-            ),
-            (
-                "initial_guess", initial_guess, sfuncs.check_initial_guess,
-                (self.dim,), {}, True
-            ),
-            ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
-            ("phase_variance", phase_variance, sfuncs.check_bool),
-            ("mode", mode, sfuncs.check_optimiser_mode),
-            (
-                "max_iterations", max_iterations, sfuncs.check_int, (),
-                {"min_value": 1}, True,
-            ),
-            ("fprint", fprint, sfuncs.check_bool),
-            ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
-            (
-                "cut_ratio", cut_ratio, sfuncs.check_float, (),
-                {"greater_than_one": True}, True,
-            ),
-        )
-
-        sanity_check(
-            (
-                "region", region, sfuncs.check_region,
-                (self.sw(region_unit), self.offset(region_unit)), {}, True,
-            ),
-            (
-                "noise_region", noise_region, sfuncs.check_region,
-                (self.sw(region_unit), self.offset(region_unit)), {}, True,
-            ),
-        )
-
-        if region is None:
-            region = self.convert(((0, self._data.size - 1),), "idx->hz")
-            noise_region = None
-            mpm_signal = nlp_signal = self._data
-            mpm_expinfo = nlp_expinfo = self.expinfo
-
-        else:
-            filt = Filter(
-                self._data,
-                self.expinfo,
-                region,
-                noise_region,
-                region_unit=region_unit,
-            )
-
-            mpm_signal, mpm_expinfo = filt.get_filtered_fid(cut_ratio=cut_ratio)
-            nlp_signal, nlp_expinfo = filt.get_filtered_fid(cut_ratio=None)
-            region = filt.get_region()
-            noise_region = filt.get_noise_region()
-
-        if (mpm_trim is None) or (mpm_trim > mpm_signal.size):
-            mpm_trim = mpm_signal.size
-        if (nlp_trim is None) or (nlp_trim > nlp_signal.size):
-            nlp_trim = nlp_signal.size
-
-        if isinstance(initial_guess, np.ndarray):
-            x0 = initial_guess
-        else:
-            oscillators = initial_guess if isinstance(initial_guess, int) else 0
-
-            x0 = MatrixPencil(
-                mpm_expinfo,
-                mpm_signal[:mpm_trim],
-                oscillators=oscillators,
-                fprint=fprint,
-            ).get_params()
-
-            if x0 is None:
-                return self._results.append(
-                    Result(
-                        np.array([[]]),
-                        np.array([[]]),
-                        region,
-                        noise_region,
-                        self.sfo,
-                    )
-                )
-
-        result = NonlinearProgramming(
-            nlp_expinfo,
-            nlp_signal[:nlp_trim],
-            x0,
-            phase_variance=phase_variance,
-            method=method,
-            mode=mode,
-            max_iterations=max_iterations,
-            fprint=fprint,
-        )
-
-        self._results.append(
-            Result(
-                result.get_params(),
-                result.get_errors(),
-                region,
-                noise_region,
-                self.sfo,
-            )
-        )
-
-    @logger
-    def subband_estimate(
-        self,
-        noise_region: Tuple[float, float],
-        noise_region_unit: str = "hz",
-        nsubbands: Optional[int] = None,
-        method: str = "gauss-newton",
-        phase_variance: bool = True,
-        max_iterations: Optional[int] = None,
-        cut_ratio: Optional[float] = 1.1,
-        mpm_trim: Optional[int] = 4096,
-        nlp_trim: Optional[int] = None,
-        fprint: bool = True,
-        _log: bool = True,
-    ) -> None:
-        r"""Perform estiamtion on the entire signal via estimation of frequency-filtered
-        sub-bands.
-
-        This method splits the signal up into ``nsubbands`` equally-sized region
-        and extracts parameters from each region before finally concatenating all
-        the results together.
-
-        Parameters
-        ----------
-        noise_region
-            Specifies a frequency range where no noticeable signals reside, i.e. only
-            noise exists.
-
-        noise_region_unit
-            One of ``"hz"`` or ``"ppm"``. Specifies the units that ``noise_region``
-            have been given in.
-
-        nsubbands
-            The number of sub-bands to break the signal into. If ``None``, the number
-            will be set as the nearest integer to the data size divided by 500.
-
-        method
-            Specifies the optimisation method.
-
-            * ``"exact"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be exact.
-            * ``"gauss-newton"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be approximated based on the
-              `Gauss-Newton method <https://en.wikipedia.org/wiki/
-              Gauss%E2%80%93Newton_algorithm>`_
-            * ``"lbfgs"`` Uses SciPy's
-              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
-
-        phase_variance
-            Whether or not to include the variance of oscillator phases in the cost
-            function. This should be set to ``True`` in cases where the signal being
-            considered is derived from well-phased data.
-
-        max_iterations
-            A value specifiying the number of iterations the routine may run
-            through before it is terminated. If ``None``, the default number
-            of maximum iterations is set (``100`` if ``method`` is
-            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
-            ``"lbfgs"``).
-
-        mpm_trim
-            Specifies the maximal size allowed for the filtered signal when
-            undergoing the Matrix Pencil. If ``None``, no trimming is applied
-            to the signal. If an int, and the filtered signal has a size
-            greater than ``mpm_trim``, this signal will be set as
-            ``signal[:mpm_trim]``.
-
-        nlp_trim
-            Specifies the maximal size allowed for the filtered signal when undergoing
-            nonlinear programming. By default (``None``), no trimming is applied to
-            the signal. If an int, and the filtered signal has a size greater than
-            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
-
-        fprint
-            Whether of not to output information to the terminal.
-
-        _log
-            Ignore this!
-        """
-        sanity_check(
-            (
-                "noise_region_unit", noise_region_unit, sfuncs.check_frequency_unit,
-                (self.hz_ppm_valid,),
-            ),
-            ("nsubbands", nsubbands, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
-            ("phase_variance", phase_variance, sfuncs.check_bool),
-            (
-                "max_iterations", max_iterations, sfuncs.check_int, (),
-                {"min_value": 1}, True,
-            ),
-            ("fprint", fprint, sfuncs.check_bool),
-            ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
-            (
-                "cut_ratio", cut_ratio, sfuncs.check_float, (),
-                {"greater_than_one": True}, True,
-            ),
-        )
-
-        sanity_check(
-            (
-                "noise_region", noise_region, sfuncs.check_region,
-                (self.sw(noise_region_unit), self.offset(noise_region_unit)), {}, True,
-            ),
-        )
-
-        kwargs = {
-            "method": method,
-            "phase_variance": phase_variance,
-            "max_iterations": max_iterations,
-            "cut_ratio": cut_ratio,
-            "mpm_trim": mpm_trim,
-            "nlp_trim": nlp_trim,
-            "fprint": fprint,
-        }
-
-        self._subband_estimate(nsubbands, noise_region, noise_region_unit, **kwargs)
-
-    def make_fid(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        pts: Optional[Iterable[int]] = None,
-    ) -> np.ndarray:
-        r"""Construct a noiseless FID from estimation result parameters.
-
-        Parameters
-        ----------
-        indices
-            The indices of results to extract errors from. Index ``0`` corresponds to
-            the first result obtained using the estimator, ``1`` corresponds to
-            the next, etc.  If ``None``, all results will be used.
-
-        pts
-            The number of points to construct the time-points with in each dimesnion.
-            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
-            used.
-        """
-        sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {"max_value": len(self._results) - 1}, True,
-            ),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "min_value": 1,
-                },
-                True,
-            ),
-        )
-
-        return super().make_fid(indices, pts=pts)
-
     def write_to_topspin(
         self,
         path: Union[str, Path],
@@ -884,6 +357,7 @@ class Estimator1D(Estimator):
         indices: Optional[Iterable[int]] = None,
         pts: Optional[Iterable[int]] = None,
     ) -> None:
+        # TODO: Work in progress
         res_len = len(self._results)
         sanity_check(
             ("expno", expno, sfuncs.check_int, (), {"min_value": 1}),
@@ -956,7 +430,6 @@ class Estimator1D(Estimator):
             fh.write(text)
         with open(expdir / "acqu", "w") as fh:
             fh.write(text)
-
         with open(expdir / "fid", "wb") as fh:
             fh.write(fid_uncomplex.astype("<f8").tobytes())
 

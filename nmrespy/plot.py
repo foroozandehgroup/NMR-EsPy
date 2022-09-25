@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 09 Sep 2022 18:29:38 BST
+# Last Edited: Sat 24 Sep 2022 22:05:09 BST
 
 """Module for plotting estimation results."""
 
@@ -568,6 +568,8 @@ def make_color_cycle(color_input: Any, n: int) -> itertools.cycle:
             mcolors.to_hex(c) for c in
             cm.get_cmap(color_input)(np.linspace(0, 1, n))
         ]
+    elif (single_color := _to_hex(color_input)) is not None:
+        iterable = [single_color]
     else:
         iterable = [_to_hex(c) for c in color_input]
 

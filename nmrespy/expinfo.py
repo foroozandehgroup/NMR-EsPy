@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 01 Sep 2022 12:40:17 BST
+# Last Edited: Sun 25 Sep 2022 16:15:56 BST
 
 import re
 from typing import Any, Iterable, Optional, Tuple, Union
@@ -61,12 +61,11 @@ class ExpInfo(FrequencyConverter):
             Any extra parameters to be included
         """
         sanity_check(("dim", dim, sfuncs.check_int, (), {"min_value": 1}))
-        self._dim = dim
         sanity_check(
             (
                 "sw", sw, sfuncs.check_float_list, (),
                 {
-                    "length": self.dim,
+                    "length": dim,
                     "len_one_can_be_listless": True,
                     "must_be_positive": True,
                 },
@@ -74,7 +73,7 @@ class ExpInfo(FrequencyConverter):
             (
                 "offset", offset, sfuncs.check_float_list, (),
                 {
-                    "length": self.dim,
+                    "length": dim,
                     "len_one_can_be_listless": True,
                 },
                 True,
@@ -82,7 +81,7 @@ class ExpInfo(FrequencyConverter):
             (
                 "sfo", sfo, sfuncs.check_float_list, (),
                 {
-                    "length": self.dim,
+                    "length": dim,
                     "len_one_can_be_listless": True,
                     "must_be_positive": True,
                     "allow_none": True,
@@ -92,7 +91,7 @@ class ExpInfo(FrequencyConverter):
             (
                 "nuclei", nuclei, sfuncs.check_nucleus_list, (),
                 {
-                    "length": self.dim,
+                    "length": dim,
                     "len_one_can_be_listless": True,
                     "none_allowed": True
                 },
@@ -101,7 +100,7 @@ class ExpInfo(FrequencyConverter):
             (
                 "default_pts", default_pts, sfuncs.check_int_list, (),
                 {
-                    "length": self.dim,
+                    "length": dim,
                     "len_one_can_be_listless": True,
                     "must_be_positive": True,
                 },
@@ -112,13 +111,13 @@ class ExpInfo(FrequencyConverter):
         if offset is None:
             offset = tuple(dim * [0.0])
 
-        self.__dict__.update(**kwargs)
+        self._dim = dim
+        for var, name in zip(
+            (sw, offset, sfo, nuclei, default_pts),
+            ("sw", "offset", "sfo", "nuclei", "default_pts"),
+        ):
+            self.__dict__[f"_{name}"] = self._totuple(var)
 
-        self._sw = self._totuple(sw)
-        self._offset = self._totuple(offset)
-        self._sfo = self._totuple(sfo)
-        self._nuclei = self._totuple(nuclei)
-        self._default_pts = self._totuple(default_pts)
         self._fn_mode = None
         if self._dim > 1:
             sanity_check(("fn_mode", fn_mode, sfuncs.check_fn_mode, (), {}, True))
@@ -136,6 +135,38 @@ class ExpInfo(FrequencyConverter):
             obj = tuple(obj)
         return obj
 
+    @property
+    def default_pts(self) -> Iterable[int]:
+        """Get default points associated with each dimension."""
+        return self._default_pts
+
+    # TODO: Want to get rid of this
+    @default_pts.setter
+    def default_pts(self, value) -> None:
+        sanity_check(
+            (
+                "default_pts", value, sfuncs.check_int_list, (),
+                {
+                    "length": self.dim,
+                    "len_one_can_be_listless": True,
+                    "must_be_positive": True,
+                },
+                True,
+            ),
+        )
+        self._default_pts = self._totuple(value)
+        super().__init__(self.sfo, self.sw(), self.offset(), self.default_pts)
+
+    @property
+    def fn_mode(self) -> str:
+        """Get acquisiton mode in indirect dimensions."""
+        return self._fn_mode
+
+    @property
+    def dim(self) -> int:
+        """Get number of dimensions in the experiment."""
+        return self._dim
+
     def sw(self, unit: str = "hz") -> Iterable[float]:
         """Get the sweep width.
 
@@ -144,9 +175,7 @@ class ExpInfo(FrequencyConverter):
         unit
             Must be ``"hz"`` or ``"ppm"``.
         """
-        sanity_check(
-            ("unit", unit, sfuncs.check_frequency_unit, (self.sfo is not None,)),
-        )
+        sanity_check(self._funit_check(unit))
         return self.convert(self._sw, f"hz->{unit}")
 
     def offset(self, unit: str = "hz") -> Iterable[float]:
@@ -157,25 +186,13 @@ class ExpInfo(FrequencyConverter):
         unit
             Must be ``"hz"`` or ``"ppm"``.
         """
-        sanity_check(
-            ("unit", unit, sfuncs.check_frequency_unit, (self.sfo is not None,)),
-        )
+        sanity_check(self._funit_check(unit))
         return self.convert(self._offset, f"hz->{unit}")
 
     @property
     def sfo(self) -> Optional[Iterable[Optional[float]]]:
         "Get the transmitter frequency (MHz)."
         return self._sfo
-
-    @property
-    def bf(self) -> Optional[Iterable[Optional[float]]]:
-        "Get the basic frequency (MHz)."
-        if self.sfo is None:
-            return None
-        else:
-            return tuple(
-                [sfo - 1e-6 * offset for sfo, offset in zip(self._sfo, self._offset)]
-            )
 
     @property
     def nuclei(self) -> Optional[Iterable[Optional[str]]]:
@@ -226,37 +243,6 @@ class ExpInfo(FrequencyConverter):
             for c in components
         ])
 
-    @property
-    def default_pts(self) -> Iterable[int]:
-        """Get default points associated with each dimension."""
-        return self._default_pts
-
-    @default_pts.setter
-    def default_pts(self, value) -> None:
-        sanity_check(
-            (
-                "default_pts", value, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "must_be_positive": True,
-                },
-                True,
-            ),
-        )
-        self._default_pts = self._totuple(value)
-        super().__init__(self.sfo, self.sw(), self.offset(), self.default_pts)
-
-    @property
-    def fn_mode(self) -> str:
-        """Get acquisiton mode in indirect dimensions."""
-        return self._fn_mode
-
-    @property
-    def dim(self) -> int:
-        """Get number of dimensions in the experiment."""
-        return self._dim
-
     def unpack(self, *args) -> Tuple[Any]:
         """Unpack attributes.
 
@@ -301,24 +287,14 @@ class ExpInfo(FrequencyConverter):
             corresponding to all combinations of points in each dimension.
         """
         sanity_check(
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "must_be_positive": True,
-                },
-                True,
-            ),
+            self._pts_check(pts),
             (
                 "start_time", start_time, sfuncs.check_start_time, (self.dim,),
                 {"len_one_can_be_listless": True}, True,
             )
         )
 
-        if pts is None:
-            pts = self.default_pts
-        pts = self._totuple(pts)
+        pts = self._process_pts(pts)
 
         if self.dim > 1:
             sanity_check(
@@ -377,25 +353,12 @@ class ExpInfo(FrequencyConverter):
             plot/contour plot.
         """
         sanity_check(
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "must_be_positive": True,
-                },
-                True,
-            ),
-            (
-                "unit", unit, sfuncs.check_frequency_unit, (self.sfo is not None,),
-                {}, True,
-            ),
+            self._pts_check(pts),
+            self._funit_check(unit),
             ("flip", flip, sfuncs.check_bool),
         )
 
-        if pts is None:
-            pts = self.default_pts
-        pts = self._totuple(pts)
+        pts = self._process_pts(pts)
 
         if self.dim > 1:
             sanity_check(("meshgrid", meshgrid, sfuncs.check_bool))
@@ -467,10 +430,11 @@ class ExpInfo(FrequencyConverter):
             noise power.
 
         indirect_modulation
-            Acquisition mode in indirect dimension of a 2D experiment. If the
-            data is not 1-dimensional, this should be one of:
+            Acquisition mode in indirect dimensions of a 2D experiment. If the
+            data is 2-dimensional, this should be one of:
 
-            * ``None`` - :math:`y \left(t_1, t_2\right) = \sum_{m} a_m
+            * ``None`` - hypercomplex dataset:
+              :math:`y \left(t_1, t_2\right) = \sum_{m} a_m
               e^{\mathrm{i} \phi_m}
               e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
               e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
@@ -493,33 +457,26 @@ class ExpInfo(FrequencyConverter):
               e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
               e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
 
-            ``None`` will lead to an array of shape ``(*pts)``. ``amp`` and ``phase``
-            will lead to an array of shape ``(2, *pts)``.
+            ``None`` will lead to an array of shape ``(n1, n2)``. ``amp`` and ``phase``
+            will lead to an array of shape ``(2, n1, n2)``, with ``fid[0]`` and
+            ``fid[1]`` being the two components of the pair.
         """
         sanity_check(
-            ("params", params, sfuncs.check_parameter_array, (self.dim,)),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "must_be_positive": True,
-                },
-                True,
-            ),
-            ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            self._params_check(params),
+            self._pts_check(pts),
+            ("snr", snr, sfuncs.check_float, (), {"min_value": 0.}, True),
             ("decibels", decibels, sfuncs.check_bool),
-            (
-                "indirect_modulation", indirect_modulation,
-                sfuncs.check_one_of, ("amp", "phase"), {}, True
-            ),
         )
 
-        if pts is None:
-            pts = self.default_pts
-        else:
-            pts = self._totuple(pts)
+        if self.dim > 1:
+            sanity_check(
+                (
+                    "indirect_modulation", indirect_modulation,
+                    sfuncs.check_one_of, ("amp", "phase"), {}, True
+                ),
+            )
 
+        pts = self._process_pts(pts)
         offset = self.offset()
         amp = params[:, 0]
         phase = params[:, 1]
@@ -588,6 +545,7 @@ class ExpInfo(FrequencyConverter):
 
         if snr is not None:
             fid += sig._make_noise(fid, snr, decibels)
+
         return fid
 
     def generate_random_signal(
@@ -628,21 +586,11 @@ class ExpInfo(FrequencyConverter):
         """
         sanity_check(
             ("oscillators", oscillators, sfuncs.check_int, (), {"min_value": 1}),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "must_be_positive": True,
-                },
-                self.default_pts is not None,
-            ),
+            self._pts_check(pts),
             ("snr", snr, sfuncs.check_float, (), {}, True),
             ("decibels", decibels, sfuncs.check_bool),
         )
-
-        if pts is None:
-            pts = self.default_pts
-        pts = self._totuple(pts)
+        pts = self._process_pts(pts)
 
         # low: 0.0, high: 1.0
         # amplitdues
@@ -725,16 +673,8 @@ class ExpInfo(FrequencyConverter):
         Spacing of points along the frequency axes is set as ``1`` (i.e. ``dx = 1``).
         """
         sanity_check(
-            ("params", params, sfuncs.check_parameter_array, (self.dim,)),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "must_be_positive": True,
-                },
-                self.default_pts is not None,
-            ),
+            self._params_check(params),
+            self._pts_check(pts),
             ("absolute", absolute, sfuncs.check_bool),
             (
                 "scale_relative_to", scale_relative_to, sfuncs.check_int, (),
@@ -763,3 +703,26 @@ class ExpInfo(FrequencyConverter):
             integrals = [x / integrals[scale_relative_to] for x in integrals]
 
         return integrals
+
+    def _process_pts(self, pts: Optional[Union[Iterable[int], int]]) -> Iterable[int]:
+        if pts is None:
+            return self.default_pts
+        return self._totuple(pts)
+
+    # Common sanity checks
+    def _funit_check(self, unit: Any, name: str = "unit"):
+        return (name, unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,))
+
+    def _params_check(self, params: Any):
+        return ("params", params, sfuncs.check_parameter_array, (self.dim,))
+
+    def _pts_check(self, pts: Any):
+        return (
+            "pts", pts, sfuncs.check_int_list, (),
+            {
+                "length": self.dim,
+                "len_one_can_be_listless": True,
+                "min_value": 1,
+            },
+            self.default_pts is not None,
+        )

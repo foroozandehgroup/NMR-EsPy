@@ -1,14 +1,14 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 21 Sep 2022 12:16:44 BST
+# Last Edited: Sun 25 Sep 2022 17:33:23 BST
 
 from __future__ import annotations
 import abc
 import datetime
 import functools
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 
@@ -23,6 +23,10 @@ from nmrespy._files import (
 )
 from nmrespy._result_fetcher import ResultFetcher
 from nmrespy._sanity import sanity_check, funcs as sfuncs
+from nmrespy import sig
+from nmrespy.freqfilter import Filter
+from nmrespy.mpm import MatrixPencil
+from nmrespy.nlp import NonlinearProgramming
 from nmrespy.write import ResultWriter
 from nmrespy.write.textfile import experiment_info, titled_table
 
@@ -329,22 +333,12 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             result obtained using the estimator, ``1`` corresponds to the next, etc.
             If ``None``, all results will be returned.
         """
-        if not self._results:
-            return None
-
-        length = len(self._results)
+        self._check_results_exist()
         sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {"max_value": length - 1}, True,
-            ),
+            self._indices_check(indices),
         )
-
-        if indices is None:
-            return self._results
-        else:
-            indices = [i % length for i in indices]
-            return [self._results[i] for i in indices]
+        indices = self._process_indices(indices)
+        return [self._results[i] for i in indices]
 
     def get_params(
         self,
@@ -379,11 +373,9 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
             can be used to specify the frequency or damping factor.
         """
+        self._check_results_exist()
         sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {"max_value": len(self._results) - 1}, True,
-            ),
+            self._indices_check(indices),
             ("merge", merge, sfuncs.check_bool),
             ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
             ("sort_by", sort_by, sfuncs.check_sort_by, (self.dim,)),
@@ -423,11 +415,9 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
             can be used to specify the frequency or damping factor.
         """
+        self._check_results_exist()
         sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {"max_value": len(self._results) - 1}, True,
-            ),
+            self._indices_check(indices),
             ("merge", merge, sfuncs.check_bool),
             ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
             ("sort_by", sort_by, sfuncs.check_sort_by, (self.dim,)),
@@ -448,17 +438,12 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
     def _get_arrays(
         self,
         name: str,
-        indices: Iterable[int],
+        indices: Optional[Iterable[int]],
         funit: str,
         sort_by: str,
         merge: bool,
     ) -> Optional[np.ndarray]:
         results = self.get_results(indices)
-
-        # No estimations have been run
-        if not results:
-            return None
-
         arrays = [result._get_array(name, funit, sort_by) for result in results]
 
         if merge:
@@ -477,81 +462,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
 
         else:
             return arrays
-
-    def make_fid(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        pts: Optional[Iterable[int]] = None,
-        indirect_modulation: Optional[str] = None,
-    ) -> np.ndarray:
-        r"""Construct a noiseless FID from estimation result parameters.
-
-        Parameters
-        ----------
-        indices
-            The indices of results to extract errors from. Index ``0`` corresponds to
-            the first result obtained using the estimator, ``1`` corresponds to
-            the next, etc.  If ``None``, all results will be used.
-
-        pts
-            The number of points to construct the time-points with in each dimesnion.
-            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
-            used.
-
-        indirect_modulation
-            Acquisition mode in indirect dimension of a 2D experiment. If the
-            data is not 1-dimensional, this should be one of:
-
-            * ``None`` - :math:`y \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
-            * ``"amp"`` - amplitude modulated pair:
-              :math:`y_{\mathrm{cos}} \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              \cos\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
-              :math:`y_{\mathrm{sin}} \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              \sin\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
-            * ``"phase"`` - phase-modulated pair:
-              :math:`y_{\mathrm{P}} \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
-              :math:`y_{\mathrm{N}} \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
-
-            ``None`` will lead to an array of shape ``(*pts)``. ``amp`` and ``phase``
-            will lead to an array of shape ``(2, *pts)``.
-        """
-        sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {"max_value": len(self._results) - 1}, True,
-            ),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "min_value": 1,
-                },
-                True,
-            ),
-            (
-                "indirect_modulation", indirect_modulation,
-                sfuncs.check_one_of, ("amp", "phase"), {}, True
-            ),
-        )
-
-        params = self.get_params(indices)
-        return super().make_fid(
-            params, pts=pts, indirect_modulation=indirect_modulation,
-        )
 
     @abc.abstractmethod
     def plot_result(*args, **kwargs):
@@ -990,9 +900,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         del self._results[index]
         self._results.insert(index, self._results.pop(-1))
 
-    def _positive_index(self, index: int) -> int:
-        return index % len(self._results)
-
     @logger
     def write_result(
         self,
@@ -1115,6 +1022,431 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             pdflatex_exe=pdflatex_exe,
         )
 
+    def _process_indices(self, indices: Optional[Iterable[int]]) -> Iterable[int]:
+        nres = len(self._results)
+        if indices is None:
+            return list(range(nres))
+        return [idx % nres for idx in indices]
+
+    # Commonly used sanity checks
+    def _indices_check(self, x: Any):
+        return (
+            "indices", x, sfuncs.check_int_list, (),
+            {"min_value": -len(self._results), "max_value": len(self._results) - 1},
+            True,
+        )
+
+
+class _Estimator1DProc(Estimator):
+    """Parent class for estimators which require processing/filtering in a single
+    dimension. i.e. 1D, 2DJ."""
+
+    def phase_data(self, p0: float = 0., p1: float = 0., pivot: int = 0) -> None:
+        """Apply a first-order phase correction in the direct dimension.
+
+        Parameters
+        ----------
+        p0
+            Zero-order phase correction, in radians.
+
+        p1
+            First-order phase correction, in radians.
+
+        pivot
+            Index of the pivot. ``0`` corresponds to the leftmost point in the
+            spectrum.
+        """
+        sanity_check(
+            ("p0", p0, sfuncs.check_float),
+            ("p1", p1, sfuncs.check_float),
+            (
+                "pivot", pivot, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": self.data.shape[-1] - 1},
+            ),
+        )
+        p0 = [0. if i != self.dim - 1 else p0 for i in range(self.dim)]
+        p1 = [0. if i != self.dim - 1 else p1 for i in range(self.dim)]
+        pivot = [0 if i != self.dim - 1 else pivot for i in range(self.dim)]
+
+        self._data = sig.ift(
+            sig.phase(
+                sig.ft(
+                    self._data,
+                    axes=[-1],
+                ),
+                p0=p0,
+                p1=p1,
+                pivot=pivot,
+            ),
+            axes=[-1],
+        )
+
+    def exp_apodisation(self, k: float):
+        """Apply an exponential window function to the direct dimnsion of the data.
+
+        The window function is computed as ``np.exp(-k * np.linspace(0, 1, n))``,
+        where ``n`` is the number of points in the direct dimension.
+        """
+        sanity_check(("k", k, sfuncs.check_float, (), {"greater_than_zero": True}))
+        self._data = sig.exp_apodisation(self._data, k, axes=[-1])
+
+    def baseline_correction(self, min_length: int = 50) -> None:
+        """TODO"""
+        shape = self.data.shape
+        direct_size = shape[-1]
+        sanity_check(
+            (
+                "min_length", min_length, sfuncs.check_int, (),
+                {"min_value": 1, "max_value": direct_size},
+            ),
+        )
+        new_size = (2 * direct_size - 1) // 2
+        new_shape = (*shape[:-1], new_size)
+        new_data = np.zeros(new_shape, dtype="complex128")
+
+        if self.dim == 1:
+            data = np.expand_dims(self.data, axis=0)
+            new_data = np.expand_dims(new_data, axis=0)
+        else:
+            data = self.data
+
+        for i, fid in enumerate(data):
+            spectrum = sig.ft(sig.make_virtual_echo(fid)).real
+            spectrum, _ = sig.baseline_correction(spectrum, min_length=min_length)
+            new_data[i] = sig.ift(spectrum)[:new_size]
+
+        self._data = new_data[0] if self.dim == 1 else new_data
+        self.default_pts = self._data.shape
+
+    @logger
+    def estimate(
+        self,
+        region: Optional[Tuple[float, float]] = None,
+        noise_region: Optional[Tuple[float, float]] = None,
+        region_unit: str = "hz",
+        initial_guess: Optional[Union[np.ndarray, int]] = None,
+        method: str = "gauss-newton",
+        mode: str = "apfd",
+        phase_variance: bool = True,
+        max_iterations: Optional[int] = None,
+        cut_ratio: Optional[float] = 1.1,
+        mpm_trim: Optional[int] = None,
+        nlp_trim: Optional[int] = None,
+        fprint: bool = True,
+        _log: bool = True,
+    ):
+        r"""Estimate a specified region of the signal.
+
+        The basic steps that this method carries out are:
+
+        * (Optional, but highly advised) Generate a frequency-filtered signal
+          corresponding to the specified region.
+        * (Optional) Generate an inital guess using the Matrix Pencil Method (MPM).
+        * Apply numerical optimisation to determine a final estimate of the signal
+          parameters
+
+        Parameters
+        ----------
+        region
+            The frequency range of interest. Should be of the form ``[left, right]``
+            where ``left`` and ``right`` are the left and right bounds of the region
+            of interest. If ``None``, the full signal will be considered, though
+            for sufficently large and complex signals it is probable that poor and
+            slow performance will be achieved.
+
+        noise_region
+            If ``region`` is not ``None``, this must be of the form ``[left, right]``
+            too. This should specify a frequency range where no noticeable signals
+            reside, i.e. only noise exists.
+
+        region_unit
+            One of ``"hz"`` or ``"ppm"`` Specifies the units that ``region``
+            and ``noise_region`` have been given as.
+
+        initial_guess
+            If ``None``, an initial guess will be generated using the MPM,
+            with the Minimum Descritpion Length being used to estimate the
+            number of oscilltors present. If and int, the MPM will be used to
+            compute the initial guess with the value given being the number of
+            oscillators. If a NumPy array, this array will be used as the initial
+            guess.
+
+        method
+            Specifies the optimisation method.
+
+            * ``"exact"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be exact.
+            * ``"gauss-newton"`` Uses SciPy's
+              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
+              The Hessian will be approximated based on the
+              `Gauss-Newton method <https://en.wikipedia.org/wiki/
+              Gauss%E2%80%93Newton_algorithm>`_
+            * ``"lbfgs"`` Uses SciPy's
+              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
+              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
+
+        mode
+            A string containing a subset of the characters ``"a"`` (amplitudes),
+            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
+            Specifies which types of parameters should be considered for optimisation.
+
+        phase_variance
+            Whether or not to include the variance of oscillator phases in the cost
+            function. This should be set to ``True`` in cases where the signal being
+            considered is derived from well-phased data.
+
+        max_iterations
+            A value specifiying the number of iterations the routine may run
+            through before it is terminated. If ``None``, the default number
+            of maximum iterations is set (``100`` if ``method`` is
+            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
+            ``"lbfgs"``).
+
+        mpm_trim
+            Specifies the maximal size allowed for the filtered signal when
+            undergoing the Matrix Pencil. If ``None``, no trimming is applied
+            to the signal. If an int, and the filtered signal has a size
+            greater than ``mpm_trim``, this signal will be set as
+            ``signal[:mpm_trim]``.
+
+        nlp_trim
+            Specifies the maximal size allowed for the filtered signal when undergoing
+            nonlinear programming. By default (``None``), no trimming is applied to
+            the signal. If an int, and the filtered signal has a size greater than
+            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
+
+        fprint
+            Whether of not to output information to the terminal.
+
+        _log
+            Ignore this!
+        """
+        sanity_check(
+            (
+                "region_unit", region_unit, sfuncs.check_frequency_unit,
+                (self.hz_ppm_valid,),
+            ),
+            (
+                "initial_guess", initial_guess, sfuncs.check_initial_guess,
+                (self.dim,), {}, True,
+            ),
+            ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
+            ("phase_variance", phase_variance, sfuncs.check_bool),
+            ("mode", mode, sfuncs.check_optimiser_mode),
+            (
+                "max_iterations", max_iterations, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            ("fprint", fprint, sfuncs.check_bool),
+            (
+                "mpm_trim", mpm_trim, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            (
+                "nlp_trim", nlp_trim, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            (
+                "cut_ratio", cut_ratio, sfuncs.check_float, (),
+                {"min_value": 1.}, True,
+            ),
+        )
+        sanity_check(
+            self._region_check(region, region_unit, "region"),
+            self._region_check(noise_region, region_unit, "noise_region"),
+        )
+
+        if region is None:
+            region_unit = "hz"
+            region = self._full_region
+            noise_region = None
+            mpm_signal = nlp_signal = self._data
+            mpm_expinfo = nlp_expinfo = self.expinfo
+
+        else:
+            region = self._process_region(region)
+            noise_region = self._process_region(noise_region)
+            filter_ = Filter(
+                self.data,
+                self.expinfo,
+                region,
+                noise_region,
+                region_unit=region_unit,
+            )
+
+            region = filter_.get_region()
+            noise_region = filter_.get_noise_region()
+            mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
+            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
+
+        if mpm_trim is None:
+            if self.default_mpm_trim is None:
+                mpm_trim = mpm_signal.shape[-1]
+            else:
+                mpm_trim = min(self.default_mpm_trim, mpm_signal.shape[-1])
+        else:
+            mpm_trim = min(mpm_trim, self.data.shape[-1])
+
+        if nlp_trim is None:
+            if self.default_nlp_trim is None:
+                nlp_trim = nlp_signal.shape[-1]
+            else:
+                nlp_trim = min(self.default_nlp_trim, nlp_signal.shape[-1])
+        else:
+            nlp_trim = min(nlp_trim, self.data.shape[-1])
+
+        if isinstance(initial_guess, np.ndarray):
+            x0 = initial_guess
+        else:
+            oscillators = initial_guess if isinstance(initial_guess, int) else 0
+
+            x0 = MatrixPencil(
+                mpm_expinfo,
+                mpm_signal[..., :mpm_trim],
+                oscillators=oscillators,
+                fprint=fprint,
+            ).get_params()
+
+            if x0 is None:
+                self._results.append(
+                    Result(
+                        np.array([[]]),
+                        np.array([[]]),
+                        region[-1],
+                        noise_region[-1],
+                        self.sfo,
+                    )
+                )
+                return
+
+        result = NonlinearProgramming(
+            nlp_expinfo,
+            nlp_signal[..., :nlp_trim],
+            x0,
+            phase_variance=phase_variance,
+            method=method,
+            mode=mode,
+            max_iterations=max_iterations,
+            fprint=fprint,
+        )
+
+        self._results.append(
+            Result(
+                result.get_params(),
+                result.get_errors(),
+                region,
+                noise_region,
+                self.sfo,
+            )
+        )
+
+    @logger
+    def subband_estimate(
+        self,
+        noise_region: Tuple[float, float],
+        noise_region_unit: str = "hz",
+        nsubbands: Optional[int] = None,
+        **estimate_kwargs,
+    ) -> None:
+        r"""Perform estiamtion on the entire signal via estimation of frequency-filtered
+        sub-bands.
+
+        This method splits the signal up into ``nsubbands`` equally-sized region
+        and extracts parameters from each region before finally concatenating all
+        the results together.
+
+        Parameters
+        ----------
+        noise_region
+            Specifies a frequency range where no noticeable signals reside, i.e. only
+            noise exists.
+
+        noise_region_unit
+            One of ``"hz"`` or ``"ppm"``. Specifies the units that ``noise_region``
+            have been given in.
+
+        nsubbands
+            The number of sub-bands to break the signal into. If ``None``, the number
+            will be set as the nearest integer to the data size divided by 500.
+
+        estimate_kwargs
+            Keyword arguments to give to :py:meth:`estimate`. Note that ``region``
+            and ``initial_guess`` will be ignored.
+        """
+        sanity_check(
+            self._funit_check(noise_region_unit, "noise_region_unit"),
+            ("nsubbands", nsubbands, sfuncs.check_int, (), {"min_value": 1}, True),
+        )
+        sanity_check(
+            self._region_check(noise_region, noise_region_unit, "noise_region"),
+        )
+
+        regions, mid_regions = self._get_subbands(nsubbands)
+        nsubbands = len(regions)
+        noise_region = self.convert(
+            (self.dim - 1) * [None] + [noise_region],
+            f"{noise_region_unit}->hz",
+        )[-1]
+
+        fprint = "fprint" not in estimate_kwargs or estimate_kwargs["fprint"]
+        if fprint:
+            print(f"Starting sub-band estimation using {nsubbands} sub-bands:")
+
+        for string in ("region", "region_unit", "initial_guess", "_log"):
+            if string in estimate_kwargs:
+                del estimate_kwargs[string]
+
+        params, errors = None, None
+        for i, (region, mid_region) in enumerate(zip(regions, mid_regions), start=1):
+            if fprint:
+                msg = (
+                    f"--> Estimating region #{i}: "
+                    f"{mid_region[0]:.2f} - {mid_region[1]:.2f}Hz"
+                )
+                if self.hz_ppm_valid:
+                    mid_region_ppm = self.convert(
+                        (self.dim - 1) * [None] + [mid_region],
+                        "hz->ppm"
+                    )[-1]
+                    msg += f" ({mid_region_ppm[0]:.3f} - {mid_region_ppm[1]:.3f}ppm)"
+                print(msg)
+
+            self.estimate(
+                region, noise_region, region_unit="hz", _log=False,
+                **estimate_kwargs,
+            )
+            p, e = self._keep_middle_freqs(self._results.pop(), mid_region)
+
+            if p is None:
+                continue
+            if params is None:
+                params = p
+                errors = e
+            else:
+                params = np.vstack((params, p))
+                errors = np.vstack((errors, e))
+
+        # Sort in order of direct-dimension freqs.
+        sort_idx = np.argsort(params[:, self.dim + 1])
+        params = params[sort_idx]
+        errors = errors[sort_idx]
+
+        if fprint:
+            print(f"{GRE}Sub-band estimation complete.{END}")
+
+        self._results.append(
+            Result(
+                params,
+                errors,
+                region=self._full_region,
+                noise_region=None,
+                sfo=self.sfo,
+            )
+        )
+
     def _get_subbands(self, nsubbands: Optional[int]):
         # N.B. This is only appropriate for Estimator1D and Estimator2DJ
         if nsubbands is None:
@@ -1170,64 +1502,30 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             np.delete(result.errors, to_remove, axis=0),
         )
 
-    def _subband_estimate(
-        self,
-        nsubbands: Optional[int],
-        noise_region: Tuple[float, float],
-        noise_region_unit: str,
-        **kwargs,
-    ) -> None:
-        regions, mid_regions = self._get_subbands(nsubbands)
-        nsubbands = len(regions)
-        noise_region = self.convert(
-            (self.dim - 1) * [None] + [noise_region],
-            f"{noise_region_unit}->hz",
-        )[-1]
+    def _region_check(self, region: Any, region_unit: str, name: str):
+        return (
+            name, region, sfuncs.check_region,
+            (
+                (self.sw(region_unit)[-1],),
+                (self.offset(region_unit)[-1],)
+            ),
+            {}, True,
+        )
 
-        fprint = kwargs.pop("fprint")
-        if fprint:
-            print(f"Starting sub-band estimation using {nsubbands} sub-bands:")
+    def _process_region(self, direct_region: Tuple[float, float]):
+        return tuple(
+            [
+                tuple(direct_region) if i == self.dim - 1
+                else None
+                for i in range(self.dim)
+            ]
+        )
 
-        params = None
-        errors = None
-        for i, (region, mid_region) in enumerate(zip(regions, mid_regions), start=1):
-            if fprint:
-                msg = (
-                    f"--> Estimating region #{i}: "
-                    f"{mid_region[0]:.2f} - {mid_region[1]:.2f}Hz"
-                )
-                if self.hz_ppm_valid:
-                    mid_region_ppm = self.convert(
-                        (self.dim - 1) * [None] + [mid_region],
-                        "hz->ppm"
-                    )[-1]
-                    msg += f" ({mid_region_ppm[0]:.3f} - {mid_region_ppm[1]:.3f}ppm)"
-                print(msg)
-
-            self.estimate(
-                region, noise_region, region_unit="hz", fprint=False, _log=False,
-                **kwargs,
-            )
-            p, e = self._keep_middle_freqs(self._results.pop(), mid_region)
-
-            if p is None:
-                continue
-            if params is None:
-                params = p
-                errors = e
-            else:
-                params = np.vstack((params, p))
-                errors = np.vstack((errors, e))
-
-        # Sort in order of direct-dimension freqs.
-        sort_idx = np.argsort(params[:, 1 + self.dim])
-        params = params[sort_idx]
-        errors = errors[sort_idx]
-
-        if fprint:
-            print(f"{GRE}Sub-band estimation complete.{END}")
-        self._results.append(
-            Result(params, errors, region=None, noise_region=None, sfo=self.sfo)
+    @property
+    def _full_region(self) -> Tuple[float, float]:
+        return self.convert(
+            self._process_region((0, self.data.shape[-1] - 1)),
+            "idx->hz",
         )
 
 

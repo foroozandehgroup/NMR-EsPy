@@ -1,14 +1,14 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 07 Sep 2022 12:53:19 BST
+# Last Edited: Sun 25 Sep 2022 12:23:01 BST
 
 """Manipulating and processing NMR signals."""
 
 import copy
 import re
 import tkinter as tk
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -181,21 +181,13 @@ def exp_apodisation(
     sanity_check(
         ("fid", fid, sfuncs.check_ndarray),
         ("k", k, sfuncs.check_float, (), {"greater_than_zero": True}),
-        (
-            "axes", axes, sfuncs.check_int_list, (),
-            {
-                "len_one_can_be_listless": True,
-                "min_value": -fid.ndim,
-                "max_value": fid.ndim - 1,
-            },
-            True,
-        ),
     )
-    if axes is None:
-        axes = list(range(fid.ndim))
-    else:
-        axes = [i % fid.ndim for i in axes]
-    indices = [chr(105 + i) for i in range(fid.ndim)]
+    dim = fid.ndim
+    sanity_check(_axes_check(axes, dim))
+
+    axes = _process_axes(axes, dim)
+
+    indices = [chr(i) for i in range(105, 105 + dim)]
     index_notation = ",".join(indices) + "->" + "".join(indices)
 
     return fid * np.einsum(
@@ -237,31 +229,15 @@ def ft(
         ("flip", flip, sfuncs.check_bool),
     )
     dim = fid.ndim
-    sanity_check(
-        (
-            "axes", axes, sfuncs.check_int_list, (),
-            {
-                "len_one_can_be_listless": True,
-                "must_be_positive": True,
-                "max_value": dim - 1,
-            },
-            True,
-        )
-    )
+    sanity_check(_axes_check(axes, dim))
 
-    if axes is None:
-        axes = list(range(dim))
-    if isinstance(axes, int):
-        axes = [axes]
+    axes = _process_axes(axes, dim)
 
     spectrum = copy.deepcopy(fid)
     for axis in axes:
         spectrum = fftshift(fft(spectrum, axis=axis), axes=axis)
 
-    if flip:
-        spectrum = np.flip(spectrum, axis=axes)
-
-    return spectrum
+    return spectrum if not flip else np.flip(spectrum, axis=axes)
 
 
 def ift(
@@ -294,21 +270,9 @@ def ift(
         ("flip", flip, sfuncs.check_bool),
     )
     dim = spectrum.ndim
-    sanity_check(
-        (
-            "axes", axes, sfuncs.check_int_list, (),
-            {
-                "len_one_can_be_listless": True,
-                "must_be_positive": True,
-                "max_value": dim - 1,
-            },
-            True,
-        )
-    )
-    if axes is None:
-        axes = list(range(dim))
-    if isinstance(axes, int):
-        axes = [axes]
+    sanity_check(_axes_check(axes, dim))
+
+    axes = _process_axes(axes, dim)
 
     fid = copy.deepcopy(spectrum)
     fid = np.flip(fid, axis=axes) if flip else fid
@@ -855,3 +819,24 @@ def baseline_correction(
     params["baseline"] = baseline
 
     return fixed_spectrum, params
+
+
+def _axes_check(axes: Any, dim: int):
+    return (
+        "axes", axes, sfuncs.check_int_list, (),
+        {
+            "len_one_can_be_listless": True,
+            "min_value": -dim,
+            "max_value": dim - 1,
+        },
+        True,
+    )
+
+
+def _process_axes(axes: Optional[Iterable[int]], dim: int) -> Iterable[int]:
+    if axes is None:
+        return list(range(dim))
+    elif isinstance(axes, int):
+        return [axes % dim]
+    else:
+        return [axis % dim for axis in axes]
