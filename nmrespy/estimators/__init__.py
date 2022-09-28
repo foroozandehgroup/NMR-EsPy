@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 25 Sep 2022 17:33:23 BST
+# Last Edited: Mon 26 Sep 2022 00:27:41 BST
 
 from __future__ import annotations
 import abc
@@ -10,6 +10,7 @@ import functools
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
+import matplotlib as mpl
 import numpy as np
 
 import nmrespy as ne
@@ -316,6 +317,52 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
                 f" {__class__.__module__}.{__class__.__qualname__}."
                 f" What was loaded didn't satisfy this!{END}"
             )
+
+    def make_fid_from_result(
+        self,
+        indices: Optional[Iterable[int]],
+        osc_indices: Optional[Iterable[Iterable[int]]] = None,
+        pts: Optional[Iterable[int]] = None,
+        indirect_modulation: Optional[str] = None,
+    ):
+        sanity_check(
+            self._indices_check(indices),
+            self._pts_check(pts),
+        )
+
+        indices = self._process_indices(indices)
+
+        full_params = self.get_params(indices)
+        sanity_check(
+            (
+                "osc_indices", osc_indices, sfuncs.check_int_list, (),
+                {
+                    "len_one_can_be_listless": True,
+                    "min_value": 0,
+                    "max_value": full_params.shape[0] - 1,
+                },
+                True,
+            ),
+        )
+
+        if osc_indices is None:
+            osc_indices = list(range(full_params.shape[0]))
+        elif isinstance(osc_indices, int):
+            osc_indices = [osc_indices]
+        else:
+            osc_indices = list(osc_indices)
+
+        if self.dim > 1:
+            sanity_check(
+                (
+                    "indirect_modulation", indirect_modulation,
+                    sfuncs.check_one_of, ("amp", "phase"), {}, True
+                ),
+            )
+
+        params = full_params[osc_indices]
+        print(params)
+        return self.make_fid(params, pts, indirect_modulation=indirect_modulation)
 
     @abc.abstractmethod
     def estimate(*args, **kwargs):
@@ -900,128 +947,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         del self._results[index]
         self._results.insert(index, self._results.pop(-1))
 
-    @logger
-    def write_result(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        path: Union[Path, str] = "./nmrespy_result",
-        fmt: str = "txt",
-        description: Optional[str] = None,
-        sig_figs: Optional[int] = 5,
-        sci_lims: Optional[Tuple[int, int]] = (-2, 3),
-        integral_mode: str = "relative",
-        force_overwrite: bool = False,
-        fprint: bool = True,
-        pdflatex_exe: Optional[Union[str, Path]] = None,
-    ) -> None:
-        """Write estimation results to text and PDF files.
-
-        Parameters
-        ----------
-        indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
-
-        path
-            Path to save the result file to.
-
-        fmt
-            Must be one of ``"txt"`` or ``"pdf"``.
-
-        description
-            A description to add to the result file.
-
-        sig_figs
-            The number of significant figures to give to parameters. If
-            ``None``, the full value will be used.
-
-        sci_lims
-            Given a value ``(-x, y)``, for ints ``x`` and ``y``, any parameter ``p``
-            with a value which satisfies ``p < 10 ** -x`` or ``p >= 10 ** y`` will be
-            expressed in scientific notation, rather than explicit notation.
-            If ``None``, all values will be expressed explicitely.
-
-        integral_mode
-            One of ``"relative"`` or ``"absolute"``. With ``"relative"``, the smallest
-            integral will be set to ``1``, and all other integrals will be scaled
-            accordingly. With ``"absolute"``, the absolute integral will be computed.
-            This should be used if you wish to directly compare different datasets.
-
-        force_overwrite
-            If the file specified already exists, and this is set to ``False``, the
-            user will be prompted to specify that they are happy overwriting the
-            current file.
-
-        fprint
-            Specifies whether or not to print information to the terminal.
-
-        pdflatex_exe
-            The path to the system's ``pdflatex`` executable.
-
-            .. note::
-
-               You are unlikely to need to set this manually. It is primarily
-               present to specify the path to ``pdflatex.exe`` on Windows when
-               the NMR-EsPy GUI has been loaded from TopSpin.
-        """
-        self._check_results_exist()
-        sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {
-                    "must_be_positive": True,
-                    "max_value": len(self._results) - 1,
-                },
-                True,
-            ),
-            ("fmt", fmt, sfuncs.check_one_of, ("txt", "pdf")),
-            ("description", description, sfuncs.check_str, (), {}, True),
-            ("sig_figs", sig_figs, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("sci_lims", sci_lims, sfuncs.check_sci_lims, (), {}, True),
-            (
-                "integral_mode", integral_mode, sfuncs.check_one_of,
-                ("relative", "absolute"),
-            ),
-            ("force_overwrite", force_overwrite, sfuncs.check_bool),
-            ("fprint", fprint, sfuncs.check_bool),
-        )
-        sanity_check(("path", path, check_saveable_path, (fmt, force_overwrite)))
-
-        indices = range(len(self._results)) if indices is None else indices
-        results = [self._results[i] for i in indices]
-        writer = ResultWriter(
-            self.expinfo,
-            [result.get_params() for result in results],
-            [result.get_errors() for result in results],
-            description,
-        )
-        region_unit = "ppm" if self.hz_ppm_valid else "hz"
-
-        # TODO:
-        # This will work for 1D and 2DJ. Will have to tweak for other 2D datasets
-        titles = []
-        for result in results:
-            if result.get_region() is None:
-                titles.append("Full signal")
-            else:
-                left, right = result.get_region(region_unit)[-1]
-                titles.append(
-                    f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
-                )
-
-        writer.write(
-            path=path,
-            fmt=fmt,
-            titles=titles,
-            parameters_sig_figs=sig_figs,
-            parameters_sci_lims=sci_lims,
-            integral_mode=integral_mode,
-            force_overwrite=True,
-            fprint=fprint,
-            pdflatex_exe=pdflatex_exe,
-        )
-
     def _process_indices(self, indices: Optional[Iterable[int]]) -> Iterable[int]:
         nres = len(self._results)
         if indices is None:
@@ -1501,6 +1426,198 @@ class _Estimator1DProc(Estimator):
             np.delete(result.params, to_remove, axis=0),
             np.delete(result.errors, to_remove, axis=0),
         )
+
+    @logger
+    def write_result(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        path: Union[Path, str] = "./nmrespy_result",
+        fmt: str = "txt",
+        description: Optional[str] = None,
+        sig_figs: Optional[int] = 5,
+        sci_lims: Optional[Tuple[int, int]] = (-2, 3),
+        integral_mode: str = "relative",
+        force_overwrite: bool = False,
+        fprint: bool = True,
+        pdflatex_exe: Optional[Union[str, Path]] = None,
+    ) -> None:
+        """Write estimation results to text and PDF files.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        path
+            Path to save the result file to.
+
+        fmt
+            Must be one of ``"txt"`` or ``"pdf"``.
+
+        description
+            A description to add to the result file.
+
+        sig_figs
+            The number of significant figures to give to parameters. If
+            ``None``, the full value will be used.
+
+        sci_lims
+            Given a value ``(-x, y)``, for ints ``x`` and ``y``, any parameter ``p``
+            with a value which satisfies ``p < 10 ** -x`` or ``p >= 10 ** y`` will be
+            expressed in scientific notation, rather than explicit notation.
+            If ``None``, all values will be expressed explicitely.
+
+        integral_mode
+            One of ``"relative"`` or ``"absolute"``. With ``"relative"``, the smallest
+            integral will be set to ``1``, and all other integrals will be scaled
+            accordingly. With ``"absolute"``, the absolute integral will be computed.
+            This should be used if you wish to directly compare different datasets.
+
+        force_overwrite
+            If the file specified already exists, and this is set to ``False``, the
+            user will be prompted to specify that they are happy overwriting the
+            current file.
+
+        fprint
+            Specifies whether or not to print information to the terminal.
+
+        pdflatex_exe
+            The path to the system's ``pdflatex`` executable.
+
+            .. note::
+
+               You are unlikely to need to set this manually. It is primarily
+               present to specify the path to ``pdflatex.exe`` on Windows when
+               the NMR-EsPy GUI has been loaded from TopSpin.
+        """
+        self._check_results_exist()
+        sanity_check(
+            self._indices_check(indices),
+            ("fmt", fmt, sfuncs.check_one_of, ("txt", "pdf")),
+            ("description", description, sfuncs.check_str, (), {}, True),
+            ("sig_figs", sig_figs, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("sci_lims", sci_lims, sfuncs.check_sci_lims, (), {}, True),
+            (
+                "integral_mode", integral_mode, sfuncs.check_one_of,
+                ("relative", "absolute"),
+            ),
+            ("force_overwrite", force_overwrite, sfuncs.check_bool),
+            ("fprint", fprint, sfuncs.check_bool),
+        )
+        sanity_check(("path", path, check_saveable_path, (fmt, force_overwrite)))
+
+        indices = self._process_indices(indices)
+        results = [self._results[i] for i in indices]
+        writer = ResultWriter(
+            self.expinfo,
+            [result.get_params() for result in results],
+            [result.get_errors() for result in results],
+            description,
+        )
+        region_unit = "ppm" if self.hz_ppm_valid else "hz"
+
+        titles = []
+        for result in results:
+            if result.get_region() is None:
+                titles.append("Full signal")
+            else:
+                left, right = result.get_region(region_unit)[-1]
+                titles.append(
+                    f"{left:.3f} - {right:.3f} {region_unit}".replace("h", "H")
+                )
+
+        writer.write(
+            path=path,
+            fmt=fmt,
+            titles=titles,
+            parameters_sig_figs=sig_figs,
+            parameters_sci_lims=sci_lims,
+            integral_mode=integral_mode,
+            force_overwrite=True,
+            fprint=fprint,
+            pdflatex_exe=pdflatex_exe,
+        )
+
+    def _plot_regions(
+        self,
+        indices: Iterable[int],
+        region_unit: str,
+    ) -> Tuple[Iterable[Iterable[int]], Iterable[Tuple[float, float]]]:
+        regions = sorted(
+            [
+                (i, result.get_region(unit=region_unit)[-1])
+                for i, result in enumerate(self.get_results())
+                if i in indices
+            ],
+            key=lambda x: x[1][0],
+            reverse=True,
+        )
+
+        # Merge overlapping/bordering regions
+        merge_indices = []
+        merge_regions = []
+        for idx, region in regions:
+            assigned = False
+            for i, reg in enumerate(merge_regions):
+                if max(region) >= min(reg):
+                    merge_regions[i] = (max(reg), min(region))
+                    assigned = True
+                elif min(region) >= max(reg):
+                    merge_regions[i] = (max(region), min(reg))
+                    assigned = True
+
+                if assigned:
+                    merge_indices[i].append(idx)
+                    break
+
+            if not assigned:
+                merge_indices.append([idx])
+                merge_regions.append(region)
+
+        return merge_indices, merge_regions
+
+    def _configure_axes(
+        self,
+        axs: np.ndarray[mpl.Axes.axes],
+        regions: Iterable[Tuple[float, float]],
+    ) -> None:
+        for ax in axs[0]:
+            ax.spines["bottom"].set_visible(False)
+        for ax in axs[1]:
+            ax.spines["top"].set_visible(False)
+        for region, ax_col in zip(regions, axs.T):
+            for ax in ax_col:
+                ax.set_xlim(*region)
+
+        if len(regions) > 1:
+            for axs_col in axs[:, :-1]:
+                for ax in axs_col:
+                    ax.spines["right"].set_visible(False)
+            for axs_col in axs[:, 1:]:
+                for ax in axs_col:
+                    ax.spines["left"].set_visible(False)
+
+            break_kwargs = {
+                "marker": [(-1, -3), (1, 3)],
+                "markersize": 10,
+                "linestyle": "none",
+                "color": "k",
+                "mec": "k",
+                "mew": 1,
+                "clip_on": False,
+            }
+            for ax in axs[0, :-1]:
+                ax.plot([1], [1], transform=ax.transAxes, **break_kwargs)
+            for ax in axs[0, 1:]:
+                ax.plot([0], [1], transform=ax.transAxes, **break_kwargs)
+            for ax in axs[1, :-1]:
+                ax.plot([1], [0], transform=ax.transAxes, **break_kwargs)
+            for ax in axs[1, 1:]:
+                ax.plot([0], [0], transform=ax.transAxes, **break_kwargs)
+                ax.set_yticks([])
+
 
     def _region_check(self, region: Any, region_unit: str, name: str):
         return (

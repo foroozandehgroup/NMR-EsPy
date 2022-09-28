@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 25 Sep 2022 17:37:32 BST
+# Last Edited: Mon 26 Sep 2022 00:32:32 BST
 
 from __future__ import annotations
 import copy
@@ -13,6 +13,7 @@ import shutil
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from nmr_sims.experiments.pa import PulseAcquireSimulation
@@ -31,7 +32,7 @@ from nmrespy.freqfilter import Filter
 from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
-from nmrespy.plot import ResultPlotter
+from nmrespy.plot import ResultPlotter, make_color_cycle
 
 from . import logger, _Estimator1DProc, Result
 
@@ -433,159 +434,338 @@ class Estimator1D(_Estimator1DProc):
         with open(expdir / "fid", "wb") as fh:
             fh.write(fid_uncomplex.astype("<f8").tobytes())
 
+    # @logger
+    # def plot_result(
+    #     self,
+    #     indices: Optional[Iterable[int]] = None,
+    #     *,
+    #     plot_residual: bool = True,
+    #     plot_model: bool = False,
+    #     residual_shift: Optional[Iterable[float]] = None,
+    #     model_shift: Optional[float] = None,
+    #     shifts_unit: str = "ppm",
+    #     data_color: Any = "#000000",
+    #     residual_color: Any = "#808080",
+    #     model_color: Any = "#808080",
+    #     oscillator_colors: Optional[Any] = None,
+    #     show_labels: bool = False,
+    #     stylesheet: Optional[Union[str, Path]] = None,
+    # ) -> Iterable[ResultPlotter]:
+    #     """Write estimation results to text and PDF files.
+
+    #     Parameters
+    #     ----------
+    #     indices
+    #         The indices of results to include. Index ``0`` corresponds to the first
+    #         result obtained using the estimator, ``1`` corresponds to the next, etc.
+    #         If ``None``, all results will be included.
+
+    #     plot_model
+    #         If ``True``, plot the model generated using ``result``. This model is
+    #         a summation of all oscillator present in the result.
+
+    #     plot_residual
+    #         If ``True``, plot the difference between the data and the model
+    #         generated using ``result``.
+
+    #     residual_shift
+    #         Specifies a translation of the residual plot along the y-axis. If
+    #         ``None``, a default shift will be applied.
+
+    #     model_shift
+    #         Specifies a translation of the residual plot along the y-axis. If
+    #         ``None``, a default shift will be applied.
+
+    #     shifts_unit
+    #         Units to display chemical shifts in. Must be either ``'ppm'`` or
+    #         ``'hz'``.
+
+    #     data_color
+    #         The colour used to plot the data. Any value that is recognised by
+    #         matplotlib as a color is permitted. See `here
+    #         <https://matplotlib.org/stable/tutorials/colors/colors.html>`_ for
+    #         a full description of valid values.
+
+    #     residual_color
+    #         # The colour used to plot the residual. See ``data_color`` for a
+    #         # description of valid colors.
+
+    #     model_color
+    #         The colour used to plot the model. See ``data_color`` for a
+    #         description of valid colors.
+
+    #     oscillator_colors
+    #         Describes how to color individual oscillators. The following
+    #         is a complete list of options:
+
+    #         * If a valid matplotlib color is given, all oscillators will
+    #           be given this color.
+    #         * If a string corresponding to a matplotlib colormap is given,
+    #           the oscillators will be consecutively shaded by linear increments
+    #           of this colormap. For all valid colormaps, see
+    #           `here <https://matplotlib.org/stable/tutorials/colors/\
+    #           colormaps.html>`__
+    #         * If an iterable object containing valid matplotlib colors is
+    #           given, these colors will be cycled.
+    #           For example, if ``oscillator_colors = ['r', 'g', 'b']``:
+
+    #           + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
+    #           + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
+    #           + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
+
+    #         * If ``None``, the default colouring method will be applied, which
+    #           involves cycling through the following colors:
+
+    #             - :oscblue:`#1063E0`
+    #             - :oscorange:`#EB9310`
+    #             - :oscgreen:`#2BB539`
+    #             - :oscred:`#D4200C`
+
+    #     show_labels
+    #         If ``True``, each oscillator will be given a numerical label
+    #         in the plot, if ``False``, the labels will be hidden.
+
+    #     stylesheet
+    #         The name of/path to a matplotlib stylesheet for further
+    #         customaisation of the plot. See `here <https://matplotlib.org/\
+    #         stable/tutorials/introductory/customizing.html>`__ for more
+    #         information on stylesheets.
+    #     """
+    #     self._check_results_exist()
+    #     sanity_check(
+    #         (
+    #             "indices", indices, sfuncs.check_int_list, (),
+    #             {
+    #                 "must_be_positive": True,
+    #                 "max_value": len(self._results) - 1,
+    #             },
+    #             True,
+    #         ),
+    #         ("plot_residual", plot_residual, sfuncs.check_bool),
+    #         ("plot_model", plot_model, sfuncs.check_bool),
+    #         ("residual_shift", residual_shift, sfuncs.check_float, (), {}, True),
+    #         ("model_shift", model_shift, sfuncs.check_float, (), {}, True),
+    #         (
+    #             "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
+    #             (self.hz_ppm_valid,),
+    #         ),
+    #         ("data_color", data_color, sfuncs.check_mpl_color),
+    #         ("residual_color", residual_color, sfuncs.check_mpl_color),
+    #         ("model_color", model_color, sfuncs.check_mpl_color),
+    #         (
+    #             "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
+    #             (), {}, True,
+    #         ),
+    #         ("show_labels", show_labels, sfuncs.check_bool),
+    #         ("stylesheet", stylesheet, sfuncs.check_str, (), {}, True),
+    #     )
+    #     results = self.get_results(indices)
+
+    #     expinfo = ExpInfo(
+    #         1,
+    #         sw=self.sw(),
+    #         offset=self.offset(),
+    #         sfo=self.sfo,
+    #         nuclei=self.nuclei,
+    #         default_pts=self.default_pts,
+    #     )
+
+    #     return [
+    #         ResultPlotter(
+    #             self._data,
+    #             result.get_params(funit="hz"),
+    #             expinfo,
+    #             region=result.get_region(unit=shifts_unit),
+    #             shifts_unit=shifts_unit,
+    #             plot_residual=plot_residual,
+    #             plot_model=plot_model,
+    #             residual_shift=residual_shift,
+    #             model_shift=model_shift,
+    #             data_color=data_color,
+    #             residual_color=residual_color,
+    #             model_color=model_color,
+    #             oscillator_colors=oscillator_colors,
+    #             show_labels=show_labels,
+    #             stylesheet=stylesheet,
+    #         )
+    #         for result in results
+
     @logger
     def plot_result(
         self,
         indices: Optional[Iterable[int]] = None,
-        *,
-        plot_residual: bool = True,
-        plot_model: bool = False,
-        residual_shift: Optional[Iterable[float]] = None,
+        high_resolution_pts: Optional[int] = None,
+        figure_size: Tuple[float, float] = (8., 6.),
+        region_unit: str = "hz",
+        axes_left: float = 0.07,
+        axes_right: float = 0.96,
+        axes_bottom: float = 0.08,
+        axes_top: float = 0.96,
+        axes_region_separation: float = 0.05,
+        xaxis_label_height: float = 0.02,
+        xaxis_ticks: Optional[Iterable[Tuple[int, Iterable[float]]]] = None,
+        oscillator_colors: Any = None,
         model_shift: Optional[float] = None,
-        shifts_unit: str = "ppm",
-        data_color: Any = "#000000",
-        residual_color: Any = "#808080",
-        model_color: Any = "#808080",
-        oscillator_colors: Optional[Any] = None,
-        show_labels: bool = False,
-        stylesheet: Optional[Union[str, Path]] = None,
-    ) -> Iterable[ResultPlotter]:
-        """Write estimation results to text and PDF files.
-
-        Parameters
-        ----------
-        indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
-
-        plot_model
-            If ``True``, plot the model generated using ``result``. This model is
-            a summation of all oscillator present in the result.
-
-        plot_residual
-            If ``True``, plot the difference between the data and the model
-            generated using ``result``.
-
-        residual_shift
-            Specifies a translation of the residual plot along the y-axis. If
-            ``None``, a default shift will be applied.
-
-        model_shift
-            Specifies a translation of the residual plot along the y-axis. If
-            ``None``, a default shift will be applied.
-
-        shifts_unit
-            Units to display chemical shifts in. Must be either ``'ppm'`` or
-            ``'hz'``.
-
-        data_color
-            The colour used to plot the data. Any value that is recognised by
-            matplotlib as a color is permitted. See `here
-            <https://matplotlib.org/stable/tutorials/colors/colors.html>`_ for
-            a full description of valid values.
-
-        residual_color
-            # The colour used to plot the residual. See ``data_color`` for a
-            # description of valid colors.
-
-        model_color
-            The colour used to plot the model. See ``data_color`` for a
-            description of valid colors.
-
-        oscillator_colors
-            Describes how to color individual oscillators. The following
-            is a complete list of options:
-
-            * If a valid matplotlib color is given, all oscillators will
-              be given this color.
-            * If a string corresponding to a matplotlib colormap is given,
-              the oscillators will be consecutively shaded by linear increments
-              of this colormap. For all valid colormaps, see
-              `here <https://matplotlib.org/stable/tutorials/colors/\
-              colormaps.html>`__
-            * If an iterable object containing valid matplotlib colors is
-              given, these colors will be cycled.
-              For example, if ``oscillator_colors = ['r', 'g', 'b']``:
-
-              + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
-              + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
-              + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
-
-            * If ``None``, the default colouring method will be applied, which
-              involves cycling through the following colors:
-
-                - :oscblue:`#1063E0`
-                - :oscorange:`#EB9310`
-                - :oscgreen:`#2BB539`
-                - :oscred:`#D4200C`
-
-        show_labels
-            If ``True``, each oscillator will be given a numerical label
-            in the plot, if ``False``, the labels will be hidden.
-
-        stylesheet
-            The name of/path to a matplotlib stylesheet for further
-            customaisation of the plot. See `here <https://matplotlib.org/\
-            stable/tutorials/introductory/customizing.html>`__ for more
-            information on stylesheets.
-        """
-        self._check_results_exist()
+        data_shift: float = 0.,
+        label_peaks: bool = False,
+        denote_regions: bool = False,
+    ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         sanity_check(
+            self._indices_check(indices),
             (
-                "indices", indices, sfuncs.check_int_list, (),
-                {
-                    "must_be_positive": True,
-                    "max_value": len(self._results) - 1,
-                },
-                True,
+                "high_resolution_pts", high_resolution_pts, sfuncs.check_int, (),
+                {"min_value": self.default_pts[-1]}, True,
             ),
-            ("plot_residual", plot_residual, sfuncs.check_bool),
-            ("plot_model", plot_model, sfuncs.check_bool),
-            ("residual_shift", residual_shift, sfuncs.check_float, (), {}, True),
-            ("model_shift", model_shift, sfuncs.check_float, (), {}, True),
             (
-                "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
-                (self.hz_ppm_valid,),
+                "figure_size", figure_size, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
             ),
-            ("data_color", data_color, sfuncs.check_mpl_color),
-            ("residual_color", residual_color, sfuncs.check_mpl_color),
-            ("model_color", model_color, sfuncs.check_mpl_color),
+            self._funit_check(region_unit, "region_unit"),
+            (
+                "axes_left", axes_left, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_right", axes_right, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_bottom", axes_bottom, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_top", axes_top, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_region_separation", axes_region_separation, sfuncs.check_float,
+                (), {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "xaxis_label_height", xaxis_label_height, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "model_shift", model_shift, sfuncs.check_float, (),
+                {"min_value": 0.}, True,
+            ),
             (
                 "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
                 (), {}, True,
             ),
-            ("show_labels", show_labels, sfuncs.check_bool),
-            ("stylesheet", stylesheet, sfuncs.check_str, (), {}, True),
-        )
-        results = self.get_results(indices)
-
-        expinfo = ExpInfo(
-            1,
-            sw=self.sw(),
-            offset=self.offset(),
-            sfo=self.sfo,
-            nuclei=self.nuclei,
-            default_pts=self.default_pts,
+            ("label_peaks", label_peaks, sfuncs.check_bool),
+            ("denote_regions", denote_regions, sfuncs.check_bool),
         )
 
-        return [
-            ResultPlotter(
-                self._data,
-                result.get_params(funit="hz"),
-                expinfo,
-                region=result.get_region(unit=shifts_unit),
-                shifts_unit=shifts_unit,
-                plot_residual=plot_residual,
-                plot_model=plot_model,
-                residual_shift=residual_shift,
-                model_shift=model_shift,
-                data_color=data_color,
-                residual_color=residual_color,
-                model_color=model_color,
-                oscillator_colors=oscillator_colors,
-                show_labels=show_labels,
-                stylesheet=stylesheet,
+        indices = self._process_indices(indices)
+        merge_indices, merge_regions = self._plot_regions(indices, region_unit)
+        n_regions = len(merge_regions)
+        n_oscs = self.get_params(indices=indices).shape[0]
+
+        if high_resolution_pts is None:
+            high_resolution_pts = self.default_pts[-1]
+
+        highres_expinfo = self.expinfo
+        highres_expinfo.default_pts = (high_resolution_pts,)
+
+        full_shifts_highres, = highres_expinfo.get_shifts(unit=region_unit)
+        full_shifts, = self.get_shifts(unit=region_unit)
+        full_model = self.make_fid_from_result(indices)
+        full_model[0] *= 0.5
+        full_residual = self.spectrum.real - sig.ft(full_model).real
+        full_model_highres = self.make_fid_from_result(indices, pts=high_resolution_pts)
+        full_model_highres[0] *= 0.5
+        full_model_highres = sig.ft(full_model_highres).real
+
+        # Get all the ydata
+        spectra = []
+        models = []
+        residuals = []
+        oscillators = []
+        shifts = []
+        shifts_highres = []
+        for idx, region in zip(merge_regions, merge_regions):
+            slice_ = slice(
+                *self.convert([region], f"{region_unit}->idx")[0]
             )
-            for result in results
-        ]
+            highres_slice = slice(
+                *highres_expinfo.convert([region], f"{region_unit}->idx")[0]
+            )
+
+            shifts.append(full_shifts[slice_])
+            shifts_highres.append(full_shifts_highres[highres_slice])
+            spectra.append(self.spectrum.real[slice_])
+            oscs = []
+            for i in range(n_oscs):
+                osc = self.make_fid_from_result(
+                    indices=indices, osc_indices=i, pts=high_resolution_pts,
+                )
+                osc[0] *= 0.5
+                oscs.append(sig.ft(osc).real[highres_slice])
+            oscillators.append(oscs)
+            residuals.append(full_residual[slice_])
+            models.append(full_model_highres[highres_slice])
+
+        bottom_span = (
+            min([np.amin(residual) for residual in residuals]),
+            max([np.amax(residual) for residual in residuals]),
+        )
+
+        if model_shift is None:
+            model_shift = 0.1 * max([np.amax(spectrum) for spectrum in spectra])
+
+        models = [(model + model_shift) for model in models]
+        all_top_lines = (
+            [osc for oscs in oscillators for osc in oscs] +
+            [spectrum for spectrum in spectra] +
+            [model for model in models]
+        )
+        top_span = (
+            min([np.amax(line) for line in all_top_lines]),
+            max([np.amax(line) for line in all_top_lines]),
+        )
+
+        fig, axs = plt.subplots(
+            nrows=2,
+            ncols=n_regions,
+            gridspec_kw={
+                "left": axes_left,
+                "right": axes_right,
+                "bottom": axes_bottom,
+                "top": axes_top,
+                "wspace": axes_region_separation,
+                "width_ratios": [r[0] - r[1] for r in merge_regions],
+                "hspace": 0.,
+                "height_ratios": [
+                    top_span[1] - top_span[0],
+                    bottom_span[1] - bottom_span[0]
+                ],
+            },
+            figsize=figure_size,
+        )
+
+        for ax, shifts_, residual in zip(axs[1], shifts, residuals):
+            ax.plot(shifts_, residual, color="#808080")
+
+        for ax, shifts_, spectrum in zip(axs[0], shifts, spectra):
+            ax.plot(shifts_, spectrum, color="#000000")
+
+        for ax, shifts_hr, model in zip(axs[0], shifts_highres, models):
+            ax.plot(shifts_hr, model, color="#808080")
+
+        colors = make_color_cycle(oscillator_colors, len(oscillators))
+        for ax, shifts_hr, oscs in zip(axs[0], shifts_highres, oscillators):
+            for osc in oscs:
+                color = next(colors)
+                ax.plot(shifts_hr, osc, color=color)
+
+        self._configure_axes(axs, merge_regions)
+        for axs_row in axs:
+            for ax in axs_row:
+                ax.set_yticks([])
+        for ax in axs[0]:
+            ax.set_xticks([])
+            ax.set_ylim(top_span)
+
+
+        return fig, axs
