@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 30 Mar 2022 14:27:23 BST
+# Last Edited: Sat 24 Sep 2022 23:02:15 BST
 
 import inspect
 from typing import Any, Dict, Iterable, Optional

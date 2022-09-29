@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 19 Sep 2022 18:13:58 BST
+# Last Edited: Thu 29 Sep 2022 15:56:30 BST
 
 from __future__ import annotations
 import copy
@@ -13,11 +13,8 @@ import shutil
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-
-from nmr_sims.experiments.pa import PulseAcquireSimulation
-from nmr_sims.nuclei import Nucleus
-from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
@@ -31,9 +28,9 @@ from nmrespy.freqfilter import Filter
 from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import NonlinearProgramming
-from nmrespy.plot import ResultPlotter
+from nmrespy.plot import ResultPlotter, make_color_cycle
 
-from . import logger, Estimator, Result
+from . import logger, _Estimator1DProc, Result
 
 
 if USE_COLORAMA:
@@ -45,7 +42,7 @@ if MATLAB_AVAILABLE:
     import matlab.engine
 
 
-class Estimator1D(Estimator):
+class Estimator1D(_Estimator1DProc):
     """Estimator class for 1D data.
 
     .. note::
@@ -59,25 +56,8 @@ class Estimator1D(Estimator):
         * :py:meth:`from_pickle` (re-loads a previously saved estimator).
     """
 
-    def __init__(
-        self,
-        data: np.ndarray,
-        expinfo: ExpInfo,
-        datapath: Optional[Path] = None,
-    ) -> None:
-        """
-        Parameters
-        ----------
-        data
-            Time-domain data to estimate.
-
-        expinfo
-            Experiment information.
-
-        datapath
-            If applicable, the path that the data was derived from.
-        """
-        super().__init__(data, expinfo, datapath)
+    default_mpm_trim = 4096
+    default_nlp_trim = None
 
     @classmethod
     def new_bruker(
@@ -140,14 +120,12 @@ class Estimator1D(Estimator):
     def new_spinach(
         cls,
         shifts: Iterable[float],
+        couplings: Optional[Iterable[Tuple(int, int, float)]],
         pts: int,
         sw: float,
-        offset: float,
-        field: float = 11.74,
-        field_unit: str = "tesla",
-        couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
-        channel: str = "1H",
-        nuclei: Optional[List[str]] = None,
+        offset: float = 0.,
+        sfo: float = 500.,
+        nucleus: str = "1H",
         snr: Optional[float] = 20.,
         lb: float = 6.91,
     ) -> None:
@@ -158,6 +136,14 @@ class Estimator1D(Estimator):
         shifts
             A list of tuple of chemical shift values for each spin.
 
+        couplings
+            The scalar couplings present in the spin system. Given ``shifts`` is of
+            length ``n``, couplings should be an iterable with entries of the form
+            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
+            the two spins involved in the coupling, and ``coupling`` is the value
+            of the scalar coupling in Hz. ``None`` will set all spins to be
+            uncoupled.
+
         pts
             The number of points the signal comprises.
 
@@ -167,32 +153,11 @@ class Estimator1D(Estimator):
         offset
             The transmitter offset (Hz).
 
-        field
-            The magnetic field stength, in either Tesla or MHz (see ``field_unit``).
+        sfo
+            The transmitter frequency (MHz).
 
-        field_unit
-            ``MHz`` or ``Tesla``. The unit that ``field`` is given as. If ``MHz``,
-            this will be taken as the Larmor frequency of proton.
-
-        couplings
-            The scalar couplings present in the spin system. Given ``shifts`` is of
-            length ``n``, couplings should be an iterable with entries of the form
-            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
-            the two spins involved in the coupling, and ``coupling`` is the value
-            of the scalar coupling in Hz.
-
-        channel
+        nucleus
             The identity of the nucleus targeted in the pulse sequence.
-
-        nuclei
-            The type of nucleus for each spin. Can be either:
-
-            * ``None``, in which case each spin will be set as the identity of
-              ``channel``.
-            * A list of length ``n``, where ``n`` is the number of spins. Each
-              entry should be a string satisfying the regular expression
-              ``"\d+[A-Z][a-z]*"``, and recognised by Spinach as a real nucleus
-              e.g. ``"1H"``, ``"13C"``, ``"195Pt"``.
 
         snr
             The signal-to-noise ratio of the resulting signal, in decibels. ``None``
@@ -210,51 +175,34 @@ class Estimator1D(Estimator):
                 "take at look here:\n"
                 "https://www.mathworks.com/help/matlab/matlab_external/"
                 f"install-the-matlab-engine-for-python.html{END}"
-           )
+            )
 
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
             ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float),
-            ("channel", channel, sfuncs.check_nucleus),
-            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
+            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("nucleus", nucleus, sfuncs.check_nucleus),
             ("snr", snr, sfuncs.check_float),
             ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True})
         )
-
         nspins = len(shifts)
         sanity_check(
-            ("nuclei", nuclei, sfuncs.check_nucleus_list, (), {"length": nspins}, True),
-            (
-                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
-                {}, True,
-            ),
+            ("couplings", couplings, sfuncs.check_spinach_couplings, (nspins,)),
         )
-
-        if nuclei is None:
-            nuclei = nspins * [channel]
-
-        if field_unit == "MHz":
-            field = (2e6 * np.pi * field) / 2.6752218744e8
 
         with cd(SPINACHPATH):
             devnull = io.StringIO(str(os.devnull))
             try:
                 eng = matlab.engine.start_matlab()
-                fid, sfo = eng.onedim_sim(
-                    field, nuclei, shifts, couplings, offset,
-                    sw, pts, channel, nargout=2, stdout=devnull, stderr=devnull,
+                fid = eng.onedim_sim(
+                    shifts, couplings, pts, sw, offset, sfo, nucleus,
+                    stdout=devnull, stderr=devnull,
                 )
             except matlab.engine.MatlabExecutionError:
                 raise ValueError(
-                    f"{RED}Something went wrong in trying to run Spinach. This "
-                    "is likely due to one of two things:\n"
-                    "1. An inappropriate argument was given which was not noticed by "
-                    "sanity checks. For example, you provided an isotope of the "
-                    "correct format but which is unknown\n"
-                    "2. You have not correctly configured Spinach.\n"
+                    f"{RED}Something went wrong in trying to run Spinach.\n"
                     "Read what is stated below the line "
                     "\"matlab.engine.MatlabExecutionError:\" "
                     f"for more details on the error raised.{END}"
@@ -273,7 +221,7 @@ class Estimator1D(Estimator):
             sw=sw,
             offset=offset,
             sfo=sfo,
-            nuclei=channel,
+            nuclei=nucleus,
             default_pts=fid.shape,
         )
 
@@ -285,9 +233,11 @@ class Estimator1D(Estimator):
         params: np.ndarray,
         pts: int,
         sw: float,
-        offset: float = 0.0,
-        sfo: Optional[float] = None,
-        snr: float = 30.0,
+        offset: float,
+        sfo: float = 500.,
+        nucleus: str = "1H",
+        snr: Optional[float] = 20.,
+        lb: float = 6.91,
     ) -> Estimator1D:
         """Generate an estimator instance from an array of oscillator parameters.
 
@@ -322,7 +272,7 @@ class Estimator1D(Estimator):
             to the FID.
         """
         sanity_check(
-            ("params", params, sfuncs.check_ndarray, (), {"dim": 2, "shape": [(1, 4)]}),
+            ("params", params, sfuncs.check_parameter_array, (1,)),
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
             ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float, (), {}, True),
@@ -341,120 +291,12 @@ class Estimator1D(Estimator):
         data = expinfo.make_fid(params, snr=snr)
         return cls(data, expinfo)
 
-    @classmethod
-    def new_synthetic_from_simulation(
-        cls,
-        spin_system: SpinSystem,
-        sw: float,
-        offset: float,
-        pts: int,
-        freq_unit: str = "hz",
-        channel: Union[str, Nucleus] = "1H",
-        snr: Optional[float] = 30.0,
-    ) -> Estimator1D:
-        """Generate an estimator with data derived from a pulse-aquire experiment
-        simulation.
-
-        Simulations are performed using the
-        `nmr_sims.experiments.pa.PulseAcquireSimulation
-        <https://foroozandehgroup.github.io/nmr_sims/content/references/experiments/
-        pa.html#nmr_sims.experiments.pa.PulseAcquireSimulation>`_
-        class.
-
-        Parameters
-        ----------
-        spin_system
-            Specification of the spin system to run simulations on.
-            `See here <https://foroozandehgroup.github.io/nmr_sims/content/
-            references/spin_system.html#nmr_sims.spin_system.SpinSystem.__init__>`_
-            for more details. **N.B. the transmitter frequency (sfo) will
-            be determined by** ``spin_system.field``.
-
-        sw
-            The sweep width in Hz.
-
-        offset
-            The transmitter offset frequency in Hz.
-
-        pts
-            The number of points sampled.
-
-        freq_unit
-            The unit that ``sw`` and ``offset`` are expressed in. Should
-            be either ``"hz"`` or ``"ppm"``.
-
-        channel
-            Nucleus targeted in the experiment simulation. ¹H is set as the default.
-            `See here <https://foroozandehgroup.github.io/nmr_sims/content/
-            references/nuclei.html>`__ for more information.
-
-        snr
-            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
-            produces a noiseless signal.
-        """
-        sanity_check(
-            ("spin_system", spin_system, sfuncs.check_spin_system),
-            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("offset", offset, sfuncs.check_float),
-            ("pts", pts, sfuncs.check_positive_int),
-            ("freq_unit", freq_unit, sfuncs.check_one_of, ("hz", "ppm")),
-            ("channel", channel, sfuncs.check_nmrsims_nucleus),
-            ("snr", snr, sfuncs.check_float, (), {}, True),
-        )
-
-        sw = f"{sw}{freq_unit}"
-        offset = f"{offset}{freq_unit}"
-        sim = PulseAcquireSimulation(
-            spin_system, pts, sw, offset=offset, channel=channel,
-        )
-        sim.simulate()
-        _, data, _ = sim.fid()
-        if snr is not None:
-            data += sig._make_noise(data, snr)
-
-        expinfo = ExpInfo(
-            dim=1,
-            sw=sim.sweep_widths[0],
-            offset=sim.offsets[0],
-            sfo=sim.sfo[0],
-            nuclei=channel,
-            default_pts=data.shape,
-        )
-
-        return cls(data, expinfo)
-
     @property
     def spectrum(self) -> np.ndarray:
         """Return the spectrum corresponding to ``self.data``"""
         data = copy.deepcopy(self.data)
-        data[0] /= 2
+        data[0] *= 0.5
         return sig.ft(data)
-
-    def phase_data(
-        self,
-        p0: float = 0.0,
-        p1: float = 0.0,
-        pivot: int = 0,
-    ) -> None:
-        """Apply first-order phae correction to the estimator's data.
-
-        Parameters
-        ----------
-        p0
-            Zero-order phase correction, in radians.
-
-        p1
-            First-order phase correction, in radians.
-
-        pivot
-            Index of the pivot.
-        """
-        sanity_check(
-            ("p0", p0, sfuncs.check_float),
-            ("p1", p1, sfuncs.check_float),
-            ("pivot", pivot, sfuncs.check_index, (self._data.size,)),
-        )
-        self._data = sig.phase(self._data, [p0], [p1], [pivot])
 
     def view_data(
         self,
@@ -504,378 +346,6 @@ class Estimator1D(Estimator):
 
         plt.show()
 
-    @logger
-    def estimate(
-        self,
-        region: Optional[Tuple[float, float]] = None,
-        noise_region: Optional[Tuple[float, float]] = None,
-        region_unit: str = "hz",
-        initial_guess: Optional[Union[np.ndarray, int]] = None,
-        method: str = "gauss-newton",
-        mode: str = "apfd",
-        phase_variance: bool = True,
-        max_iterations: Optional[int] = None,
-        cut_ratio: Optional[float] = 1.1,
-        mpm_trim: Optional[int] = 4096,
-        nlp_trim: Optional[int] = None,
-        fprint: bool = True,
-        _log: bool = True,
-    ) -> None:
-        r"""Estimate a specified region of the signal.
-
-        The basic steps that this method carries out are:
-
-        * (Optional, but highly advised) Generate a frequency-filtered signal
-          corresponding to the specified region.
-        * (Optional) Generate an inital guess using the Matrix Pencil Method (MPM).
-        * Apply numerical optimisation to determine a final estimate of the signal
-          parameters
-
-        Parameters
-        ----------
-        region
-            The frequency range of interest. Should be of the form ``[left, right]``
-            where ``left`` and ``right`` are the left and right bounds of the region
-            of interest. If ``None``, the full signal will be considered, though
-            for sufficently large and complex signals it is probable that poor and
-            slow performance will be achieved.
-
-        noise_region
-            If ``region`` is not ``None``, this must be of the form ``[left, right]``
-            too. This should specify a frequency range where no noticeable signals
-            reside, i.e. only noise exists.
-
-        region_unit
-            One of ``"hz"`` or ``"ppm"`` Specifies the units that ``region``
-            and ``noise_region`` have been given as.
-
-        initial_guess
-            If ``None``, an initial guess will be generated using the MPM,
-            with the Minimum Descritpion Length being used to estimate the
-            number of oscilltors present. If and int, the MPM will be used to
-            compute the initial guess with the value given being the number of
-            oscillators. If a NumPy array, this array will be used as the initial
-            guess.
-
-        method
-            Specifies the optimisation method.
-
-            * ``"exact"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be exact.
-            * ``"gauss-newton"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be approximated based on the
-              `Gauss-Newton method <https://en.wikipedia.org/wiki/
-              Gauss%E2%80%93Newton_algorithm>`_
-            * ``"lbfgs"`` Uses SciPy's
-              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
-
-        mode
-            A string containing a subset of the characters ``"a"`` (amplitudes),
-            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
-            Specifies which types of parameters should be considered for optimisation.
-
-        phase_variance
-            Whether or not to include the variance of oscillator phases in the cost
-            function. This should be set to ``True`` in cases where the signal being
-            considered is derived from well-phased data.
-
-        max_iterations
-            A value specifiying the number of iterations the routine may run
-            through before it is terminated. If ``None``, the default number
-            of maximum iterations is set (``100`` if ``method`` is
-            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
-            ``"lbfgs"``).
-
-        mpm_trim
-            Specifies the maximal size allowed for the filtered signal when
-            undergoing the Matrix Pencil. If ``None``, no trimming is applied
-            to the signal. If an int, and the filtered signal has a size
-            greater than ``mpm_trim``, this signal will be set as
-            ``signal[:mpm_trim]``.
-
-        nlp_trim
-            Specifies the maximal size allowed for the filtered signal when undergoing
-            nonlinear programming. By default (``None``), no trimming is applied to
-            the signal. If an int, and the filtered signal has a size greater than
-            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
-
-        fprint
-            Whether of not to output information to the terminal.
-
-        _log
-            Ignore this!
-        """
-        sanity_check(
-            (
-                "region_unit", region_unit, sfuncs.check_frequency_unit,
-                (self.hz_ppm_valid,),
-            ),
-            (
-                "initial_guess", initial_guess, sfuncs.check_initial_guess,
-                (self.dim,), {}, True
-            ),
-            ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
-            ("phase_variance", phase_variance, sfuncs.check_bool),
-            ("mode", mode, sfuncs.check_optimiser_mode),
-            (
-                "max_iterations", max_iterations, sfuncs.check_int, (),
-                {"min_value": 1}, True,
-            ),
-            ("fprint", fprint, sfuncs.check_bool),
-            ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
-            (
-                "cut_ratio", cut_ratio, sfuncs.check_float, (),
-                {"greater_than_one": True}, True,
-            ),
-        )
-
-        sanity_check(
-            (
-                "region", region, sfuncs.check_region,
-                (self.sw(region_unit), self.offset(region_unit)), {}, True,
-            ),
-            (
-                "noise_region", noise_region, sfuncs.check_region,
-                (self.sw(region_unit), self.offset(region_unit)), {}, True,
-            ),
-        )
-
-        if region is None:
-            region = self.convert(((0, self._data.size - 1),), "idx->hz")
-            noise_region = None
-            mpm_signal = nlp_signal = self._data
-            mpm_expinfo = nlp_expinfo = self.expinfo
-
-        else:
-            filt = Filter(
-                self._data,
-                self.expinfo,
-                region,
-                noise_region,
-                region_unit=region_unit,
-            )
-
-            mpm_signal, mpm_expinfo = filt.get_filtered_fid(cut_ratio=cut_ratio)
-            nlp_signal, nlp_expinfo = filt.get_filtered_fid(cut_ratio=None)
-            region = filt.get_region()
-            noise_region = filt.get_noise_region()
-
-        if (mpm_trim is None) or (mpm_trim > mpm_signal.size):
-            mpm_trim = mpm_signal.size
-        if (nlp_trim is None) or (nlp_trim > nlp_signal.size):
-            nlp_trim = nlp_signal.size
-
-        if isinstance(initial_guess, np.ndarray):
-            x0 = initial_guess
-        else:
-            oscillators = initial_guess if isinstance(initial_guess, int) else 0
-
-            x0 = MatrixPencil(
-                mpm_expinfo,
-                mpm_signal[:mpm_trim],
-                oscillators=oscillators,
-                fprint=fprint,
-            ).get_params()
-
-            if x0 is None:
-                return self._results.append(
-                    Result(
-                        np.array([[]]),
-                        np.array([[]]),
-                        region,
-                        noise_region,
-                        self.sfo,
-                    )
-                )
-
-        result = NonlinearProgramming(
-            nlp_expinfo,
-            nlp_signal[:nlp_trim],
-            x0,
-            phase_variance=phase_variance,
-            method=method,
-            mode=mode,
-            max_iterations=max_iterations,
-            fprint=fprint,
-        )
-
-        self._results.append(
-            Result(
-                result.get_params(),
-                result.get_errors(),
-                region,
-                noise_region,
-                self.sfo,
-            )
-        )
-
-    @logger
-    def subband_estimate(
-        self,
-        noise_region: Tuple[float, float],
-        noise_region_unit: str = "hz",
-        nsubbands: Optional[int] = None,
-        method: str = "gauss-newton",
-        phase_variance: bool = True,
-        max_iterations: Optional[int] = None,
-        cut_ratio: Optional[float] = 1.1,
-        mpm_trim: Optional[int] = 4096,
-        nlp_trim: Optional[int] = None,
-        fprint: bool = True,
-        _log: bool = True,
-    ) -> None:
-        r"""Perform estiamtion on the entire signal via estimation of frequency-filtered
-        sub-bands.
-
-        This method splits the signal up into ``nsubbands`` equally-sized region
-        and extracts parameters from each region before finally concatenating all
-        the results together.
-
-        Parameters
-        ----------
-        noise_region
-            Specifies a frequency range where no noticeable signals reside, i.e. only
-            noise exists.
-
-        noise_region_unit
-            One of ``"hz"`` or ``"ppm"``. Specifies the units that ``noise_region``
-            have been given in.
-
-        nsubbands
-            The number of sub-bands to break the signal into. If ``None``, the number
-            will be set as the nearest integer to the data size divided by 500.
-
-        method
-            Specifies the optimisation method.
-
-            * ``"exact"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be exact.
-            * ``"gauss-newton"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be approximated based on the
-              `Gauss-Newton method <https://en.wikipedia.org/wiki/
-              Gauss%E2%80%93Newton_algorithm>`_
-            * ``"lbfgs"`` Uses SciPy's
-              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
-
-        phase_variance
-            Whether or not to include the variance of oscillator phases in the cost
-            function. This should be set to ``True`` in cases where the signal being
-            considered is derived from well-phased data.
-
-        max_iterations
-            A value specifiying the number of iterations the routine may run
-            through before it is terminated. If ``None``, the default number
-            of maximum iterations is set (``100`` if ``method`` is
-            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
-            ``"lbfgs"``).
-
-        mpm_trim
-            Specifies the maximal size allowed for the filtered signal when
-            undergoing the Matrix Pencil. If ``None``, no trimming is applied
-            to the signal. If an int, and the filtered signal has a size
-            greater than ``mpm_trim``, this signal will be set as
-            ``signal[:mpm_trim]``.
-
-        nlp_trim
-            Specifies the maximal size allowed for the filtered signal when undergoing
-            nonlinear programming. By default (``None``), no trimming is applied to
-            the signal. If an int, and the filtered signal has a size greater than
-            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
-
-        fprint
-            Whether of not to output information to the terminal.
-
-        _log
-            Ignore this!
-        """
-        sanity_check(
-            (
-                "noise_region_unit", noise_region_unit, sfuncs.check_frequency_unit,
-                (self.hz_ppm_valid,),
-            ),
-            ("nsubbands", nsubbands, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
-            ("phase_variance", phase_variance, sfuncs.check_bool),
-            (
-                "max_iterations", max_iterations, sfuncs.check_int, (),
-                {"min_value": 1}, True,
-            ),
-            ("fprint", fprint, sfuncs.check_bool),
-            ("mpm_trim", mpm_trim, sfuncs.check_int, (), {"min_value": 1}, True),
-            ("nlp_trim", nlp_trim, sfuncs.check_int, (), {"min_value": 1}, True),
-            (
-                "cut_ratio", cut_ratio, sfuncs.check_float, (),
-                {"greater_than_one": True}, True,
-            ),
-        )
-
-        sanity_check(
-            (
-                "noise_region", noise_region, sfuncs.check_region,
-                (self.sw(noise_region_unit), self.offset(noise_region_unit)), {}, True,
-            ),
-        )
-
-        kwargs = {
-            "method": method,
-            "phase_variance": phase_variance,
-            "max_iterations": max_iterations,
-            "cut_ratio": cut_ratio,
-            "mpm_trim": mpm_trim,
-            "nlp_trim": nlp_trim,
-            "fprint": fprint,
-        }
-
-        self._subband_estimate(nsubbands, noise_region, noise_region_unit, **kwargs)
-
-    def make_fid(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        pts: Optional[Iterable[int]] = None,
-    ) -> np.ndarray:
-        r"""Construct a noiseless FID from estimation result parameters.
-
-        Parameters
-        ----------
-        indices
-            The indices of results to extract errors from. Index ``0`` corresponds to
-            the first result obtained using the estimator, ``1`` corresponds to
-            the next, etc.  If ``None``, all results will be used.
-
-        pts
-            The number of points to construct the time-points with in each dimesnion.
-            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
-            used.
-        """
-        sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {"max_value": len(self._results) - 1}, True,
-            ),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "min_value": 1,
-                },
-                True,
-            ),
-        )
-
-        return super().make_fid(indices, pts=pts)
-
     def write_to_topspin(
         self,
         path: Union[str, Path],
@@ -884,6 +354,7 @@ class Estimator1D(Estimator):
         indices: Optional[Iterable[int]] = None,
         pts: Optional[Iterable[int]] = None,
     ) -> None:
+        # TODO: Work in progress
         res_len = len(self._results)
         sanity_check(
             ("expno", expno, sfuncs.check_int, (), {"min_value": 1}),
@@ -956,163 +427,360 @@ class Estimator1D(Estimator):
             fh.write(text)
         with open(expdir / "acqu", "w") as fh:
             fh.write(text)
-
         with open(expdir / "fid", "wb") as fh:
             fh.write(fid_uncomplex.astype("<f8").tobytes())
+
+    # @logger
+    # def plot_result(
+    #     self,
+    #     indices: Optional[Iterable[int]] = None,
+    #     *,
+    #     plot_residual: bool = True,
+    #     plot_model: bool = False,
+    #     residual_shift: Optional[Iterable[float]] = None,
+    #     model_shift: Optional[float] = None,
+    #     shifts_unit: str = "ppm",
+    #     data_color: Any = "#000000",
+    #     residual_color: Any = "#808080",
+    #     model_color: Any = "#808080",
+    #     oscillator_colors: Optional[Any] = None,
+    #     show_labels: bool = False,
+    #     stylesheet: Optional[Union[str, Path]] = None,
+    # ) -> Iterable[ResultPlotter]:
+    #     """Write estimation results to text and PDF files.
+
+    #     Parameters
+    #     ----------
+    #     indices
+    #         The indices of results to include. Index ``0`` corresponds to the first
+    #         result obtained using the estimator, ``1`` corresponds to the next, etc.
+    #         If ``None``, all results will be included.
+
+    #     plot_model
+    #         If ``True``, plot the model generated using ``result``. This model is
+    #         a summation of all oscillator present in the result.
+
+    #     plot_residual
+    #         If ``True``, plot the difference between the data and the model
+    #         generated using ``result``.
+
+    #     residual_shift
+    #         Specifies a translation of the residual plot along the y-axis. If
+    #         ``None``, a default shift will be applied.
+
+    #     model_shift
+    #         Specifies a translation of the residual plot along the y-axis. If
+    #         ``None``, a default shift will be applied.
+
+    #     shifts_unit
+    #         Units to display chemical shifts in. Must be either ``'ppm'`` or
+    #         ``'hz'``.
+
+    #     data_color
+    #         The colour used to plot the data. Any value that is recognised by
+    #         matplotlib as a color is permitted. See `here
+    #         <https://matplotlib.org/stable/tutorials/colors/colors.html>`_ for
+    #         a full description of valid values.
+
+    #     residual_color
+    #         # The colour used to plot the residual. See ``data_color`` for a
+    #         # description of valid colors.
+
+    #     model_color
+    #         The colour used to plot the model. See ``data_color`` for a
+    #         description of valid colors.
+
+    #     oscillator_colors
+    #         Describes how to color individual oscillators. The following
+    #         is a complete list of options:
+
+    #         * If a valid matplotlib color is given, all oscillators will
+    #           be given this color.
+    #         * If a string corresponding to a matplotlib colormap is given,
+    #           the oscillators will be consecutively shaded by linear increments
+    #           of this colormap. For all valid colormaps, see
+    #           `here <https://matplotlib.org/stable/tutorials/colors/\
+    #           colormaps.html>`__
+    #         * If an iterable object containing valid matplotlib colors is
+    #           given, these colors will be cycled.
+    #           For example, if ``oscillator_colors = ['r', 'g', 'b']``:
+
+    #           + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
+    #           + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
+    #           + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
+
+    #         * If ``None``, the default colouring method will be applied, which
+    #           involves cycling through the following colors:
+
+    #             - :oscblue:`#1063E0`
+    #             - :oscorange:`#EB9310`
+    #             - :oscgreen:`#2BB539`
+    #             - :oscred:`#D4200C`
+
+    #     show_labels
+    #         If ``True``, each oscillator will be given a numerical label
+    #         in the plot, if ``False``, the labels will be hidden.
+
+    #     stylesheet
+    #         The name of/path to a matplotlib stylesheet for further
+    #         customaisation of the plot. See `here <https://matplotlib.org/\
+    #         stable/tutorials/introductory/customizing.html>`__ for more
+    #         information on stylesheets.
+    #     """
+    #     self._check_results_exist()
+    #     sanity_check(
+    #         (
+    #             "indices", indices, sfuncs.check_int_list, (),
+    #             {
+    #                 "must_be_positive": True,
+    #                 "max_value": len(self._results) - 1,
+    #             },
+    #             True,
+    #         ),
+    #         ("plot_residual", plot_residual, sfuncs.check_bool),
+    #         ("plot_model", plot_model, sfuncs.check_bool),
+    #         ("residual_shift", residual_shift, sfuncs.check_float, (), {}, True),
+    #         ("model_shift", model_shift, sfuncs.check_float, (), {}, True),
+    #         (
+    #             "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
+    #             (self.hz_ppm_valid,),
+    #         ),
+    #         ("data_color", data_color, sfuncs.check_mpl_color),
+    #         ("residual_color", residual_color, sfuncs.check_mpl_color),
+    #         ("model_color", model_color, sfuncs.check_mpl_color),
+    #         (
+    #             "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
+    #             (), {}, True,
+    #         ),
+    #         ("show_labels", show_labels, sfuncs.check_bool),
+    #         ("stylesheet", stylesheet, sfuncs.check_str, (), {}, True),
+    #     )
+    #     results = self.get_results(indices)
+
+    #     expinfo = ExpInfo(
+    #         1,
+    #         sw=self.sw(),
+    #         offset=self.offset(),
+    #         sfo=self.sfo,
+    #         nuclei=self.nuclei,
+    #         default_pts=self.default_pts,
+    #     )
+
+    #     return [
+    #         ResultPlotter(
+    #             self._data,
+    #             result.get_params(funit="hz"),
+    #             expinfo,
+    #             region=result.get_region(unit=shifts_unit),
+    #             shifts_unit=shifts_unit,
+    #             plot_residual=plot_residual,
+    #             plot_model=plot_model,
+    #             residual_shift=residual_shift,
+    #             model_shift=model_shift,
+    #             data_color=data_color,
+    #             residual_color=residual_color,
+    #             model_color=model_color,
+    #             oscillator_colors=oscillator_colors,
+    #             show_labels=show_labels,
+    #             stylesheet=stylesheet,
+    #         )
+    #         for result in results
 
     @logger
     def plot_result(
         self,
         indices: Optional[Iterable[int]] = None,
-        *,
-        plot_residual: bool = True,
-        plot_model: bool = False,
-        residual_shift: Optional[Iterable[float]] = None,
+        high_resolution_pts: Optional[int] = None,
+        figure_size: Tuple[float, float] = (8., 6.),
+        region_unit: str = "hz",
+        axes_left: float = 0.07,
+        axes_right: float = 0.96,
+        axes_bottom: float = 0.08,
+        axes_top: float = 0.96,
+        axes_region_separation: float = 0.05,
+        xaxis_unit: str = "hz",
+        xaxis_label_height: float = 0.02,
+        xaxis_ticks: Optional[Iterable[Tuple[int, Iterable[float]]]] = None,
+        oscillator_colors: Any = None,
         model_shift: Optional[float] = None,
-        shifts_unit: str = "ppm",
-        data_color: Any = "#000000",
-        residual_color: Any = "#808080",
-        model_color: Any = "#808080",
-        oscillator_colors: Optional[Any] = None,
-        show_labels: bool = False,
-        stylesheet: Optional[Union[str, Path]] = None,
-    ) -> Iterable[ResultPlotter]:
-        """Write estimation results to text and PDF files.
-
-        Parameters
-        ----------
-        indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
-
-        plot_model
-            If ``True``, plot the model generated using ``result``. This model is
-            a summation of all oscillator present in the result.
-
-        plot_residual
-            If ``True``, plot the difference between the data and the model
-            generated using ``result``.
-
-        residual_shift
-            Specifies a translation of the residual plot along the y-axis. If
-            ``None``, a default shift will be applied.
-
-        model_shift
-            Specifies a translation of the residual plot along the y-axis. If
-            ``None``, a default shift will be applied.
-
-        shifts_unit
-            Units to display chemical shifts in. Must be either ``'ppm'`` or
-            ``'hz'``.
-
-        data_color
-            The colour used to plot the data. Any value that is recognised by
-            matplotlib as a color is permitted. See `here
-            <https://matplotlib.org/stable/tutorials/colors/colors.html>`_ for
-            a full description of valid values.
-
-        residual_color
-            # The colour used to plot the residual. See ``data_color`` for a
-            # description of valid colors.
-
-        model_color
-            The colour used to plot the model. See ``data_color`` for a
-            description of valid colors.
-
-        oscillator_colors
-            Describes how to color individual oscillators. The following
-            is a complete list of options:
-
-            * If a valid matplotlib color is given, all oscillators will
-              be given this color.
-            * If a string corresponding to a matplotlib colormap is given,
-              the oscillators will be consecutively shaded by linear increments
-              of this colormap. For all valid colormaps, see
-              `here <https://matplotlib.org/stable/tutorials/colors/\
-              colormaps.html>`__
-            * If an iterable object containing valid matplotlib colors is
-              given, these colors will be cycled.
-              For example, if ``oscillator_colors = ['r', 'g', 'b']``:
-
-              + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`
-              + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`
-              + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`
-
-            * If ``None``, the default colouring method will be applied, which
-              involves cycling through the following colors:
-
-                - :oscblue:`#1063E0`
-                - :oscorange:`#EB9310`
-                - :oscgreen:`#2BB539`
-                - :oscred:`#D4200C`
-
-        show_labels
-            If ``True``, each oscillator will be given a numerical label
-            in the plot, if ``False``, the labels will be hidden.
-
-        stylesheet
-            The name of/path to a matplotlib stylesheet for further
-            customaisation of the plot. See `here <https://matplotlib.org/\
-            stable/tutorials/introductory/customizing.html>`__ for more
-            information on stylesheets.
-        """
-        self._check_results_exist()
+        data_shift: float = 0.,
+        label_peaks: bool = False,
+        denote_regions: bool = False,
+    ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         sanity_check(
+            self._indices_check(indices),
             (
-                "indices", indices, sfuncs.check_int_list, (),
-                {
-                    "must_be_positive": True,
-                    "max_value": len(self._results) - 1,
-                },
-                True,
+                "high_resolution_pts", high_resolution_pts, sfuncs.check_int, (),
+                {"min_value": self.default_pts[-1]}, True,
             ),
-            ("plot_residual", plot_residual, sfuncs.check_bool),
-            ("plot_model", plot_model, sfuncs.check_bool),
-            ("residual_shift", residual_shift, sfuncs.check_float, (), {}, True),
-            ("model_shift", model_shift, sfuncs.check_float, (), {}, True),
             (
-                "shifts_unit", shifts_unit, sfuncs.check_frequency_unit,
-                (self.hz_ppm_valid,),
+                "figure_size", figure_size, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
             ),
-            ("data_color", data_color, sfuncs.check_mpl_color),
-            ("residual_color", residual_color, sfuncs.check_mpl_color),
-            ("model_color", model_color, sfuncs.check_mpl_color),
+            self._funit_check(region_unit, "region_unit"),
+            (
+                "axes_left", axes_left, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_right", axes_right, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_bottom", axes_bottom, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_top", axes_top, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "axes_region_separation", axes_region_separation, sfuncs.check_float,
+                (), {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "xaxis_label_height", xaxis_label_height, sfuncs.check_float, (),
+                {"min_value": 0., "max_value": 1.},
+            ),
+            (
+                "model_shift", model_shift, sfuncs.check_float, (),
+                {"min_value": 0.}, True,
+            ),
             (
                 "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
                 (), {}, True,
             ),
-            ("show_labels", show_labels, sfuncs.check_bool),
-            ("stylesheet", stylesheet, sfuncs.check_str, (), {}, True),
-        )
-        results = self.get_results(indices)
-
-        expinfo = ExpInfo(
-            1,
-            sw=self.sw(),
-            offset=self.offset(),
-            sfo=self.sfo,
-            nuclei=self.nuclei,
-            default_pts=self.default_pts,
+            ("label_peaks", label_peaks, sfuncs.check_bool),
+            ("denote_regions", denote_regions, sfuncs.check_bool),
         )
 
-        return [
-            ResultPlotter(
-                self._data,
-                result.get_params(funit="hz"),
-                expinfo,
-                region=result.get_region(unit=shifts_unit),
-                shifts_unit=shifts_unit,
-                plot_residual=plot_residual,
-                plot_model=plot_model,
-                residual_shift=residual_shift,
-                model_shift=model_shift,
-                data_color=data_color,
-                residual_color=residual_color,
-                model_color=model_color,
-                oscillator_colors=oscillator_colors,
-                show_labels=show_labels,
-                stylesheet=stylesheet,
+        indices = self._process_indices(indices)
+        merge_indices, merge_regions = self._plot_regions(indices, region_unit)
+        n_regions = len(merge_regions)
+        n_oscs = self.get_params(indices=indices).shape[0]
+
+        if high_resolution_pts is None:
+            high_resolution_pts = self.default_pts[-1]
+
+        highres_expinfo = self.expinfo
+        highres_expinfo.default_pts = (high_resolution_pts,)
+
+        full_shifts_highres, = highres_expinfo.get_shifts(unit=region_unit)
+        full_shifts, = self.get_shifts(unit=region_unit)
+        full_model = self.make_fid_from_result(indices)
+        full_model[0] *= 0.5
+        full_residual = self.spectrum.real - sig.ft(full_model).real
+        full_model_highres = self.make_fid_from_result(indices, pts=high_resolution_pts)
+        full_model_highres[0] *= 0.5
+        full_model_highres = sig.ft(full_model_highres).real
+
+        # Get all the ydata
+        spectra = []
+        models = []
+        residuals = []
+        oscillators = []
+        shifts = []
+        shifts_highres = []
+        for idx, region in zip(merge_regions, merge_regions):
+            slice_ = slice(
+                *self.convert([region], f"{region_unit}->idx")[0]
             )
-            for result in results
-        ]
+            highres_slice = slice(
+                *highres_expinfo.convert([region], f"{region_unit}->idx")[0]
+            )
+
+            shifts.append(full_shifts[slice_])
+            shifts_highres.append(full_shifts_highres[highres_slice])
+            spectra.append(self.spectrum.real[slice_])
+            oscs = []
+            for i in range(n_oscs):
+                osc = self.make_fid_from_result(
+                    indices=indices, osc_indices=i, pts=high_resolution_pts,
+                )
+                osc[0] *= 0.5
+                oscs.append(sig.ft(osc).real[highres_slice])
+            oscillators.append(oscs)
+            residuals.append(full_residual[slice_])
+            models.append(full_model_highres[highres_slice])
+
+        resid_span = (
+            min([np.amin(residual) for residual in residuals]),
+            max([np.amax(residual) for residual in residuals]),
+        )
+        r = resid_span[1] - resid_span[0]
+
+        if model_shift is None:
+            model_shift = 0.1 * max([np.amax(spectrum) for spectrum in spectra])
+        models = [(model + model_shift) for model in models]
+
+        rest_lines = (
+            [osc for oscs in oscillators for osc in oscs] +
+            [spectrum for spectrum in spectra] +
+            [model for model in models]
+        )
+        rest_span = (
+            min([np.amin(line) for line in rest_lines]),
+            max([np.amax(line) for line in rest_lines]),
+        )
+        s = rest_span[1] - rest_span[0]
+
+        t = (r + s) / 0.91
+        bottom = resid_span[0] - 0.03 * t
+        top = bottom + t
+
+        rest_shift = resid_span[1] - rest_span[0] + (0.03 * t)
+
+        model_shift += rest_shift
+
+        for i, oscs in enumerate(oscillators):
+            oscillators[i] = [osc + rest_shift for osc in oscs]
+        spectra = [(spectrum + rest_shift) for spectrum in spectra]
+        models = [(model + rest_shift) for model in models]
+
+        fig, axs = plt.subplots(
+            nrows=1,
+            ncols=n_regions,
+            gridspec_kw={
+                "left": axes_left,
+                "right": axes_right,
+                "bottom": axes_bottom,
+                "top": axes_top,
+                "wspace": axes_region_separation,
+                "width_ratios": [r[0] - r[1] for r in merge_regions],
+            },
+            figsize=figure_size,
+        )
+        axs = np.expand_dims(axs, axis=0)
+
+        for ax, shifts_, residual in zip(axs[0], shifts, residuals):
+            ax.plot(shifts_, residual, color="#808080")
+
+        for ax, shifts_, spectrum in zip(axs[0], shifts, spectra):
+            ax.plot(shifts_, spectrum, color="#000000")
+
+        for ax, shifts_hr, model in zip(axs[0], shifts_highres, models):
+            ax.plot(shifts_hr, model, color="#808080")
+
+        noscs = len(oscillators[0])
+        for ax, shifts_hr, oscs in zip(axs[0], shifts_highres, oscillators):
+            colors = make_color_cycle(oscillator_colors, noscs)
+            for osc in oscs:
+                color = next(colors)
+                ax.plot(shifts_hr, osc, color=color)
+
+        self._configure_axes(
+            fig,
+            axs,
+            merge_regions,
+            xaxis_ticks,
+            axes_left,
+            axes_right,
+            xaxis_label_height,
+            region_unit,
+        )
+
+        for ax in axs[0]:
+            ax.set_yticks([])
+            ax.set_ylim(bottom, top)
+
+        return fig, axs

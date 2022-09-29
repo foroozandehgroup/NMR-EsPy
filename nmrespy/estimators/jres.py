@@ -1,15 +1,13 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 23 Sep 2022 15:52:09 BST
+# Last Edited: Thu 29 Sep 2022 16:05:31 BST
 
 from __future__ import annotations
 import copy
-import io
 import itertools
 from pathlib import Path
 import re
-import sys
 import tkinter as tk
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
@@ -19,9 +17,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk,
 )
-
-from nmr_sims.experiments.jres import JresSimulation
-from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy.plot import make_color_cycle
@@ -258,160 +253,6 @@ class Estimator2DJ(Estimator):
             sfo=(None, sfo),
             nuclei=(None, channel),
             default_pts=fid.shape,
-        )
-
-        return cls(fid, expinfo)
-
-    @classmethod
-    def new_nmrsims(
-        cls,
-        shifts: Iterable[float],
-        pts: Tuple[int, int],
-        sw: Tuple[float, float],
-        offset: float,
-        field: float = 11.74,
-        field_unit: str = "tesla",
-        couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
-        channel: str = "1H",
-        nuclei: Optional[List[str]] = None,
-        snr: Optional[float] = 20.,
-        lb: Optional[Tuple[float, float]] = (6.91, 6.91),
-    ) -> Estimator2DJ:
-        r"""Create a new instance from a 2DJ NMR Sims simulation.
-
-        Parameters
-        ----------
-        shifts
-            A list or tuple of chemical shift values for each spin.
-
-        pts
-            The number of points the signal comprises.
-
-        sw
-            The sweep width of the signal (Hz).
-
-        offset
-            The transmitter offset (Hz).
-
-        field
-            The magnetic field stength, in either Tesla or MHz (see ``field_unit``).
-
-        field_unit
-            ``MHz`` or ``Tesla``. The unit that ``field`` is given as. If ``MHz``,
-            this will be taken as the Larmor frequency of the nucleus specified by
-            ``channel``.
-
-        couplings
-            The scalar couplings present in the spin system. Given ``shifts`` is of
-            length ``n``, couplings should be an iterable with entries of the form
-            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
-            the two spins involved in the coupling, and ``coupling`` is the value
-            of the scalar coupling in Hz.
-
-        channel
-            The identity of the nucleus targeted in the pulse sequence.
-
-        nuclei
-            The type of nucleus for each spin. Can be either:
-
-            * ``None``, in which case each spin will be set as the identity of
-              ``channel``.
-            * A list of length ``n``, where ``n`` is the number of spins. Each
-              entry should be a string satisfying the regular expression
-              ``"\d+[A-Z][a-z]*"``, and recognised as a real nucleus e.g. ``"1H"``,
-              ``"13C"``.
-
-        snr
-            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
-            produces a noiseless signal.
-
-        lb
-            Line broadening (exponential damping) to apply to the signal. If a tuple
-            of two floats, damping in T1 will be dictated by ``lb[0]`` and damping
-            in T2 will be dictated by ``lb[1]``. Note that the first point will be
-            unaffected by damping, and the final point will be multiplied by
-            ``np.exp(-lb[i])`` for each dimension. The default results in the final
-            point being decreased in value by a factor of roughly 1000.
-        """
-        sanity_check(
-            ("shifts", shifts, sfuncs.check_float_list),
-            ("pts", pts, sfuncs.check_int_list, (), {"length": 2}),
-            (
-                "sw", sw, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
-            ("offset", offset, sfuncs.check_float),
-            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
-            ("channel", channel, sfuncs.check_nmrsims_nucleus),
-            ("snr", snr, sfuncs.check_float),
-            (
-                "lb", lb, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True}, True,
-            ),
-        )
-
-        nspins = len(shifts)
-        sanity_check(
-            ("nuclei", nuclei, sfuncs.check_nucleus_list, (), {"length": nspins}, True),
-            (
-                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
-                {}, True,
-            ),
-        )
-
-        if nuclei is None:
-            nuclei = nspins * [channel]
-
-        # Construct SpinSystem object
-        spins = {
-            i: {"shift": shift, "nucleus": nucleus}
-            for i, (shift, nucleus) in enumerate(zip(shifts, nuclei), start=1)
-        }
-        for i1, i2, coupling in couplings:
-            i1, i2 = min(i1, i2), max(i1, i2)
-            if "couplings" not in spins[i1]:
-                spins[i1]["couplings"] = {}
-            spins[i1]["couplings"][i2] = coupling
-
-        if field_unit == "tesla":
-            field = f"{field}T"
-        elif field_unit == "MHz":
-            field = f"{field}MHz"
-
-        spin_system = SpinSystem(spins, field=field)
-
-        # Prevent normal nmr_sims output from appearing
-        text_trap = io.StringIO()
-        sys.stdout = text_trap
-
-        sim = JresSimulation(spin_system, pts, sw, offset, channel)
-        sim.simulate()
-
-        sys.stdout = sys.__stdout__
-
-        if lb is None:
-            # Determine factor to ensure that final point dampened by a factor
-            # of 1/1000
-            lb = tuple([-(1 / x) * np.log(0.001) for x in pts])
-
-        _, fid, _ = sim.fid(lb=(0., 0.))
-
-        if snr is not None:
-            fid = sig.add_noise(fid, snr)
-
-        # Apply exponential damping
-        for i, k in enumerate(lb):
-            fid = sig.exp_apodisation(fid, k, axes=[i])
-
-        expinfo = ExpInfo(
-            dim=2,
-            sw=sim.sweep_widths,
-            offset=(0., sim.offsets[0]),
-            sfo=(None, sim.sfo[0]),
-            nuclei=(None, sim.channels[0].name),
-            default_pts=fid.shape,
-            fn_mode="QF",
         )
 
         return cls(fid, expinfo)
