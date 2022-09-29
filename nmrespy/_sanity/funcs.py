@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 19 Sep 2022 17:37:56 BST
+# Last Edited: Thu 29 Sep 2022 12:24:29 BST
 
 from pathlib import Path
 import re
@@ -10,10 +10,7 @@ from typing import Any, Iterable, Optional, Tuple, Union
 import matplotlib as mpl
 from matplotlib import colors as mcolors
 import matplotlib.pyplot as plt
-
 import numpy as np
-from nmr_sims.nuclei import Nucleus, supported_nuclei
-from nmr_sims.spin_system import SpinSystem
 
 
 def isiter(x: Any) -> bool:
@@ -460,23 +457,6 @@ def check_oscillator_colors(obj: Any) -> Optional[str]:
                 return f"The following is not a valid color: {e}"
         return
     return "Not a valid color, list of colors, or colormap."
-
-
-def check_spin_system(obj: Any) -> Optional[str]:
-    if not isinstance(obj, SpinSystem):
-        return "Should be an instance of nmr_sims.spin_system.SpinSystem."
-
-
-def check_nmrsims_nucleus(obj: Any) -> Optional[str]:
-    if isinstance(obj, Nucleus):
-        return
-    elif isinstance(obj, str):
-        if obj in supported_nuclei:
-            return
-    return (
-        "Should be an instance of nmr_sims.nuclei.Nucleus, or a key found in "
-        "nmr_sims.nuclei.supported_nuclei."
-    )
 
 
 def isnuc(obj: Any) -> bool:

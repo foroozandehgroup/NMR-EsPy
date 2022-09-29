@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 26 Sep 2022 00:32:32 BST
+# Last Edited: Thu 29 Sep 2022 12:26:39 BST
 
 from __future__ import annotations
 import copy
@@ -15,10 +15,6 @@ from typing import Any, Iterable, List, Optional, Tuple, Union
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
-from nmr_sims.experiments.pa import PulseAcquireSimulation
-from nmr_sims.nuclei import Nucleus
-from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA

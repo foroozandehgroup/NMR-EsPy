@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 27 Jul 2022 18:16:33 BST
+# Last Edited: Thu 29 Sep 2022 12:25:27 BST
 
 from __future__ import annotations
 import copy
@@ -15,10 +15,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk,
 )
-
-from nmr_sims.experiments.jres import JresSimulation
-from nmr_sims.nuclei import Nucleus
-from nmr_sims.spin_system import SpinSystem
 
 from nmrespy import ExpInfo, sig
 from nmrespy.app.custom_widgets import MyEntry
@@ -41,105 +37,6 @@ class Estimator2DJ(Estimator):
     @classmethod
     def new_bruker(cls):
         pass
-
-    @classmethod
-    def new_synthetic_from_simulation(
-        cls,
-        spin_system: SpinSystem,
-        sweep_widths: Tuple[float, float],
-        offset: float,
-        pts: Tuple[int, int],
-        channel: Union[str, Nucleus] = "1H",
-        f2_unit: str = "ppm",
-        snr: Optional[float] = 30.0,
-        lb: Optional[Tuple[float, float]] = None,
-    ) -> Estimator2DJ:
-        """Generate an estimator with data derived from a J-resolved experiment
-        simulation.
-
-        Simulations are performed using
-        `nmr_sims.experiments.jres.JresEstimator
-        <https://foroozandehgroup.github.io/nmr_sims/content/references/experiments/
-        pa.html#nmr_sims.experiments.jres.JresEstimator>`_.
-
-        Parameters
-        ----------
-        spin_system
-            Specification of the spin system to run simulations on. `See here
-            <https://foroozandehgroup.github.io/nmr_sims/content/references/
-            spin_system.html#nmr_sims.spin_system.SpinSystem.__init__>`_
-            for more details.
-
-        sweep_widths
-            The sweep width in each dimension. The first element, corresponding
-            to F1, should be in Hz. The second element, corresponding to F2,
-            should be expressed in the unit which corresponds to ``f2_unit``.
-
-        offset
-            The transmitter offset. The value's unit should correspond with
-            ``f2_unit``.
-
-        pts
-            The number of points sampled in each dimension.
-
-        channel
-            Nucleus targeted in the experiment simulation. ¹H is set as the default.
-            `See here <https://foroozandehgroup.github.io/nmr_sims/content/
-            references/nuclei.html>`__ for more information.
-
-        f2_unit
-            The unit that the sweep width and transmitter offset in F2 are given in.
-            Should be either ``"ppm"`` (default) or ``"hz"``.
-
-        snr
-            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
-            produces a noiseless signal.
-
-        lb
-            The damping (line-broadening) factor applied to the simulated FID.
-            By default, this will be set to ensure that the final point in each
-            dimension in scaled to be 1/1000 of it's un-damped value.
-        """
-        sanity_check(
-            ("spin_system", spin_system, sfuncs.check_spin_system),
-            (
-                "sweep_widths", sweep_widths, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
-            ("offset", offset, sfuncs.check_float),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
-            ("channel", channel, sfuncs.check_nmrsims_nucleus),
-            ("f2_unit", f2_unit, sfuncs.check_frequency_unit, (True,)),
-            ("snr", snr, sfuncs.check_float, (), {}, True),
-            (
-                "lb", lb, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True}, True,
-            ),
-        )
-
-        sweep_widths = [f"{sweep_widths[0]}hz", f"{sweep_widths[1]}{f2_unit}"]
-        offset = f"{offset}{f2_unit}"
-
-        sim = JresSimulation(spin_system, pts, sweep_widths, offset, channel)
-        sim.simulate()
-        _, data, _ = sim.fid(lb=lb)
-
-        if snr is not None:
-            data += sig._make_noise(data, snr)
-
-        expinfo = ExpInfo(
-            dim=2,
-            sw=sim.sweep_widths,
-            offset=[0.0, sim.offsets[0]],
-            sfo=[None, sim.sfo[0]],
-            nuclei=[None, sim.channels[0].name],
-            default_pts=data.shape,
-            fn_mode="QF",
-        )
-        return cls(data, expinfo, None)
 
     def view_data(
         self,

@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 29 Sep 2022 10:44:25 BST
+# Last Edited: Thu 29 Sep 2022 11:50:32 BST
 
 from __future__ import annotations
 import abc
@@ -163,10 +163,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
     def data(self) -> np.ndarray:
         """Return the data associated with the estimator."""
         return self._data
-
-    @abc.abstractmethod
-    def phase_data(*args, **kwargs):
-        pass
 
     def get_log(self) -> str:
         """Get the log for the estimator instance."""
@@ -361,7 +357,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             )
 
         params = full_params[osc_indices]
-        print(params)
         return self.make_fid(params, pts, indirect_modulation=indirect_modulation)
 
     @abc.abstractmethod
@@ -509,10 +504,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
 
         else:
             return arrays
-
-    @abc.abstractmethod
-    def plot_result(*args, **kwargs):
-        pass
 
     @logger
     def edit_result(
