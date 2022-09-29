@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 26 Sep 2022 00:27:41 BST
+# Last Edited: Thu 29 Sep 2022 10:44:25 BST
 
 from __future__ import annotations
 import abc
@@ -1207,21 +1207,19 @@ class _Estimator1DProc(Estimator):
             mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
             nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
 
-        if mpm_trim is None:
-            if self.default_mpm_trim is None:
-                mpm_trim = mpm_signal.shape[-1]
+        def get_trim(trim, default, signal):
+            if trim is None:
+                if default is None:
+                    trim = signal.shape[-1]
+                else:
+                    trim = min(default, signal.shape[-1])
             else:
-                mpm_trim = min(self.default_mpm_trim, mpm_signal.shape[-1])
-        else:
-            mpm_trim = min(mpm_trim, self.data.shape[-1])
+                trim = min(trim, signal.shape[-1])
 
-        if nlp_trim is None:
-            if self.default_nlp_trim is None:
-                nlp_trim = nlp_signal.shape[-1]
-            else:
-                nlp_trim = min(self.default_nlp_trim, nlp_signal.shape[-1])
-        else:
-            nlp_trim = min(nlp_trim, self.data.shape[-1])
+            return trim
+
+        mpm_trim = get_trim(mpm_trim, self.default_mpm_trim, mpm_signal)
+        nlp_trim = get_trim(nlp_trim, self.default_nlp_trim, nlp_signal)
 
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
