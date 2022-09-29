@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 29 Sep 2022 11:50:32 BST
+# Last Edited: Thu 29 Sep 2022 15:43:45 BST
 
 from __future__ import annotations
 import abc
@@ -1569,13 +1569,20 @@ class _Estimator1DProc(Estimator):
 
     def _configure_axes(
         self,
+        fig: mpl.figure.Figure,
         axs: np.ndarray[mpl.Axes.axes],
         regions: Iterable[Tuple[float, float]],
+        xaxis_ticks: Iterable[Tuple[int, Iterable[float]]],
+        axes_left: float,
+        axes_right: float,
+        xaxis_label_height: float,
+        region_unit: str,
     ) -> None:
-        for ax in axs[0]:
-            ax.spines["bottom"].set_visible(False)
-        for ax in axs[1]:
-            ax.spines["top"].set_visible(False)
+        if axs.shape[0] > 1:
+            for ax in axs[0]:
+                ax.spines["bottom"].set_visible(False)
+            for ax in axs[1]:
+                ax.spines["top"].set_visible(False)
         for region, ax_col in zip(regions, axs.T):
             for ax in ax_col:
                 ax.set_xlim(*region)
@@ -1601,12 +1608,29 @@ class _Estimator1DProc(Estimator):
                 ax.plot([1], [1], transform=ax.transAxes, **break_kwargs)
             for ax in axs[0, 1:]:
                 ax.plot([0], [1], transform=ax.transAxes, **break_kwargs)
-            for ax in axs[1, :-1]:
+            for ax in axs[-1, :-1]:
                 ax.plot([1], [0], transform=ax.transAxes, **break_kwargs)
-            for ax in axs[1, 1:]:
+            for ax in axs[-1, 1:]:
                 ax.plot([0], [0], transform=ax.transAxes, **break_kwargs)
                 ax.set_yticks([])
 
+        if xaxis_ticks is not None:
+            for i, ticks in xaxis_ticks:
+                axs[-1, i].set_xticks(ticks)
+
+        nuc = self.latex_nuclei
+        unit = region_unit.replace("h", "H")
+        if nuc is None:
+            label = unit
+        else:
+            label = f"{nuc[-1]} ({unit})"
+
+        fig.text(
+            x=(axes_left + axes_right) / 2,
+            y=xaxis_label_height,
+            s=label,
+            horizontalalignment="center",
+        )
 
     def _region_check(self, region: Any, region_unit: str, name: str):
         return (

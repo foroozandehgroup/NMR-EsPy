@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 29 Sep 2022 12:26:39 BST
+# Last Edited: Thu 29 Sep 2022 15:56:30 BST
 
 from __future__ import annotations
 import copy
@@ -598,6 +598,7 @@ class Estimator1D(_Estimator1DProc):
         axes_bottom: float = 0.08,
         axes_top: float = 0.96,
         axes_region_separation: float = 0.05,
+        xaxis_unit: str = "hz",
         xaxis_label_height: float = 0.02,
         xaxis_ticks: Optional[Iterable[Tuple[int, Iterable[float]]]] = None,
         oscillator_colors: Any = None,
@@ -702,27 +703,42 @@ class Estimator1D(_Estimator1DProc):
             residuals.append(full_residual[slice_])
             models.append(full_model_highres[highres_slice])
 
-        bottom_span = (
+        resid_span = (
             min([np.amin(residual) for residual in residuals]),
             max([np.amax(residual) for residual in residuals]),
         )
+        r = resid_span[1] - resid_span[0]
 
         if model_shift is None:
             model_shift = 0.1 * max([np.amax(spectrum) for spectrum in spectra])
-
         models = [(model + model_shift) for model in models]
-        all_top_lines = (
+
+        rest_lines = (
             [osc for oscs in oscillators for osc in oscs] +
             [spectrum for spectrum in spectra] +
             [model for model in models]
         )
-        top_span = (
-            min([np.amax(line) for line in all_top_lines]),
-            max([np.amax(line) for line in all_top_lines]),
+        rest_span = (
+            min([np.amin(line) for line in rest_lines]),
+            max([np.amax(line) for line in rest_lines]),
         )
+        s = rest_span[1] - rest_span[0]
+
+        t = (r + s) / 0.91
+        bottom = resid_span[0] - 0.03 * t
+        top = bottom + t
+
+        rest_shift = resid_span[1] - rest_span[0] + (0.03 * t)
+
+        model_shift += rest_shift
+
+        for i, oscs in enumerate(oscillators):
+            oscillators[i] = [osc + rest_shift for osc in oscs]
+        spectra = [(spectrum + rest_shift) for spectrum in spectra]
+        models = [(model + rest_shift) for model in models]
 
         fig, axs = plt.subplots(
-            nrows=2,
+            nrows=1,
             ncols=n_regions,
             gridspec_kw={
                 "left": axes_left,
@@ -731,16 +747,12 @@ class Estimator1D(_Estimator1DProc):
                 "top": axes_top,
                 "wspace": axes_region_separation,
                 "width_ratios": [r[0] - r[1] for r in merge_regions],
-                "hspace": 0.,
-                "height_ratios": [
-                    top_span[1] - top_span[0],
-                    bottom_span[1] - bottom_span[0]
-                ],
             },
             figsize=figure_size,
         )
+        axs = np.expand_dims(axs, axis=0)
 
-        for ax, shifts_, residual in zip(axs[1], shifts, residuals):
+        for ax, shifts_, residual in zip(axs[0], shifts, residuals):
             ax.plot(shifts_, residual, color="#808080")
 
         for ax, shifts_, spectrum in zip(axs[0], shifts, spectra):
@@ -749,19 +761,26 @@ class Estimator1D(_Estimator1DProc):
         for ax, shifts_hr, model in zip(axs[0], shifts_highres, models):
             ax.plot(shifts_hr, model, color="#808080")
 
-        colors = make_color_cycle(oscillator_colors, len(oscillators))
+        noscs = len(oscillators[0])
         for ax, shifts_hr, oscs in zip(axs[0], shifts_highres, oscillators):
+            colors = make_color_cycle(oscillator_colors, noscs)
             for osc in oscs:
                 color = next(colors)
                 ax.plot(shifts_hr, osc, color=color)
 
-        self._configure_axes(axs, merge_regions)
-        for axs_row in axs:
-            for ax in axs_row:
-                ax.set_yticks([])
-        for ax in axs[0]:
-            ax.set_xticks([])
-            ax.set_ylim(top_span)
+        self._configure_axes(
+            fig,
+            axs,
+            merge_regions,
+            xaxis_ticks,
+            axes_left,
+            axes_right,
+            xaxis_label_height,
+            region_unit,
+        )
 
+        for ax in axs[0]:
+            ax.set_yticks([])
+            ax.set_ylim(bottom, top)
 
         return fig, axs
