@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 29 Sep 2022 15:43:45 BST
+# Last Edited: Fri 30 Sep 2022 11:51:29 BST
 
 from __future__ import annotations
 import abc
@@ -1419,8 +1419,8 @@ class _Estimator1DProc(Estimator):
     @logger
     def write_result(
         self,
-        indices: Optional[Iterable[int]] = None,
         path: Union[Path, str] = "./nmrespy_result",
+        indices: Optional[Iterable[int]] = None,
         fmt: str = "txt",
         description: Optional[str] = None,
         sig_figs: Optional[int] = 5,
@@ -1434,13 +1434,13 @@ class _Estimator1DProc(Estimator):
 
         Parameters
         ----------
+        path
+            Path to save the result file to.
+
         indices
             The indices of results to include. Index ``0`` corresponds to the first
             result obtained using the estimator, ``1`` corresponds to the next, etc.
             If ``None``, all results will be included.
-
-        path
-            Path to save the result file to.
 
         fmt
             Must be one of ``"txt"`` or ``"pdf"``.
