@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 15:55:10 BST
+# Last Edited: Mon 03 Oct 2022 18:42:33 BST
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters.
 

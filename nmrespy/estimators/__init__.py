@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 03 Oct 2022 16:23:43 BST
+# Last Edited: Mon 03 Oct 2022 18:43:16 BST
 
 from __future__ import annotations
 import abc
@@ -316,11 +316,11 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
 
     def make_fid_from_result(
         self,
-        indices: Optional[Iterable[int]],
+        indices: Optional[Iterable[int]] = None,
         osc_indices: Optional[Iterable[Iterable[int]]] = None,
         pts: Optional[Iterable[int]] = None,
         indirect_modulation: Optional[str] = None,
-    ):
+    ) -> np.ndarray:
         sanity_check(
             self._indices_check(indices),
             self._pts_check(pts),
@@ -1208,6 +1208,7 @@ class _Estimator1DProc(Estimator):
                 region,
                 noise_region,
                 region_unit=region_unit,
+                twodim_dtype=None if self.dim == 1 else "jres",
             )
 
             region = filter_.get_region()
