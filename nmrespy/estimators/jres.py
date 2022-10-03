@@ -1,11 +1,13 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 29 Sep 2022 16:05:31 BST
+# Last Edited: Mon 03 Oct 2022 17:15:23 BST
 
 from __future__ import annotations
 import copy
+import io
 import itertools
+import os
 from pathlib import Path
 import re
 import tkinter as tk
@@ -28,7 +30,7 @@ from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
 )
-from nmrespy.estimators import logger, Estimator, Result
+from nmrespy.estimators import logger, _Estimator1DProc, Result
 from nmrespy.freqfilter import Filter
 from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
@@ -44,11 +46,7 @@ if MATLAB_AVAILABLE:
     import matlab.engine
 
 
-class Estimator2DJ(Estimator):
-    def __init__(
-        self, data: np.ndarray, expinfo: ExpInfo, datapath: Optional[Path] = None,
-    ) -> None:
-        super().__init__(data, expinfo, datapath)
+class Estimator2DJ(_Estimator1DProc):
 
     @classmethod
     def new_bruker(
@@ -105,14 +103,12 @@ class Estimator2DJ(Estimator):
     def new_spinach(
         cls,
         shifts: Iterable[float],
+        couplings: Optional[Iterable[Tuple(int, int, float)]],
         pts: Tuple[int, int],
         sw: Tuple[float, float],
         offset: float,
-        field: float = 11.74,
-        field_unit: str = "tesla",
-        couplings: Optional[Iterable[Tuple(int, int, float)]] = None,
-        channel: str = "1H",
-        nuclei: Optional[List[str]] = None,
+        sfo: float = 500.,
+        nucleus: str = "1H",
         snr: Optional[float] = 20.,
         lb: Optional[Tuple[float, float]] = (6.91, 6.91),
     ) -> None:
@@ -121,7 +117,15 @@ class Estimator2DJ(Estimator):
         Parameters
         ----------
         shifts
-            A list or tuple of chemical shift values for each spin.
+            A list of tuple of chemical shift values for each spin.
+
+        couplings
+            The scalar couplings present in the spin system. Given ``shifts`` is of
+            length ``n``, couplings should be an iterable with entries of the form
+            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
+            the two spins involved in the coupling, and ``coupling`` is the value
+            of the scalar coupling in Hz. ``None`` will set all spins to be
+            uncoupled.
 
         pts
             The number of points the signal comprises.
@@ -132,43 +136,20 @@ class Estimator2DJ(Estimator):
         offset
             The transmitter offset (Hz).
 
-        field
-            The magnetic field stength, in either Tesla or MHz (see ``field_unit``).
+        sfo
+            The transmitter frequency (MHz).
 
-        field_unit
-            ``MHz`` or ``Tesla``. The unit that ``field`` is given as. If ``MHz``,
-            this will be taken as the Larmor frequency of proton.
-
-        couplings
-            The scalar couplings present in the spin system. Given ``shifts`` is of
-            length ``n``, couplings should be an iterable with entries of the form
-            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
-            the two spins involved in the coupling, and ``coupling`` is the value
-            of the scalar coupling in Hz.
-
-        channel
+        nucleus
             The identity of the nucleus targeted in the pulse sequence.
-
-        nuclei
-            The type of nucleus for each spin. Can be either:
-
-            * ``None``, in which case each spin will be set as the identity of
-              ``channel``.
-            * A list of length ``n``, where ``n`` is the number of spins. Each
-              entry should be a string satisfying the regular expression
-              ``"\d+[A-Z][a-z]*"``, and recognised by Spinach as a real nucleus
-              e.g. ``"1H"``, ``"13C"``, ``"195Pt"``.
 
         snr
             The signal-to-noise ratio of the resulting signal, in decibels. ``None``
             produces a noiseless signal.
 
         lb
-            Line broadening (exponential damping) to apply to the signal. If a tuple
-            of two floats, damping in T1 will be dictated by ``lb[0]`` and damping
-            in T2 will be dictated by ``lb[1]``. Note that the first point will be
-            unaffected by damping, and the final point will be multiplied by
-            ``np.exp(-lb[i])`` for each dimension. The default results in the final
+            Line broadening (exponential damping) to apply to the signal.
+            The first point will be unaffected by damping, and the final point will
+            be multiplied by ``np.exp(-lb)``. The default results in the final
             point being decreased in value by a factor of roughly 1000.
         """
         if not MATLAB_AVAILABLE:
@@ -181,48 +162,29 @@ class Estimator2DJ(Estimator):
 
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
-            ("pts", pts, sfuncs.check_int_list, (), {"length": 2}),
-            (
-                "sw", sw, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
+            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float),
-            ("channel", channel, sfuncs.check_nucleus),
-            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("field_unit", field_unit, sfuncs.check_one_of, ("tesla", "MHz")),
-            ("snr", snr, sfuncs.check_float, (), {}, True),
-            (
-                "lb", lb, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
+            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("nucleus", nucleus, sfuncs.check_nucleus),
+            ("snr", snr, sfuncs.check_float),
+            ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True})
         )
-
         nspins = len(shifts)
         sanity_check(
-            ("nuclei", nuclei, sfuncs.check_nucleus_list, (), {"length": nspins}, True),
-            (
-                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
-                {}, True,
-            ),
+            ("couplings", couplings, sfuncs.check_spinach_couplings, (nspins,)),
         )
 
         if couplings is None:
             couplings = []
 
-        if nuclei is None:
-            nuclei = nspins * [channel]
-
-        if field_unit == "MHz":
-            field = (2e6 * np.pi * field) / 2.6752218744e8
-
         with cd(SPINACHPATH):
-            # devnull = io.StringIO(str(os.devnull))
+            devnull = io.StringIO(str(os.devnull))
             try:
                 eng = matlab.engine.start_matlab()
-                fid, sfo = eng.jres_sim(
-                    field, nuclei, shifts, couplings, offset,
-                    matlab.double(sw), matlab.double(pts), channel, nargout=2,
-                    # stdout=devnull, stderr=devnull,
+                fid = eng.jres_sim(
+                    shifts, couplings, pts, matlab.double(sw), matlab.double(offset),
+                    sfo, nucleus, stdout=devnull, stderr=devnull,
                 )
             except matlab.engine.MatlabExecutionError:
                 raise ValueError(
@@ -251,7 +213,7 @@ class Estimator2DJ(Estimator):
             sw=sw,
             offset=(0., offset),
             sfo=(None, sfo),
-            nuclei=(None, channel),
+            nuclei=(None, nucleus),
             default_pts=fid.shape,
         )
 
@@ -963,55 +925,6 @@ class Estimator2DJ(Estimator):
 
         self._data = new_data
         self._default_pts = (shape[0], t2_size)
-
-    def phase_data(
-        self,
-        p0: float = 0.0,
-        p1: float = 0.0,
-        pivot: int = 0,
-    ) -> None:
-        """Apply a first-order phase correction in the direct dimension.
-
-        Parameters
-        ----------
-        p0
-            Zero-order phase correction, in radians.
-
-        p1
-            First-order phase correction, in radians.
-
-        pivot
-            Index of the pivot.
-        """
-        sanity_check(
-            ("p0", p0, sfuncs.check_float),
-            ("p1", p1, sfuncs.check_float),
-            ("pivot", pivot, sfuncs.check_index, (self._data.size,)),
-        )
-        self._data = sig.ift(
-            sig.phase(
-                sig.ft(
-                    self._data,
-                    axes=[1],
-                ),
-                p0=[0., p0],
-                p1=[0., p1],
-                pivot=[0, pivot],
-            ),
-            axes=[1],
-        )
-
-    def manual_phase_data(
-        self,
-        max_p1: float = 10 * np.pi,
-    ) -> Tuple[float, float]:
-        sanity_check(
-            ("max_p1", max_p1, sfuncs.check_float, (), {"greater_than_zero": True}),
-        )
-        p0, p1 = sig.manual_phase_data(self.spectrum_zero_t1, max_p1=[max_p1])
-        p0, p1 = p0[0], p1[0]
-        self.phase_data(p0=p0, p1=p1)
-        return p0, p1
 
     def plot_result(
         self,

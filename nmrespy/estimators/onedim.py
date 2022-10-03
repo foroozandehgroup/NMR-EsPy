@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 30 Sep 2022 17:33:15 BST
+# Last Edited: Mon 03 Oct 2022 16:30:22 BST
 
 from __future__ import annotations
 import copy
@@ -191,6 +191,9 @@ class Estimator1D(_Estimator1DProc):
         sanity_check(
             ("couplings", couplings, sfuncs.check_spinach_couplings, (nspins,)),
         )
+
+        if couplings is None:
+            couplings = []
 
         with cd(SPINACHPATH):
             devnull = io.StringIO(str(os.devnull))

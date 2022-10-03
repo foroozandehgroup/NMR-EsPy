@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 30 Sep 2022 11:51:29 BST
+# Last Edited: Mon 03 Oct 2022 16:23:43 BST
 
 from __future__ import annotations
 import abc
@@ -996,6 +996,23 @@ class _Estimator1DProc(Estimator):
             ),
             axes=[-1],
         )
+
+    def manual_phase_data(
+        self,
+        max_p1: float = 10 * np.pi,
+    ) -> Tuple[float, float]:
+        sanity_check(
+            ("max_p1", max_p1, sfuncs.check_float, (), {"greater_than_zero": True}),
+        )
+        if self.dim == 1:
+            spectrum = self.spectrum
+        else:
+            spectrum = self.spectrum_zero_t1
+
+        p0, p1 = sig.manual_phase_data(spectrum, max_p1=[max_p1])
+        p0, p1 = p0[0], p1[0]
+        self.phase_data(p0=p0, p1=p1)
+        return p0, p1
 
     def exp_apodisation(self, k: float):
         """Apply an exponential window function to the direct dimnsion of the data.

@@ -1,12 +1,15 @@
-function [fid, sfo] = jres_sim(field, isotopes, shifts, couplings, offset, ...
-        sweep, npoints, channel)
-
-    sfo = get_sfo(field, channel);
+function [fid, sfo] = jres_sim(shifts, couplings, pts, sw, offset, sfo, nucleus)
+    field = get_field(sfo, nucleus, offset);
     sys.magnet = field;
+    sys.isotopes = isotopes;
+    nspins = length(shifts);
+    isotopes = cell(nspins, 1);
+    for i = 1:nspins
+        isotopes{i} = nucleus;
+    end
     sys.isotopes = isotopes;
 
     % Interations
-    nspins = length(shifts);
     inter.zeeman.scalar = shifts;
     inter.coupling.scalar = get_couplings(nspins, couplings);
 
@@ -16,15 +19,15 @@ function [fid, sfo] = jres_sim(field, isotopes, shifts, couplings, offset, ...
     bas.connectivity = 'scalar_couplings';
     bas.space_level = 1;
 
-    % Sequence parameters
-    parameters.offset = offset;
-    parameters.sweep = sweep;
-    parameters.npoints = npoints;
-    parameters.spins = {channel};
-
     % Spinach housekeeping
     spin_system = create(sys, inter);
     spin_system = basis(spin_system, bas);
+
+    % Sequence parameters
+    parameters.offset = offset;
+    parameters.sweep = sw;
+    parameters.npoints = pts;
+    parameters.spins = {nucleus};
 
     % Simulation
     fid = liquid(spin_system, @jres_seq, parameters, 'nmr').';
