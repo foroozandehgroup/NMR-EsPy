@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 29 Sep 2022 12:24:29 BST
+# Last Edited: Tue 04 Oct 2022 16:08:19 BST
 
 from pathlib import Path
 import re
@@ -75,7 +75,7 @@ def check_index(obj: Any, length: int) -> Optional[str]:
         l[obj]
         return
     except IndexError:
-        return f"Invalid index {obj} for Estimator with {length} saved results."
+        return f"Invalid index ({obj}) for Estimator with {length} saved results."
 
 
 def check_float_list(

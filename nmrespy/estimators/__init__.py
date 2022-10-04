@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 03 Oct 2022 18:43:16 BST
+# Last Edited: Tue 04 Oct 2022 16:18:10 BST
 
 from __future__ import annotations
 import abc
@@ -516,10 +516,8 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         **estimate_kwargs,
     ) -> None:
         self._check_results_exist()
-        sanity_check(
-            ("index", index, sfuncs.check_index, (len(self._results),)),
-        )
-        result = self.get_results(indices=[index])[0]
+        sanity_check(self._index_check(index))
+        result, = self.get_results(indices=[index])
         params = result.get_params()
         max_osc_idx = len(params) - 1
         sanity_check(
@@ -672,10 +670,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
               \\eta_{m_i}`
         """
         self._check_results_exist()
-        sanity_check(
-            ("index", index, sfuncs.check_index, (len(self._results),)),
-        )
-        index = self._positive_index(index)
+        sanity_check(self._index_check(index))
         result = self._results[index]
         x0 = result.get_params()
         sanity_check(
@@ -757,7 +752,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         """
         self._check_results_exist()
         sanity_check(
-            ("index", index, sfuncs.check_index, (len(self._results),)),
+            self._index_check(index),
             (
                 "separation_frequency", separation_frequency, sfuncs.check_float_list,
                 (), {"length": self.dim, "len_one_can_be_listless": True}, True,
@@ -765,7 +760,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
             ("split_number", split_number, sfuncs.check_int, (), {"min_value": 2}),
         )
-        index = self._positive_index(index)
         result = self._results[index]
         x0 = result.get_params()
         sanity_check(
@@ -866,9 +860,8 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
                 "params", params, sfuncs.check_ndarray, (),
                 {"dim": 2, "shape": ((1, 2 * (self.dim + 1)),)},
             ),
-            ("index", index, sfuncs.check_index, (len(self._results),)),
+            self._index_check(index),
         )
-        index = self._positive_index(index)
         result = self._results[index]
         x0 = np.vstack((result.get_params(), params))
         self._optimise_after_edit(x0, result, index, **estimate_kwargs)
@@ -901,8 +894,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             will be ignored if given.
         """
         self._check_results_exist()
-        sanity_check(("index", index, sfuncs.check_index, (len(self._results),)))
-        index = self._positive_index(index)
+        sanity_check(self._index_check(index))
         result = self._results[index]
         x0 = result.get_params()
         sanity_check(
@@ -945,6 +937,12 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         return [idx % nres for idx in indices]
 
     # Commonly used sanity checks
+    def _index_check(self, x: Any):
+        return (
+            "index", x, sfuncs.check_int, (),
+            {"min_value": -len(self._results), "max_value": len(self._results) - 1},
+        )
+
     def _indices_check(self, x: Any):
         return (
             "indices", x, sfuncs.check_int_list, (),
@@ -1599,6 +1597,8 @@ class _Estimator1DProc(Estimator):
         if axs.shape[0] > 1:
             for ax in axs[0]:
                 ax.spines["bottom"].set_visible(False)
+                ax.set_xticks([])
+                ax.set_yticks([])
             for ax in axs[1]:
                 ax.spines["top"].set_visible(False)
         for region, ax_col in zip(regions, axs.T):

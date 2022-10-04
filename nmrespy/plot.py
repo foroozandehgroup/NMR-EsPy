@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sat 24 Sep 2022 22:05:09 BST
+# Last Edited: Tue 04 Oct 2022 16:30:53 BST
 
 """Module for plotting estimation results."""
 
@@ -367,7 +367,9 @@ class ResultPlotter(ExpInfo):
         if oscillator_colors in plt.colormaps():
             return [
                 _to_hex(c) for c in
-                cm.get_cmap(oscillator_colors)(np.linspace(0, 1, self.result.shape[0]))
+                mpl.colormaps[oscillator_colors](
+                    np.linspace(0, 1, self.result.shape[0])
+                )
             ]
         if isinstance(oscillator_colors, str):
             oscillator_colors = [oscillator_colors]
@@ -566,7 +568,7 @@ def make_color_cycle(color_input: Any, n: int) -> itertools.cycle:
     elif color_input in plt.colormaps():
         iterable = [
             mcolors.to_hex(c) for c in
-            cm.get_cmap(color_input)(np.linspace(0, 1, n))
+            mpl.colormaps[color_input](np.linspace(0, 1, n))
         ]
     elif (single_color := _to_hex(color_input)) is not None:
         iterable = [single_color]

@@ -1,7 +1,7 @@
 # conftest.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Jun 2022 18:07:27 BST
+# Last Edited: Tue 04 Oct 2022 14:02:24 BST
 
 import builtins
 import io
@@ -37,4 +37,5 @@ def cleanup_files(monkeypatch):
     monkeypatch.setattr(io, "open", patch_open(io.open, files))
     yield
     for file in files:
-        os.remove(file)
+        if Path(file).is_file():
+            os.remove(file)

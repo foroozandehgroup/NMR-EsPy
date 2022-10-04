@@ -1,17 +1,16 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 03 Oct 2022 18:46:31 BST
+# Last Edited: Tue 04 Oct 2022 16:27:49 BST
 
 from __future__ import annotations
 import copy
 import io
-import itertools
 import os
 from pathlib import Path
 import re
 import tkinter as tk
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -30,11 +29,8 @@ from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
 )
-from nmrespy.estimators import logger, _Estimator1DProc, Result
-from nmrespy.freqfilter import Filter
+from nmrespy.estimators import logger, _Estimator1DProc
 from nmrespy.load import load_bruker
-from nmrespy.mpm import MatrixPencil
-from nmrespy.nlp import NonlinearProgramming
 
 
 if USE_COLORAMA:
@@ -254,6 +250,8 @@ class Estimator2DJ(_Estimator1DProc):
             x, y = self.get_timepoints()
             xlabel, ylabel = [f"$t_{i}$ (s)" for i in range(1, 3)]
 
+            ax.plot_wireframe(x, y, self.data)
+
             ax.set_xlabel(xlabel)
             ax.set_ylabel(ylabel)
             ax.set_xlim(reversed(ax.get_xlim()))
@@ -287,12 +285,12 @@ class Estimator2DJ(_Estimator1DProc):
         data[0, 0] *= 0.5
         return sig.ft(data)
 
-    def diagonal_signal(
+    @logger
+    def negative_45_signal(
         self,
-        positive_t1: bool = False,
-        positive_t2: bool = True,
         indices: Optional[Iterable[int]] = None,
         pts: Optional[int] = None,
+        _log: bool = True,
     ) -> np.ndarray:
         r"""Generate the synthetic signal :math:`y_{-45^{\circ}}(t)`, where
         :math:`t \geq 0`:
@@ -303,10 +301,8 @@ class Estimator2DJ(_Estimator1DProc):
             \exp\left( 2 \mathrm{i} \pi f_{1,m} t \right)
             \exp\left( -t \left[2 \mathrm{i} \pi f_{2,m} + \eta_{2,m} \right] \right)
 
-        .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/2dj/nmrespy/images/neg_45.png  # noqa: E501
-
         Producing this signal from parameters derived from estimation of a 2DJ dataset
-        should generate a 1D homodecoupled spectrum.
+        should generate an absorption-mode 1D homodecoupled spectrum.
 
         Parameters
         ----------
@@ -321,8 +317,6 @@ class Estimator2DJ(_Estimator1DProc):
         """
         self._check_results_exist()
         sanity_check(
-            ("positive_t1", positive_t1, sfuncs.check_bool),
-            ("positive_t2", positive_t2, sfuncs.check_bool),
             (
                 "indices", indices, sfuncs.check_int_list, (),
                 {
@@ -341,14 +335,14 @@ class Estimator2DJ(_Estimator1DProc):
         if pts is None:
             pts = self.default_pts[1]
         tp = self.get_timepoints(pts=(1, pts), meshgrid=False)[1]
-        f1 = params[:, 2] if positive_t1 else -params[:, 2]
-        f2 = params[:, 3] if positive_t2 else -params[:, 3]
+        f1 = params[:, 2]
+        f2 = params[:, 3]
         signal = np.einsum(
             "ij,j->i",
             np.exp(
                 np.outer(
                     tp,
-                    2j * np.pi * (f1 + f2 - offset) - params[:, 5],
+                    2j * np.pi * (f2 - f1 - offset) - params[:, 5],
                 )
             ),
             params[:, 0] * np.exp(1j * params[:, 1])
@@ -356,10 +350,12 @@ class Estimator2DJ(_Estimator1DProc):
 
         return signal
 
+    @logger
     def predict_multiplets(
         self,
         indices: Optional[Iterable[int]] = None,
         thold: Optional[float] = None,
+        _log: bool = True,
     ) -> Iterable[Iterable[int]]:
         """Predict the estimated oscillators which correspond to each multiplet
         in the signal.
@@ -408,6 +404,7 @@ class Estimator2DJ(_Estimator1DProc):
 
         return multiplets
 
+    @logger
     def find_spurious_oscillators(
         self,
         thold: Optional[float] = None,
@@ -452,6 +449,7 @@ class Estimator2DJ(_Estimator1DProc):
 
         return spurious
 
+    @logger
     def remove_spurious_oscillators(
         self,
         thold: Optional[float] = None,
@@ -484,6 +482,7 @@ class Estimator2DJ(_Estimator1DProc):
         for res_idx, osc_idx in spurious.items():
             self.remove_oscillators(osc_idx, res_idx, **estimate_kwargs)
 
+    @logger
     def sheared_signal(
         self,
         indices: Optional[Iterable[int]] = None,
@@ -557,6 +556,7 @@ class Estimator2DJ(_Estimator1DProc):
             edited_params, pts=pts, indirect_modulation=indirect_modulation,
         )
 
+    @logger
     def plot_result(
         self,
         indices: Optional[Iterable[int]] = None,
@@ -564,6 +564,7 @@ class Estimator2DJ(_Estimator1DProc):
         high_resolution_pts: Optional[int] = None,
         ratio_1d_2d: Tuple[float, float] = (2., 1.),
         figure_size: Tuple[float, float] = (8., 6.),
+        region_unit: str = "hz",
         axes_left: float = 0.07,
         axes_right: float = 0.96,
         axes_bottom: float = 0.08,
@@ -578,7 +579,7 @@ class Estimator2DJ(_Estimator1DProc):
         contour_color: Any = "k",
         multiplet_colors: Any = "rainbow",
         multiplet_lw: float = 1.,
-        multiplet_vertical_shift: float = 0.7,
+        multiplet_vertical_shift: float = 0.,
         multiplet_show_center_freq: bool = True,
         multiplet_show_45: bool = True,
         marker_size: float = 3.,
@@ -590,7 +591,7 @@ class Estimator2DJ(_Estimator1DProc):
 
         The figure includes a contour plot of the 2DJ spectrum, a 1D plot of the
         first slice through the indirect dimension, plots of estimated multiplets,
-        and a plot of the spectrum generated from :py:meth:`diagonal_signal`.
+        and a plot of the spectrum generated from :py:meth:`negative_45_signal`.
 
         Parameters
         ----------
@@ -611,7 +612,7 @@ class Estimator2DJ(_Estimator1DProc):
 
         high_resolution_pts
             Indicates the number of points used to generate the multiplet structures
-            and :py:meth:`diagonal_signal` spectrum. Should be greater than or
+            and :py:meth:`negative_45_signal` spectrum. Should be greater than or
             equal to ``self.default_pts[1]``.
 
         ratio_1d_2d
@@ -731,6 +732,7 @@ class Estimator2DJ(_Estimator1DProc):
                 "figure_size", figure_size, sfuncs.check_float_list, (),
                 {"length": 2, "must_be_positive": True},
             ),
+            self._funit_check(region_unit, "region_unit"),
             (
                 "axes_left", axes_left, sfuncs.check_float, (),
                 {"min_value": 0., "max_value": 1.},
@@ -798,7 +800,7 @@ class Estimator2DJ(_Estimator1DProc):
         )
         regions = sorted(
             [
-                (i, result.get_region(unit="ppm")[1])
+                (i, result.get_region(unit=region_unit)[1])
                 for i, result in enumerate(self.get_results())
                 if i in indices
             ],
@@ -864,9 +866,9 @@ class Estimator2DJ(_Estimator1DProc):
         expinfo_1d = self.direct_expinfo
         expinfo_1d_highres = copy.deepcopy(expinfo_1d)
         expinfo_1d_highres.default_pts = (high_resolution_pts,)
-        full_shifts_1d, = expinfo_1d.get_shifts(unit="ppm")
-        full_shifts_1d_highres, = expinfo_1d_highres.get_shifts(unit="ppm")
-        full_shifts_2d_y, full_shifts_2d_x = self.get_shifts(unit="ppm")
+        full_shifts_1d, = expinfo_1d.get_shifts(unit=region_unit)
+        full_shifts_1d_highres, = expinfo_1d_highres.get_shifts(unit=region_unit)
+        full_shifts_2d_y, full_shifts_2d_x = self.get_shifts(unit=region_unit)
         sfo = self.sfo[1]
 
         shifts_2d = []
@@ -880,9 +882,10 @@ class Estimator2DJ(_Estimator1DProc):
         multiplet_spectra = []
         multiplet_indices = []
 
+        conv = f"{region_unit}->idx"
         for idx, region in zip(merge_indices, merge_regions):
-            slice_ = slice(*expinfo_1d.convert([region], "ppm->idx")[0])
-            highres_slice = slice(*expinfo_1d_highres.convert([region], "ppm->idx")[0])
+            slice_ = slice(*expinfo_1d.convert([region], conv)[0])
+            highres_slice = slice(*expinfo_1d_highres.convert([region], conv)[0])
 
             shifts_2d.append(
                 (full_shifts_2d_x[:, slice_], full_shifts_2d_y[:, slice_])
@@ -894,7 +897,9 @@ class Estimator2DJ(_Estimator1DProc):
             spectra_1d.append(self.spectrum_zero_t1.real[slice_])
             neg_45_spectra.append(
                 sig.ft(
-                    self.diagonal_signal(indices=idx, pts=high_resolution_pts)
+                    self.negative_45_signal(
+                        indices=idx, pts=high_resolution_pts, _log=False,
+                    )
                 ).real[highres_slice]
             )
 
@@ -902,7 +907,9 @@ class Estimator2DJ(_Estimator1DProc):
             multiplet_indices.append(
                 list(
                     reversed(
-                        self.predict_multiplets(indices=idx, thold=multiplet_thold)
+                        self.predict_multiplets(
+                            indices=idx, thold=multiplet_thold, _log=False,
+                        )
                     )
                 )
             )
@@ -911,8 +918,10 @@ class Estimator2DJ(_Estimator1DProc):
             center_freq = []
             for multiplet_param in multiplet_params:
                 f1, f2 = multiplet_param[:, [2, 3]].T
-                center_freq.append(np.mean(f2 - f1) / sfo)
-                f2 /= sfo
+                cf = np.mean(f2 - f1)
+                f2 = f2 / sfo if region_unit == "ppm" else f2
+                cf = cf / sfo if region_unit == "ppm" else cf
+                center_freq.append(cf)
                 f1_f2_region.append((f1, f2))
 
                 multiplet = expinfo_1d.make_fid(
@@ -1019,7 +1028,8 @@ class Estimator2DJ(_Estimator1DProc):
                 for cf in center_freq:
                     color = next(colors)
                     ax.plot(
-                        [cf + lim / sfo for lim in ylim1],
+                        [cf + lim / (sfo if region_unit == "ppm" else 1.)
+                         for lim in ylim1],
                         ylim1,
                         color=color,
                         lw=0.8,
@@ -1048,58 +1058,22 @@ class Estimator2DJ(_Estimator1DProc):
 
         axs[0, 0].spines["left"].set_zorder(1000)
         axs[0, -1].spines["right"].set_zorder(1000)
-        for ax in axs[0]:
-            ax.spines["bottom"].set_visible(False)
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.set_ylim(ylim0)
 
-        for ax in axs[1]:
-            ax.spines["top"].set_visible(False)
-            ax.set_ylim(ylim1)
-
-        for region, ax_col in zip(merge_regions, axs.T):
-            for ax in ax_col:
-                ax.set_xlim(*region)
-
-        if n_regions > 1:
-            for axs_col in axs[:, :-1]:
-                for ax in axs_col:
-                    ax.spines["right"].set_visible(False)
-            for axs_col in axs[:, 1:]:
-                for ax in axs_col:
-                    ax.spines["left"].set_visible(False)
-
-            break_kwargs = {
-                "marker": [(-1, -3), (1, 3)],
-                "markersize": 10,
-                "linestyle": "none",
-                "color": "k",
-                "mec": "k",
-                "mew": 1,
-                "clip_on": False,
-            }
-            for ax in axs[0, :-1]:
-                ax.plot([1], [1], transform=ax.transAxes, **break_kwargs)
-            for ax in axs[0, 1:]:
-                ax.plot([0], [1], transform=ax.transAxes, **break_kwargs)
-            for ax in axs[1, :-1]:
-                ax.plot([1], [0], transform=ax.transAxes, **break_kwargs)
-            for ax in axs[1, 1:]:
-                ax.plot([0], [0], transform=ax.transAxes, **break_kwargs)
-                ax.set_yticks([])
-
-        if xaxis_ticks is not None:
-            for i, ticks in xaxis_ticks:
-                axs[1, i].set_xticks(ticks)
-
-        axs[1, 0].set_ylabel("Hz")
-        fig.text(
-            x=(axes_left + axes_right) / 2,
-            y=xaxis_label_height,
-            s=f"{self.latex_nuclei[1]} (ppm)",
-            horizontalalignment="center",
+        self._configure_axes(
+            fig,
+            axs,
+            merge_regions,
+            xaxis_ticks,
+            axes_left,
+            axes_right,
+            xaxis_label_height,
+            region_unit,
         )
+        for ax in axs[0]:
+            ax.set_ylim(ylim0)
+        for ax in axs[1]:
+            ax.set_ylim(ylim1)
+        axs[1, 0].set_ylabel("Hz")
 
         return fig, axs
 

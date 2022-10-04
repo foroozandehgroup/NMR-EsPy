@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 03 Oct 2022 16:30:22 BST
+# Last Edited: Tue 04 Oct 2022 13:42:43 BST
 
 from __future__ import annotations
 import copy
@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -24,13 +24,10 @@ from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
 )
-from nmrespy.freqfilter import Filter
 from nmrespy.load import load_bruker
-from nmrespy.mpm import MatrixPencil
-from nmrespy.nlp import NonlinearProgramming
-from nmrespy.plot import ResultPlotter, make_color_cycle
+from nmrespy.plot import make_color_cycle
 
-from . import logger, _Estimator1DProc, Result
+from . import logger, _Estimator1DProc
 
 
 if USE_COLORAMA:
@@ -600,7 +597,6 @@ class Estimator1D(_Estimator1DProc):
         indices = self._process_indices(indices)
         merge_indices, merge_regions = self._plot_regions(indices, region_unit)
         n_regions = len(merge_regions)
-        n_oscs = self.get_params(indices=indices).shape[0]
 
         if high_resolution_pts is None:
             high_resolution_pts = self.default_pts[-1]

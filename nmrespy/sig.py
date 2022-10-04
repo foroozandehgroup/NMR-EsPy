@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 25 Sep 2022 12:23:01 BST
+# Last Edited: Tue 04 Oct 2022 15:04:18 BST
 
 """Manipulating and processing NMR signals."""
 
@@ -300,6 +300,7 @@ def proc_amp_modulated(data: np.ndarray) -> np.ndarray:
     sanity_check(
         ("data", data, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(0, 2)]}),
     )
+    data[:, 0, 0] *= 0.5
     cos_t1_f2, sin_t1_f2 = [ft(x, axes=1).real for x in (data[0], data[1])]
     return ft(cos_t1_f2 + 1j * sin_t1_f2, axes=0)
 
