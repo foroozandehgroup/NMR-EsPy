@@ -1,7 +1,11 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
+<<<<<<< HEAD
 # Last Edited: Wed 05 Oct 2022 18:11:11 BST
+=======
+# Last Edited: Thu 06 Oct 2022 16:53:23 BST
+>>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
 
 import datetime
 import os
@@ -712,22 +716,58 @@ class ExpInfo(FrequencyConverter):
 
         return integrals
 
+<<<<<<< HEAD
+=======
+    @staticmethod
+    def _get_dir_number(root_dir: Path) -> int:
+        number = 1
+        while True:
+            if not (root_dir / str(number)).is_dir():
+                break
+            else:
+                number += 1
+        return number
+
+    @staticmethod
+    def _convert_to_bruker_format(data) -> Tuple[int, np.ndarray]:
+        if data.dtype == "complex128":
+            # interleave real and imaginary parts
+            data = np.vstack(
+                (data.real, data.imag)
+            ).reshape((-1,), order="F").astype("<f8")
+        data_max = np.amax(data)
+        nc = int(np.floor(np.log2(2 ** 29 / data_max)))
+        return (
+            nc,
+            (data * (2 ** nc)).astype("<i4")
+        )
+
+>>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
     def write_to_topspin(
         self,
         fid: np.ndarray,
         path: Union[str, Path],
         expno: Optional[int] = None,
+<<<<<<< HEAD
+=======
+        procno: Optional[int] = None,
+>>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
         force_overwrite: bool = False,
     ) -> None:
         sanity_check(
             ("fid", fid, sfuncs.check_ndarray, (), {"dim": self.dim}),
             ("path", path, check_saveable_dir, (True,)),
             ("expno", expno, sfuncs.check_int, (), {"min_value": 1}, True),
+<<<<<<< HEAD
+=======
+            ("procno", procno, sfuncs.check_int, (), {"min_value": 1}, True),
+>>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
             ("force_overwrite", force_overwrite, sfuncs.check_bool),
         )
 
         if not (path := Path(path).resolve()).is_dir():
             path.mkdir()
+<<<<<<< HEAD
         directory = path / str(expno)
 
         sanity_check(
@@ -736,12 +776,39 @@ class ExpInfo(FrequencyConverter):
         directory.mkdir(exist_ok=True)
         proc_directory = directory / "pdata/1"
         proc_directory.mkdir(parents=True, exist_ok=True)
+=======
+
+        if expno is None:
+            expno = self._get_dir_number(path)
+        acqu_dir = path / str(expno)
+
+        sanity_check(
+            ("path & expno", acqu_dir, check_saveable_dir, (force_overwrite,)),
+        )
+        acqu_dir.mkdir(exist_ok=True)
+
+        if not (pdata_dir := acqu_dir / "pdata").is_dir():
+            pdata_dir.mkdir()
+
+        if procno is None:
+            procno = self._get_dir_number(pdata_dir)
+        proc_dir = pdata_dir / str(procno)
+
+        sanity_check(
+            (
+                "path & expno & procno", proc_dir, check_saveable_dir,
+                (force_overwrite,),
+            ),
+        )
+        proc_dir.mkdir(exist_ok=True)
+>>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
 
         # 1D only so far
         if self.dim != 1:
             print("Not Implemented for 2D yet!")
             return
 
+<<<<<<< HEAD
         fid_uncomplex = np.zeros(2 * fid.size, dtype="<f8")
         fid_uncomplex[::2] = fid.real
         fid_uncomplex[1::2] = fid.imag
@@ -754,12 +821,24 @@ class ExpInfo(FrequencyConverter):
 
         int_regex = "-?\\d+"
         float_regex = "-?\\d+(\\.\\d+)?"
+=======
+        nc_fid, fid_uncomplex = self._convert_to_bruker_format(fid)
+        fid[0] *= 0.5
+        spectrum = sig.ft(fid).real
+        nc_spec, spectrum = self._convert_to_bruker_format(spectrum)
+
+        with open(NMRESPYPATH / "ts_templates/acqus", "r") as fh:
+            acqu_text = fh.read()
+        with open(NMRESPYPATH / "ts_templates/procs", "r") as fh:
+            proc_text = fh.read()
+>>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
 
         sfo = self.sfo[0] if self.sfo is not None else 500.0
         bf1 = sfo - (1e-6 * self.offset()[0])
         sw_hz = self.sw()[0]
         sw_ppm = sw_hz / sfo
         nuc = self.nuclei[0] if self.nuclei is not None else "1H"
+<<<<<<< HEAD
 
         tz = datetime.timezone(datetime.timedelta(time.timezone))
         now = datetime.datetime.now(tz=tz)
@@ -806,6 +885,78 @@ class ExpInfo(FrequencyConverter):
 
         with open(directory / "fid", "wb") as fh:
             fh.write(fid_uncomplex.tobytes())
+=======
+        offset = self.get_shifts()[0][0] / sfo
+
+        tz = datetime.timezone(datetime.timedelta(time.timezone))
+        now = datetime.datetime.now(tz=tz)
+        unix_time = int(
+            (now - datetime.datetime(1970, 1, 1, tzinfo=tz)).total_seconds()
+        )
+
+        timestamp = (
+            f"$$ {now.strftime('%Y-%m-%d %H:%M:%S %z')} "
+            f"{os.getlogin()}@{os.uname()[1]}"
+        )
+
+        acqu_subs = {
+            "<BF1>": str(bf1),
+            "<DATE>": str(unix_time),
+            "<NC>": str(-nc_fid),
+            "<NUC1>": f"<{nuc}>",
+            "<O1>": str(self.offset()[0]),
+            "<OWNER>": os.getlogin(),
+            "<PATH>": f"$$ {acqu_dir}/acqu",
+            "<SFO1>": str(sfo),
+            "<SW>": str(sw_ppm),
+            "<SW_h>": str(sw_hz),
+            "<TIMESTAMP>": timestamp,
+            "<TD>": str(2 * fid.size),
+        }
+
+        proc_subs = {
+            "<AXNUC>": f"<{nuc}>",
+            "<FTSIZE>": str(fid.size),
+            "<NC_proc>": str(-nc_spec),
+            "<OFFSET>": str(offset),
+            "<PATH>": f"$$ {proc_dir}/proc",
+            "<SF>": str(bf1),
+            "<SI>": str(fid.size),
+            "<SR>": str(self.offset()[0]),
+            "<SW_p>": str(sw_hz),
+            "<TDEFF>": str(fid.size),
+            "<TIMESTAMP>": timestamp,
+        }
+
+        for old, new in acqu_subs.items():
+            acqu_text = acqu_text.replace(old, new)
+
+        for old, new in proc_subs.items():
+            proc_text = proc_text.replace(old, new)
+
+        for fname in ("acqus", "acqu"):
+            if fname[-1] == "s":
+                acqu_text = acqu_text.replace(
+                    f"$$ {acqu_dir}/acqu",
+                    f"$$ {acqu_dir}/acqus",
+                )
+            with open(acqu_dir / fname, "w") as fh:
+                fh.write(acqu_text)
+
+        for fname in ("procs", "proc"):
+            if fname[-1] == "s":
+                proc_text = proc_text.replace(
+                    f"$$ {proc_dir}/proc",
+                    f"$$ {proc_dir}/procs",
+                )
+            with open(proc_dir / fname, "w") as fh:
+                fh.write(proc_text)
+
+        with open(acqu_dir / "fid", "wb") as fh:
+            fh.write(fid_uncomplex.tobytes())
+        with open(proc_dir / "1r", "wb") as fh:
+            fh.write(spectrum.tobytes())
+>>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
 
     def _process_pts(self, pts: Optional[Union[Iterable[int], int]]) -> Iterable[int]:
         if pts is None:
