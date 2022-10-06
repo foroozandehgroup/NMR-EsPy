@@ -1,0 +1,20 @@
+##TITLE= Parameter file, TOPSPIN
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##ORIGIN= NMR-EsPy
+##OWNER= <OWNER>
+<TIMESTAMP>
+<PATH>
+##$BYTORDP= 0
+##$DTYPP= 0
+##$FTSIZE= <FTSIZE>
+##$FT_mod= <FT_mod>
+##$NC_proc= <NC_proc>
+##$OFFSET= <OFFSET>
+##$PHC0= 0
+##$PHC1= 0
+##$SF= <SF>
+##$SI= <SI>
+##$SW_p= <SW_p>
+##$TDeff= <TDeff>
+##END=
