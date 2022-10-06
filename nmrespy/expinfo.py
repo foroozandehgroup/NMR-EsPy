@@ -1,16 +1,22 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 25 Sep 2022 16:15:56 BST
+# Last Edited: Wed 05 Oct 2022 18:11:11 BST
 
+import datetime
+import os
+from pathlib import Path
 import re
+import time
 from typing import Any, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import numpy.random as nrandom
 import scipy.integrate as integrate
 
+from nmrespy._files import check_saveable_dir
 from nmrespy._freqconverter import FrequencyConverter
+from nmrespy._paths_and_links import NMRESPYPATH
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy import sig
 
@@ -107,6 +113,8 @@ class ExpInfo(FrequencyConverter):
                 True,
             ),
         )
+
+        self.__dict__.update(**kwargs)
 
         if offset is None:
             offset = tuple(dim * [0.0])
@@ -703,6 +711,101 @@ class ExpInfo(FrequencyConverter):
             integrals = [x / integrals[scale_relative_to] for x in integrals]
 
         return integrals
+
+    def write_to_topspin(
+        self,
+        fid: np.ndarray,
+        path: Union[str, Path],
+        expno: Optional[int] = None,
+        force_overwrite: bool = False,
+    ) -> None:
+        sanity_check(
+            ("fid", fid, sfuncs.check_ndarray, (), {"dim": self.dim}),
+            ("path", path, check_saveable_dir, (True,)),
+            ("expno", expno, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("force_overwrite", force_overwrite, sfuncs.check_bool),
+        )
+
+        if not (path := Path(path).resolve()).is_dir():
+            path.mkdir()
+        directory = path / str(expno)
+
+        sanity_check(
+            ("path & expno", directory, check_saveable_dir, (force_overwrite,)),
+        )
+        directory.mkdir(exist_ok=True)
+        proc_directory = directory / "pdata/1"
+        proc_directory.mkdir(parents=True, exist_ok=True)
+
+        # 1D only so far
+        if self.dim != 1:
+            print("Not Implemented for 2D yet!")
+            return
+
+        fid_uncomplex = np.zeros(2 * fid.size, dtype="<f8")
+        fid_uncomplex[::2] = fid.real
+        fid_uncomplex[1::2] = fid.imag
+        # fid_uncomplex = np.hstack((fid.real, fid.imag))
+
+        with open(NMRESPYPATH / "ts_templates/acqus", "r") as fh:
+            acqus = fh.read()
+        with open(NMRESPYPATH / "ts_templates/procs", "r") as fh:
+            procs = fh.read()
+
+        int_regex = "-?\\d+"
+        float_regex = "-?\\d+(\\.\\d+)?"
+
+        sfo = self.sfo[0] if self.sfo is not None else 500.0
+        bf1 = sfo - (1e-6 * self.offset()[0])
+        sw_hz = self.sw()[0]
+        sw_ppm = sw_hz / sfo
+        nuc = self.nuclei[0] if self.nuclei is not None else "1H"
+
+        tz = datetime.timezone(datetime.timedelta(time.timezone))
+        now = datetime.datetime.now(tz=tz)
+        t = int((now - datetime.datetime(1970, 1, 1, tzinfo=tz)).total_seconds())
+
+        datestamp = now.strftime("%Y-%m-%d %H:%M:%S %z")
+
+        subs_acqus = {
+            "<STAMP>": (
+                f"$$ {now.strftime('%Y-%m-%d %H:%M:%S %z')} {os.getlogin()}@{os.uname()[1]}\n"
+                f"$$ {directory / 'acqus'}"
+            ),
+            f"\\$BF1= {float_regex}": f"$BF1= {bf1}",
+            f"\\$BYTORDA= {int_regex}": "$BYTORDA= 0",
+            "\\$DATE= <DATE>": f"$DATE= {t}",
+            f"\\$DTYPA= {int_regex}": "$DTYPA= 2",
+            f"\\$GRPDLY= {float_regex}": "$GRPDLY= 0",
+            "\\$NUC1= <\\d+[a-zA-Z]+>": f"$NUC1= <{nuc}>",
+            f"\\$O1= {float_regex}": f"$O1= {self.offset()[0]}",
+            "##OWNER= <OWNER>": f"##OWNER= {os.getlogin()}",
+            f"\\$SFO1= {float_regex}": f"$SFO1= {sfo}",
+            f"\\$SW= {float_regex}": f"$SW= {sw_ppm}",
+            f"\\$SW_h= {float_regex}": f"$SW_h= {sw_hz}",
+            f"\\$TD= {int_regex}": f"$TD= {2 * fid.size}",
+        }
+        subs_procs = {
+            f"\\$SI= {int_regex}": f"$SI= {fid.size}",
+            f"\\$TDEFF= {int_regex}": f"$TDEFF= {fid.size}",
+            f"\\$SF= {float_regex}": f"$SF= {bf1}",
+        }
+
+        for old, new in subs_acqus.items():
+            acqus = re.sub(old, new, acqus)
+        for old, new in subs_procs.items():
+            procs = re.sub(old, new, procs)
+
+        for fname in ("acqus", "acqu"):
+            with open(directory / fname, "w") as fh:
+                fh.write(acqus)
+
+        for fname in ("procs", "proc"):
+            with open(proc_directory / fname, "w") as fh:
+                fh.write(procs)
+
+        with open(directory / "fid", "wb") as fh:
+            fh.write(fid_uncomplex.tobytes())
 
     def _process_pts(self, pts: Optional[Union[Iterable[int], int]]) -> Iterable[int]:
         if pts is None:
