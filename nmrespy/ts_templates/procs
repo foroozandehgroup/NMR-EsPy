@@ -8,7 +8,6 @@
 ##$AXNUC= <AXNUC>
 ##$BYTORDP= 0
 ##$DTYPP= 0
-##$FT_mod= 6
 ##$FTSIZE= <FTSIZE>
 ##$NC_proc= <NC_proc>
 ##$OFFSET= <OFFSET>
@@ -18,5 +17,5 @@
 ##$SI= <SI>
 ##$SR= <SR>
 ##$SW_p= <SW_p>
-##$TDeff= <TDeff>
+##$XDIM= <SI>
 ##END=

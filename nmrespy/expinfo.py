@@ -1,11 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-<<<<<<< HEAD
-# Last Edited: Wed 05 Oct 2022 18:11:11 BST
-=======
-# Last Edited: Thu 06 Oct 2022 16:53:23 BST
->>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
+# Last Edited: Fri 07 Oct 2022 17:07:24 BST
 
 import datetime
 import os
@@ -202,8 +198,20 @@ class ExpInfo(FrequencyConverter):
         return self.convert(self._offset, f"hz->{unit}")
 
     @property
+    def bf(self) -> Optional[Iterable[Optional[float]]]:
+        """Get the basic frequency (MHz)."""
+        if self.sfo is None:
+            return None
+        return tuple(
+            [
+                sfo - (offset * 1e-6) if sfo is not None else None
+                for sfo, offset in zip(self.sfo, self.offset())
+            ]
+        )
+
+    @property
     def sfo(self) -> Optional[Iterable[Optional[float]]]:
-        "Get the transmitter frequency (MHz)."
+        """Get the transmitter frequency (MHz)."""
         return self._sfo
 
     @property
@@ -716,8 +724,6 @@ class ExpInfo(FrequencyConverter):
 
         return integrals
 
-<<<<<<< HEAD
-=======
     @staticmethod
     def _get_dir_number(root_dir: Path) -> int:
         number = 1
@@ -728,8 +734,11 @@ class ExpInfo(FrequencyConverter):
                 number += 1
         return number
 
-    @staticmethod
-    def _convert_to_bruker_format(data) -> Tuple[int, np.ndarray]:
+    def _convert_to_bruker_format(self, data) -> Tuple[int, np.ndarray]:
+        if data.ndim - self.dim == 1:
+            data = np.hstack([d for d in data])
+        if data.ndim > 1:
+            data = data.flatten()
         if data.dtype == "complex128":
             # interleave real and imaginary parts
             data = np.vstack(
@@ -742,58 +751,74 @@ class ExpInfo(FrequencyConverter):
             (data * (2 ** nc)).astype("<i4")
         )
 
->>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
+    @staticmethod
+    def _write_bruker_param_files(
+        directory: Path,
+        stem: str,
+        texts: Iterable[str],
+    ) -> None:
+        for stem, text in zip([f"{stem}{x}" for x in ("", "2")[:len(texts)]], texts):
+            for fname in (stem, f"{stem}s"):
+                if fname[-1] == "s":
+                    text = text.replace(
+                        f"$$ {directory}/{stem}",
+                        f"$$ {directory}/{stem}s",
+                    )
+                with open(directory / fname, "w") as fh:
+                    fh.write(text)
+
     def write_to_topspin(
         self,
         fid: np.ndarray,
         path: Union[str, Path],
         expno: Optional[int] = None,
-<<<<<<< HEAD
-=======
         procno: Optional[int] = None,
->>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
         force_overwrite: bool = False,
+        fnmode: Optional[str] = None,
     ) -> None:
         sanity_check(
-            ("fid", fid, sfuncs.check_ndarray, (), {"dim": self.dim}),
             ("path", path, check_saveable_dir, (True,)),
             ("expno", expno, sfuncs.check_int, (), {"min_value": 1}, True),
-<<<<<<< HEAD
-=======
             ("procno", procno, sfuncs.check_int, (), {"min_value": 1}, True),
->>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
             ("force_overwrite", force_overwrite, sfuncs.check_bool),
         )
+        # TODO
+        # Ensure sfo and nuclei are not None
+        if self.dim == 1:
+            fnmode = ""
+        if self.dim == 2:
+            sanity_check(
+                ("fnmode", fnmode, sfuncs.check_one_of, ("amp", "phase"), {}, True),
+            )
+            if fnmode is None:
+                sanity_check(
+                    ("fid", fid, sfuncs.check_ndarray, (), {"dim": 2}),
+                )
+                fnmode = "1"
+            elif fnmode in ("amp", "phase"):
+                sanity_check(
+                    (
+                        "fid", fid, sfuncs.check_ndarray, (),
+                        {"dim": 3, "shape": [(0, 2)]},
+                    ),
+                )
 
+        # Path checking and creating
         if not (path := Path(path).resolve()).is_dir():
             path.mkdir()
-<<<<<<< HEAD
-        directory = path / str(expno)
-
-        sanity_check(
-            ("path & expno", directory, check_saveable_dir, (force_overwrite,)),
-        )
-        directory.mkdir(exist_ok=True)
-        proc_directory = directory / "pdata/1"
-        proc_directory.mkdir(parents=True, exist_ok=True)
-=======
 
         if expno is None:
             expno = self._get_dir_number(path)
         acqu_dir = path / str(expno)
-
         sanity_check(
             ("path & expno", acqu_dir, check_saveable_dir, (force_overwrite,)),
         )
         acqu_dir.mkdir(exist_ok=True)
-
         if not (pdata_dir := acqu_dir / "pdata").is_dir():
             pdata_dir.mkdir()
-
         if procno is None:
             procno = self._get_dir_number(pdata_dir)
         proc_dir = pdata_dir / str(procno)
-
         sanity_check(
             (
                 "path & expno & procno", proc_dir, check_saveable_dir,
@@ -801,162 +826,101 @@ class ExpInfo(FrequencyConverter):
             ),
         )
         proc_dir.mkdir(exist_ok=True)
->>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
 
-        # 1D only so far
-        if self.dim != 1:
-            print("Not Implemented for 2D yet!")
-            return
-
-<<<<<<< HEAD
-        fid_uncomplex = np.zeros(2 * fid.size, dtype="<f8")
-        fid_uncomplex[::2] = fid.real
-        fid_uncomplex[1::2] = fid.imag
-        # fid_uncomplex = np.hstack((fid.real, fid.imag))
-
-        with open(NMRESPYPATH / "ts_templates/acqus", "r") as fh:
-            acqus = fh.read()
-        with open(NMRESPYPATH / "ts_templates/procs", "r") as fh:
-            procs = fh.read()
-
-        int_regex = "-?\\d+"
-        float_regex = "-?\\d+(\\.\\d+)?"
-=======
+        # Processing time-domain data
         nc_fid, fid_uncomplex = self._convert_to_bruker_format(fid)
-        fid[0] *= 0.5
-        spectrum = sig.ft(fid).real
-        nc_spec, spectrum = self._convert_to_bruker_format(spectrum)
-
-        with open(NMRESPYPATH / "ts_templates/acqus", "r") as fh:
-            acqu_text = fh.read()
-        with open(NMRESPYPATH / "ts_templates/procs", "r") as fh:
-            proc_text = fh.read()
->>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
-
-        sfo = self.sfo[0] if self.sfo is not None else 500.0
-        bf1 = sfo - (1e-6 * self.offset()[0])
-        sw_hz = self.sw()[0]
-        sw_ppm = sw_hz / sfo
-        nuc = self.nuclei[0] if self.nuclei is not None else "1H"
-<<<<<<< HEAD
-
-        tz = datetime.timezone(datetime.timedelta(time.timezone))
-        now = datetime.datetime.now(tz=tz)
-        t = int((now - datetime.datetime(1970, 1, 1, tzinfo=tz)).total_seconds())
-
-        datestamp = now.strftime("%Y-%m-%d %H:%M:%S %z")
-
-        subs_acqus = {
-            "<STAMP>": (
-                f"$$ {now.strftime('%Y-%m-%d %H:%M:%S %z')} {os.getlogin()}@{os.uname()[1]}\n"
-                f"$$ {directory / 'acqus'}"
-            ),
-            f"\\$BF1= {float_regex}": f"$BF1= {bf1}",
-            f"\\$BYTORDA= {int_regex}": "$BYTORDA= 0",
-            "\\$DATE= <DATE>": f"$DATE= {t}",
-            f"\\$DTYPA= {int_regex}": "$DTYPA= 2",
-            f"\\$GRPDLY= {float_regex}": "$GRPDLY= 0",
-            "\\$NUC1= <\\d+[a-zA-Z]+>": f"$NUC1= <{nuc}>",
-            f"\\$O1= {float_regex}": f"$O1= {self.offset()[0]}",
-            "##OWNER= <OWNER>": f"##OWNER= {os.getlogin()}",
-            f"\\$SFO1= {float_regex}": f"$SFO1= {sfo}",
-            f"\\$SW= {float_regex}": f"$SW= {sw_ppm}",
-            f"\\$SW_h= {float_regex}": f"$SW_h= {sw_hz}",
-            f"\\$TD= {int_regex}": f"$TD= {2 * fid.size}",
-        }
-        subs_procs = {
-            f"\\$SI= {int_regex}": f"$SI= {fid.size}",
-            f"\\$TDEFF= {int_regex}": f"$TDEFF= {fid.size}",
-            f"\\$SF= {float_regex}": f"$SF= {bf1}",
-        }
-
-        for old, new in subs_acqus.items():
-            acqus = re.sub(old, new, acqus)
-        for old, new in subs_procs.items():
-            procs = re.sub(old, new, procs)
-
-        for fname in ("acqus", "acqu"):
-            with open(directory / fname, "w") as fh:
-                fh.write(acqus)
-
-        for fname in ("procs", "proc"):
-            with open(proc_directory / fname, "w") as fh:
-                fh.write(procs)
-
-        with open(directory / "fid", "wb") as fh:
+        with open(acqu_dir / ("fid" if self.dim == 1 else "ser"), "wb") as fh:
             fh.write(fid_uncomplex.tobytes())
-=======
-        offset = self.get_shifts()[0][0] / sfo
+
+        # Generating and processing spectral data
+        if self.dim == 1:
+            fid[0] *= 0.5
+            spectrum = sig.ft(fid).real
+            nc_spec, spectrum = self._convert_to_bruker_format(spectrum)
+            with open(proc_dir / "1r", "wb") as fh:
+                fh.write(spectrum.tobytes())
+
+        elif self.dim == 2 and fnmode == "phase":
+            spectra = sig.proc_phase_modulated(fid)
+            proc_spectra = []
+            nc_spec = 0
+            for spectrum in spectra:
+                nc, spectrum = self._convert_to_bruker_format(spectrum)
+                proc_spectra.append(spectrum)
+                if nc > nc_spec:
+                    nc_spec = nc
+            for fname, spectrum in zip(("2rr", "2ri", "2ir", "2ii"), spectra):
+                with open(proc_dir / fname, "wb") as fh:
+                    fh.write(spectrum.tobytes())
+            fnmode = "6"
+
+        elif self.dim == 2 and fnmode == "amp":
+            # TODO
+            fnmode = "2"
+
+        # Creating acqus and procs files
+        acqu_texts = []
+        proc_texts = []
+        for s in ("", "2")[:self.dim]:
+            with open(NMRESPYPATH / f"ts_templates/acqu{s}s", "r") as fh:
+                acqu_texts.append(fh.read())
+            with open(NMRESPYPATH / f"ts_templates/proc{s}s", "r") as fh:
+                proc_texts.append(fh.read())
 
         tz = datetime.timezone(datetime.timedelta(time.timezone))
         now = datetime.datetime.now(tz=tz)
         unix_time = int(
             (now - datetime.datetime(1970, 1, 1, tzinfo=tz)).total_seconds()
         )
-
         timestamp = (
             f"$$ {now.strftime('%Y-%m-%d %H:%M:%S %z')} "
             f"{os.getlogin()}@{os.uname()[1]}"
         )
 
-        acqu_subs = {
-            "<BF1>": str(bf1),
-            "<DATE>": str(unix_time),
-            "<NC>": str(-nc_fid),
-            "<NUC1>": f"<{nuc}>",
-            "<O1>": str(self.offset()[0]),
-            "<OWNER>": os.getlogin(),
-            "<PATH>": f"$$ {acqu_dir}/acqu",
-            "<SFO1>": str(sfo),
-            "<SW>": str(sw_ppm),
-            "<SW_h>": str(sw_hz),
-            "<TIMESTAMP>": timestamp,
-            "<TD>": str(2 * fid.size),
-        }
+        shape = fid.shape
+        for i, (acqu_text, proc_text) in enumerate(zip(acqu_texts, proc_texts)):
+            s = str(i + 1) if i != 0 else ""
+            idx = -(i + 1)
+            acqu_subs = {
+                "<BF1>": str(self.bf[idx]),
+                "<DATE>": str(unix_time),
+                "<FnMODE>": fnmode,
+                "<NC>": str(-nc_fid),
+                "<NUC1>": f"<{self.nuclei[idx]}>",
+                "<O1>": str(self.offset()[idx]),
+                "<OWNER>": os.getlogin(),
+                "<PARMODE>": str(self.dim - 1),
+                "<PATH>": f"$$ {acqu_dir}/acqu{s}",
+                "<SFO1>": str(self.sfo[idx]),
+                "<SW>": str(self.sw(unit="ppm")[idx]),
+                "<SW_h>": str(self.sw()[idx]),
+                "<TIMESTAMP>": timestamp,
+                "<TD>": str(2 * shape[idx] if idx == -1 else shape[idx]),
+            }
 
-        proc_subs = {
-            "<AXNUC>": f"<{nuc}>",
-            "<FTSIZE>": str(fid.size),
-            "<NC_proc>": str(-nc_spec),
-            "<OFFSET>": str(offset),
-            "<PATH>": f"$$ {proc_dir}/proc",
-            "<SF>": str(bf1),
-            "<SI>": str(fid.size),
-            "<SR>": str(self.offset()[0]),
-            "<SW_p>": str(sw_hz),
-            "<TDEFF>": str(fid.size),
-            "<TIMESTAMP>": timestamp,
-        }
+            proc_subs = {
+                "<AXNUC>": f"<{self.nuclei[idx]}>",
+                "<FTSIZE>": str(shape[idx]),
+                "<NC_proc>": str(-nc_spec),
+                "<OFFSET>": str(self.get_shifts(unit="ppm", meshgrid=False)[idx][0]),
+                "<OWNER>": os.getlogin(),
+                "<PATH>": f"$$ {proc_dir}/proc{s}",
+                "<SF>": str(self.bf[idx]),
+                "<SI>": str(shape[idx]),
+                "<SR>": str(self.offset()[idx]),
+                "<SW_p>": str(self.sw()[idx]),
+                "<TIMESTAMP>": timestamp,
+            }
 
-        for old, new in acqu_subs.items():
-            acqu_text = acqu_text.replace(old, new)
+            for old, new in acqu_subs.items():
+                acqu_text = acqu_text.replace(old, new)
+            for old, new in proc_subs.items():
+                proc_text = proc_text.replace(old, new)
+            acqu_texts[i] = acqu_text
+            proc_texts[i] = proc_text
 
-        for old, new in proc_subs.items():
-            proc_text = proc_text.replace(old, new)
-
-        for fname in ("acqus", "acqu"):
-            if fname[-1] == "s":
-                acqu_text = acqu_text.replace(
-                    f"$$ {acqu_dir}/acqu",
-                    f"$$ {acqu_dir}/acqus",
-                )
-            with open(acqu_dir / fname, "w") as fh:
-                fh.write(acqu_text)
-
-        for fname in ("procs", "proc"):
-            if fname[-1] == "s":
-                proc_text = proc_text.replace(
-                    f"$$ {proc_dir}/proc",
-                    f"$$ {proc_dir}/procs",
-                )
-            with open(proc_dir / fname, "w") as fh:
-                fh.write(proc_text)
-
-        with open(acqu_dir / "fid", "wb") as fh:
-            fh.write(fid_uncomplex.tobytes())
-        with open(proc_dir / "1r", "wb") as fh:
-            fh.write(spectrum.tobytes())
->>>>>>> 82b5302eea32baf7eba97348541b1d8753e0f7f0
+        self._write_bruker_param_files(acqu_dir, "acqu", acqu_texts)
+        self._write_bruker_param_files(proc_dir, "proc", proc_texts)
 
     def _process_pts(self, pts: Optional[Union[Iterable[int], int]]) -> Iterable[int]:
         if pts is None:

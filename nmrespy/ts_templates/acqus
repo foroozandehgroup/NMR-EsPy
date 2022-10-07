@@ -13,7 +13,7 @@
 ##$NC= <NC>
 ##$NUC1= <NUC1>
 ##$O1= <O1>
-###$PARMODE= 0
+##$PARMODE= <PARMODE>
 ##$SFO1= <SFO1>
 ##$SW= <SW>
 ##$SW_h= <SW_h>
