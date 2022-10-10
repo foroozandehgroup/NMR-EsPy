@@ -1,7 +1,7 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 10 Oct 2022 11:52:02 BST
+# Last Edited: Mon 10 Oct 2022 22:27:43 BST
 
 import copy
 from datetime import datetime
@@ -26,7 +26,7 @@ class SetUp(wd.MyToplevel):
 
         # --- SETUP WINDOW -----------------------------------------------
         self.spec = copy.deepcopy(self.estimator.data)
-        self.spec[0] /= 2
+        self.spec[0] *= 0.5
         self.spec = sig.ft(self.spec)
 
         # Shorthand for unit conversion
@@ -64,6 +64,9 @@ class SetUp(wd.MyToplevel):
                     var_str = f"{value:.4f}"
 
                 self.bounds[name][unit] = cf.value_var_dict(value, var_str)
+
+        # --- Line-width correction --------------------------------------
+        self.lb = cf.value_var_dict(0., f"{0.:.2f}")
 
         # --- Phase correction parameters --------------------------------
         self.pivot = {}
@@ -114,14 +117,12 @@ class SetUp(wd.MyToplevel):
         self.setupfig["ax"] = self.setupfig["fig"].add_axes([0.05, 0.12, 0.9, 0.83])
         # Plot spectrum
         # Generates a matplotlib.Line.Line2D object
-        self.setupfig["plot"] = self.setupfig["ax"].plot(
+        self.setupfig["plot"], = self.setupfig["ax"].plot(
             self.shifts["ppm"],
             np.real(self.spec),
             color="k",
             lw=0.6,
-        )[
-            0
-        ]  # <- unpack from list
+        )
 
         # Set x-limits as edges of spectral window
         xlim = (self.shifts["ppm"][0], self.shifts["ppm"][-1])
@@ -316,28 +317,29 @@ class SetUp(wd.MyToplevel):
             scale.grid(row=row, column=1, padx=(10, 0), pady=pady, sticky="ew")
             entry.grid(row=row, column=2, padx=10, pady=pady, sticky="w")
 
-        # Frame with scale widgets for region selection
-        self.phase_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
+        # Frame with scale widgets for phase correction
+        self.pre_proc_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
         self.notebook.add(
-            self.phase_frame,
-            text="Phase Correction",
+            self.pre_proc_frame,
+            text="Pre-Processing",
             sticky="nsew",
         )
 
         # Make scales expandable
-        self.phase_frame.columnconfigure(1, weight=1)
+        self.pre_proc_frame.columnconfigure(1, weight=1)
 
-        self.phase_titles = {}
-        self.phase_scales = {}
-        self.phase_entries = {}
+        self.pre_proc_titles = {}
+        self.pre_proc_entries = {}
+        self.pre_proc_scales = {}
 
         for row, (name, title) in enumerate(
-            zip(("pivot", "p0", "p1"), ("pivot", "φ₀", "φ₁"))
+            zip(("lb", "pivot", "p0", "p1"), ("lb", "pivot", "φ₀", "φ₁"))
         ):
             # Scale titles
-            self.phase_titles[name] = title = wd.MyLabel(
-                self.phase_frame, text=title, bg=cf.NOTEBOOKCOLOR
+            self.pre_proc_titles[name] = title = wd.MyLabel(
+                self.pre_proc_frame, text=title, bg=cf.NOTEBOOKCOLOR
             )
+            title.grid(row=row, column=0, padx=(10, 0), pady=pady, sticky="w")
 
             # Pivot scale
             if name == "pivot":
@@ -347,9 +349,8 @@ class SetUp(wd.MyToplevel):
                 resolution = 1
 
             # p0 and p1 scales
-            else:
+            elif name in ("p0", "p1"):
                 troughcolor = "white"
-                # TODO
                 # PHASE SCALE WIDGET ISSUE
                 # Would like this to be π or 10π, however tkinter seems to
                 # convert the scale range to an int, and adjusts `to` to
@@ -358,33 +359,52 @@ class SetUp(wd.MyToplevel):
                 to = 4 if name == "p0" else 32.0
                 resolution = 0.001
 
-            self.phase_scales[name] = scale = wd.MyScale(
-                self.phase_frame,
+            elif name == "lb":
+                troughcolor = "white"
+                from_ = 0.
+                to = 20.
+                resolution = 0.001
+
+            command = (
+                (lambda value: self.update_lb_scale(value)) if name == "lb"
+                else (lambda value, n=name: self.update_phase_scale(value, n))
+            )
+
+            self.pre_proc_scales[name] = scale = wd.MyScale(
+                self.pre_proc_frame,
                 troughcolor=troughcolor,
                 from_=from_,
                 to=to,
                 resolution=resolution,
                 bg=cf.NOTEBOOKCOLOR,
-                command=(lambda value, n=name: self.update_phase_scale(value, n)),
+                command=command,
             )
 
             if name == "pivot":
                 scale.set(self.pivot["idx"]["value"])
                 var = self.pivot["ppm"]["var"]
-            else:
+
+            elif name in ("p0", "p1"):
                 scale.set(0.0)
                 var = self.phases[name]["rad"]["var"]
 
-            self.phase_entries[name] = entry = wd.MyEntry(
-                self.phase_frame,
-                return_command=self.update_phase_entry,
-                return_args=(name,),
+            elif name == "lb":
+                scale.set(0.0)
+                var = self.lb["var"]
+
+            command, args = (
+                (self.update_lb_entry, ()) if name == "lb"
+                else (self.update_phase_entry, (name,))
+            )
+            self.pre_proc_entries[name] = entry = wd.MyEntry(
+                self.pre_proc_frame,
+                return_command=command,
+                return_args=args,
                 textvariable=var,
             )
 
-            pady = (10, 0) if row != 2 else 10
+            pady = (10, 0) if row != 3 else 10
 
-            title.grid(row=row, column=0, padx=(10, 0), pady=pady, sticky="w")
             scale.grid(row=row, column=1, padx=(10, 0), pady=pady, sticky="ew")
             entry.grid(row=row, column=2, padx=10, pady=pady, sticky="w")
 
@@ -520,6 +540,31 @@ class SetUp(wd.MyToplevel):
         else:
             self.update_p0_p1(float(value), name)
 
+    def update_lb_scale(self, value):
+        # Perform apodisation
+        self.lb["value"] = float(value)
+        self.lb["var"].set(f"{self.lb['value']:.3f}")
+
+        corrector = np.exp(-self.lb["value"] * np.linspace(0, 1, self.spec.size))
+        self.spec = self.estimator.data * corrector
+        self.spec[0] *= 0.5
+        self.spec = sig.ft(self.spec)
+        self.setupfig["plot"].set_ydata(self.spec)
+
+        # Update plot
+        self.update_plot()
+
+    def update_lb_entry(self):
+        value = self.lb["var"].get()
+        try:
+            lb = float(value)
+            if lb < 0.:
+                raise
+            self.pre_proc_scales["lb"].set(lb)
+
+        except Exception:
+            self.lb["var"].set(f"{self.lb['value']:.3f}")
+
     def update_phase_entry(self, name):
         """Update the GUI after the user changes and entry widget"""
 
@@ -534,7 +579,7 @@ class SetUp(wd.MyToplevel):
                     idx = self.conv(float(value), f"{unit}->idx")
 
                 if 0 <= idx <= self.spec.size - 1:
-                    self.phase_scales["pivot"].set(idx)
+                    self.pre_proc_scales["pivot"].set(idx)
                     self.update_pivot(idx)
                 else:
                     raise
@@ -568,10 +613,10 @@ class SetUp(wd.MyToplevel):
                 # Actually between -3.5 and 3.5
                 # TODO: see PHASE SCALE WIDGET ISSUE
                 if -3.5 <= x <= 3.5 and name == "p0":
-                    self.phase_scales["p0"].set(x)
+                    self.pre_proc_scales["p0"].set(x)
                 # Check that first-order correction if between -10π and 10π
                 elif -35 <= x <= 35 and name == "p1":
-                    self.phase_scales["p1"].set(x)
+                    self.pre_proc_scales["p1"].set(x)
                 else:
                     raise
 
@@ -699,11 +744,19 @@ class SetUp(wd.MyToplevel):
         # TODO: animation window
         # self.master.waiting_window.deiconify()
 
+        # Exponential windowing
+        lb = self.lb["value"]
+        self.estimator.exp_apodisation(lb)
+
         # Phase correction variables
         pivot = self.pivot["idx"]["value"]
         p0 = self.phases["p0"]["rad"]["value"]
         p1 = self.phases["p1"]["rad"]["value"]
         p0 = p0 - p1 * (pivot / self.spec.size)
+        self.estimator.phase_data(p0=p0, p1=p1)
+
+        if not self.estimator._datapath.parents[0].stem == "pdata":
+            self.estimator.baseline_correction()
 
         region = (
             self.bounds["lb"]["hz"]["value"], self.bounds["rb"]["hz"]["value"],
@@ -726,7 +779,6 @@ class SetUp(wd.MyToplevel):
 
         # --- Run through the estimation ---------------------------------
         # Phase data
-        self.estimator.phase_data(p0=p0, p1=p1)
 
         self.estimator.estimate(
             region,
