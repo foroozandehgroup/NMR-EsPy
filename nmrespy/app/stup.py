@@ -1,7 +1,7 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Apr 2022 16:12:27 BST
+# Last Edited: Mon 10 Oct 2022 11:52:02 BST
 
 import copy
 from datetime import datetime
@@ -705,12 +705,12 @@ class SetUp(wd.MyToplevel):
         p1 = self.phases["p1"]["rad"]["value"]
         p0 = p0 - p1 * (pivot / self.spec.size)
 
-        region = [
-            [self.bounds["lb"]["hz"]["value"], self.bounds["rb"]["hz"]["value"]]
-        ]
-        noise_region = [
-            [self.bounds["lnb"]["hz"]["value"], self.bounds["rnb"]["hz"]["value"]]
-        ]
+        region = (
+            self.bounds["lb"]["hz"]["value"], self.bounds["rb"]["hz"]["value"],
+        )
+        noise_region = (
+            self.bounds["lnb"]["hz"]["value"], self.bounds["rnb"]["hz"]["value"],
+        )
 
         # Get number of oscillators for initial guess (or determine whether
         # to use MDL)

@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 04 Oct 2022 16:18:10 BST
+# Last Edited: Mon 10 Oct 2022 15:38:49 BST
 
 from __future__ import annotations
 import abc
@@ -85,7 +85,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             offset=expinfo.offset(),
             sfo=expinfo.sfo,
             nuclei=expinfo.nuclei,
-            default_pts=expinfo.default_pts,
+            default_pts=data.shape,
             fn_mode=expinfo.fn_mode,
         )
 
@@ -517,6 +517,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
     ) -> None:
         self._check_results_exist()
         sanity_check(self._index_check(index))
+        index, = self._process_indices([index])
         result, = self.get_results(indices=[index])
         params = result.get_params()
         max_osc_idx = len(params) - 1
@@ -671,6 +672,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         """
         self._check_results_exist()
         sanity_check(self._index_check(index))
+        index, = self._process_indices([index])
         result = self._results[index]
         x0 = result.get_params()
         sanity_check(
@@ -760,6 +762,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
             ("split_number", split_number, sfuncs.check_int, (), {"min_value": 2}),
         )
+        index, = self._process_indices([index])
         result = self._results[index]
         x0 = result.get_params()
         sanity_check(
@@ -862,6 +865,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
             ),
             self._index_check(index),
         )
+        index, = self._process_indices([index])
         result = self._results[index]
         x0 = np.vstack((result.get_params(), params))
         self._optimise_after_edit(x0, result, index, **estimate_kwargs)
@@ -895,6 +899,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         """
         self._check_results_exist()
         sanity_check(self._index_check(index))
+        index, = self._process_indices([index])
         result = self._results[index]
         x0 = result.get_params()
         sanity_check(
@@ -1636,7 +1641,7 @@ class _Estimator1DProc(Estimator):
             for i, ticks in xaxis_ticks:
                 axs[-1, i].set_xticks(ticks)
 
-        nuc = self.latex_nuclei
+        nuc = self.unicode_nuclei
         unit = region_unit.replace("h", "H")
         if nuc is None:
             label = unit

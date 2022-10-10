@@ -1,7 +1,7 @@
 # custom_widgets.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 25 Jul 2022 16:24:20 BST
+# Last Edited: Mon 10 Oct 2022 17:04:34 BST
 
 """
 Customised widgets for NMR-EsPy GUI.
@@ -80,6 +80,18 @@ class MyButton(tk.Button):
         values = (8, "black", cf.BUTTONDEFAULT, cf.BUTTONDEFAULT)
 
         generate(self, keys, values, kwargs)
+
+
+class MyTextbox(MyToplevel):
+
+    def __init__(self, parent, text, **kwargs):
+        super().__init__(parent)
+        label = MyText(self, text)
+        label.grid(row=0, column=0, padx=(10, 10), pady=(10, 0))
+        close_button = MyButton(
+            self, color=cf.BUTTONRED, text="Close", command=self.destroy,
+        )
+        close_button.grid(row=1, column=1, padx=(10, 10), pady=(10, 10), sticky="e")
 
 
 class MyCheckbutton(tk.Checkbutton):
@@ -319,7 +331,7 @@ class MyTable(MyFrame):
         for i, value_var_row in enumerate(value_var_rows):
             # Oscillator labels.
             # These act as a oscillator selection widgets
-            label = MyLabel(self.table_frame, text=str(top + i + 1))
+            label = MyLabel(self.table_frame, text=str(top + i))
             # Bind to left mouse click: select oscillator
             label.bind(
                 "<Button-1>",

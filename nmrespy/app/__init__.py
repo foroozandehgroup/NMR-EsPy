@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Apr 2022 12:24:56 BST
+# Last Edited: Mon 10 Oct 2022 11:48:13 BST
 
 # This is currently only applicable to 1D NMR data.
 
@@ -11,6 +11,9 @@ import tkinter as tk
 from nmrespy import Estimator1D
 from nmrespy.app.frames import DataType  # TODO: WaitingWindow
 from nmrespy.app import stup, result
+
+import matplotlib as mpl
+mpl.rcParams["text.usetex"] = False
 
 
 class NMREsPyApp(tk.Tk):

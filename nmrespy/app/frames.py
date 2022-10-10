@@ -1,7 +1,7 @@
 # frames.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 11:21:46 GMT
+# Last Edited: Mon 10 Oct 2022 17:07:08 BST
 
 import webbrowser
 
@@ -315,7 +315,7 @@ class RootButtonFrame(wd.MyFrame):
 class ConfirmWindow(wd.MyToplevel):
     """A window to double-check the user wants to do something."""
 
-    def __init__(self, parent, msg, yes_text="Confirm", no_text="Cancel"):
+    def __init__(self, parent, msg, inc_no=True, yes_text="Confirm", no_text="Cancel"):
         super().__init__(parent)
 
         self.conf = False
@@ -325,13 +325,14 @@ class ConfirmWindow(wd.MyToplevel):
         text.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
         # close button
-        cancel_button = wd.MyButton(
-            self,
-            text=no_text,
-            bg=cf.BUTTONRED,
-            command=self.cancel,
-        )
-        cancel_button.grid(row=1, column=0, padx=10, pady=(0, 10))
+        if inc_no:
+            cancel_button = wd.MyButton(
+                self,
+                text=no_text,
+                bg=cf.BUTTONRED,
+                command=self.cancel,
+            )
+            cancel_button.grid(row=1, column=0, padx=10, pady=(0, 10))
 
         confirm_button = wd.MyButton(
             self,

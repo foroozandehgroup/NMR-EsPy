@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 04 Oct 2022 16:30:53 BST
+# Last Edited: Mon 10 Oct 2022 13:33:52 BST
 
 """Module for plotting estimation results."""
 
@@ -54,12 +54,12 @@ def _to_hex(color: Any) -> Optional[str]:
         return None
 
 
-class ResultPlotter(ExpInfo):
+class ResultPlotter1D(ExpInfo):
     """Class for generating figures of estimation results."""
 
     def __init__(
         self,
-        data: np.ndarray,
+        spectrum: np.ndarray,
         result: np.ndarray,
         expinfo: ExpInfo,
         *,

@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 04 Oct 2022 13:42:43 BST
+# Last Edited: Mon 10 Oct 2022 15:05:54 BST
 
 from __future__ import annotations
 import copy
@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import matplotlib as mpl
@@ -598,6 +598,55 @@ class Estimator1D(_Estimator1DProc):
         merge_indices, merge_regions = self._plot_regions(indices, region_unit)
         n_regions = len(merge_regions)
 
+        fig, axs = plt.subplots(
+            nrows=1,
+            ncols=n_regions,
+            gridspec_kw={
+                "left": axes_left,
+                "right": axes_right,
+                "bottom": axes_bottom,
+                "top": axes_top,
+                "wspace": axes_region_separation,
+                "width_ratios": [r[0] - r[1] for r in merge_regions],
+            },
+            figsize=figure_size,
+        )
+        if n_regions == 1:
+            axs = np.array([axs])
+        axs = np.expand_dims(axs, axis=0)
+
+        self._configure_axes(
+            fig,
+            axs,
+            merge_regions,
+            xaxis_ticks,
+            axes_left,
+            axes_right,
+            xaxis_label_height,
+            region_unit,
+        )
+
+        data = self._make_plot_data(
+            indices,
+            high_resolution_pts,
+            region_unit,
+            model_shift,
+        )
+
+        self._plot_data(axs[0], data, merge_indices, oscillator_colors)
+        self._set_ylim(axs[0], data)
+
+        return fig, axs
+
+    def _make_plot_data(
+        self,
+        indices: Iterable[int],
+        high_resolution_pts: Optional[int],
+        region_unit: str,
+        model_shift: Optional[float],
+    ) -> Dict:
+        merge_indices, merge_regions = self._plot_regions(indices, region_unit)
+
         if high_resolution_pts is None:
             high_resolution_pts = self.default_pts[-1]
 
@@ -613,13 +662,15 @@ class Estimator1D(_Estimator1DProc):
         full_model_highres[0] *= 0.5
         full_model_highres = sig.ft(full_model_highres).real
 
-        # Get all the ydata
-        spectra = []
-        models = []
-        residuals = []
-        oscillators = []
-        shifts = []
-        shifts_highres = []
+        data = {
+            "spectra": [],
+            "models": [],
+            "residuals": [],
+            "oscillators": [],
+            "shifts": [],
+            "shifts_highres": [],
+        }
+        # Get all the data
         params = self.get_params(indices=indices)
         for idx, region in zip(merge_indices, merge_regions):
             slice_ = slice(
@@ -629,9 +680,9 @@ class Estimator1D(_Estimator1DProc):
                 *highres_expinfo.convert([region], f"{region_unit}->idx")[0]
             )
 
-            shifts.append(full_shifts[slice_])
-            shifts_highres.append(full_shifts_highres[highres_slice])
-            spectra.append(self.spectrum.real[slice_])
+            data["shifts"].append(full_shifts[slice_])
+            data["shifts_highres"].append(full_shifts_highres[highres_slice])
+            data["spectra"].append(self.spectrum.real[slice_])
             oscs = []
             for p in self.get_params(indices=idx):
                 p = np.expand_dims(p, axis=0)
@@ -639,84 +690,60 @@ class Estimator1D(_Estimator1DProc):
                 osc[0] *= 0.5
                 label = int(np.where((params == p).all(axis=-1))[0][0])
                 oscs.append((label, sig.ft(osc).real[highres_slice]))
-            oscillators.append(oscs)
-            residuals.append(full_residual[slice_])
-            models.append(full_model_highres[highres_slice])
-
-        resid_span = (
-            min([np.amin(residual) for residual in residuals]),
-            max([np.amax(residual) for residual in residuals]),
-        )
-        r = resid_span[1] - resid_span[0]
+            data["oscillators"].append(oscs)
+            data["residuals"].append(full_residual[slice_])
+            data["models"].append(full_model_highres[highres_slice])
 
         if model_shift is None:
-            model_shift = 0.1 * max([np.amax(spectrum) for spectrum in spectra])
-        models = [(model + model_shift) for model in models]
+            model_shift = 0.1 * max([np.amax(spectrum) for spectrum in data["spectra"]])
+        data["models"] = [(model + model_shift) for model in data["models"]]
+
+        resid_span = self._get_data_span(data["residuals"])
 
         rest_lines = (
-            [osc[1] for oscs in oscillators for osc in oscs] +
-            [spectrum for spectrum in spectra] +
-            [model for model in models]
+            [osc[1] for oscs in data["oscillators"] for osc in oscs] +
+            [spectrum for spectrum in data["spectra"]] +
+            [model for model in data["models"]]
         )
-        rest_span = (
-            min([np.amin(line) for line in rest_lines]),
-            max([np.amax(line) for line in rest_lines]),
-        )
-        s = rest_span[1] - rest_span[0]
+        rest_span = self._get_data_span(rest_lines)
 
-        t = (r + s) / 0.91
-        bottom = resid_span[0] - 0.03 * t
-        top = bottom + t
-
+        t = ((resid_span[1] - resid_span[0]) + (rest_span[1] - rest_span[0])) / 0.91
         rest_shift = resid_span[1] - rest_span[0] + (0.03 * t)
-
         model_shift += rest_shift
 
-        noscs = 0
-        for i, oscs in enumerate(oscillators):
-            noscs += len(oscs)
-            oscillators[i] = [(label, osc + rest_shift) for (label, osc) in oscs]
-        spectra = [(spectrum + rest_shift) for spectrum in spectra]
-        models = [(model + rest_shift) for model in models]
+        for i, oscs in enumerate(data["oscillators"]):
+            data["oscillators"][i] = [
+                (label, osc + rest_shift)
+                for (label, osc) in oscs
+            ]
+        data["spectra"] = [(spectrum + rest_shift) for spectrum in data["spectra"]]
+        data["models"] = [(model + rest_shift) for model in data["models"]]
 
-        fig, axs = plt.subplots(
-            nrows=1,
-            ncols=n_regions,
-            gridspec_kw={
-                "left": axes_left,
-                "right": axes_right,
-                "bottom": axes_bottom,
-                "top": axes_top,
-                "wspace": axes_region_separation,
-                "width_ratios": [r[0] - r[1] for r in merge_regions],
-            },
-            figsize=figure_size,
-        )
-        axs = np.expand_dims(axs, axis=0)
+        return data
 
-        self._configure_axes(
-            fig,
-            axs,
-            merge_regions,
-            xaxis_ticks,
-            axes_left,
-            axes_right,
-            xaxis_label_height,
-            region_unit,
-        )
-
-        for ax, shifts_, residual in zip(axs[0], shifts, residuals):
+    @staticmethod
+    def _plot_data(
+        axs: Iterable[mpl.axes.Axes],
+        data: Dict,
+        merge_indices: Iterable[Iterable[int]],
+        oscillator_colors: Any,
+    ) -> None:
+        for ax, shifts_, residual in zip(axs, data["shifts"], data["residuals"]):
             ax.plot(shifts_, residual, color="#808080")
 
-        for ax, shifts_, spectrum in zip(axs[0], shifts, spectra):
+        for ax, shifts_, spectrum in zip(axs, data["shifts"], data["spectra"]):
             ax.plot(shifts_, spectrum, color="#000000")
 
-        for ax, shifts_hr, model in zip(axs[0], shifts_highres, models):
+        for ax, shifts_hr, model in zip(axs, data["shifts_highres"], data["models"]):
             ax.plot(shifts_hr, model, color="#808080")
 
+        noscs = sum(len(oscs) for oscs in data["oscillators"])
         colors = make_color_cycle(oscillator_colors, noscs)
         for ax, shifts_hr, oscs, merge_idxs in zip(
-            axs[0][::-1], shifts_highres[::-1], oscillators[::-1], merge_indices[::-1],
+            axs[::-1],
+            data["shifts_highres"][::-1],
+            data["oscillators"][::-1],
+            merge_indices[::-1],
         ):
             for i, (label, osc) in enumerate(oscs):
                 color = next(colors)
@@ -727,8 +754,25 @@ class Estimator1D(_Estimator1DProc):
                     color=color,
                 )
 
-        for ax in axs[0]:
+    @staticmethod
+    def _get_data_span(data: Iterable[np.ndarray]) -> Tuple[float, float]:
+        return (
+            min([np.amin(datum) for datum in data]),
+            max([np.amax(datum) for datum in data]),
+        )
+
+    def _set_ylim(self, axs: Iterable[mpl.axes.Axes], data: Dict) -> None:
+        all_lines = (
+            [osc[1] for oscs in data["oscillators"] for osc in oscs] +
+            [spectrum for spectrum in data["spectra"]] +
+            [model for model in data["models"]] +
+            [residual for residual in data["residuals"]]
+        )
+        data_span = self._get_data_span(all_lines)
+        h = data_span[1] - data_span[0]
+        bottom = data_span[0] - (0.03 * h)
+        top = data_span[1] + (0.03 * h)
+
+        for ax in axs:
             ax.set_yticks([])
             ax.set_ylim(bottom, top)
-
-        return fig, axs

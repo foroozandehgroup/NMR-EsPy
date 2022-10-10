@@ -1,19 +1,23 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 27 May 2022 19:39:17 BST
+# Last Edited: Mon 10 Oct 2022 17:20:45 BST
 
 import ast
 import copy
+import io
 import pathlib
 import re
 import subprocess
+import sys
 import tkinter as tk
 import webbrowser
 
+import matplotlib as mpl
 from matplotlib.backends import backend_tkagg
 import numpy as np
 
+from nmrespy._colors import GRE, END
 import nmrespy._paths_and_links as pl
 import nmrespy.app.config as cf
 import nmrespy.app.custom_widgets as wd
@@ -34,13 +38,14 @@ class Result(wd.MyToplevel):
         self.protocol("WM_DELETE_WINDOW", self.click_cross)
 
         self.create_plot()
-
         # Canvas for figure
         self.canvas = backend_tkagg.FigureCanvasTkAgg(
-            self.result_plot.fig,
+            self.result_fig,
             master=self,
         )
         self.canvas.draw()
+
+        # Canvas for figure
         self.canvas.get_tk_widget().grid(
             column=0,
             row=0,
@@ -86,22 +91,41 @@ class Result(wd.MyToplevel):
 
     def create_plot(self):
         # Generate figure of result
-        self.result_plot = self.master.estimator.plot_result(
-            [len(self.master.estimator._results) - 1]
-        )[0]
-        self.result_plot.fig.set_size_inches(6, 3.5)
-        self.result_plot.fig.set_dpi(170)
+        self.result_fig, self.result_ax = self.master.estimator.plot_result(
+            indices=[len(self.master.estimator._results) - 1],
+            region_unit="ppm",
+            axes_bottom=0.13,
+        )
+        self.result_ax = self.result_ax[0]
+        self.result_fig.set_size_inches(6, 3.5)
+        self.result_fig.set_dpi(170)
 
         # Prevent panning outside the selected region
-        xlim = self.result_plot.ax.get_xlim()
-        cf.Restrictor(self.result_plot.ax, x=lambda x: x <= xlim[0])
-        cf.Restrictor(self.result_plot.ax, x=lambda x: x >= xlim[1])
+        xlim = self.result_ax[0].get_xlim()
+        cf.Restrictor(self.result_ax[0], x=lambda x: x <= xlim[0])
+        cf.Restrictor(self.result_ax[0], x=lambda x: x >= xlim[1])
 
     def update_plot(self):
-        result = self.master.estimator._results[-1].get_params()
-        self.result_plot.result = result
-        self.result_plot._make_ydata()
-        self.result_plot._create_artists()
+        data = self.master.estimator._make_plot_data(
+            [len(self.master.estimator._results) - 1],
+            None,
+            "ppm",
+            None,
+        )
+
+        xlim = self.result_ax[0].get_xlim()
+        self.result_ax[0].clear()
+        self.result_ax[0].set_xlim(xlim)
+        self.merge_indices, _ = self.master.estimator._plot_regions(
+            [len(self.master.estimator._results) - 1], "ppm",
+        )
+        self.master.estimator._plot_data(
+            self.result_ax,
+            data,
+            self.merge_indices,
+            None,
+        )
+        self.master.estimator._set_ylim(self.result_ax, data)
         self.canvas.draw()
 
 
@@ -1139,6 +1163,9 @@ class SaveFrame(wd.MyToplevel):
             self.wait_window(warn_window)
             return
 
+        old_stdout = sys.stdout
+        sys.stdout = mystdout = io.StringIO()
+
         # Directory
         dir_ = self.dir_name["value"]
         index = [len(self.ctrl.estimator._results) - 1]
@@ -1148,16 +1175,16 @@ class SaveFrame(wd.MyToplevel):
             fig_fmt = self.fig_fmt.get()
             dpi = self.fig_dpi["value"]
             fig_name = self.fig_name.get()
-            fig_path = dir_ / f"{fig_name}"
+            fig_path = (dir_ / f"{fig_name}").with_suffix(f".{fig_fmt}")
 
             # Convert size from cm -> inches
             fig_size = (
                 self.fig_width["value"] / 2.54,
                 self.fig_height["value"] / 2.54,
             )
-            plot = self.ctrl.estimator.plot_result(index)[0]
-            plot.fig.set_size_inches(*fig_size)
-            plot.save(fig_path, fmt=fig_fmt, dpi=dpi, force_overwrite=True)
+            fig, _ = self.ctrl.estimator.plot_result(index)
+            fig.set_size_inches(*fig_size)
+            fig.savefig(fig_path, dpi=dpi)
 
         # Result files
         for fmt in ("txt", "pdf"):
@@ -1169,8 +1196,8 @@ class SaveFrame(wd.MyToplevel):
                     description = None
 
                 self.ctrl.estimator.write_result(
-                    index,
                     path=path,
+                    indices=index,
                     description=description,
                     fmt=fmt,
                     force_overwrite=True,
@@ -1181,5 +1208,14 @@ class SaveFrame(wd.MyToplevel):
             name = self.pickle_name.get()
             path = str(dir_ / name)
             self.ctrl.estimator.to_pickle(path=path, force_overwrite=True)
+
+        sys.stdout = old_stdout
+        msg = mystdout.getvalue() \
+                      .replace(GRE, "") \
+                      .replace(END, "") \
+                      .replace("Saved", "• Saved")
+
+        wdw = fr.ConfirmWindow(self, msg, inc_no=False)
+        self.wait_window(wdw)
 
         self.master.destroy()
