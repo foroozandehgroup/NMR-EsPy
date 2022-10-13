@@ -1,7 +1,7 @@
 # frames.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 13 Oct 2022 15:19:53 BST
+# Last Edited: Thu 13 Oct 2022 19:38:45 BST
 
 import tkinter as tk
 import webbrowser
@@ -48,7 +48,7 @@ class LogoFrame(wd.MyFrame):
             # add MF group logo
             self.mfgroup_img = cf.get_PhotoImage(pl.MFLOGOPATH, scale)
             self.mfgroup_logo = wd.MyLabel(
-                image=self.mfgroup_img, cursor="hand1",
+                self, image=self.mfgroup_img, cursor="hand1",
             )
             # provide link to MF group website
             self.mfgroup_logo.bind(

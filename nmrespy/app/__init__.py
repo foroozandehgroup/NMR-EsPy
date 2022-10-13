@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 10 Oct 2022 11:48:13 BST
+# Last Edited: Thu 13 Oct 2022 19:17:58 BST
 
 # This is currently only applicable to 1D NMR data.
 
@@ -9,8 +9,8 @@ import pathlib
 import tkinter as tk
 
 from nmrespy import Estimator1D
-from nmrespy.app.frames import DataType  # TODO: WaitingWindow
 from nmrespy.app import stup, result
+from nmrespy.app.frames import DataType  # TODO: WaitingWindow
 
 import matplotlib as mpl
 mpl.rcParams["text.usetex"] = False
@@ -83,9 +83,3 @@ class NMREsPyApp(tk.Tk):
     def result(self):
         self.result_window = result.Result(self)
         self.wait_window(self.result_window)
-
-
-if __name__ == "__main__":
-
-    app = NMREsPyApp()
-    app.mainloop()

@@ -1,7 +1,7 @@
 # custom_widgets.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 13 Oct 2022 16:00:03 BST
+# Last Edited: Thu 13 Oct 2022 19:37:19 BST
 
 """
 Customised widgets for NMR-EsPy GUI.
@@ -205,41 +205,6 @@ class MyText(tk.Text):
         values = ("white", "black", "black")
 
         generate(self, keys, values, kwargs)
-
-
-style = ttk.Style()
-style.theme_create(
-    "notebook",
-    parent="alt",
-    settings={
-        "TNotebook": {
-            "configure": {
-                "tabmargins": [2, 0, 5, 0],
-                "background": cf.BGCOLOR,
-                "bordercolor": "black",
-            }
-        },
-        "TNotebook.Tab": {
-            "configure": {
-                "padding": [10, 3],
-                "background": cf.NOTEBOOKCOLOR,
-                "font": (cf.MAINFONT, 11),
-            },
-            "map": {
-                "background": [("selected", cf.ACTIVETABCOLOR)],
-                "expand": [("selected", [1, 1, 1, 0])],
-                "font": [("selected", (cf.MAINFONT, 11, "bold"))],
-                "foreground": [("selected", "white")],
-            },
-        },
-    },
-)
-
-
-class MyNotebook(ttk.Notebook):
-    def __init__(self, parent):
-        style.theme_use("notebook")
-        super().__init__(parent)
 
 
 class MyNavigationToolbar(NavigationToolbar2Tk):

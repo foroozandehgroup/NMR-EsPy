@@ -1,13 +1,14 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 13 Oct 2022 15:59:22 BST
+# Last Edited: Thu 13 Oct 2022 19:38:12 BST
 
 import collections
 import copy
 from datetime import datetime
 import re
 import tkinter as tk
+from tkinter import ttk
 import webbrowser
 
 from matplotlib import patches, pyplot as plt, transforms
@@ -41,6 +42,7 @@ class SetUp(wd.MyToplevel):
         super().__init__(ctrl)
         self.ctrl = ctrl
         self.configure_root()
+        self.notebook_style()
         self.construct_gui_frames()
         self.place_gui_frames()
         self.configure_gui_frames()
@@ -61,13 +63,42 @@ class SetUp(wd.MyToplevel):
         self.plot_frame = wd.MyFrame(self)
         self.toolbar_frame = wd.MyFrame(self)
         self.notebook_frame = wd.MyFrame(self)
-        self.notebook = wd.MyNotebook(self.notebook_frame)
+        self.notebook = ttk.Notebook(self.notebook_frame, style="TNotebook")
         self.pre_proc_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
         self.region_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
-        self.region_notebook = wd.MyNotebook(self.region_frame)
+        self.region_notebook = ttk.Notebook(self.region_frame, style="TNotebook")
         self.adset_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
-        # self.logo_frame = fr.LogoFrame(self, scale=0.72)
+        self.logo_frame = fr.LogoFrame(self, scale=0.72)
         self.button_frame = SetupButtonFrame(master=self)
+
+    def notebook_style(self):
+        style = ttk.Style(self)
+        style.theme_create(
+            "notebook",
+            parent="alt",
+            settings={
+                "TNotebook": {
+                    "configure": {
+                        "tabmargins": [2, 0, 5, 0],
+                        "background": cf.BGCOLOR,
+                        "bordercolor": "black",
+                    }
+                },
+                "TNotebook.Tab": {
+                    "configure": {
+                        "padding": [10, 3],
+                        "background": cf.NOTEBOOKCOLOR,
+                        "font": (cf.MAINFONT, 11),
+                    },
+                    "map": {
+                        "background": [("selected", cf.ACTIVETABCOLOR)],
+                        "expand": [("selected", [1, 1, 1, 0])],
+                        "font": [("selected", (cf.MAINFONT, 11, "bold"))],
+                        "foreground": [("selected", "white")],
+                    },
+                },
+            },
+        )
 
     def place_gui_frames(self):
         self.notebook.add(
@@ -95,7 +126,7 @@ class SetUp(wd.MyToplevel):
         self.plot_frame.grid(row=0, column=0, columnspan=2, sticky="nsew")
         self.toolbar_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
         self.notebook_frame.grid(row=2, column=0, columnspan=2, sticky="ew")
-        # self.logo_frame.grid(row=3, column=0, padx=10, pady=10, sticky="w")
+        self.logo_frame.grid(row=3, column=0, padx=10, pady=10, sticky="w")
         self.button_frame.grid(row=3, column=1, sticky="s")
 
     def configure_gui_frames(self):
