@@ -1,7 +1,7 @@
 # custom_widgets.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 10 Oct 2022 17:04:34 BST
+# Last Edited: Thu 13 Oct 2022 16:00:03 BST
 
 """
 Customised widgets for NMR-EsPy GUI.
@@ -155,7 +155,8 @@ class MyEntry(tk.Entry):
 
         generate(self, keys, values, kwargs)
 
-        if self.return_command:
+        if self.return_command is not None:
+            self.return_args = () if self.return_args is None else self.return_args
             self.bind_command()
 
     def bind_command(self):
@@ -206,37 +207,38 @@ class MyText(tk.Text):
         generate(self, keys, values, kwargs)
 
 
+style = ttk.Style()
+style.theme_create(
+    "notebook",
+    parent="alt",
+    settings={
+        "TNotebook": {
+            "configure": {
+                "tabmargins": [2, 0, 5, 0],
+                "background": cf.BGCOLOR,
+                "bordercolor": "black",
+            }
+        },
+        "TNotebook.Tab": {
+            "configure": {
+                "padding": [10, 3],
+                "background": cf.NOTEBOOKCOLOR,
+                "font": (cf.MAINFONT, 11),
+            },
+            "map": {
+                "background": [("selected", cf.ACTIVETABCOLOR)],
+                "expand": [("selected", [1, 1, 1, 0])],
+                "font": [("selected", (cf.MAINFONT, 11, "bold"))],
+                "foreground": [("selected", "white")],
+            },
+        },
+    },
+)
+
+
 class MyNotebook(ttk.Notebook):
     def __init__(self, parent):
-        style = ttk.Style()
-        style.theme_create(
-            "notebook",
-            parent="alt",
-            settings={
-                "TNotebook": {
-                    "configure": {
-                        "tabmargins": [2, 0, 5, 0],
-                        "background": cf.BGCOLOR,
-                        "bordercolor": "black",
-                    }
-                },
-                "TNotebook.Tab": {
-                    "configure": {
-                        "padding": [10, 3],
-                        "background": cf.NOTEBOOKCOLOR,
-                        "font": (cf.MAINFONT, 11),
-                    },
-                    "map": {
-                        "background": [("selected", cf.ACTIVETABCOLOR)],
-                        "expand": [("selected", [1, 1, 1, 0])],
-                        "font": [("selected", (cf.MAINFONT, 11, "bold"))],
-                        "foreground": [("selected", "white")],
-                    },
-                },
-            },
-        )
         style.theme_use("notebook")
-
         super().__init__(parent)
 
 
@@ -260,6 +262,81 @@ class MyNavigationToolbar(NavigationToolbar2Tk):
 
     def set_message(self, msg):
         pass
+
+
+class MyLabelScaleEntry(MyFrame):
+    def __init__(
+        self,
+        master,
+        name,
+        frame_kw=None,
+        label_kw=None,
+        scale_kw=None,
+        entry_kw=None,
+    ):
+        frame_kw = {} if frame_kw is None else frame_kw
+        super().__init__(master, **frame_kw)
+        self.columnconfigure(1, weight=1)
+        label_kw = {} if label_kw is None else label_kw
+        scale_kw = {} if scale_kw is None else scale_kw
+        entry_kw = {} if entry_kw is None else entry_kw
+        self.label = MyLabel(self, text=name, **label_kw)
+        self.scale = MyScale(self, **scale_kw)
+        self.entry = MyEntry(self, **entry_kw)
+
+        for col, (wgt, sticky, padx) in enumerate(zip(
+            (self.label, self.scale, self.entry),
+            ("w", "ew", "w"),
+            ((0, 10), (0, 10), 0),
+        )):
+            wgt.grid(row=0, column=col, padx=padx, sticky=sticky)
+
+
+class NOscWidget(MyFrame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.label = MyLabel(self, text="number of oscillators:")
+        self.mdl_label = MyLabel(self, text="Use MDL:")
+        self.mdl_var = tk.IntVar(self)
+        self.mdl_var.set(1)
+        self.mdl_box = MyCheckbutton(
+            self, command=self.update_mdl_box, variable=self.mdl_var,
+        )
+        self.noscs = 0
+        self.entry = MyEntry(
+            self,
+            return_command=self.check_noscs,
+            state="disabled",
+        )
+
+        self.label.grid(row=0, column=0)
+        self.entry.grid(row=0, column=1, padx=(5, 0))
+        self.mdl_label.grid(row=0, column=2, padx=(15, 0))
+        self.mdl_box.grid(row=0, column=3, padx=(5, 0))
+
+    def update_mdl_box(self):
+        if self.mdl_var.get():
+            self.entry["state"] = "disabled"
+            self.entry.black_highlight()
+        else:
+            self.entry["state"] = "normal"
+        self.check_noscs()
+
+    def check_noscs(self):
+        inpt = self.entry.get()
+        try:
+            value = int(inpt)
+            assert value > 0
+            self.noscs = value
+
+        except Exception:
+            pass
+
+        self.entry.delete(0, tk.END)
+        self.entry.insert(0, str(self.noscs) if self.noscs > 0 else "")
+
+        if self.entry.get() == "":
+            self.entry.key_press()
 
 
 class MyTable(MyFrame):

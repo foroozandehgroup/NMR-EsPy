@@ -1,7 +1,7 @@
 # config.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Apr 2022 10:18:51 BST
+# Last Edited: Thu 13 Oct 2022 15:23:06 BST
 
 import tkinter as tk
 from PIL import ImageTk, Image
@@ -67,7 +67,6 @@ def get_PhotoImage(path, scale=1.0):
         Tkinter-compatible image. This can be incorporated into a GUI using
         tk.Label(parent, image=img)
     """
-
     image = Image.open(path).convert("RGBA")
     [w, h] = image.size
     new_w = int(w * scale)
@@ -182,24 +181,23 @@ def strip_zeros(number):
     return number.rstrip("0").rstrip(".")
 
 
+def get_widgets(master):
+    """Recursively gets all widgets associated with master"""
+    widgets = master.winfo_children()
+    for widget in widgets:
+        if widget.winfo_children():
+            # Get intersection of current widgets and children of
+            # currently considered widget
+            widgets = list(set(get_widgets(widget)) | set(widgets))
+
+    return widgets
+
+
 def check_invalid_entries(master):
     """Check whether any entry widgets in a certain frame have been
     assigned a red colour. The implication of this is that certain
     entries have not been verified by the user pressing <Return>"""
-
-    def get_widgets(master):
-        """Recursively gets all widgets associated with master"""
-        widgets = master.winfo_children()
-        for widget in widgets:
-            if widget.winfo_children():
-                # Get intersection of current widgets and children of
-                # currently considered widget
-                widgets = list(set(get_widgets(widget)) | set(widgets))
-
-        return widgets
-
     for widget in list(get_widgets(master)):
         if widget.winfo_class() == "Entry" and widget["fg"] == "red":
             return False
-
     return True
