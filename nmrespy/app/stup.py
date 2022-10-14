@@ -1,7 +1,7 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 13 Oct 2022 19:38:12 BST
+# Last Edited: Fri 14 Oct 2022 10:46:58 BST
 
 import collections
 import copy
@@ -23,7 +23,7 @@ import nmrespy.app.custom_widgets as wd
 import nmrespy.app.frames as fr
 
 
-class SetUp(wd.MyToplevel):
+class SetUp1D(wd.MyToplevel):
     region_colors = [
         "#E74C3C",
         "#E67E22",
@@ -42,7 +42,6 @@ class SetUp(wd.MyToplevel):
         super().__init__(ctrl)
         self.ctrl = ctrl
         self.configure_root()
-        self.notebook_style()
         self.construct_gui_frames()
         self.place_gui_frames()
         self.configure_gui_frames()
@@ -63,42 +62,13 @@ class SetUp(wd.MyToplevel):
         self.plot_frame = wd.MyFrame(self)
         self.toolbar_frame = wd.MyFrame(self)
         self.notebook_frame = wd.MyFrame(self)
-        self.notebook = ttk.Notebook(self.notebook_frame, style="TNotebook")
+        self.notebook = ttk.Notebook(self.notebook_frame)
         self.pre_proc_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
         self.region_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
-        self.region_notebook = ttk.Notebook(self.region_frame, style="TNotebook")
+        self.region_notebook = ttk.Notebook(self.region_frame, style="Region.TNotebook")
         self.adset_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
         self.logo_frame = fr.LogoFrame(self, scale=0.72)
         self.button_frame = SetupButtonFrame(master=self)
-
-    def notebook_style(self):
-        style = ttk.Style(self)
-        style.theme_create(
-            "notebook",
-            parent="alt",
-            settings={
-                "TNotebook": {
-                    "configure": {
-                        "tabmargins": [2, 0, 5, 0],
-                        "background": cf.BGCOLOR,
-                        "bordercolor": "black",
-                    }
-                },
-                "TNotebook.Tab": {
-                    "configure": {
-                        "padding": [10, 3],
-                        "background": cf.NOTEBOOKCOLOR,
-                        "font": (cf.MAINFONT, 11),
-                    },
-                    "map": {
-                        "background": [("selected", cf.ACTIVETABCOLOR)],
-                        "expand": [("selected", [1, 1, 1, 0])],
-                        "font": [("selected", (cf.MAINFONT, 11, "bold"))],
-                        "foreground": [("selected", "white")],
-                    },
-                },
-            },
-        )
 
     def place_gui_frames(self):
         self.notebook.add(
@@ -697,7 +667,6 @@ class SetUp(wd.MyToplevel):
         self.maxit_entry.insert(0, str(self.maxit))
 
     def run(self):
-        # TODO Check no red boxes
         if not cf.check_invalid_entries(self):
             msg = "Some parameters have not been validated."
             fr.WarnWindow(self, msg=msg)
@@ -728,7 +697,6 @@ class SetUp(wd.MyToplevel):
         # TODO: animation window
         # self.ctrl.waiting_window.destroy()
         self.destroy()
-        self.ctrl.result()
 
 
 class SetupButtonFrame(fr.RootButtonFrame):
@@ -743,13 +711,3 @@ class SetupButtonFrame(fr.RootButtonFrame):
         self.help_button["command"] = lambda: webbrowser.open_new(
             f"{pl.DOCSLINK}/content/gui/usage/setup.html"
         )
-
-# TODO: Put in run
-    # def close(self):
-    #     valid = cf.check_invalid_entries(self.main_frame)
-    #     if valid:
-    #         self.destroy()
-    #     else:
-    #         msg = "Some parameters have not been validated."
-    #         fr.WarnWindow(self, msg=msg)
-    #         return

@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 10 Oct 2022 17:20:45 BST
+# Last Edited: Fri 14 Oct 2022 10:40:43 BST
 
 import ast
 import copy
@@ -24,7 +24,7 @@ import nmrespy.app.custom_widgets as wd
 import nmrespy.app.frames as fr
 
 
-class Result(wd.MyToplevel):
+class Result1D(wd.MyToplevel):
     def __init__(self, master):
 
         super().__init__(master)

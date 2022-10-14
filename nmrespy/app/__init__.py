@@ -1,16 +1,19 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 13 Oct 2022 19:17:58 BST
+# Last Edited: Fri 14 Oct 2022 10:48:19 BST
 
 # This is currently only applicable to 1D NMR data.
 
-import pathlib
+from pathlib import Path
 import tkinter as tk
+from tkinter import ttk
 
 from nmrespy import Estimator1D
-from nmrespy.app import stup, result
+from nmrespy.app import config as cf
 from nmrespy.app.frames import DataType  # TODO: WaitingWindow
+from nmrespy.app.stup import SetUp1D
+from nmrespy.app.result import Result1D
 
 import matplotlib as mpl
 mpl.rcParams["text.usetex"] = False
@@ -34,27 +37,49 @@ class NMREsPyApp(tk.Tk):
 
     def __init__(self, path, res, topspin=False, pdflatex=None):
         super().__init__()
-
         # Hide the root app window. This is not going to be used. Everything
         # will be built onto Toplevels
         self.withdraw()
-        path = pathlib.Path(path)
+
         self.pdflatex = pdflatex
+
+        style = ttk.Style(self)
+        style.theme_settings(
+            "default",
+            settings={
+                "TNotebook": {
+                    "configure": {
+                        "tabmargins": [2, 0, 5, 0],
+                        "background": cf.BGCOLOR,
+                        "bordercolor": "black",
+                    }
+                },
+                "TNotebook.Tab": {
+                    "configure": {
+                        "padding": [10, 3],
+                        "background": cf.NOTEBOOKCOLOR,
+                        "font": (cf.MAINFONT, 11),
+                    },
+                    "map": {
+                        "background": [("selected", cf.ACTIVETABCOLOR)],
+                        "expand": [("selected", [1, 1, 1, 0])],
+                        "font": [("selected", (cf.MAINFONT, 11, "bold"))],
+                        "foreground": [("selected", "white")],
+                    },
+                },
+            },
+        )
+        style.configure("Region.TNotebook", background=cf.NOTEBOOKCOLOR)
 
         if topspin:
             # Open window to ask user for data type (fid or pdata)
             # from this, self acquires the attirbutes dtype and path
+            path = Path(path)
             paths = {"pdata": path, "fid": path.parent.parent}
             data_type_window = DataType(self, paths)
             path = data_type_window.path
 
-        if res:
-            # Wish to view result from a previously-generated result.
-            # Jump straight to the result window.
-            self.estimator = Estimator1D.from_pickle(path)
-            self.result()
-
-        else:
+        if not res:
             # Create Estimator instance from the provided path
             self.estimator = Estimator1D.new_bruker(path)
 
@@ -62,11 +87,16 @@ class NMREsPyApp(tk.Tk):
             # self.waiting_window = WaitingWindow(self)
             # self.waiting_window.withdraw()
 
-            self.setup_window = stup.SetUp(self)
-            # hold at this point
-            # relieved once setup is destroyed
-            # see SetUp.run()
+            self.setup_window = SetUp1D(self)
             self.wait_window(self.setup_window)
+
+        else:
+            # Wish to view result from a previously-generated result.
+            # Jump straight to the result window.
+            self.estimator = Estimator1D.from_pickle(path)
+
+        self.result_window = Result1D(self)
+        self.wait_window(self.result_window)
 
         # TODO
         # For some reason, the program hangs after destroy call
@@ -79,7 +109,3 @@ class NMREsPyApp(tk.Tk):
         # For now, I'll just use this force-exit of the program, though it's
         # probably not ideal:
         exit()
-
-    def result(self):
-        self.result_window = result.Result(self)
-        self.wait_window(self.result_window)
