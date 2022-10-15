@@ -1,7 +1,7 @@
 # config.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 13 Oct 2022 15:23:06 BST
+# Last Edited: Fri 14 Oct 2022 14:50:05 BST
 
 import tkinter as tk
 from PIL import ImageTk, Image
@@ -120,34 +120,27 @@ class Restrictor:
     `here <https://stackoverflow.com/questions/48709873/restricting-panning-\
     range-in-matplotlib-plots>`_"""
 
-    def __init__(self, ax, x=lambda x: True, y=lambda x: True):
-
-        self.res = [x, y]
+    def __init__(self, ax, boundaries):
+        self.boundaries = boundaries
         self.ax = ax
-        self.limits = self.get_lim()
-        self.ax.callbacks.connect("xlim_changed", lambda evt: self.lims_change(axis=0))
-        self.ax.callbacks.connect("ylim_changed", lambda evt: self.lims_change(axis=1))
+        self.limits = self.ax.get_xlim()
+        self.ax.callbacks.connect("xlim_changed", lambda evt: self.lims_change())
 
-    def get_lim(self):
-        return [self.ax.get_xlim(), self.ax.get_ylim()]
+    def check_valid(self):
+        return all([
+            min(self.boundaries) <= x <= max(self.boundaries)
+            for x in self.ax.get_xlim()
+        ])
 
-    def set_lim(self, axis, lim):
-        if axis == 0:
-            self.ax.set_xlim(lim)
-        else:
-            self.ax.set_ylim(lim)
-        self.limits[axis] = self.get_lim()[axis]
-
-    def lims_change(self, event=None, axis=0):
-        curlim = np.array(self.get_lim()[axis])
-        if self.limits[axis] != self.get_lim()[axis]:
-            # avoid recursion
-            if not np.all(self.res[axis](curlim)):
+    def lims_change(self):
+        # Avoid recursion
+        if self.ax.get_xlim() != self.limits:
+            if not self.check_valid():
                 # if limits are invalid, reset them to previous state
-                self.set_lim(axis, self.limits[axis])
+                self.ax.set_xlim(self.limits)
             else:
                 # if limits are valid, update previous stored limits
-                self.limits[axis] = self.get_lim()[axis]
+                self.limits = self.ax.get_xlim()
 
 
 def check_int(value):

@@ -1,7 +1,7 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 10:46:58 BST
+# Last Edited: Fri 14 Oct 2022 14:50:42 BST
 
 import collections
 import copy
@@ -117,8 +117,7 @@ class SetUp1D(wd.MyToplevel):
 
         # Prevent user panning/zooming beyond spectral window
         # See Restrictor class for more info ↑
-        cf.Restrictor(self.ax, x=lambda x: x <= self.xlim[0])
-        cf.Restrictor(self.ax, x=lambda x: x >= self.xlim[1])
+        cf.Restrictor(self.ax, self.xlim)
 
         # Aesthetic tweaks
         self.fig.patch.set_facecolor(cf.BGCOLOR)
@@ -697,6 +696,7 @@ class SetUp1D(wd.MyToplevel):
         # TODO: animation window
         # self.ctrl.waiting_window.destroy()
         self.destroy()
+        self.ctrl.result()
 
 
 class SetupButtonFrame(fr.RootButtonFrame):
@@ -705,6 +705,7 @@ class SetupButtonFrame(fr.RootButtonFrame):
 
     def __init__(self, master):
         super().__init__(master)
+        self.ctrl = master.ctrl
         self.green_button["text"] = "Run"
         self.green_button["command"] = self.master.run
 

@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 10:48:19 BST
+# Last Edited: Fri 14 Oct 2022 15:27:27 BST
 
 # This is currently only applicable to 1D NMR data.
 
@@ -79,33 +79,22 @@ class NMREsPyApp(tk.Tk):
             data_type_window = DataType(self, paths)
             path = data_type_window.path
 
-        if not res:
+        if res:
+            # Wish to view result from a previously-generated result.
+            # Jump straight to the result window.
+            self.estimator = Estimator1D.from_pickle(path)
+            self.result()
+
+        else:
             # Create Estimator instance from the provided path
             self.estimator = Estimator1D.new_bruker(path)
+            self.setup_window = SetUp1D(self)
+            self.wait_window(self.setup_window)
 
             # TODO: animation window
             # self.waiting_window = WaitingWindow(self)
             # self.waiting_window.withdraw()
 
-            self.setup_window = SetUp1D(self)
-            self.wait_window(self.setup_window)
-
-        else:
-            # Wish to view result from a previously-generated result.
-            # Jump straight to the result window.
-            self.estimator = Estimator1D.from_pickle(path)
-
+    def result(self):
         self.result_window = Result1D(self)
         self.wait_window(self.result_window)
-
-        # TODO
-        # For some reason, the program hangs after destroy call
-        # ie still in mainloop, even though I have apparently destroyed
-        # the application.
-        # This should be looked into, it shouldn't be behaving like this.
-        # Perhaps there is something still active that means the mainloop
-        # isn't ending?
-        #
-        # For now, I'll just use this force-exit of the program, though it's
-        # probably not ideal:
-        exit()

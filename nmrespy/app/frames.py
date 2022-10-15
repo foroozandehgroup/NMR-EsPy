@@ -1,7 +1,7 @@
 # frames.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 13 Oct 2022 19:38:45 BST
+# Last Edited: Fri 14 Oct 2022 13:46:55 BST
 
 import tkinter as tk
 import webbrowser
@@ -229,6 +229,7 @@ class RootButtonFrame(wd.MyFrame):
     def __init__(self, master, cancel_msg="Are you sure you want to close NMR-EsPy?"):
         super().__init__(master)
 
+        self.master = master
         self.cancel_msg = cancel_msg
 
         self.cancel_button = wd.MyButton(
@@ -297,7 +298,6 @@ class RootButtonFrame(wd.MyFrame):
         )
 
     def cancel(self):
-
         check = ConfirmWindow(
             parent=self,
             msg=self.cancel_msg,
@@ -308,7 +308,7 @@ class RootButtonFrame(wd.MyFrame):
 
         if check.conf:
             # Destroy NMREsPyApp
-            self.master.destroy()
+            self.ctrl.destroy()
 
 
 class ConfirmWindow(wd.MyToplevel):

@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 10 Oct 2022 15:05:54 BST
+# Last Edited: Fri 14 Oct 2022 14:05:33 BST
 
 from __future__ import annotations
 import copy
@@ -449,6 +449,7 @@ class Estimator1D(_Estimator1DProc):
         model_shift: Optional[float] = None,
         label_peaks: bool = True,
         denote_regions: bool = False,
+        **kwargs,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         """Generate a figure of the estimation result.
 
@@ -609,7 +610,7 @@ class Estimator1D(_Estimator1DProc):
                 "wspace": axes_region_separation,
                 "width_ratios": [r[0] - r[1] for r in merge_regions],
             },
-            figsize=figure_size,
+            **kwargs,
         )
         if n_regions == 1:
             axs = np.array([axs])

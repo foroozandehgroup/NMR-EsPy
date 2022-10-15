@@ -1,7 +1,7 @@
 # custom_widgets.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 13 Oct 2022 19:37:19 BST
+# Last Edited: Fri 14 Oct 2022 18:31:59 BST
 
 """
 Customised widgets for NMR-EsPy GUI.
@@ -305,9 +305,10 @@ class NOscWidget(MyFrame):
 
 
 class MyTable(MyFrame):
-    def __init__(self, master, contents, titles, region):
+    def __init__(self, master, contents, titles, region, bg=cf.BGCOLOR):
 
-        super().__init__(master)
+        super().__init__(master, bg=bg)
+        self.bg = bg
         self.titles = titles
         self.region = region[0]
         # Number of selected rows
@@ -315,7 +316,7 @@ class MyTable(MyFrame):
         self.selected_number.set(0)
         self.selected_rows = []
 
-        self.max_rows = 12
+        self.max_rows = 2
 
         self.create_value_vars(contents)
         self.construct(top=0)
@@ -345,14 +346,14 @@ class MyTable(MyFrame):
         """Generate a table of the parameters. Creates a maximum of ``max_rows``
         rows, starting from ``top``."""
 
-        self.table_frame = MyFrame(self)
+        self.table_frame = MyFrame(self, bg=self.bg)
         self.table_frame.grid(row=0, column=0)
 
         # Column titles
         for column, title in enumerate(["#"] + self.titles):
             padx = 0 if column == 0 else (5, 0)
             sticky = "" if column == 0 else "w"
-            MyLabel(self.table_frame, text=title).grid(
+            MyLabel(self.table_frame, text=title, bg=self.bg).grid(
                 row=0,
                 column=column,
                 padx=padx,
@@ -428,7 +429,7 @@ class MyTable(MyFrame):
 
         # Add naviagtion buttons if more than `self.max_rows` oscillators
         if len(self.value_vars) > self.max_rows:
-            self.navigate_frame = MyFrame(self)
+            self.navigate_frame = MyFrame(self, bg=self.bg)
             self.navigate_frame.grid(row=1, column=0, pady=(10, 0))
 
             self.up_arrow_img = cf.get_PhotoImage(cf.UPARROWPATH, scale=0.5)
@@ -451,11 +452,11 @@ class MyTable(MyFrame):
             self.down_arrow.grid(row=0, column=1, padx=(5, 0))
 
             # Check if oscillator 1 is present. If so disable down arrow.
-            if self.labels[0]["text"] == "1":
+            if self.labels[0]["text"] == "0":
                 self.up_arrow["state"] = "disabled"
 
             # Check if last oscillator is present. If so disable up arrow.
-            if int(self.labels[-1]["text"]) == len(self.value_vars):
+            if self.labels[-1]["text"] == f"{len(self.value_vars) - 1}":
                 self.down_arrow["state"] = "disabled"
 
     def reconstruct(self, contents, top=0):
@@ -517,7 +518,7 @@ class MyTable(MyFrame):
             if i + top in self.selected_rows:
                 fg, bg, state = cf.TABLESELECTFGCOLOR, cf.TABLESELECTBGCOLOR, "readonly"
             else:
-                fg, bg, state = "#000000", cf.BGCOLOR, "disabled"
+                fg, bg, state = "#000000", self.bg, "disabled"
 
             label["fg"] = fg
             label["bg"] = bg
@@ -582,12 +583,14 @@ class MyTable(MyFrame):
                     return True
         return False
 
+    @property
+    def top(self):
+        return int(self.labels[0]["text"])
+
     def up(self):
         """Scroll down one place in the table"""
-        top = int(self.labels[0]["text"]) - 2
-        self.reconstruct(contents=self.get_values(), top=top)
+        self.reconstruct(contents=self.get_values(), top=self.top - 1)
 
     def down(self):
         """Scroll down one place in the table"""
-        top = int(self.labels[0]["text"])
-        self.reconstruct(contents=self.get_values(), top=top)
+        self.reconstruct(contents=self.get_values(), top=self.top + 1)
