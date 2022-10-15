@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 19:13:30 BST
+# Last Edited: Sat 15 Oct 2022 14:28:31 BST
 
 from __future__ import annotations
 import abc
@@ -615,7 +615,7 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
                 if oscs_to_add is None:
                     oscs_to_add = new_oscs
                 else:
-                    oscs_to_add = np.vstack(oscs_to_add, new_oscs)
+                    oscs_to_add = np.vstack((oscs_to_add, new_oscs))
 
                 idx_to_remove.append(osc)
 

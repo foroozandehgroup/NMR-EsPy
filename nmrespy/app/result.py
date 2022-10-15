@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 19:28:38 BST
+# Last Edited: Sat 15 Oct 2022 16:29:08 BST
 
 import re
 import tkinter as tk
@@ -85,171 +85,225 @@ class Result1D(wd.MyToplevel):
                 text=str(i),
                 sticky="nsew",
             )
-            fig, ax = self.estimator.plot_result(
-                indices=[i],
-                axes_bottom=0.12,
-                axes_left=0.02,
-                axes_right=0.98,
-                axes_top=0.98,
-                region_unit="ppm",
-                figsize=(6, 3.5),
-                dpi=170,
-            )
-            self.figs.append(fig)
-            self.figs[-1].patch.set_facecolor(cf.NOTEBOOKCOLOR)
-            self.axs.append(ax[0][0])
-            self.axs[-1].set_facecolor(cf.PLOTCOLOR)
-            self.xlims.append(
-                self.estimator.get_results(indices=[i])[0].get_region(unit="ppm")[0]
-            )
-            self.canvases.append(
-                backend_tkagg.FigureCanvasTkAgg(
-                    self.figs[-1],
-                    master=self.tabs[-1],
-                )
-            )
-            self.canvases[-1].get_tk_widget().grid(column=0, row=0, sticky="nsew")
-            self.toolbars.append(
-                wd.MyNavigationToolbar(
-                    self.canvases[-1],
-                    parent=self.tabs[-1],
-                    color=cf.NOTEBOOKCOLOR,
-                )
-            )
-            self.toolbars[-1].grid(row=1, column=0, padx=10, pady=5, sticky="w")
-            cf.Restrictor(self.axs[-1], self.xlims[-1])
+            self.new_region(i)
 
-            self.table_frames.append(
-                wd.MyFrame(
-                    self.tabs[-1], bg=cf.NOTEBOOKCOLOR, highlightbackground="black",
-                    highlightthickness=3,
-                )
-            )
-            self.table_frames[-1].columnconfigure(0, weight=1)
-            self.table_frames[-1].rowconfigure(0, weight=1)
-            self.table_frames[-1].grid(
-                row=0, column=1, rowspan=2, padx=(0, 10), pady=10, sticky="ns",
-            )
-            self.tables.append(
-                wd.MyTable(
-                    self.table_frames[-1],
-                    contents=self.estimator.get_params(indices=[i], funit="ppm"),
-                    titles=[
-                        "Amplitude",
-                        "Phase (rad)",
-                        "Frequency (ppm)",
-                        "Damping (s⁻¹)",
-                    ],
-                    region=self.xlims[-1],
-                    bg=cf.NOTEBOOKCOLOR,
-                )
-            )
-            self.tables[-1].grid(
-                row=0, column=0, columnspan=4, padx=(0, 10), pady=10, sticky="n",
-            )
+    def new_region(self, idx, replace=False):
+        def append(lst, obj, i):
+            if replace:
+                lst.pop(i)
+                lst.insert(i, obj)
+            else:
+                lst.append(obj)
 
+        if replace:
+            self.canvases[idx].get_tk_widget().destroy()
+            self.toolbars[idx].destroy()
+            self.table_frames[idx].destroy()
+            self.tables[idx].destroy()
+            self.button_frames[idx].destroy()
+            self.add_buttons[idx].destroy()
+            self.remove_buttons[idx].destroy()
+            self.merge_buttons[idx].destroy()
+            self.split_buttons[idx].destroy()
+            self.undo_buttons[idx].destroy()
+            self.rerun_buttons[idx].destroy()
+            self.edit_boxes[idx].destroy()
+        else:
             self.histories.append(
-                (
-                    self.estimator.get_params(indices=[i]),
-                    self.estimator.get_errors(indices=[i]),
-                )
+                [
+                    (
+                        self.estimator.get_params(indices=[idx]),
+                        self.estimator.get_errors(indices=[idx]),
+                    )
+                ]
             )
 
-            self.button_frames.append(
-                wd.MyFrame(self.table_frames[-1], bg=cf.NOTEBOOKCOLOR)
-            )
-            for r in range(4):
-                self.button_frames[-1].columnconfigure(r, weight=1)
-            self.button_frames[-1].grid(row=1, column=0, sticky="s")
+        fig, ax = self.estimator.plot_result(
+            indices=[idx],
+            axes_bottom=0.12,
+            axes_left=0.02,
+            axes_right=0.98,
+            axes_top=0.98,
+            region_unit="ppm",
+            figsize=(6, 3.5),
+            dpi=170,
+        )
+        ax = ax[0][0]
+        fig.patch.set_facecolor(cf.NOTEBOOKCOLOR)
+        ax.set_facecolor(cf.PLOTCOLOR)
+        append(self.figs, fig, idx)
+        append(self.axs, ax, idx)
+        append(
+            self.xlims,
+            self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")[0],
+            idx,
+        )
+        cf.Restrictor(self.axs[idx], self.xlims[idx])
 
-            self.add_buttons.append(
-                wd.MyButton(
-                    self.button_frames[-1],
-                    text="Add",
-                    command=self.add,
-                )
-            )
-            self.add_buttons[-1].grid(
-                row=0, column=0, padx=(10, 0), pady=(10, 0), sticky="ew",
-            )
+        append(
+            self.canvases,
+            backend_tkagg.FigureCanvasTkAgg(
+                self.figs[idx],
+                master=self.tabs[idx],
+            ),
+            idx,
+        )
+        self.canvases[idx].get_tk_widget().grid(column=0, row=0, sticky="nsew")
 
-            self.remove_buttons.append(
-                wd.MyButton(
-                    self.button_frames[-1],
-                    text="Remove",
-                    state="disabled",
-                    command=self.remove,
-                )
-            )
-            self.remove_buttons[-1].grid(
-                row=0, column=1, padx=(10, 0), pady=(10, 0), sticky="ew",
-            )
+        append(
+            self.toolbars,
+            wd.MyNavigationToolbar(
+                self.canvases[idx],
+                parent=self.tabs[idx],
+                color=cf.NOTEBOOKCOLOR,
+            ),
+            idx,
+        )
+        self.toolbars[idx].grid(row=1, column=0, padx=10, pady=5, sticky="w")
 
-            self.merge_buttons.append(
-                wd.MyButton(
-                    self.button_frames[-1],
-                    text="Merge",
-                    state="disabled",
-                    command=self.merge,
-                )
-            )
-            self.merge_buttons[-1].grid(
-                row=0, column=2, padx=(10, 0), pady=(10, 0), sticky="ew",
-            )
+        append(
+            self.table_frames,
+            wd.MyFrame(
+                self.tabs[idx],
+                bg=cf.NOTEBOOKCOLOR,
+                highlightbackground="black",
+                highlightthickness=3,
+            ),
+            idx,
+        )
+        self.table_frames[idx].columnconfigure(0, weight=1)
+        self.table_frames[idx].rowconfigure(0, weight=1)
+        self.table_frames[idx].grid(
+            row=0, column=1, rowspan=2, padx=(0, 10), pady=10, sticky="ns",
+        )
 
-            self.split_buttons.append(
-                wd.MyButton(
-                    self.button_frames[-1],
-                    text="Split",
-                    state="disabled",
-                    command=self.split,
-                )
-            )
-            self.split_buttons[-1].grid(
-                row=0, column=3, padx=10, pady=(10, 0), sticky="ew",
-            )
+        append(
+            self.tables,
+            wd.MyTable(
+                self.table_frames[idx],
+                contents=self.estimator.get_params(indices=[idx], funit="ppm"),
+                titles=[
+                    "Amplitude",
+                    "Phase (rad)",
+                    "Frequency (ppm)",
+                    "Damping (s⁻¹)",
+                ],
+                region=self.xlims[idx],
+                bg=cf.NOTEBOOKCOLOR,
+            ),
+            idx,
+        )
+        self.tables[idx].grid(
+            row=0, column=0, columnspan=4, padx=(0, 10), pady=10, sticky="n",
+        )
 
-            self.undo_buttons.append(
-                wd.MyButton(
-                    self.button_frames[-1],
-                    text="Undo",
-                    state="disabled",
-                    command=self.undo,
-                )
-            )
-            self.undo_buttons[-1].grid(
-                row=1, column=2, padx=(10, 0), pady=10, sticky="ew",
-            )
+        append(
+            self.button_frames,
+            wd.MyFrame(self.table_frames[idx], bg=cf.NOTEBOOKCOLOR),
+            idx,
+        )
+        for r in range(4):
+            self.button_frames[idx].columnconfigure(r, weight=1)
+        self.button_frames[idx].grid(row=1, column=0, sticky="s")
 
-            self.rerun_buttons.append(
-                wd.MyButton(
-                    self.button_frames[-1],
-                    text="Re-run",
-                    state="disabled",
-                    command=self.rerun,
-                )
-            )
-            self.rerun_buttons[-1].grid(
-                row=1, column=3, padx=10, pady=10, sticky="ew",
-            )
+        append(
+            self.add_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Add",
+                command=self.add,
+            ),
+            idx,
+        )
+        self.add_buttons[idx].grid(
+            row=0, column=0, padx=(10, 0), pady=(10, 0), sticky="ew",
+        )
 
-            self.tables[-1].selected_number.trace("w", self.configure_button_states)
+        append(
+            self.remove_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Remove",
+                state="disabled",
+                command=self.remove,
+            ),
+            idx,
+        )
+        self.remove_buttons[idx].grid(
+            row=0, column=1, padx=(10, 0), pady=(10, 0), sticky="ew",
+        )
 
-            self.edit_boxes.append(
-                tk.Text(
-                    self.table_frames[-1],
-                    height=10,
-                )
-            )
-            self.edit_boxes[-1].insert(
-                "1.0",
-                f"Edits staged for result {i}:\n",
-            )
-            self.edit_boxes[-1]["state"] = "disabled"
-            self.edit_boxes[-1].grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        append(
+            self.merge_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Merge",
+                state="disabled",
+                command=self.merge,
+            ),
+            idx,
+        )
+        self.merge_buttons[idx].grid(
+            row=0, column=2, padx=(10, 0), pady=(10, 0), sticky="ew",
+        )
 
-            self.staged_edits.append([])
-            self.staged_oscs.append([])
+        append(
+            self.split_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Split",
+                state="disabled",
+                command=self.split,
+            ),
+            idx,
+        )
+        self.split_buttons[idx].grid(
+            row=0, column=3, padx=10, pady=(10, 0), sticky="ew",
+        )
+
+        append(
+            self.undo_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Undo",
+                state="normal" if len(self.histories[idx]) > 1 else "disabled",
+                command=self.undo,
+            ),
+            idx,
+        )
+        self.undo_buttons[idx].grid(
+            row=1, column=2, padx=(10, 0), pady=10, sticky="ew",
+        )
+
+        append(
+            self.rerun_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Re-run",
+                state="disabled",
+                command=self.rerun,
+            ),
+            idx,
+        )
+        self.rerun_buttons[idx].grid(
+            row=1, column=3, padx=10, pady=10, sticky="ew",
+        )
+
+        self.tables[idx].selected_number.trace("w", self.configure_button_states)
+
+        append(
+            self.edit_boxes,
+            tk.Text(
+                self.table_frames[idx],
+                height=10,
+            ),
+            idx,
+        )
+        self.edit_boxes[idx].grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        self.append_text(idx, f"Edits staged for result {idx}:\n")
+
+        append(self.staged_edits, [], idx)
+        append(self.staged_oscs, [], idx)
 
     # --- Edit Parameters Methods ----------------------------------
     def get_idx(self):
@@ -359,7 +413,12 @@ class Result1D(wd.MyToplevel):
         self.reset_table(idx)
 
     def undo(self):
-        pass
+        idx = self.get_idx()
+        self.histories[idx].pop()
+        params, errors = self.histories[idx][-1]
+        self.estimator._results[idx].params = params
+        self.estimator._results[idx].errors = errors
+        self.new_region(idx, replace=True)
 
     def rerun(self):
         idx = self.get_idx()
@@ -372,7 +431,7 @@ class Result1D(wd.MyToplevel):
                 add_oscs = info if add_oscs is None else np.vstack(add_oscs, info)
             elif typ == 1:
                 if rm_oscs is None:
-                    rm_oscs = [info]
+                    rm_oscs = info
                 else:
                     rm_oscs.extend(info)
             elif typ == 2:
@@ -382,9 +441,9 @@ class Result1D(wd.MyToplevel):
                     merge_oscs.append(info)
             elif typ == 3:
                 if split_oscs is None:
-                    split_oscs = {info[0]: info[1]}
+                    split_oscs = info
                 else:
-                    split_oscs[info[0]] = info[1]
+                    split_oscs = {**split_oscs, **info}
 
         self.ctrl.estimator.edit_result(
             index=idx,
@@ -393,8 +452,14 @@ class Result1D(wd.MyToplevel):
             merge_oscs=merge_oscs,
             split_oscs=split_oscs,
         )
-        print(self.ctrl.estimator.get_params([0]))
+        self.histories[idx].append(
+            (
+                self.ctrl.estimator.get_params(indices=[idx]),
+                self.ctrl.estimator.get_errors(indices=[idx]),
+            )
+        )
 
+        self.new_region(idx, replace=True)
 
 
 class ResultButtonFrame(fr.RootButtonFrame):
