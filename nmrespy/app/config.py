@@ -1,7 +1,7 @@
 # config.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 14:50:05 BST
+# Last Edited: Mon 17 Oct 2022 15:56:40 BST
 
 import tkinter as tk
 from PIL import ImageTk, Image
@@ -120,27 +120,40 @@ class Restrictor:
     `here <https://stackoverflow.com/questions/48709873/restricting-panning-\
     range-in-matplotlib-plots>`_"""
 
-    def __init__(self, ax, boundaries):
-        self.boundaries = boundaries
+    def __init__(self, ax, x_bounds, y_bounds=None):
         self.ax = ax
-        self.limits = self.ax.get_xlim()
-        self.ax.callbacks.connect("xlim_changed", lambda evt: self.lims_change())
+        self.x_bounds = x_bounds
+        self.curr_xlim = self.ax.get_xlim()
+        self.ax.callbacks.connect("xlim_changed", lambda evt: self.xlim_change())
+        if y_bounds is not None:
+            self.y_bounds = y_bounds
+            self.curr_ylim = self.ax.get_ylim()
+            self.ax.callbacks.connect("ylim_changed", lambda evt: self.ylim_change())
 
-    def check_valid(self):
-        return all([
-            min(self.boundaries) <= x <= max(self.boundaries)
-            for x in self.ax.get_xlim()
-        ])
+    def check_valid(self, axis):
+        bounds = getattr(self, f"{axis}_bounds")
+        lims = getattr(self.ax, f"get_{axis}lim")()
+        return all([min(bounds) <= lim <= max(bounds) for lim in lims])
 
-    def lims_change(self):
+    def xlim_change(self):
         # Avoid recursion
-        if self.ax.get_xlim() != self.limits:
-            if not self.check_valid():
+        if self.ax.get_xlim() != self.curr_xlim:
+            if not self.check_valid("x"):
                 # if limits are invalid, reset them to previous state
-                self.ax.set_xlim(self.limits)
+                self.ax.set_xlim(self.curr_xlim)
             else:
                 # if limits are valid, update previous stored limits
-                self.limits = self.ax.get_xlim()
+                self.curr_xlim = self.ax.get_xlim()
+
+    def ylim_change(self):
+        # Avoid recursion
+        if self.ax.get_ylim() != self.curr_ylim:
+            if not self.check_valid("y"):
+                # if limits are invalid, reset them to previous state
+                self.ax.set_ylim(self.curr_ylim)
+            else:
+                # if limits are valid, update previous stored limits
+                self.curr_ylim = self.ax.get_ylim()
 
 
 def check_int(value):

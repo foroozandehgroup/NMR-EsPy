@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 15:27:27 BST
+# Last Edited: Mon 17 Oct 2022 17:29:34 BST
 
 # This is currently only applicable to 1D NMR data.
 
@@ -9,10 +9,11 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
 
-from nmrespy import Estimator1D
+from nmrespy import Estimator, Estimator1D, Estimator2DJ
 from nmrespy.app import config as cf
 from nmrespy.app.frames import DataType  # TODO: WaitingWindow
-from nmrespy.app.stup import SetUp1D
+from nmrespy.app.setup_onedim import Setup1D
+from nmrespy.app.setup_jres import Setup2DJ
 from nmrespy.app.result import Result1D
 
 import matplotlib as mpl
@@ -35,7 +36,7 @@ class NMREsPyApp(tk.Tk):
     # When you see `self.ctrl` in other classes in code for the app, it refers
     # to this class
 
-    def __init__(self, path, res, topspin=False, pdflatex=None):
+    def __init__(self, path, res, dtype, topspin=False, pdflatex=None):
         super().__init__()
         # Hide the root app window. This is not going to be used. Everything
         # will be built onto Toplevels
@@ -82,13 +83,18 @@ class NMREsPyApp(tk.Tk):
         if res:
             # Wish to view result from a previously-generated result.
             # Jump straight to the result window.
-            self.estimator = Estimator1D.from_pickle(path)
+            self.estimator = Estimator.from_pickle(path)
             self.result()
 
         else:
             # Create Estimator instance from the provided path
-            self.estimator = Estimator1D.new_bruker(path)
-            self.setup_window = SetUp1D(self)
+            if dtype == "1D":
+                self.estimator = Estimator1D.new_bruker(path)
+                self.setup_window = Setup1D(self)
+            elif dtype == "2DJ":
+                self.estimator = Estimator2DJ.new_bruker(path)
+                self.setup_window = Setup2DJ(self)
+
             self.wait_window(self.setup_window)
 
             # TODO: animation window
@@ -96,5 +102,10 @@ class NMREsPyApp(tk.Tk):
             # self.waiting_window.withdraw()
 
     def result(self):
-        self.result_window = Result1D(self)
+        if isinstance(self.estimator, Estimator1D):
+            self.result_window = Result1D(self)
+        elif isinstance(self.estimator, Estimator2DJ):
+            print("TODO: Result2DJ")
+            exit()
+
         self.wait_window(self.result_window)

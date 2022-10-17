@@ -1,8 +1,9 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 14:50:42 BST
+# Last Edited: Mon 17 Oct 2022 17:19:16 BST
 
+import abc
 import collections
 import copy
 from datetime import datetime
@@ -23,7 +24,7 @@ import nmrespy.app.custom_widgets as wd
 import nmrespy.app.frames as fr
 
 
-class SetUp1D(wd.MyToplevel):
+class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
     region_colors = [
         "#E74C3C",
         "#E67E22",
@@ -45,11 +46,12 @@ class SetUp1D(wd.MyToplevel):
         self.construct_gui_frames()
         self.place_gui_frames()
         self.configure_gui_frames()
-        self.construct_figure()
-        self.construct_toolbar()
+        self.construct_1d_figure()
+        self.construct_2d_figure()
         self.construct_pre_proc_objects()
         self.construct_region_objects()
         self.construct_advanced_settings_objects()
+        self.configure_notebooks()
 
     def configure_root(self):
         self.title("NMR-EsPy - Setup Calculation")
@@ -60,7 +62,6 @@ class SetUp1D(wd.MyToplevel):
 
     def construct_gui_frames(self):
         self.plot_frame = wd.MyFrame(self)
-        self.toolbar_frame = wd.MyFrame(self)
         self.notebook_frame = wd.MyFrame(self)
         self.notebook = ttk.Notebook(self.notebook_frame)
         self.pre_proc_frame = wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR)
@@ -86,18 +87,13 @@ class SetUp1D(wd.MyToplevel):
             text="Advanced Settings",
             sticky="nsew",
         )
-        self.notebook.bind(
-            "<<NotebookTabChanged>>",
-            lambda event: self.switch_main_tab(),
-        )
         self.notebook.grid(row=0, column=0, sticky="ew", padx=10, pady=(0, 10))
         self.region_notebook.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
 
         self.plot_frame.grid(row=0, column=0, columnspan=2, sticky="nsew")
-        self.toolbar_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
-        self.notebook_frame.grid(row=2, column=0, columnspan=2, sticky="ew")
-        self.logo_frame.grid(row=3, column=0, padx=10, pady=10, sticky="w")
-        self.button_frame.grid(row=3, column=1, sticky="s")
+        self.notebook_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
+        self.logo_frame.grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        self.button_frame.grid(row=2, column=1, sticky="s")
 
     def configure_gui_frames(self):
         self.plot_frame.columnconfigure(0, weight=1)
@@ -106,57 +102,52 @@ class SetUp1D(wd.MyToplevel):
         self.pre_proc_frame.columnconfigure(0, weight=1)
         self.region_frame.columnconfigure(0, weight=1)
 
-    def construct_figure(self):
-        self.fig, self.ax = plt.subplots(
+    def construct_1d_figure(self, master, spectrum):
+        self.fig_1d, self.ax_1d = plt.subplots(
             figsize=(6, 3.5),
             dpi=170,
         )
-        shifts = self.estimator.get_shifts(unit="ppm")[0]
-        self.xlim = [shifts[i] for i in (0, -1)]
-        self.ax.set_xlim(self.xlim)
-
+        self.shifts = self.estimator.get_shifts(unit="ppm", meshgrid=False)
+        self.lims = [[s[i] for i in (0, -1)] for s in self.shifts]
+        self.ax_1d.set_xlim(self.lims[-1])
         # Prevent user panning/zooming beyond spectral window
         # See Restrictor class for more info ↑
-        cf.Restrictor(self.ax, self.xlim)
+        cf.Restrictor(self.ax_1d, x_bounds=self.lims[-1])
 
         # Aesthetic tweaks
-        self.fig.patch.set_facecolor(cf.BGCOLOR)
-        self.ax.set_facecolor(cf.PLOTCOLOR)
-        self.ax.set_xlabel(
-            f"{self.estimator.unicode_nuclei[0]} (ppm)", fontsize=8,
+        self.fig_1d.patch.set_facecolor(cf.BGCOLOR)
+        self.ax_1d.set_facecolor(cf.PLOTCOLOR)
+        self.ax_1d.set_xlabel(
+            f"{self.estimator.unicode_nuclei[-1]} (ppm)", fontsize=8,
         )
-        self.ax.locator_params(axis="x", nbins=10)
-        self.ax.tick_params(axis="x", which="major", labelsize=6)
-        self.ax.set_yticks([])
+        self.ax_1d.locator_params(axis="x", nbins=10)
+        self.ax_1d.tick_params(axis="x", which="major", labelsize=6)
+        self.ax_1d.set_yticks([])
         for direction in ("top", "bottom", "left", "right"):
-            self.ax.spines[direction].set_color("k")
+            self.ax_1d.spines[direction].set_color("k")
 
-        self.spec_line, = self.ax.plot(
-            shifts,
-            self.estimator.spectrum.real,
+        self.spec_line, = self.ax_1d.plot(
+            self.shifts[-1],
+            spectrum,
             color="k",
             lw=1.,
         )
 
         # Create figure canvas
-        self.canvas = backend_tkagg.FigureCanvasTkAgg(
-            self.fig,
-            master=self.plot_frame,
+        self.canvas_1d = backend_tkagg.FigureCanvasTkAgg(
+            self.fig_1d,
+            master=master,
         )
-        self.canvas.get_tk_widget().grid(column=0, row=0, sticky="nsew")
+        self.canvas_1d.get_tk_widget().grid(column=0, row=0, sticky="nsew")
 
-    def construct_toolbar(self):
-        self.toolbar = wd.MyNavigationToolbar(
-            self.canvas,
-            parent=self.toolbar_frame,
+        self.toolbar_1d = wd.MyNavigationToolbar(
+            self.canvas_1d,
+            parent=master,
         )
-        self.toolbar.grid(
-            row=0,
-            column=0,
-            sticky="w",
-            padx=(10, 0),
-            pady=(0, 5),
-        )
+        self.toolbar_1d.grid(row=1, column=0, sticky="w", padx=(10, 0), pady=(0, 5))
+
+    def construct_2d_figure(self):
+        pass
 
     def construct_pre_proc_objects(self):
         # --- Exponential damping ---
@@ -188,7 +179,7 @@ class SetUp1D(wd.MyToplevel):
         self.pivot = {}
         init_pivot = self.estimator.data.shape[-1] // 2
         for unit in ("idx", "hz", "ppm"):
-            self.pivot[unit] = self.conv(init_pivot, f"idx->{unit}")
+            self.pivot[unit] = self.conv_1d(init_pivot, f"idx->{unit}")
 
         for name in ("p0", "p1"):
             self.__dict__[name] = {}
@@ -196,7 +187,7 @@ class SetUp1D(wd.MyToplevel):
                 self.__dict__[name][unit] = 0.
 
         # Pivot plot
-        self.pivot_line = self.ax.axvline(
+        self.pivot_line = self.ax_1d.axvline(
             x=self.pivot["ppm"],
             color=cf.PIVOTCOLOR,
             lw=0.8,
@@ -293,10 +284,6 @@ class SetUp1D(wd.MyToplevel):
             text="+",
             sticky="nsew",
         )
-        self.region_notebook.bind(
-            "<<NotebookTabChanged>>",
-            lambda event: self.switch_region_tab(),
-        )
 
         # Noise region
         self.new_region(noise=True)
@@ -371,8 +358,15 @@ class SetUp1D(wd.MyToplevel):
         self.pv_checkbutton.select()
         self.pv_checkbutton.grid(row=2, column=1, padx=10, pady=(10, 0), sticky="w")
 
-    def conv(self, value, conversion):
-        return self.estimator.convert([value], conversion)[0]
+    def configure_notebooks(self):
+        self.notebook.bind(
+            "<<NotebookTabChanged>>",
+            lambda event: self.switch_main_tab(),
+        )
+        self.region_notebook.bind(
+            "<<NotebookTabChanged>>",
+            lambda event: self.switch_region_tab(),
+        )
 
     # --- Tab switching methods ----------------------------------------
     def switch_main_tab(self):
@@ -383,7 +377,9 @@ class SetUp1D(wd.MyToplevel):
             label.set(alpha=patch_alpha)
             patch.set_alpha(patch_alpha)
 
-        self.canvas.draw_idle()
+        self.canvas_1d.draw_idle()
+
+        return tab
 
     def switch_region_tab(self):
         tab = self.region_notebook.index(self.region_notebook.select())
@@ -409,13 +405,10 @@ class SetUp1D(wd.MyToplevel):
         except Exception:
             pass
 
-        self.lb_wgt.entry.delete(0, tk.END)
-        self.lb_wgt.entry.insert(0, f"{self.lb:.3f}")
-
     def update_pivot_scale(self, value):
         self.pivot["idx"] = int(value)
         for unit in ("ppm", "hz"):
-            self.pivot[unit] = self.conv(float(value), f"idx->{unit}")
+            self.pivot[unit] = self.conv_1d(float(value), f"idx->{unit}")
         self.pivot_wgt.entry.delete(0, tk.END)
         self.pivot_wgt.entry.insert(0, f"{self.pivot['ppm']:.3f}")
         self.pivot_line.set_xdata([self.pivot["ppm"], self.pivot["ppm"]])
@@ -427,7 +420,7 @@ class SetUp1D(wd.MyToplevel):
             value = float(inpt)
             assert self.xlim[0] >= value >= self.xlim[1]
             for unit in ("idx", "ppm", "hz"):
-                self.pivot[unit] = self.conv(value, f"ppm->{unit}")
+                self.pivot[unit] = self.conv_1d(value, f"ppm->{unit}")
             self.pivot_wgt.scale.set(self.pivot["idx"])
 
         except Exception:
@@ -462,19 +455,9 @@ class SetUp1D(wd.MyToplevel):
             wgt.entry.delete(0, tk.END)
             wgt.entry.insert(0, f"{obj['rad']:.3f}")
 
+    @abc.abstractmethod
     def update_spectrum(self):
-        data = copy.deepcopy(self.estimator.data)
-        data = sig.exp_apodisation(data, self.lb)
-        data[0] *= 0.5
-        self.spec_line.set_ydata(
-            sig.phase(
-                sig.ft(data),
-                (self.p0["rad"],),
-                (self.p1["rad"],),
-                (self.pivot["idx"],),
-            ).real
-        )
-        self.canvas.draw_idle()
+        pass
 
     # --- Region selection methods -------------------------------------
     def new_region(self, noise=False):
@@ -484,7 +467,7 @@ class SetUp1D(wd.MyToplevel):
             int(x * self.estimator.data.shape[-1]) for x in init_bounds
         ]
         for unit in ("hz", "ppm"):
-            region[unit] = self.conv(region["idx"], f"idx->{unit}")
+            region[unit] = self.conv_1d(region["idx"], f"idx->{unit}")
 
         self.regions.append(region)
 
@@ -500,7 +483,7 @@ class SetUp1D(wd.MyToplevel):
         )
         region_tab.columnconfigure(0, weight=1)
 
-        patch = self.ax.axvspan(
+        patch = self.ax_1d.axvspan(
             *self.regions[idx]["ppm"],
             facecolor=color,
             alpha=0.7,
@@ -508,10 +491,10 @@ class SetUp1D(wd.MyToplevel):
         self.region_patches.append(patch)
 
         trans = transforms.blended_transform_factory(
-            self.ax.transData,
-            self.ax.transAxes,
+            self.ax_1d.transData,
+            self.ax_1d.transAxes,
         )
-        label = self.ax.text(
+        label = self.ax_1d.text(
             self.regions[idx]["ppm"][0],
             0.995,
             str(idx - 1) if not noise else "N",
@@ -529,8 +512,8 @@ class SetUp1D(wd.MyToplevel):
             },
             scale_kw={
                 "troughcolor": color,
-                "from_": self.xlim[0],
-                "to": self.xlim[1],
+                "from_": self.lims[-1][0],
+                "to": self.lims[-1][1],
                 "resolution": 0.0001,
                 "command": lambda value: self.update_region_scale(value, idx, "lb"),
             },
@@ -550,8 +533,8 @@ class SetUp1D(wd.MyToplevel):
             },
             scale_kw={
                 "troughcolor": color,
-                "from_": self.xlim[0],
-                "to": self.xlim[1],
+                "from_": self.lims[-1][0],
+                "to": self.lims[-1][1],
                 "resolution": 0.0001,
                 "command": lambda value: self.update_region_scale(value, idx, "rb"),
             },
@@ -582,7 +565,7 @@ class SetUp1D(wd.MyToplevel):
 
         if value is not None:
             for unit in ("hz", "ppm", "idx"):
-                region[unit][i] = self.conv(value, f"ppm->{unit}")
+                region[unit][i] = self.conv_1d(value, f"ppm->{unit}")
 
             self.update_region_patch(idx, bound)
 
@@ -602,7 +585,7 @@ class SetUp1D(wd.MyToplevel):
 
         if value is not None:
             for unit in ("hz", "ppm", "idx"):
-                region[unit][i] = self.conv(value, f"ppm->{unit}")
+                region[unit][i] = self.conv_1d(value, f"ppm->{unit}")
 
             self.update_region_patch(idx, bound)
             wgt.scale.set(region["ppm"][i])
@@ -622,16 +605,16 @@ class SetUp1D(wd.MyToplevel):
             label = self.region_labels[idx]
             label.set_x(self.regions[idx]["ppm"][0])
 
-        self.canvas.draw_idle()
+        self.canvas_1d.draw_idle()
 
     def check_valid_region_bound(self, value, idx, bound):
         try:
             value = float(value)
             left, right = self.regions[idx]["ppm"]
             if bound == "lb":
-                assert self.xlim[0] >= value > right
+                assert self.lims[-1][0] >= value > right
             elif bound == "rb":
-                assert left > value >= self.xlim[-1]
+                assert left > value >= self.lims[-1][1]
             return value
 
         except Exception:

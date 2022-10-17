@@ -1,10 +1,9 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 11:19:21 BST
+# Last Edited: Mon 17 Oct 2022 14:29:15 BST
 
 from __future__ import annotations
-import abc
 import datetime
 import functools
 from pathlib import Path
@@ -50,7 +49,7 @@ def logger(f: callable):
     return inner
 
 
-class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
+class Estimator(ne.ExpInfo):
     """Base estimation class."""
 
     matlab_available = ne.MATLAB_AVAILABLE
@@ -201,11 +200,9 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         save_file(self.get_log(), path, fprint=fprint)
 
     @classmethod
-    @abc.abstractmethod
     def new_bruker(*args, **kwargs):
         pass
 
-    @abc.abstractmethod
     def view_data(*args, **kwargs):
         pass
 
@@ -359,7 +356,6 @@ class Estimator(ne.ExpInfo, metaclass=abc.ABCMeta):
         params = full_params[osc_indices]
         return self.make_fid(params, pts, indirect_modulation=indirect_modulation)
 
-    @abc.abstractmethod
     def estimate(*args, **kwargs):
         pass
 
