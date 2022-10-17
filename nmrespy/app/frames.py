@@ -1,7 +1,7 @@
 # frames.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 13:46:55 BST
+# Last Edited: Mon 17 Oct 2022 13:38:23 BST
 
 import tkinter as tk
 import webbrowser
@@ -321,7 +321,7 @@ class ConfirmWindow(wd.MyToplevel):
 
         # add text explaining the issue
         text = wd.MyLabel(self, text=msg, wraplength=400)
-        text.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+        text.grid(row=0, column=0, columnspan=2 if inc_no else 1, padx=10, pady=10)
 
         # close button
         if inc_no:
@@ -339,7 +339,9 @@ class ConfirmWindow(wd.MyToplevel):
             bg=cf.BUTTONGREEN,
             command=self.confirm,
         )
-        confirm_button.grid(row=1, column=1, padx=(0, 10), pady=(0, 10))
+        confirm_button.grid(
+            row=1, column=1 if inc_no else 0, padx=(0, 10), pady=(0, 10),
+        )
 
     def cancel(self):
         self.conf = False

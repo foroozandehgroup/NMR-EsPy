@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 04 Oct 2022 16:08:19 BST
+# Last Edited: Mon 17 Oct 2022 11:19:25 BST
 
 from pathlib import Path
 import re
@@ -671,8 +671,8 @@ def check_split_oscs(obj: Any, dim: int, n: int) -> Optional[str]:
     valid_keys = ("separation", "number", "amp_ratio")
     valid_keys_str = ", ".join([f"\"{x}\"" for x in valid_keys])
     for key, value in obj.items():
-        if not (isint(key) and 0 <= key < n):
-            return f"Each key should be an int between 0 and {n - 1}."
+        if not (isint(key) and 0 <= key <= n):
+            return f"Each key should be an int between 0 and {n}."
         msg = f"Issue with element with key {key}:\n"
 
         if value is None:

@@ -1,7 +1,7 @@
 # custom_widgets.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 18:31:59 BST
+# Last Edited: Mon 17 Oct 2022 11:51:07 BST
 
 """
 Customised widgets for NMR-EsPy GUI.
@@ -316,7 +316,7 @@ class MyTable(MyFrame):
         self.selected_number.set(0)
         self.selected_rows = []
 
-        self.max_rows = 2
+        self.max_rows = 10
 
         self.create_value_vars(contents)
         self.construct(top=0)
