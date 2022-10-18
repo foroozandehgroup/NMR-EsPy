@@ -1,7 +1,7 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 17:19:16 BST
+# Last Edited: Tue 18 Oct 2022 11:54:55 BST
 
 import abc
 import collections
@@ -334,7 +334,7 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
         )
         self.maxit_label.grid(row=1, column=0, padx=(10, 0), pady=(10, 0), sticky="w")
 
-        self.maxit = 200
+        self.maxit = int(self.default_maxits[self.opt.get()])
         self.maxit_entry = wd.MyEntry(
             self.adset_frame,
             return_command=self.update_maxit,
@@ -486,7 +486,6 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
         patch = self.ax_1d.axvspan(
             *self.regions[idx]["ppm"],
             facecolor=color,
-            alpha=0.7,
         )
         self.region_patches.append(patch)
 
@@ -607,6 +606,8 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
 
         self.canvas_1d.draw_idle()
 
+        return i, coords
+
     def check_valid_region_bound(self, value, idx, bound):
         try:
             value = float(value)
@@ -623,16 +624,8 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
     # --- Advanced Settings methods ------------------------------------
     def update_opt(self, *args):
         opt = self.opt.get()
-
-        if opt == "Exact Hessian":
-            default = "100"
-        elif opt == "Gauss-Newton":
-            default = "200"
-        elif opt == "L-BFGS":
-            default = "500"
-
         self.maxit_entry.delete(0, tk.END)
-        self.maxit_entry.insert(0, default)
+        self.maxit_entry.insert(0, self.default_maxits[opt])
         self.update_maxit()
 
     def update_maxit(self):

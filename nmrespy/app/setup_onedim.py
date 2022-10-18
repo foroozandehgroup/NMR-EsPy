@@ -1,7 +1,7 @@
 # setup_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 16:36:56 BST
+# Last Edited: Tue 18 Oct 2022 11:54:05 BST
 
 import copy
 
@@ -10,6 +10,12 @@ from nmrespy.app.stup import Setup1DType
 
 
 class Setup1D(Setup1DType):
+    default_maxits = {
+        "Exact Hessian": "100",
+        "Gauss-Newton": "200",
+        "L-BFGS": "500",
+    }
+
     def __init__(self, ctrl):
         super().__init__(ctrl)
 

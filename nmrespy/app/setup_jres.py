@@ -1,12 +1,12 @@
 # setup_jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 17:37:36 BST
+# Last Edited: Tue 18 Oct 2022 11:55:49 BST
 
+import tkinter as tk
 from tkinter import ttk
 
-from matplotlib.backends import backend_tkagg
-import matplotlib.pyplot as plt
+from matplotlib import backends, pyplot as plt, transforms
 import numpy as np
 
 import nmrespy as ne
@@ -15,8 +15,15 @@ from nmrespy.app.stup import Setup1DType
 
 
 class Setup2DJ(Setup1DType):
+    default_maxits = {
+        "Exact Hessian": "20",
+        "Gauss-Newton": "40",
+        "L-BFGS": "100",
+    }
+
     def __init__(self, ctrl):
         super().__init__(ctrl)
+        self.construct_contour_objects()
 
     def conv_1d(self, value, conversion):
         return self.estimator.convert([None, value], conversion)[-1]
@@ -90,7 +97,7 @@ class Setup2DJ(Setup1DType):
             linewidths=0.5,
         )
 
-        self.canvas_2d = backend_tkagg.FigureCanvasTkAgg(
+        self.canvas_2d = backends.backend_tkagg.FigureCanvasTkAgg(
             self.fig_2d,
             master=self.jres_frame,
         )
@@ -102,12 +109,91 @@ class Setup2DJ(Setup1DType):
         )
         self.toolbar_2d.grid(row=1, column=0, padx=(10, 0), pady=(0, 5), sticky="w")
 
+    def construct_region_objects(self):
+        self.region_patches_2d = []
+        self.region_labels_2d = []
+        super().construct_region_objects()
+
+    def new_region(self, noise=False):
+        super().new_region(noise)
+        idx = len(self.regions) - 1
+        color = self.region_colors[idx - 1] if not noise else "#808080"
+        patch_2d = self.ax_2d.axvspan(
+            *self.regions[idx]["ppm"],
+            facecolor=color,
+        )
+        self.region_patches_2d.append(patch_2d)
+
+        trans = transforms.blended_transform_factory(
+            self.ax_2d.transData,
+            self.ax_2d.transAxes,
+        )
+        label = self.ax_2d.text(
+            self.regions[idx]["ppm"][0],
+            0.995,
+            str(idx - 1) if not noise else "N",
+            verticalalignment="top",
+            transform=trans,
+            fontsize=7,
+        )
+        self.region_labels_2d.append(label)
+
     def configure_notebooks(self):
         super().configure_notebooks()
         self.plot_notebook.bind(
             "<<NotebookTabChanged>>",
             lambda event: self.switch_plot_tab(),
         )
+
+    def construct_contour_objects(self):
+        self.nlev = 10
+        self.base = np.amax(np.abs(self.estimator.spectrum).real) / 10
+        self.factor = 1.2
+
+        self.nlev_label = wd.MyLabel(
+            self.contour_frame,
+            text="# levels:",
+            bg=cf.NOTEBOOKCOLOR,
+        )
+        self.nlev_label.grid(row=0, column=0, padx=(10, 0), pady=(10, 0))
+
+        self.nlev_entry = wd.MyEntry(
+            self.contour_frame,
+            return_command=self.update_nlev,
+            width=12,
+        )
+        self.nlev_entry.insert(0, str(self.nlev))
+        self.nlev_entry.grid(row=0, column=1, padx=10, pady=(10, 0))
+
+        self.base_label = wd.MyLabel(
+            self.contour_frame,
+            text="base:",
+            bg=cf.NOTEBOOKCOLOR,
+        )
+        self.base_label.grid(row=1, column=0, padx=(10, 0), pady=(10, 0))
+
+        self.base_entry = wd.MyEntry(
+            self.contour_frame,
+            return_command=self.update_base,
+            width=12,
+        )
+        self.base_entry.insert(0, f"{self.base:6g}".replace(" ", ""))
+        self.base_entry.grid(row=1, column=1, padx=10, pady=(10, 0))
+
+        self.factor_label = wd.MyLabel(
+            self.contour_frame,
+            text="factor:",
+            bg=cf.NOTEBOOKCOLOR,
+        )
+        self.factor_label.grid(row=2, column=0, padx=(10, 0), pady=10)
+
+        self.factor_entry = wd.MyEntry(
+            self.contour_frame,
+            return_command=self.update_factor,
+            width=12,
+        )
+        self.factor_entry.insert(0, f"{self.factor:6g}".replace(" ", ""))
+        self.factor_entry.grid(row=2, column=1, padx=10, pady=10)
 
     def update_spectrum(self):
         p0 = (0., self.p0["rad"])
@@ -135,3 +221,73 @@ class Setup2DJ(Setup1DType):
         tab = self.plot_notebook.index(self.plot_notebook.select())
         state = "disabled" if tab == 0 else "normal"
         self.notebook.tab(3, state=state)
+
+    def update_region_patch(self, idx, bound):
+        i, coords = super().update_region_patch(idx, bound)
+        patch_2d = self.region_patches_2d[idx]
+        patch_2d.set_xy(coords)
+
+        if i == 0:
+            label = self.region_labels_2d[idx]
+            label.set_x(self.regions[idx]["ppm"][0])
+
+        self.canvas_2d.draw_idle()
+
+    @property
+    def clevels(self):
+        return [self.base * self.factor ** i for i in range(self.nlev)]
+
+    def update_contour(self):
+        for coll in self.spec_contour.collections:
+            coll.remove()
+        self.spec_contour = self.ax_2d.contour(
+            self.shifts[-1],
+            self.shifts[0],
+            np.abs(self.estimator.spectrum).real,
+            colors="k",
+            linewidths=0.5,
+            levels=self.clevels,
+        )
+        self.canvas_2d.draw_idle()
+
+    def update_nlev(self):
+        inpt = self.nlev_entry.get()
+        try:
+            value = int(inpt)
+            assert value > 0
+            self.nlev = value
+            self.update_contour()
+
+        except Exception:
+            pass
+
+        self.nlev_entry.delete(0, tk.END)
+        self.nlev_entry.insert(0, str(self.nlev))
+
+    def update_base(self):
+        inpt = self.base_entry.get()
+        try:
+            value = float(inpt)
+            assert value >= 0.
+            self.base = value
+            self.update_contour()
+
+        except Exception:
+            pass
+
+        self.base_entry.delete(0, tk.END)
+        self.base_entry.insert(0, f"{self.base:6g}".replace(" ", ""))
+
+    def update_factor(self):
+        inpt = self.factor_entry.get()
+        try:
+            value = float(inpt)
+            assert value > 1.
+            self.factor = value
+            self.update_contour()
+
+        except Exception:
+            pass
+
+        self.factor_entry.delete(0, tk.END)
+        self.factor_entry.insert(0, f"{self.factor:6g}".replace(" ", ""))
