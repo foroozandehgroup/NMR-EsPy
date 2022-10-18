@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 07 Oct 2022 17:07:24 BST
+# Last Edited: Tue 18 Oct 2022 15:37:14 BST
 
 import datetime
 import os

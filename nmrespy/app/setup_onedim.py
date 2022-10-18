@@ -1,12 +1,13 @@
 # setup_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 11:54:05 BST
+# Last Edited: Tue 18 Oct 2022 14:30:21 BST
 
 import copy
 
 import nmrespy as ne
 from nmrespy.app.stup import Setup1DType
+import nmrespy.app.config as cf
 
 
 class Setup1D(Setup1DType):
@@ -26,6 +27,7 @@ class Setup1D(Setup1DType):
         super().construct_1d_figure(
             self.plot_frame,
             self.estimator.spectrum.real,
+            cf.BGCOLOR,
         )
 
     def update_spectrum(self):

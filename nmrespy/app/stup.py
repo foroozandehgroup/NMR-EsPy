@@ -1,7 +1,7 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 11:54:55 BST
+# Last Edited: Tue 18 Oct 2022 14:51:42 BST
 
 import abc
 import collections
@@ -102,11 +102,20 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
         self.pre_proc_frame.columnconfigure(0, weight=1)
         self.region_frame.columnconfigure(0, weight=1)
 
-    def construct_1d_figure(self, master, spectrum):
-        self.fig_1d, self.ax_1d = plt.subplots(
+    def new_figure(self):
+        return plt.subplots(
             figsize=(6, 3.5),
             dpi=170,
+            gridspec_kw={
+                "left": 0.08,
+                "right": 0.98,
+                "bottom": 0.12,
+                "top": 0.96,
+            },
         )
+
+    def construct_1d_figure(self, master, spectrum, bg):
+        self.fig_1d, self.ax_1d = self.new_figure()
         self.shifts = self.estimator.get_shifts(unit="ppm", meshgrid=False)
         self.lims = [[s[i] for i in (0, -1)] for s in self.shifts]
         self.ax_1d.set_xlim(self.lims[-1])
@@ -115,7 +124,7 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
         cf.Restrictor(self.ax_1d, x_bounds=self.lims[-1])
 
         # Aesthetic tweaks
-        self.fig_1d.patch.set_facecolor(cf.BGCOLOR)
+        self.fig_1d.patch.set_facecolor(bg)
         self.ax_1d.set_facecolor(cf.PLOTCOLOR)
         self.ax_1d.set_xlabel(
             f"{self.estimator.unicode_nuclei[-1]} (ppm)", fontsize=8,
@@ -143,6 +152,7 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
         self.toolbar_1d = wd.MyNavigationToolbar(
             self.canvas_1d,
             parent=master,
+            color=bg,
         )
         self.toolbar_1d.grid(row=1, column=0, sticky="w", padx=(10, 0), pady=(0, 5))
 
@@ -203,7 +213,7 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
             },
             scale_kw={
                 "bg": cf.NOTEBOOKCOLOR,
-                "troughcolor": cf.PIVOTCOLOR,
+                "troughcolor": "white",
                 "from_": 0,
                 "to": self.estimator.data.shape[-1] - 1,
                 "resolution": 1,
@@ -371,11 +381,12 @@ class Setup1DType(wd.MyToplevel, metaclass=abc.ABCMeta):
     # --- Tab switching methods ----------------------------------------
     def switch_main_tab(self):
         tab = self.notebook.index(self.notebook.select())
-        pivot_alpha, patch_alpha = (1, 0) if tab == 0 else (0, 1)
+        pivot_alpha = 1 if tab == 0 else 0
+        patch_alpha = 1 if tab == 1 else 0
         self.pivot_line.set_alpha(pivot_alpha)
         for label, patch in zip(self.region_labels, self.region_patches):
             label.set(alpha=patch_alpha)
-            patch.set_alpha(patch_alpha)
+            patch.set(alpha=patch_alpha)
 
         self.canvas_1d.draw_idle()
 

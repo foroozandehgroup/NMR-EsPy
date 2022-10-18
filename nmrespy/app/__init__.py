@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 17:29:34 BST
+# Last Edited: Tue 18 Oct 2022 15:58:49 BST
 
 # This is currently only applicable to 1D NMR data.
 
@@ -14,7 +14,8 @@ from nmrespy.app import config as cf
 from nmrespy.app.frames import DataType  # TODO: WaitingWindow
 from nmrespy.app.setup_onedim import Setup1D
 from nmrespy.app.setup_jres import Setup2DJ
-from nmrespy.app.result import Result1D
+from nmrespy.app.result_onedim import Result1D
+from nmrespy.app.result_jres import Result2DJ
 
 import matplotlib as mpl
 mpl.rcParams["text.usetex"] = False
@@ -65,7 +66,10 @@ class NMREsPyApp(tk.Tk):
                         "background": [("selected", cf.ACTIVETABCOLOR)],
                         "expand": [("selected", [1, 1, 1, 0])],
                         "font": [("selected", (cf.MAINFONT, 11, "bold"))],
-                        "foreground": [("selected", "white")],
+                        "foreground": [
+                            ("selected", "white"),
+                            ("disabled", cf.NOTEBOOKCOLOR),
+                        ],
                     },
                 },
             },
@@ -105,7 +109,6 @@ class NMREsPyApp(tk.Tk):
         if isinstance(self.estimator, Estimator1D):
             self.result_window = Result1D(self)
         elif isinstance(self.estimator, Estimator2DJ):
-            print("TODO: Result2DJ")
-            exit()
+            self.result_window = Result2DJ(self)
 
         self.wait_window(self.result_window)

@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 13:34:02 BST
+# Last Edited: Tue 18 Oct 2022 16:44:40 BST
 
 import io
 from pathlib import Path
@@ -24,7 +24,7 @@ if USE_COLORAMA:
     colorama.init()
 
 
-class Result1D(wd.MyToplevel):
+class Result1DType(wd.MyToplevel):
     @property
     def estimator(self):
         return self.ctrl.estimator
@@ -98,10 +98,10 @@ class Result1D(wd.MyToplevel):
             self.new_region(i)
 
     def new_region(self, idx, replace=False):
-        def append(lst, obj, i):
+        def append(lst, obj):
             if replace:
-                lst.pop(i)
-                lst.insert(i, obj)
+                lst.pop(idx)
+                lst.insert(idx, obj)
             else:
                 lst.append(obj)
 
@@ -129,49 +129,6 @@ class Result1D(wd.MyToplevel):
                 ]
             )
 
-        fig, ax = self.estimator.plot_result(
-            indices=[idx],
-            axes_bottom=0.12,
-            axes_left=0.02,
-            axes_right=0.98,
-            axes_top=0.98,
-            region_unit="ppm",
-            figsize=(6, 3.5),
-            dpi=170,
-        )
-        ax = ax[0][0]
-        fig.patch.set_facecolor(cf.NOTEBOOKCOLOR)
-        ax.set_facecolor(cf.PLOTCOLOR)
-        append(self.figs, fig, idx)
-        append(self.axs, ax, idx)
-        append(
-            self.xlims,
-            self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")[0],
-            idx,
-        )
-        cf.Restrictor(self.axs[idx], self.xlims[idx])
-
-        append(
-            self.canvases,
-            backend_tkagg.FigureCanvasTkAgg(
-                self.figs[idx],
-                master=self.tabs[idx],
-            ),
-            idx,
-        )
-        self.canvases[idx].get_tk_widget().grid(column=0, row=0, sticky="nsew")
-
-        append(
-            self.toolbars,
-            wd.MyNavigationToolbar(
-                self.canvases[idx],
-                parent=self.tabs[idx],
-                color=cf.NOTEBOOKCOLOR,
-            ),
-            idx,
-        )
-        self.toolbars[idx].grid(row=1, column=0, padx=10, pady=5, sticky="w")
-
         append(
             self.table_frames,
             wd.MyFrame(
@@ -180,7 +137,6 @@ class Result1D(wd.MyToplevel):
                 highlightbackground="black",
                 highlightthickness=3,
             ),
-            idx,
         )
         self.table_frames[idx].columnconfigure(0, weight=1)
         self.table_frames[idx].rowconfigure(0, weight=1)
@@ -193,16 +149,10 @@ class Result1D(wd.MyToplevel):
             wd.MyTable(
                 self.table_frames[idx],
                 contents=self.estimator.get_params(indices=[idx], funit="ppm"),
-                titles=[
-                    "a",
-                    "ϕ (rad)",
-                    "f (ppm)",
-                    "η (s⁻¹)",
-                ],
+                titles=self.table_titles,
                 region=self.xlims[idx],
                 bg=cf.NOTEBOOKCOLOR,
             ),
-            idx,
         )
         self.tables[idx].grid(
             row=0, column=0, columnspan=4, padx=(0, 10), pady=10, sticky="n",
@@ -211,7 +161,6 @@ class Result1D(wd.MyToplevel):
         append(
             self.button_frames,
             wd.MyFrame(self.table_frames[idx], bg=cf.NOTEBOOKCOLOR),
-            idx,
         )
         for r in range(4):
             self.button_frames[idx].columnconfigure(r, weight=1)
@@ -224,7 +173,6 @@ class Result1D(wd.MyToplevel):
                 text="Add",
                 command=self.add,
             ),
-            idx,
         )
         self.add_buttons[idx].grid(
             row=0, column=0, padx=(10, 0), pady=(10, 0), sticky="ew",
@@ -238,7 +186,6 @@ class Result1D(wd.MyToplevel):
                 state="disabled",
                 command=self.remove,
             ),
-            idx,
         )
         self.remove_buttons[idx].grid(
             row=0, column=1, padx=(10, 0), pady=(10, 0), sticky="ew",
@@ -252,7 +199,6 @@ class Result1D(wd.MyToplevel):
                 state="disabled",
                 command=self.merge,
             ),
-            idx,
         )
         self.merge_buttons[idx].grid(
             row=0, column=2, padx=(10, 0), pady=(10, 0), sticky="ew",
@@ -266,7 +212,6 @@ class Result1D(wd.MyToplevel):
                 state="disabled",
                 command=self.split,
             ),
-            idx,
         )
         self.split_buttons[idx].grid(
             row=0, column=3, padx=10, pady=(10, 0), sticky="ew",
@@ -280,7 +225,6 @@ class Result1D(wd.MyToplevel):
                 state="disabled",
                 command=self.unstage,
             ),
-            idx,
         )
         self.unstage_buttons[idx].grid(
             row=1, column=1, padx=(10, 0), pady=10, sticky="ew",
@@ -294,7 +238,6 @@ class Result1D(wd.MyToplevel):
                 state="normal" if len(self.histories[idx]) > 1 else "disabled",
                 command=self.undo,
             ),
-            idx,
         )
         self.undo_buttons[idx].grid(
             row=1, column=2, padx=(10, 0), pady=10, sticky="ew",
@@ -309,7 +252,6 @@ class Result1D(wd.MyToplevel):
                 command=self.rerun,
                 fg="red",
             ),
-            idx,
         )
         self.rerun_buttons[idx].grid(
             row=1, column=3, padx=10, pady=10, sticky="ew",
@@ -324,13 +266,12 @@ class Result1D(wd.MyToplevel):
                 width=40,
                 height=10,
             ),
-            idx,
         )
         self.edit_boxes[idx].grid(row=2, column=0, sticky="ew", padx=10, pady=10)
         self.append_text(idx, f"Edits staged for result {idx}:\n")
 
-        append(self.staged_edits, [], idx)
-        append(self.staged_oscs, [], idx)
+        append(self.staged_edits, [])
+        append(self.staged_oscs, [])
 
     # --- Edit Parameters Methods ----------------------------------
     def get_idx(self):

@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 14:27:49 BST
+# Last Edited: Tue 18 Oct 2022 16:00:08 BST
 
 from __future__ import annotations
 import copy
@@ -562,7 +562,6 @@ class Estimator2DJ(_Estimator1DProc):
         multiplet_thold: Optional[float] = None,
         high_resolution_pts: Optional[int] = None,
         ratio_1d_2d: Tuple[float, float] = (2., 1.),
-        figure_size: Tuple[float, float] = (8., 6.),
         region_unit: str = "hz",
         axes_left: float = 0.07,
         axes_right: float = 0.96,
@@ -585,6 +584,7 @@ class Estimator2DJ(_Estimator1DProc):
         marker_shape: str = "o",
         label_peaks: bool = False,
         denote_regions: bool = False,
+        **kwargs,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         """Generate a figure of the estimation result.
 
@@ -617,9 +617,6 @@ class Estimator2DJ(_Estimator1DProc):
         ratio_1d_2d
             The relative heights of the regions containing the 1D spectra and the
             2DJ spectrum.
-
-        figure_size
-            The size of the figure in inches.
 
         axes_left
             The position of the left edge of the axes, in figure coordinates. Should
@@ -727,10 +724,6 @@ class Estimator2DJ(_Estimator1DProc):
                 "ratio_1d_2d", ratio_1d_2d, sfuncs.check_float_list, (),
                 {"length": 2, "must_be_positive": True},
             ),
-            (
-                "figure_size", figure_size, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
             self._funit_check(region_unit, "region_unit"),
             (
                 "axes_left", axes_left, sfuncs.check_float, (),
@@ -791,12 +784,7 @@ class Estimator2DJ(_Estimator1DProc):
         # linewidth
         # marker_shape: str = "o",
 
-        # TODO use self._process_indices(indices)
-        indices = (
-            [i % len(self._results) for i in indices]
-            if indices is not None
-            else list(range(len(self._results)))
-        )
+        indices = self._process_indices(indices)
         regions = sorted(
             [
                 (i, result.get_region(unit=region_unit)[1])
@@ -843,7 +831,7 @@ class Estimator2DJ(_Estimator1DProc):
                 "width_ratios": [r[0] - r[1] for r in merge_regions],
                 "height_ratios": ratio_1d_2d,
             },
-            figsize=figure_size,
+            **kwargs,
         )
         if n_regions == 1:
             axs = axs.reshape(2, 1)
