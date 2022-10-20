@@ -1,7 +1,7 @@
 # result_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 19 Oct 2022 12:20:46 BST
+# Last Edited: Thu 20 Oct 2022 16:01:43 BST
 
 from matplotlib import backends
 
@@ -20,7 +20,10 @@ class Result1D(Result1DType):
     def __init__(self, ctrl):
         super().__init__(ctrl)
 
-    def new_region(self, idx, replace=False):
+    def get_region(self, idx):
+        return self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")
+
+    def new_tab(self, idx, replace=False):
         def append(lst, obj):
             if replace:
                 lst.pop(idx)
@@ -28,11 +31,8 @@ class Result1D(Result1DType):
             else:
                 lst.append(obj)
 
-        append(
-            self.xlims,
-            self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")[-1],
-        )
-        super().new_region(idx, replace)
+        super().new_tab(idx, replace)
+
         fig, ax = self.estimator.plot_result(
             indices=[idx],
             axes_bottom=0.12,
@@ -48,11 +48,7 @@ class Result1D(Result1DType):
         ax.set_facecolor(cf.PLOTCOLOR)
         append(self.figs, fig)
         append(self.axs, ax)
-        append(
-            self.xlims,
-            self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")[-1],
-        )
-        cf.Restrictor(self.axs[idx], self.xlims[idx])
+        cf.Restrictor(self.axs[idx], self.get_region(idx))
 
         append(
             self.canvases,

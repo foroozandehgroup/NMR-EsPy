@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 20 Oct 2022 10:31:21 BST
+# Last Edited: Thu 20 Oct 2022 17:50:01 BST
 
 import io
 from pathlib import Path
@@ -85,19 +85,13 @@ class Result1DType(wd.MyToplevel):
         self.staged_edits = []
         self.staged_oscs = []
 
-        n_regions = len(self.estimator._results)
-        for i in range(n_regions):
-            self.tabs.append(wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR))
-            self.tabs[-1].columnconfigure(0, weight=1)
-            self.tabs[-1].rowconfigure(0, weight=1)
-            self.notebook.add(
-                self.tabs[-1],
-                text=str(i),
-                sticky="nsew",
-            )
-            self.new_region(i)
+        self.n_regions = len(self.estimator._results)
 
-    def new_region(self, idx, replace=False):
+        for idx in range(self.n_regions):
+            self.new_tab(idx)
+        self.notebook.select(0)
+
+    def new_tab(self, idx, replace=False):
         def append(lst, obj):
             if replace:
                 lst.pop(idx)
@@ -106,20 +100,29 @@ class Result1DType(wd.MyToplevel):
                 lst.append(obj)
 
         if replace:
-            self.canvases[idx].get_tk_widget().destroy()
-            self.toolbars[idx].destroy()
-            self.table_frames[idx].destroy()
-            self.tables[idx].destroy()
-            self.button_frames[idx].destroy()
-            self.add_buttons[idx].destroy()
-            self.remove_buttons[idx].destroy()
-            self.merge_buttons[idx].destroy()
-            self.split_buttons[idx].destroy()
-            self.undo_buttons[idx].destroy()
-            self.unstage_buttons[idx].destroy()
-            self.rerun_buttons[idx].destroy()
-            self.edit_boxes[idx].destroy()
+            self.tabs[idx].destroy()
+
+        append(
+            self.tabs,
+            wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR),
+        )
+        self.tabs[idx].columnconfigure(0, weight=1)
+        self.tabs[idx].rowconfigure(0, weight=1)
+        if replace and idx < self.n_regions - 1:
+            self.notebook.insert(
+                idx,
+                self.tabs[idx],
+                text=str(idx),
+                sticky="nsew",
+            )
+            self.notebook.select(idx)
+
         else:
+            self.notebook.add(
+                self.tabs[idx],
+                text=str(idx),
+                sticky="nsew",
+            )
             self.histories.append(
                 [
                     (
@@ -141,7 +144,7 @@ class Result1DType(wd.MyToplevel):
         self.table_frames[idx].columnconfigure(0, weight=1)
         self.table_frames[idx].rowconfigure(0, weight=1)
         self.table_frames[idx].grid(
-            row=0, column=1, rowspan=2, padx=(0, 10), pady=10, sticky="ns",
+            row=0, column=2, rowspan=2, padx=(0, 10), pady=10, sticky="ns",
         )
 
         append(
@@ -150,7 +153,7 @@ class Result1DType(wd.MyToplevel):
                 self.table_frames[idx],
                 contents=self.estimator.get_params(indices=[idx], funit="ppm"),
                 titles=self.table_titles,
-                region=(self.ylim, self.xlims[idx]),
+                region=self.get_region(idx),
                 bg=cf.NOTEBOOKCOLOR,
             ),
         )
@@ -401,7 +404,8 @@ class Result1DType(wd.MyToplevel):
         params, errors = self.histories[idx][-1]
         self.estimator._results[idx].params = params
         self.estimator._results[idx].errors = errors
-        self.new_region(idx, replace=True)
+        self.new_tab(idx, replace=True)
+        self.notebook.select(idx)
         self.button_frame.green_button["state"] = "normal"
 
     def unstage(self):
@@ -456,7 +460,8 @@ class Result1DType(wd.MyToplevel):
             )
         )
 
-        self.new_region(idx, replace=True)
+        self.new_tab(idx, replace=True)
+        self.notebook.select(idx)
         self.button_frame.green_button["state"] = "normal"
 
 
@@ -493,16 +498,12 @@ class AddFrame(wd.MyToplevel):
 
         # Empty entry boxes to begin with
         contents = [["" for _ in range(self.cols)]]
-        region = (
-            master.ylim,
-            master.xlims[index],
-        )
 
         self.table = wd.MyTable(
             self,
             contents=contents,
             titles=titles,
-            region=region,
+            region=master.get_region(index),
         )
 
         # Turn all widgets red initially to indicate they need filling in

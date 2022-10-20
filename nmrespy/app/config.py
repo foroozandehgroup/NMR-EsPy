@@ -1,11 +1,10 @@
 # config.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 15:56:40 BST
+# Last Edited: Thu 20 Oct 2022 16:44:38 BST
 
 import tkinter as tk
 from PIL import ImageTk, Image
-import numpy as np
 
 import nmrespy._paths_and_links as pl
 

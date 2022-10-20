@@ -1,7 +1,9 @@
 # result_jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 20 Oct 2022 12:13:04 BST
+# Last Edited: Thu 20 Oct 2022 17:59:00 BST
+
+import tkinter as tk
 
 from matplotlib import backends
 import numpy as np
@@ -39,14 +41,22 @@ class Result2DJ(Result1DType):
         self.factors = []
         self.factor_labels = []
         self.factor_entries = []
+        self.contours = []
 
         super().__init__(ctrl)
+        self.shifts = self.estimator.get_shifts(unit="ppm")
 
         self.multiplet_thold = 0.5 * (
             self.estimator.default_pts[0] / self.estimator.sw()[0]
         )
 
-    def new_region(self, idx, replace=False):
+    def get_region(self, idx):
+        return (
+            self.ylim,
+            self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")[1],
+        )
+
+    def new_tab(self, idx, replace=False):
         def append(lst, obj):
             if replace:
                 lst.pop(idx)
@@ -54,26 +64,12 @@ class Result2DJ(Result1DType):
             else:
                 lst.append(obj)
 
-        append(
-            self.xlims,
-            self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")[-1],
-        )
+        super().new_tab(idx, replace)
 
-        super().new_region(idx, replace)
-
-        if replace:
-            self.contour_frames[idx].destroy()
-            self.nlev_labels[idx].destroy()
-            self.nlev_entries[idx].destroy()
-            self.base_labels.destroy()
-            self.base_entries.destroy()
-            self.factor_labels.destroy()
-            self.factor_entries.destroy()
-
-        else:
-            append(self.nlevs, None)
-            append(self.bases, None)
-            append(self.factors, None)
+        if not replace:
+            append(self.nlevs, 10)
+            append(self.bases, np.amax(np.abs(self.estimator.spectrum).real) / 100)
+            append(self.factors, 1.2)
 
         fig, (ax_1d, ax_2d) = self.estimator.plot_result(
             indices=[idx],
@@ -85,11 +81,13 @@ class Result2DJ(Result1DType):
             label_peaks=True,
             contour_nlevels=self.nlevs[idx],
             contour_base=self.bases[idx],
-            contour_factors=self.factors[idx],
+            contour_factor=self.factors[idx],
             figsize=(6, 3.5),
             dpi=170,
         )
         ax_1d, ax_2d = ax_1d[0], ax_2d[0]
+        append(self.contours, ax_2d.collections)
+
         # Manipulate the positions of the axes
         geom2 = get_ax_geom(ax_2d.get_position())
         geom2[1] -= 0.02
@@ -106,8 +104,11 @@ class Result2DJ(Result1DType):
         fig.texts[0].set_fontsize(8)
         append(self.figs, fig)
         append(self.axs, [ax_1d, ax_2d])
-        cf.Restrictor(self.axs[idx][0], self.xlims[idx])
-        cf.Restrictor(self.axs[idx][1], self.xlims[idx], self.ylim)
+
+        region = self.get_region(idx)
+        cf.Restrictor(self.axs[idx][0], region[1])
+        cf.Restrictor(self.axs[idx][1], region[1], region[0])
+
         self.axs[idx][0].callbacks.connect(
             "xlim_changed",
             lambda evt: self.update_ax_xlim(1, idx),
@@ -124,7 +125,9 @@ class Result2DJ(Result1DType):
                 master=self.tabs[idx],
             ),
         )
-        self.canvases[idx].get_tk_widget().grid(column=0, row=0, sticky="nsew")
+        self.canvases[idx].get_tk_widget().grid(
+            column=0, columnspan=2, row=0, sticky="nsew",
+        )
 
         append(
             self.toolbars,
@@ -150,7 +153,7 @@ class Result2DJ(Result1DType):
                 bg=cf.NOTEBOOKCOLOR,
             )
         )
-        self.nlev_label.grid(row=0, column=0, padx=(0, 5), sticky="w")
+        self.nlev_labels[idx].grid(row=0, column=0, padx=(0, 5), sticky="w")
 
         append(
             self.nlev_entries,
@@ -161,7 +164,7 @@ class Result2DJ(Result1DType):
                 width=12,
             ),
         )
-        self.nlev_entry.grid(row=0, column=1, padx=(0, 10))
+        self.nlev_entries[idx].grid(row=0, column=1, padx=(0, 10))
 
         append(
             self.base_labels,
@@ -182,7 +185,7 @@ class Result2DJ(Result1DType):
                 width=10,
             ),
         )
-        self.base_entry.grid(row=0, column=3, padx=(0, 10))
+        self.base_entries[idx].grid(row=0, column=3, padx=(0, 10))
 
         append(
             self.factor_labels,
@@ -206,9 +209,9 @@ class Result2DJ(Result1DType):
         self.factor_entries[idx].grid(row=0, column=5)
 
         if replace:
-            self.nlev_entries[idx].insert(0, str(self.nlev))
-            self.base_entries[idx].insert(0, f"{self.base:6g}".replace(" ", ""))
-            self.factor_entry.insert(0, f"{self.factor:6g}".replace(" ", ""))
+            self.nlev_entries[idx].insert(0, str(self.nlevs[idx]))
+            self.base_entries[idx].insert(0, f"{self.bases[idx]:6g}".replace(" ", ""))
+            self.factor_entries[idx].insert(0, f"{self.factors[idx]:6g}".replace(" ", ""))
 
     def update_ax_xlim(self, i, idx):
         if self.axs[idx][0].get_xlim() == self.axs[idx][1].get_xlim():
@@ -217,3 +220,39 @@ class Result2DJ(Result1DType):
             j = 1 - i
             self.axs[idx][i].set_xlim(self.axs[idx][j].get_xlim())
             # self.canvases[idx].draw_idle()
+
+    def update_nlev(self, idx):
+        entry = self.nlev_entries[idx]
+        inpt = entry.get()
+        try:
+            assert (value := int(inpt)) > 0
+            self.nlevs[idx] = value
+            self.new_tab(idx, replace=True)
+
+        except Exception:
+            entry.delete(0, tk.END)
+            entry.insert(0, str(self.nlevs[idx]))
+
+    def update_base(self, idx):
+        entry = self.base_entries[idx]
+        inpt = entry.get()
+        try:
+            assert (value := float(inpt)) > 0.
+            self.bases[idx] = value
+            self.new_tab(idx, replace=True)
+
+        except Exception:
+            entry.delete(0, tk.END)
+            entry.insert(0, str(self.bases[idx]))
+
+    def update_factor(self, idx):
+        entry = self.factor_entries[idx]
+        inpt = entry.get()
+        try:
+            assert (value := float(inpt)) > 1.
+            self.factors[idx] = value
+            self.new_tab(idx, replace=True)
+
+        except Exception:
+            entry.delete(0, tk.END)
+            entry.insert(0, str(self.factors[idx]))
