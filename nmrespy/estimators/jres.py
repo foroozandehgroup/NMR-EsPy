@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 16:00:08 BST
+# Last Edited: Thu 20 Oct 2022 09:37:02 BST
 
 from __future__ import annotations
 import copy
@@ -575,7 +575,7 @@ class Estimator2DJ(_Estimator1DProc):
         contour_factor: Optional[float] = None,
         contour_lw: float = 0.5,
         contour_color: Any = "k",
-        multiplet_colors: Any = "rainbow",
+        multiplet_colors: Any = None,
         multiplet_lw: float = 1.,
         multiplet_vertical_shift: float = 0.,
         multiplet_show_center_freq: bool = True,

@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 16:44:40 BST
+# Last Edited: Thu 20 Oct 2022 10:31:21 BST
 
 import io
 from pathlib import Path
@@ -150,7 +150,7 @@ class Result1DType(wd.MyToplevel):
                 self.table_frames[idx],
                 contents=self.estimator.get_params(indices=[idx], funit="ppm"),
                 titles=self.table_titles,
-                region=self.xlims[idx],
+                region=(self.ylim, self.xlims[idx]),
                 bg=cf.NOTEBOOKCOLOR,
             ),
         )
@@ -332,7 +332,7 @@ class Result1DType(wd.MyToplevel):
 
     def add(self):
         idx = self.get_idx()
-        add_frame = AddFrame(self, idx)
+        add_frame = AddFrame(self, self.table_titles, idx)
         self.wait_window(add_frame)
         oscs = add_frame.new_oscillators
         if oscs is not None:
@@ -479,25 +479,24 @@ class ResultButtonFrame(fr.RootButtonFrame):
 
 
 class AddFrame(wd.MyToplevel):
-    def __init__(self, master, index):
+    def __init__(self, master, titles, index):
         super().__init__(master)
+        self.titles = titles
+        self.cols = len(self.titles)
+        self.dim = self.cols // 2 - 1
         self.index = index
         self.new_oscillators = None
+
         self.title("NMR-EsPy - Add oscillators")
         self.ctrl = self.master.master
         self.grab_set()
 
-        titles = [
-            "a",
-            "ϕ (rad)",
-            "f (ppm)",
-            "η (s⁻¹)",
-        ]
-
         # Empty entry boxes to begin with
-        contents = [["", "", "", ""]]
-        region = self.ctrl.estimator.get_results(indices=[index])[0] \
-                                    .get_region(unit="ppm")
+        contents = [["" for _ in range(self.cols)]]
+        region = (
+            master.ylim,
+            master.xlims[index],
+        )
 
         self.table = wd.MyTable(
             self,
@@ -1266,7 +1265,6 @@ class SaveFrame(wd.MyToplevel):
 
                 self.ctrl.estimator.write_result(
                     path=path,
-                    indices=index,
                     description=description,
                     fmt=fmt,
                     force_overwrite=True,

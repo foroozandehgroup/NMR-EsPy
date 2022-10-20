@@ -1,7 +1,7 @@
 # custom_widgets.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 11:51:07 BST
+# Last Edited: Thu 20 Oct 2022 11:49:51 BST
 
 """
 Customised widgets for NMR-EsPy GUI.
@@ -306,16 +306,15 @@ class NOscWidget(MyFrame):
 
 class MyTable(MyFrame):
     def __init__(self, master, contents, titles, region, bg=cf.BGCOLOR):
-
         super().__init__(master, bg=bg)
         self.bg = bg
         self.titles = titles
-        self.region = region[0]
+        self.dim = len(self.titles) // 2 - 1
+        self.region = region
         # Number of selected rows
         self.selected_number = tk.IntVar()
         self.selected_number.set(0)
         self.selected_rows = []
-
         self.max_rows = 10
 
         self.create_value_vars(contents)
@@ -332,7 +331,7 @@ class MyTable(MyFrame):
                 if isinstance(param, (int, float)):
                     value_var = cf.value_var_dict(
                         param,
-                        cf.strip_zeros(f"{param:.5f}"),
+                        cf.strip_zeros(f"{param:.6g}"),
                     )
                 else:
                     # The only occasion when this should occur in the program
@@ -391,37 +390,22 @@ class MyTable(MyFrame):
             self.labels.append(label)
 
             # Row of parameter entry widgets
-            ent_row = []
+            entry_row = []
 
             for j, value_var in enumerate(value_var_row):
-                if j == 0:
-                    type_ = "amp"
-                elif j == 1:
-                    type_ = "phase"
-                elif j == 2:
-                    type_ = "freq"
-                elif j == 3:
-                    type_ = "damp"
-
-                ent = MyEntry(
+                entry = MyEntry(
                     self.table_frame,
                     textvariable=value_var["var"],
                     state="disabled",
-                    width=14,
+                    width=10,
+                    return_command=self.check_param,
+                    return_args=(i, j),
                 )
-                # Ensure that entry widgets are checked after user input
-                # to ensure valid parameters.
-                ent.return_command = self.check_param
-                ent.return_args = (value_var, type_, ent)
-                ent.bind_command()
 
-                padx = (5, 0)
-                pady = (5, 0)
+                entry.grid(row=i + 1, column=j + 1, padx=(5, 0), pady=(5, 0))
+                entry_row.append(entry)
 
-                ent.grid(row=i + 1, column=j + 1, padx=padx, pady=pady)
-                ent_row.append(ent)
-
-            self.entries.append(ent_row)
+            self.entries.append(entry_row)
 
         # Activate any active oscillators
         # Colours all row labels corresponding to oscillators selected
@@ -525,39 +509,36 @@ class MyTable(MyFrame):
             for entry in entries:
                 entry["state"] = state
 
-    def check_param(self, value_var, type_, entry):
+    def check_param(self, row, column):
         """Given a StringVar, ensure the value corresponds to a valid
         parameter value"""
+        value_var = self.value_vars[row][column]
+        entry = self.entries[row][column]
 
         try:
             value = float(value_var["var"].get())
-
-            if type_ in ["amp", "damp"] and value > 0.0:
-                pass
-            elif type_ == "phase":
-                # Wrap phase
+            # Amplitude or damping factor
+            if column in [0] + [2 + self.dim + i for i in range(self.dim)]:
+                value = value if value > 0 else None
+            elif column == 1:
                 value = (value + np.pi) % (2 * np.pi) - np.pi
-            elif type_ == "freq":
-                if min(self.region) <= value <= max(self.region):
-                    pass
-                else:
-                    raise
             else:
-                raise
+                d = column - 2
+                r = self.region[d]
+                value = value if r[0] >= value >= r[1] else None
 
-            value_var["value"] = value
+            if isinstance(value, float):
+                value_var["value"] = value
 
         except Exception:
             pass
 
-        if isinstance(value_var["value"], (int, float)):
-            value_var["var"].set(cf.strip_zeros(f"{value_var['value']:.5f}"))
+        if isinstance(value_var["value"], float):
+            value_var["var"].set(f"{value_var['value']:.6g}")
         else:
-            # The only time the result shouldn't be a numerical value
-            # if when it is an empty string (this crops up in result.AddFrame)
-            # In this case, want to re-colour red as the entry widget should
-            # not be empty
             value_var["var"].set(value_var["value"])
+
+        if value_var["var"].get() == "":
             entry.key_press()
 
     def get_values(self):

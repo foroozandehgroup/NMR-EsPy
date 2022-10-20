@@ -1,22 +1,19 @@
 # stup.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 14:51:42 BST
+# Last Edited: Wed 19 Oct 2022 12:23:34 BST
 
 import abc
 import collections
-import copy
 from datetime import datetime
-import re
 import tkinter as tk
 from tkinter import ttk
 import webbrowser
 
-from matplotlib import patches, pyplot as plt, transforms
+from matplotlib import pyplot as plt, transforms
 from matplotlib.backends import backend_tkagg
 import numpy as np
 
-from nmrespy import sig
 import nmrespy._paths_and_links as pl
 import nmrespy.app.config as cf
 import nmrespy.app.custom_widgets as wd

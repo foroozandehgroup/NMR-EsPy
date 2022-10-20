@@ -1,7 +1,7 @@
 # result_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 16:46:36 BST
+# Last Edited: Wed 19 Oct 2022 12:20:46 BST
 
 from matplotlib import backends
 
@@ -28,6 +28,11 @@ class Result1D(Result1DType):
             else:
                 lst.append(obj)
 
+        append(
+            self.xlims,
+            self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")[-1],
+        )
+        super().new_region(idx, replace)
         fig, ax = self.estimator.plot_result(
             indices=[idx],
             axes_bottom=0.12,
@@ -67,4 +72,3 @@ class Result1D(Result1DType):
             ),
         )
         self.toolbars[idx].grid(row=1, column=0, padx=10, pady=5, sticky="w")
-        super().new_region(idx, replace)

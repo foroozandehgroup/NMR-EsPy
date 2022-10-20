@@ -1,7 +1,7 @@
 # setup_jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 14:59:25 BST
+# Last Edited: Thu 20 Oct 2022 11:49:42 BST
 
 import tkinter as tk
 from tkinter import ttk
