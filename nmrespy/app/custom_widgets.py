@@ -1,7 +1,7 @@
 # custom_widgets.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 20 Oct 2022 11:49:51 BST
+# Last Edited: Fri 21 Oct 2022 12:48:15 BST
 
 """
 Customised widgets for NMR-EsPy GUI.
@@ -416,11 +416,14 @@ class MyTable(MyFrame):
             self.navigate_frame = MyFrame(self, bg=self.bg)
             self.navigate_frame.grid(row=1, column=0, pady=(10, 0))
 
+            self.arrow_frame = MyFrame(self.navigate_frame, bg=self.bg)
+            self.arrow_frame.grid(row=0, column=0)
+
             self.up_arrow_img = cf.get_PhotoImage(cf.UPARROWPATH, scale=0.5)
             self.down_arrow_img = cf.get_PhotoImage(cf.DOWNARROWPATH, scale=0.5)
 
             self.up_arrow = MyButton(
-                self.navigate_frame,
+                self.arrow_frame,
                 image=self.up_arrow_img,
                 width=30,
                 command=self.up,
@@ -428,7 +431,7 @@ class MyTable(MyFrame):
             self.up_arrow.grid(row=0, column=0)
 
             self.down_arrow = MyButton(
-                self.navigate_frame,
+                self.arrow_frame,
                 image=self.down_arrow_img,
                 width=30,
                 command=self.down,
@@ -442,6 +445,22 @@ class MyTable(MyFrame):
             # Check if last oscillator is present. If so disable up arrow.
             if self.labels[-1]["text"] == f"{len(self.value_vars) - 1}":
                 self.down_arrow["state"] = "disabled"
+
+            self.jump_frame = MyFrame(self.navigate_frame, bg=self.bg)
+            self.jump_frame.grid(row=1, column=0)
+
+            self.jump_label = MyLabel(
+                self.jump_frame,
+                text="Jump to:",
+                bg=self.bg,
+            )
+            self.jump_label.grid(row=0, column=0, pady=(5, 0))
+
+            self.jump_entry = MyEntry(
+                self.jump_frame,
+                return_command=self.jump,
+            )
+            self.jump_entry.grid(row=0, column=1, padx=(10, 0), pady=(5, 0))
 
     def reconstruct(self, contents, top=0):
         """Regenerate table, given a new contents array"""
@@ -575,3 +594,17 @@ class MyTable(MyFrame):
     def down(self):
         """Scroll down one place in the table"""
         self.reconstruct(contents=self.get_values(), top=self.top + 1)
+
+    def jump(self):
+        entry = self.jump_entry
+        inpt = entry.get()
+        nrows = len(self.value_vars)
+        try:
+            assert 0 <= (value := int(inpt)) <= nrows - 1
+            if nrows - value < self.max_rows:
+                top = nrows - self.max_rows
+            else:
+                top = value
+            self.reconstruct(contents=self.get_values(), top=top)
+        except Exception:
+            entry.delete(0, tk.END)

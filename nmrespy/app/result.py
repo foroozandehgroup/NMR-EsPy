@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 20 Oct 2022 17:50:01 BST
+# Last Edited: Fri 21 Oct 2022 13:31:58 BST
 
 import io
 from pathlib import Path
@@ -54,9 +54,6 @@ class Result1DType(wd.MyToplevel):
         self.logo_frame = fr.LogoFrame(self, scale=0.6)
         self.logo_frame.grid(row=1, column=0, padx=(10, 0), pady=10, sticky="w")
 
-        self.button_frame = ResultButtonFrame(self)
-        self.button_frame.grid(row=1, column=1, padx=(10, 0), sticky="se")
-
     def construct_notebook(self):
         self.notebook = ttk.Notebook(self.notebook_frame)
         self.notebook.columnconfigure(0, weight=1)
@@ -87,9 +84,12 @@ class Result1DType(wd.MyToplevel):
 
         self.n_regions = len(self.estimator._results)
 
+        self.update_all_tabs(0)
+
+    def update_all_tabs(self, current, replace=False):
         for idx in range(self.n_regions):
-            self.new_tab(idx)
-        self.notebook.select(0)
+            self.new_tab(idx, replace)
+        self.notebook.select(current)
 
     def new_tab(self, idx, replace=False):
         def append(lst, obj):
@@ -108,6 +108,7 @@ class Result1DType(wd.MyToplevel):
         )
         self.tabs[idx].columnconfigure(0, weight=1)
         self.tabs[idx].rowconfigure(0, weight=1)
+
         if replace and idx < self.n_regions - 1:
             self.notebook.insert(
                 idx,
@@ -115,7 +116,6 @@ class Result1DType(wd.MyToplevel):
                 text=str(idx),
                 sticky="nsew",
             )
-            self.notebook.select(idx)
 
         else:
             self.notebook.add(
@@ -275,6 +275,8 @@ class Result1DType(wd.MyToplevel):
 
         append(self.staged_edits, [])
         append(self.staged_oscs, [])
+
+        self.notebook.select(idx)
 
     # --- Edit Parameters Methods ----------------------------------
     def get_idx(self):
@@ -1197,6 +1199,14 @@ class SaveFrame(wd.MyToplevel):
             str(self.__dict__[f"fig_{dim}"]["value"])
         )
 
+    # Result file settings
+    def update_save_file(self, tag):
+        state = "normal" if self.__dict__[f"save_{tag}"].get() else "disabled"
+        self.__dict__[f"{tag}_entry"]["state"] = state
+        self.__dict__[f"{tag}_ext"]["fg"] = (
+            "#000000" if state == "normal" else "#808080"
+        )
+
     def update_file_name(self, var):
         name = var.get()
         var.set("".join(x for x in name if x.isalnum() or x in " _-"))
@@ -1234,9 +1244,8 @@ class SaveFrame(wd.MyToplevel):
         old_stdout = sys.stdout
         sys.stdout = mystdout = io.StringIO()
 
-        # Directory
         dir_ = self.dir_name["value"]
-        index = [len(self.ctrl.estimator._results) - 1]
+
         # Figure
         if self.save_fig.get():
             # Generate figure path
@@ -1246,14 +1255,12 @@ class SaveFrame(wd.MyToplevel):
             fig_path = (dir_ / f"{fig_name}").with_suffix(f".{fig_fmt}")
 
             # Convert size from cm -> inches
-            fig_size = (
+            figsize = (
                 self.fig_width["value"] / 2.54,
                 self.fig_height["value"] / 2.54,
             )
-            fig, _ = self.ctrl.estimator.plot_result(
-                figsize=fig_size,
-            )
-            fig.savefig(fig_path, dpi=dpi)
+            fig, _ = self.generate_figure(figsize, dpi)
+            fig.savefig(fig_path)
 
         # Result files
         for fmt in ("txt", "pdf"):

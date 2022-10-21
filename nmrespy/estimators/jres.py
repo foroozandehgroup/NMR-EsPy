@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 20 Oct 2022 09:37:02 BST
+# Last Edited: Fri 21 Oct 2022 12:31:00 BST
 
 from __future__ import annotations
 import copy
@@ -991,6 +991,7 @@ class Estimator2DJ(_Estimator1DProc):
                             s=str(idx),
                             color=color,
                             fontsize=8,
+                            clip_on=True,
                         )
 
         ylim1 = (shifts_2d[0][1][0, 0], shifts_2d[0][1][-1, 0])

@@ -1,11 +1,11 @@
 # result_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 20 Oct 2022 16:01:43 BST
+# Last Edited: Fri 21 Oct 2022 13:27:14 BST
 
 from matplotlib import backends
 
-from nmrespy.app.result import Result1DType
+from nmrespy.app.result import Result1DType, ResultButtonFrame, SaveFrame
 from nmrespy.app import config as cf, custom_widgets as wd
 
 
@@ -19,6 +19,11 @@ class Result1D(Result1DType):
 
     def __init__(self, ctrl):
         super().__init__(ctrl)
+
+    def construct_gui_frames(self):
+        super().construct_gui_frames()
+        self.button_frame = ResultButtonFrame(self)
+        self.button_frame.grid(row=1, column=1, padx=(10, 0), sticky="se")
 
     def get_region(self, idx):
         return self.estimator.get_results(indices=[idx])[0].get_region(unit="ppm")
@@ -68,3 +73,14 @@ class Result1D(Result1DType):
             ),
         )
         self.toolbars[idx].grid(row=1, column=0, padx=10, pady=5, sticky="w")
+
+
+class SaveFrame1D(SaveFrame):
+    def __init__(self, master):
+        super().__init__(master)
+
+    def generate_figure(self, figsize, dpi):
+        return self.ctrl.estimator.plot_result(
+            figsize=figsize,
+            dpi=dpi,
+        )
