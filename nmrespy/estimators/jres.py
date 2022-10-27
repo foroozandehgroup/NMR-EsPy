@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 21 Oct 2022 12:31:00 BST
+# Last Edited: Thu 27 Oct 2022 11:13:35 BST
 
 from __future__ import annotations
 import copy
@@ -20,6 +20,7 @@ from matplotlib.backends.backend_tkagg import (
 )
 
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
+from nmrespy.app.custom_widgets import MyEntry
 from nmrespy.plot import make_color_cycle
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import cd, check_existent_dir
@@ -1070,7 +1071,6 @@ class ContourApp(tk.Tk):
     """Tk app for viewing 2D spectra as contour plots."""
 
     def __init__(self, data: np.ndarray, expinfo) -> None:
-        from nmrespy.app.custom_widgets import MyEntry
         super().__init__()
         self.protocol("WM_DELETE_WINDOW", self.quit)
         self.shifts = list(reversed(

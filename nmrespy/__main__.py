@@ -1,7 +1,7 @@
 # __main__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 14:46:52 BST
+# Last Edited: Thu 27 Oct 2022 11:13:04 BST
 
 """Run when the user calls the nmrespy module from a command line.
 
@@ -26,7 +26,7 @@ if USE_COLORAMA:
     import colorama
 
     colorama.init()
-from .app import NMREsPyApp
+from .app.main import NMREsPyApp
 
 
 def fmt_path(path: str) -> pathlib.Path:
