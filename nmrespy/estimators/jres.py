@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 27 Oct 2022 11:46:25 BST
+# Last Edited: Thu 27 Oct 2022 15:39:43 BST
 
 from __future__ import annotations
 import copy
@@ -365,13 +365,19 @@ class Estimator2DJ(_Estimator1DProc):
         self,
         indices: Optional[Iterable[int]] = None,
         thold: Optional[float] = None,
+        freq_unit: str = "hz",
         _log: bool = True,
-    ) -> Iterable[Iterable[int]]:
+    ) -> Dict[float, Iterable[int]]:
         """Predict the estimated oscillators which correspond to each multiplet
         in the signal.
 
         Parameters
         ----------
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
         thold
             Frequency threshold. All oscillators that make up a multiplet are assumed
             to obey the following expression:
@@ -381,38 +387,88 @@ class Estimator2DJ(_Estimator1DProc):
 
             where :math:`f_c` is the central frequency of the multiplet, and `f_t` is
             ``thold``
+
+        freq_unit
+            Must be ``"hz"`` or ``"ppm"``.
+
+        _log
+            Ignore me!
+
+        Returns
+        -------
+        multiplets
+            A dictionary with keys as the multiplet's central frequency, and values
+            as a list of oscillator indices which make up the multiplet.
         """
         self._check_results_exist()
-        length = len(self._results)
         sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {"min_value": 0, "max_value": length - 1}, True,
-            ),
+            self._indices_check(indices),
             ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            ("freq_unit", freq_unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
         )
         if thold is None:
             thold = self.default_multiplet_thold
 
         params = self.get_params(indices)
-        groups = {}
+        multiplets = {}
         in_range = lambda f, g: (g - thold < f < g + thold)
         for i, osc in enumerate(params):
             centre_freq = osc[3] - osc[2]
             assigned = False
-            for freq in groups:
+            for freq in multiplets:
                 if in_range(centre_freq, freq):
-                    groups[freq].append(i)
+                    multiplets[freq].append(i)
                     assigned = True
                     break
             if not assigned:
-                groups[centre_freq] = [i]
+                multiplets[centre_freq] = [i]
 
-        multiplets = []
-        for freq in sorted(groups):
-            multiplets.append(groups[freq])
+        for old_freq, mp_indices in list(multiplets.items()):
+            new_freq = np.mean(params[mp_indices, 3] - params[mp_indices, 2])
+            multiplets[new_freq] = multiplets.pop(old_freq)
+
+        factor = 1. if freq_unit == "hz" else self.sfo[-1]
+        multiplets = {
+            freq / factor: indices
+            for freq, indices in sorted(multiplets.items(), key=lambda item: item[0])
+        }
 
         return multiplets
+
+    def get_multiplet_integrals(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        thold: Optional[float] = None,
+        freq_unit: str = "hz",
+        scale: bool = True,
+    ) -> Dict[float, float]:
+        """
+        """
+        self._check_results_exist()
+        sanity_check(
+            self._indices_check(indices),
+            ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            ("freq_unit", freq_unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
+            ("scale", scale, sfuncs.check_bool),
+        )
+
+        multiplets = self.predict_multiplets(
+            indices=indices, thold=thold, freq_unit=freq_unit,
+        )
+        params = self.get_params(indices)
+        integrals = {
+            freq: sum(self.oscillator_integrals(params[mp]))
+            for freq, mp in list(multiplets.items())
+        }
+
+        if scale:
+            min_integral = min(list(integrals.values()))
+            integrals = {
+                freq: integral / min_integral
+                for freq, integral in list(integrals.items())
+            }
+
+        return integrals
 
     @logger
     def find_spurious_oscillators(
@@ -449,9 +505,10 @@ class Estimator2DJ(_Estimator1DProc):
         params = self.get_params()
         multiplets = self.predict_multiplets(thold=thold)
         spurious = {}
-        for multiplet in multiplets:
-            if len(multiplet) == 1 and abs(params[multiplet[0], 2]) > thold:
-                osc_loc = self.find_osc(params[multiplet[0]])
+        for cfreq, oscs in multiplets.items:
+            if len(oscs) == 1 and abs(cfreq) > thold:
+                # osc_loc is a tuple of the form (result_index, osc_index)
+                osc_loc = self.find_osc(params[oscs[0]])
                 if osc_loc[0] in spurious:
                     spurious[osc_loc[0]].append(osc_loc[1])
                 else:
@@ -907,10 +964,11 @@ class Estimator2DJ(_Estimator1DProc):
                     reversed(
                         self.predict_multiplets(
                             indices=idx, thold=multiplet_thold, _log=False,
-                        )
+                        ).values()
                     )
                 )
             )
+
             multiplet_params = [params[i] for i in multiplet_indices[-1]]
             f1_f2_region = []
             center_freq = []
