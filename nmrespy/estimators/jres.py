@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 27 Oct 2022 11:13:35 BST
+# Last Edited: Thu 27 Oct 2022 11:46:25 BST
 
 from __future__ import annotations
 import copy
@@ -285,6 +285,16 @@ class Estimator2DJ(_Estimator1DProc):
         data[0, 0] *= 0.5
         return sig.ft(data)
 
+    @property
+    def default_multiplet_thold(self) -> float:
+        """The default margin for error when determining oscillators which belong to
+        the same multiplet.
+
+        Given by ``0.5 * self.sw()[0] / self.default_pts[0]`` (i.e. half the
+        spetral resolution in the indirect dimension).
+        """
+        return 0.5 * (self.sw()[0] / self.default_pts[0])
+
     @logger
     def negative_45_signal(
         self,
@@ -382,7 +392,7 @@ class Estimator2DJ(_Estimator1DProc):
             ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
         if thold is None:
-            thold = 0.5 * (self.sw()[0] / self.default_pts[0])
+            thold = self.default_multiplet_thold
 
         params = self.get_params(indices)
         groups = {}
@@ -434,7 +444,7 @@ class Estimator2DJ(_Estimator1DProc):
             ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
         if thold is None:
-            thold = 0.5 * (self.default_pts[0] / self.sw()[0])
+            thold = self.default_multiplet_thold
 
         params = self.get_params()
         multiplets = self.predict_multiplets(thold=thold)
