@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Jun 2022 00:22:10 BST
+# Last Edited: Fri 28 Oct 2022 13:00:02 BST
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -528,13 +528,13 @@ class NonlinearProgramming(ResultFetcher):
                 fun=self.objective,
                 x0=self.active,
                 args=tuple(self.optimiser_args),
-                method="trust-constr",
+                method="trust-ncg",
                 jac=self.gradient,
                 hess=self.hessian,
                 bounds=self.bounds,
                 options={
                     "maxiter": self.max_iterations,
-                    "verbose": 3 if self.fprint else 0,
+                    "disp": True if self.fprint else False,
                 },
             )
 
