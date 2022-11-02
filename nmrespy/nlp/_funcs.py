@@ -1,122 +1,82 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 01 Aug 2022 23:42:42 BST
+# Last Edited: Tue 01 Nov 2022 16:11:35 GMT
 
 """Definitions of fidelities, gradients, and Hessians."""
 
 from typing import Dict, Tuple
 import numpy as np
+import scipy as sp
 
 
 args_type = Tuple[np.ndarray, np.ndarray, int, np.ndarray, list, bool]
 
 
-class ObjGrad:
-    """Object which computes and memoises the fidelity and gradient.
-
-    Parameters
-    ----------
-    fun
-        Callable which computes the objective and gradient.
+class FunctionFactory:
+    """Object which computes and memoises the objective gradient and hessian for
+    a given set of parameters.
     """
 
-    def __init__(self, fun: callable):
+    def __init__(self, theta: np.ndarray, fun: callable, *args) -> None:
+        self.theta = theta
         self.fun = fun
-        self.theta = None
         self.obj = None
         self.grad = None
+        self.hess = None
+        self.args = args
 
-    def _compute_if_needed(self, theta, *args):
+    def _compute_if_needed(self):
         """Determine if quantities need to be computed.
 
         Determines whether parameters array has changed, or the objective has not
         been computed yet. If either of these are so, obj and grad are
         computed.
         """
-        if not np.all(theta == self.theta) or self.obj is None:
-            self.obj, self.grad = self.fun(theta, *args)
+        if self.obj is None:
+            self.obj, self.grad, self.hess = self.fun(self.theta, *self.args)
 
-    def objective(self, theta, *args) -> float:
-        """Return the objective. Compute if necessary.
+    def model(self, p) -> float:
+        return self.objective + self.gradient @ p + 0.5 * (p.T @ self.hessian @ p)
 
-        Parameters
-        ----------
-        theta
-            Parameter array.
-
-        args
-            Extra arguments to feed to the function which computes the objective
-            and gradient.
-
-        Returns
-        -------
-        objective: float
-        """
-        self._compute_if_needed(theta, *args)
+    @property
+    def objective(self) -> float:
+        self._compute_if_needed()
         return self.obj
 
-    def gradient(self, theta, *args) -> np.ndarray:
-        """Return the gradient. Compute if necessary.
-
-        Parameters
-        ----------
-        theta
-            Parameter array.
-
-        args
-            Extra arguments to feed to the function which computes the objective
-            and gradient.
-
-        Returns
-        -------
-        gradient: numpy.ndarray
-        """
-        self._compute_if_needed(theta, *args)
+    @property
+    def gradient(self) -> np.ndarray:
+        self._compute_if_needed()
         return self.grad
 
+    @property
+    def gradient_norm(self) -> float:
+        return sp.linalg.norm(self.gradient)
 
-class ObjGradHess(ObjGrad):
-    """Object which computes and memoises the fidelity, gradient and Hessian.
-
-    Parameters
-    ----------
-    fun
-        Callable which computes the objective and gradient.
-    """
-
-    def __init__(self, fun: callable):
-        super().__init__(fun)
-        self.hess = None
-
-    def _compute_if_needed(self, theta, *args):
-        """Determine if quantities need to be computed.
-
-        Determines whether parameters array has changed, or the objective has not
-        been computed yet. If either of these are so, obj, grad and hess
-        computed.
-        """
-        if not np.all(theta == self.theta) or self.obj is None:
-            self.obj, self.grad, self.hess = self.fun(theta, *args)
-
-    def hessian(self, theta, *args) -> np.ndarray:
-        """Return the hessian. Compute if necessary.
-
-        Parameters
-        ----------
-        theta
-            Parameter array.
-
-        args
-            Extra arguments to feed to the function which computes the objective,
-            gradient and hessian.
-
-        Returns
-        -------
-        hessian: numpy.ndarray
-        """
-        self._compute_if_needed(theta, *args)
+    @property
+    def hessian(self) -> np.ndarray:
+        self._compute_if_needed()
         return self.hess
+
+
+class FunctionFactory1DExact(FunctionFactory):
+    def __init__(self, theta: np.ndarray, *args) -> None:
+        super().__init__(theta, obj_grad_true_hess_1d, *args)
+
+
+class FunctionFactory1DGaussNewton(FunctionFactory):
+    def __init__(self, theta: np.ndarray, *args) -> None:
+        super().__init__(theta, obj_grad_gauss_newton_hess_1d, *args)
+
+
+class FunctionFactory2DExact(FunctionFactory):
+    def __init__(self, theta: np.ndarray, *args) -> None:
+        super().__init__(theta, obj_grad_true_hess_2d, *args)
+
+
+class FunctionFactory2DGaussNewton(FunctionFactory):
+    def __init__(self, theta: np.ndarray, *args) -> None:
+        super().__init__(theta, obj_grad_gauss_newton_hess_2d, *args)
 
 
 def first_derivatives_1d(

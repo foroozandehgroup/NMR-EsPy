@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 28 Oct 2022 13:00:02 BST
+# Last Edited: Tue 01 Nov 2022 18:17:08 GMT
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -14,38 +14,20 @@ MWE
 import copy
 import functools
 import operator
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
 import numpy.linalg as nlinalg
-import scipy.optimize as optimize
 
 from nmrespy import ExpInfo
 from nmrespy._colors import ORA, END, USE_COLORAMA
-from . import _funcs as funcs
+from . import _funcs as funcs, optimisers
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy._result_fetcher import ResultFetcher
 
 if USE_COLORAMA:
     import colorama
     colorama.init()
-
-# TODO in a later version
-# Add support for mode
-# Was getting indexing errors inside _check_negative_amps
-# when testing using a mode which is 'apfd'
-#
-# For docs:
-#
-# mode : str, default: 'apfd'
-#     String composed of any combination of characters `'a'`, `'p'`, `'f'`,
-#     `'d'`. Used to determine which parameter types to optimise, and which
-#     to remain fixed:
-#
-#     * `'a'`: Amplitudes are optimised
-#     * `'p'`: Phases are optimised
-#     * `'f'`: Frequencies are optimised
-#     * `'d'`: Damping factors are optimised
 
 
 class NonlinearProgramming(ResultFetcher):
@@ -59,14 +41,19 @@ class NonlinearProgramming(ResultFetcher):
         *,
         start_time: Optional[Iterable[int]] = None,
         phase_variance: bool = True,
-        method: str = "gauss-newton",
+        hessian: str = "gauss-newton",
         bound: bool = False,
         max_iterations: Optional[int] = None,
         mode: str = "apfd",
         amp_thold: Optional[float] = None,
         freq_thold: Optional[float] = None,
         negative_amps: str = "remove",
-        fprint: bool = True,
+        output_mode: Optional[int] = 10,
+        save_trajectory: bool = False,
+        tolerance: float = 1.0e-8,
+        eta: float = 0.15,
+        initial_trust_radius: float = 1.0,
+        max_trust_radius: float = 4.0,
     ) -> None:
         r"""
         Parameters
@@ -115,24 +102,19 @@ class NonlinearProgramming(ResultFetcher):
             Specifies whether or not to include the variance of oscillator
             phases into the NLP routine.
 
-        method
-            Specifies the optimisation method.
+        hessian
+            Specifies how to construct the Hessian matrix.
 
-            * ``"exact"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be exact.
-            * ``"gauss-newton"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be approximated based on the
-              `Gauss-Newton method <https://en.wikipedia.org/wiki/
+            * ``"exact"`` The Hessian will be exact.
+            * ``"gauss-newton"`` The Hessian will be approximated as is done with
+              the `Gauss-Newton method <https://en.wikipedia.org/wiki/
               Gauss%E2%80%93Newton_algorithm>`_
-            * ``"lbfgs"`` Uses SciPy's
-              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
         bound
+            .. warning::
+
+                Not yet supported. Hard-coded to ``False``.
+
             Specifies whether or not to bound the parameters during
             optimisation. Bounds are given by:
 
@@ -167,6 +149,10 @@ class NonlinearProgramming(ResultFetcher):
             at least a couple of orders of magnitude below 1.
 
         freq_thold
+            .. warning::
+
+                Note yet supprted. Hard-coded to be ``None``.
+
             If ``None``, does nothing. If a float, oscillator pairs with
             frequencies satisfying
             :math:`\lvert f_m - f_p \rvert < f_{\mathrm{thold}}` will be
@@ -177,10 +163,6 @@ class NonlinearProgramming(ResultFetcher):
             * phase: :math:`\phi = \left(\phi_m + \phi_p\right) / 2`
             * frequency: :math:`f = \left(f_m + f_p\right) / 2`
             * damping: :math:`\eta = \left(\eta_m + \eta_p\right) / 2`
-
-            .. warning::
-
-               NOT IMPLEMENTED YET
 
         negative_amps
             Indicates how to treat oscillators which have gained negative
@@ -194,17 +176,39 @@ class NonlinearProgramming(ResultFetcher):
               amplitudes, but the the amplitudes will be multiplied by -1,
               and a π radians phase shift will be applied.
 
-        fprint
-            If ``True``, the method provides information on progress to
-            the terminal as it runs. If ``False``, the method will run silently.
+        output_mode
+            Should be an integer greater than or equal to ``0`` or ``None``. If
+            ``None``, no output will be given. If ``0``, only a message on the
+            outcome of the optimisation will be printed. If an integer greater
+            than ``0``, information for each iteration ``k`` which satisfies
+            ``k % output_mode == 0`` will be printed.
+
+        save_trajectory
+            If ``True``, a list of parameters at each iteration will be saved, and
+            accessible via the ``trajectory`` attribute.
+
+        tolerance
+            Sets the convergence criterion. Convergence will occur when
+            :math:`\lVert \boldsymbol{g}_k \rVert_2 < \text{tolerance}`.
+
+        eta
+            Criterion for accepting an update. An update will be accepted if the ratio
+            of the actual reduction and the predicted reduction is greater than ``eta``:
+
+            ..math ::
+
+                \rho_k = \frac{f(x_k) - f(x_k - p_k)}{m_k(0) - m_k(p_k)} > \eta
+
+        initial_trust_radius
+            The initial value of the radius of the trust region.
+
+        max_trust_radius
+            The largest permitted radius for the trust region.
         """
         sanity_check(
             ("expinfo", expinfo, sfuncs.check_expinfo),
             ("phase_variance", phase_variance, sfuncs.check_bool),
-            (
-                "method", method, sfuncs.check_one_of,
-                ("exact", "gauss-newton", "lbfgs"),
-            ),
+            ("hessian", hessian, sfuncs.check_one_of, ("exact", "gauss-newton")),
             ("bound", bound, sfuncs.check_bool),
             (
                 "max_iterations", max_iterations, sfuncs.check_int, (),
@@ -223,7 +227,17 @@ class NonlinearProgramming(ResultFetcher):
                 "negative_amps", negative_amps, sfuncs.check_one_of,
                 ("remove", "flip_phase"),
             ),
-            ("fprint", fprint, sfuncs.check_bool),
+            ("output_mode", output_mode, sfuncs.check_int, (), {"min_value": 0}, True),
+            ("save_trajectory", save_trajectory, sfuncs.check_bool),
+            (
+                "tolerance", tolerance, sfuncs.check_float, (),
+                {"min_value": np.finfo(float).eps},
+            ),
+            ("eta", eta, sfuncs.check_float, (), {"min_value": 0.0, "max_value": 1.0}),
+            (
+                "initial_trust_radius", initial_trust_radius, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
         )
 
         self.dim = expinfo.dim
@@ -234,20 +248,30 @@ class NonlinearProgramming(ResultFetcher):
             (
                 "start_time", start_time, sfuncs.check_start_time,
                 (self.dim,), {"len_one_can_be_listless": True}, True,
-            )
+            ),
+            (
+                "max_trust_radius", max_trust_radius, sfuncs.check_float, (),
+                {"min_value": initial_trust_radius},
+            ),
         )
 
+        # Generate attributes from arguments
         self.data = data
         self.theta0 = theta0
         self.phase_variance = phase_variance
-        self.method = method
+        self.hessian = hessian
         self.bound = bound
         self.max_iterations = max_iterations
         self.mode = mode
         self.amp_thold = amp_thold
         self.freq_thold = freq_thold
         self.negative_amps = negative_amps
-        self.fprint = fprint
+        self.output_mode = output_mode
+        self.save_trajectory = save_trajectory
+        self.tolerance = tolerance
+        self.eta = eta
+        self.initial_trust_radius = initial_trust_radius
+        self.max_trust_radius = max_trust_radius
 
         self.norm = nlinalg.norm(self.data)
         self.normed_data = self.data / self.norm
@@ -256,26 +280,37 @@ class NonlinearProgramming(ResultFetcher):
         self.tp = expinfo.get_timepoints(start_time=start_time, meshgrid=False)
         self.sw, self.offset, sfo = expinfo.unpack("sw", "offset", "sfo")
 
+        # Initialise the ResultFetcher
         super().__init__(sfo)
 
         if self.max_iterations is None:
-            self.max_iterations = 500 if self.method == "lbfgs" else 100
+            if self.dim == 1:
+                if self.hessian == "exact":
+                    self.max_iterations = 100
+                elif self.hessian == "gauss-newton":
+                    self.max_iterations = 200
+            if self.dim == 2:
+                if self.hessian == "exact":
+                    self.max_iterations = 40
+                elif self.hessian == "gauss-newton":
+                    self.max_iterations = 80
 
         self.p = 2 * self.dim + 2
         self.m = int(self.theta0.size / self.p)
 
         if self.amp_thold is None:
             self.amp_thold = 0.0
-            self.amp_thold = self.amp_thold * nlinalg.norm(self.theta0[:, 0])
+        self.amp_thold = self.amp_thold * nlinalg.norm(self.theta0[:, 0])
+
+        self.trajectory = [] if self.save_trajectory else None
+
         # TODO freq-thold?
 
-        # Active parameters: parameters that are going to actually be
-        # optimised.
-        # Passive parameters: parameters that are to be fixed at their
-        # original value.
+        # Active parameters: parameters that are going to actually be optimised
+        # Passive parameters: parameters that are to be fixed at their original value
         self.active_idx, self.passive_idx = self._get_active_passive_indices()
         self.active, self.passive = self._split_initial()
-        self.objective, self.gradient, self.hessian = self._get_functions()
+        self._get_function_factory()
         self._recursive_optimise()
         self.params = self._merge_final()
         self.errors = self._get_errors()
@@ -309,7 +344,7 @@ class NonlinearProgramming(ResultFetcher):
         )
         terminate_statuses = [check() for check in checks]
         if not all(terminate_statuses):
-            return self._recursive_optimise()
+            self._recursive_optimise()
 
     def _shift_offset(self, params: np.ndarray, direction: str) -> np.ndarray:
         """Shift frequencies to center to or displace from 0.
@@ -330,18 +365,18 @@ class NonlinearProgramming(ResultFetcher):
         """
         for i, off in enumerate(self.offset):
             # Dimension (i+1)'s frequency parameters are given by this slice
-            slice = self._get_slice([2 + i])
+            slice_ = self._get_slice([2 + i])
             # Take frequencies from offset values to be centred at zero
             # i.e.
             # | 10 9 8 7 6 5 4 3 2 1 0 | -> | 5 4 3 2 1 0 -1 -2 -3 -4 -5 |
             if direction == "center":
-                params[slice] = params[slice] - off
+                params[slice_] = params[slice_] - off
             # Do the reverse of the above (take away from being centered at
             # zero)
             # i.e.
             # | 5 4 3 2 1 0 -1 -2 -3 -4 -5 | -> | 10 9 8 7 6 5 4 3 2 1 0 |
             elif direction == "displace":
-                params[slice] = params[slice] + off
+                params[slice_] = params[slice_] + off
 
         return params
 
@@ -369,15 +404,15 @@ class NonlinearProgramming(ResultFetcher):
         if osc_idx is None:
             osc_idx = list(range(self.m))
 
-        slice = []
+        slice_ = []
         for i in idx:
             # Note that parameters are arranged as:
             # a1  ...  am  φ1  ...  φm  f1  ...  fm  η1  ...  ηm (1D case)
             # ∴ stride length of m to go to the next "type" of parameter
             # and stride length of 1 to go to the next oscillator.
-            slice += [i * self.m + j for j in osc_idx]
+            slice_ += [i * self.m + j for j in osc_idx]
 
-        return np.s_[slice]
+        return np.s_[slice_]
 
     def _get_active_passive_indices(self) -> None:
         """Get indices corresponding to active and passive parameters."""
@@ -445,44 +480,19 @@ class NonlinearProgramming(ResultFetcher):
         r"""Wrap phases to be be in the range :math:`\left(-\pi, \pi\right]`."""
         return (arr + np.pi) % (2 * np.pi) - np.pi
 
-    def _get_functions(self) -> Tuple[callable, callable, callable]:
-        """Derive the functions to obtain the objective, graident and Hessian."""
-        if self.method in ["exact", "gauss-newton"]:
-            if self.dim == 1:
-                if self.method == "exact":
-                    function_factory = funcs.ObjGradHess(
-                        funcs.obj_grad_true_hess_1d
-                    )
-                elif self.method == "gauss-newton":
-                    function_factory = funcs.ObjGradHess(
-                        funcs.obj_grad_gauss_newton_hess_1d
-                    )
-            if self.dim == 2:
-                if self.method == "exact":
-                    function_factory = funcs.ObjGradHess(
-                        funcs.obj_grad_true_hess_2d
-                    )
-                elif self.method == "gauss-newton":
-                    function_factory = funcs.ObjGradHess(
-                        funcs.obj_grad_gauss_newton_hess_2d
-                    )
+    def _get_function_factory(self) -> funcs.FunctionFactory:
+        """Derive the function factory for the objective, graident and Hessian."""
+        if self.dim == 1:
+            if self.hessian == "exact":
+                self.function_factory = funcs.FunctionFactory1DExact
+            elif self.hessian == "gauss-newton":
+                self.function_factory = funcs.FunctionFactory1DGaussNewton
 
-            objective = function_factory.objective
-            gradient = function_factory.gradient
-            hessian = function_factory.hessian
-
-        elif self.method == "lbfgs":
-            if self.dim == 1:
-                function_factory = funcs.ObjGrad(funcs.obj_grad_1d)
-                hessian = funcs.hess_1d
-            if self.dim == 2:
-                function_factory = funcs.ObjGrad(funcs.obj_grad_2d)
-                hessian = funcs.hess_2d
-
-            objective = function_factory.objective
-            gradient = function_factory.gradient
-
-        return objective, gradient, hessian
+        elif self.dim == 2:
+            if self.hessian == "exact":
+                self.function_factory = funcs.FunctionFactory2DExact
+            elif self.hessian == "gauss-newton":
+                self.function_factory = funcs.FunctionFactory2DGaussNewton
 
     def _get_bounds(self) -> Iterable[Tuple[float, float]]:
         """Construct a list of bounding constraints for each parameter.
@@ -523,37 +533,24 @@ class NonlinearProgramming(ResultFetcher):
 
     def _run_optimiser(self) -> np.ndarray:
         """Run the optimisation algorithm."""
-        if self.method in ["exact", "gauss-newton"]:
-            result = optimize.minimize(
-                fun=self.objective,
-                x0=self.active,
-                args=tuple(self.optimiser_args),
-                method="trust-ncg",
-                jac=self.gradient,
-                hess=self.hessian,
-                bounds=self.bounds,
-                options={
-                    "maxiter": self.max_iterations,
-                    "disp": True if self.fprint else False,
-                },
-            )
+        result = optimisers.trust_ncg(
+            x0=self.active,
+            function_factory=self.function_factory,
+            args=tuple(self.optimiser_args),
+            eta=self.eta,
+            initial_trust_radius=self.initial_trust_radius,
+            max_trust_radius=self.max_trust_radius,
+            tolerance=self.tolerance,
+            output_mode=self.output_mode,
+            max_iterations=self.max_iterations,
+            save_trajectory=self.save_trajectory,
+            monitor_negative_amps=self.negative_amps == "remove",
+        )
 
-        elif self.method == "lbfgs":
-            result = optimize.minimize(
-                fun=self.objective,
-                x0=self.active,
-                args=tuple(self.optimiser_args),
-                method="L-BFGS-B",
-                jac=self.gradient,
-                bounds=self.bounds,
-                options={
-                    "maxiter": self.max_iterations,
-                    "iprint": 1 if self.fprint else -1,
-                    "disp": True,
-                },
-            )
+        if self.save_trajectory:
+            self.trajectory.extend(result.trajectory)
 
-        return result["x"]
+        return result.x
 
     def _check_negative_amps(self) -> bool:
         """Deal with negative amplitude oscillators.
@@ -589,7 +586,7 @@ class NonlinearProgramming(ResultFetcher):
             )
             self.m -= len(negative_idx)
 
-            if self.fprint:
+            if isinstance(self.output_mode, int):
                 print(
                     f"{ORA}Negative amplitudes detected. These"
                     f" oscillators will be removed\n"
@@ -616,27 +613,29 @@ class NonlinearProgramming(ResultFetcher):
     def _get_errors(self) -> None:
         """Determine the errors of the estimation result."""
         # Set phase_variance to False
-        args = list(copy.deepcopy(self.optimiser_args))
+        args = list(self.optimiser_args)
         args[-1] = False
         args = tuple(args)
 
+        if self.dim == 1:
+            f = funcs.obj_grad_true_hess_1d
+        elif self.dim == 2:
+            f = funcs.obj_grad_true_hess_2d
+
         # See newton_meets_ockham, Eq. (22)
+        obj, _, hess = f(self.active, *args)
         errors = np.sqrt(
-            self.objective(self.active, *args) *
-            np.abs(np.diag(nlinalg.inv(self.hessian(self.active, *args)))) /
+            obj * np.abs(np.diag(nlinalg.inv(hess))) /
             functools.reduce(operator.mul, [n - 1 for n in self.pts])
         )
 
         # Re-scale amplitude errors
-        proc_errors = np.zeros((self.m, self.p))
-        proc_errors[:, :] = np.nan
-        for n, idx in enumerate(self.active_idx):
-            if idx == 0:
-                proc_errors[:, idx] = self.norm * errors[: self.m]
-            else:
-                proc_errors[:, idx] = errors[n * self.m : (n + 1) * self.m]
+        if 0 in self.active_idx:
+            errors[: self.m] *= self.norm
 
-        return proc_errors
+        errors = errors.reshape((self.m, self.p), order="F")
+
+        return errors
 
     def _check_negligible_amps(self) -> bool:
         """Determine oscillators with negligible amplitudes, and remove."""
@@ -660,7 +659,7 @@ class NonlinearProgramming(ResultFetcher):
         # Update number of oscillators
         self.m -= len(negligible_idx)
 
-        if self.fprint:
+        if isinstance(self.output_mode, int):
             print(
                 f"{ORA}Oscillations with negligible amplitude removed."
                 f" \nUpdated number of oscillators: {self.m}{END}"

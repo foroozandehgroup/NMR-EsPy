@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 14:29:15 BST
+# Last Edited: Tue 01 Nov 2022 17:48:40 GMT
 
 from __future__ import annotations
 import datetime
@@ -1057,14 +1057,19 @@ class _Estimator1DProc(Estimator):
         noise_region: Optional[Tuple[float, float]] = None,
         region_unit: str = "hz",
         initial_guess: Optional[Union[np.ndarray, int]] = None,
-        method: str = "gauss-newton",
         mode: str = "apfd",
         phase_variance: bool = True,
-        max_iterations: Optional[int] = None,
         cut_ratio: Optional[float] = 1.1,
         mpm_trim: Optional[int] = None,
         nlp_trim: Optional[int] = None,
-        fprint: bool = True,
+        hessian: str = "gauss-newton",
+        max_iterations: Optional[int] = None,
+        output_mode: Optional[int] = 10,
+        save_trajectory: bool = False,
+        tolerance: float = 1.0e-8,
+        eta: float = 0.15,
+        initial_trust_radius: float = 1.0,
+        max_trust_radius: float = 4.0,
         _log: bool = True,
     ):
         r"""Estimate a specified region of the signal.
@@ -1130,13 +1135,6 @@ class _Estimator1DProc(Estimator):
             function. This should be set to ``True`` in cases where the signal being
             considered is derived from well-phased data.
 
-        max_iterations
-            A value specifiying the number of iterations the routine may run
-            through before it is terminated. If ``None``, the default number
-            of maximum iterations is set (``100`` if ``method`` is
-            ``"exact"`` or ``"gauss-newton"``, and ``500`` if ``"method"`` is
-            ``"lbfgs"``).
-
         mpm_trim
             Specifies the maximal size allowed for the filtered signal when
             undergoing the Matrix Pencil. If ``None``, no trimming is applied
@@ -1150,8 +1148,40 @@ class _Estimator1DProc(Estimator):
             the signal. If an int, and the filtered signal has a size greater than
             ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
 
-        fprint
-            Whether of not to output information to the terminal.
+        max_iterations
+            A value specifiying the number of iterations the routine may run
+            through before it is terminated. If ``None``, a default number
+            of maximum iterations is set, based on the the data dimension and
+            the value of ``hessian``.
+
+        output_mode
+            Should be an integer greater than or equal to ``0`` or ``None``. If
+            ``None``, no output will be given. If ``0``, only a message on the
+            outcome of the optimisation will be printed. If an integer greater
+            than ``0``, information for each iteration ``k`` which satisfies
+            ``k % output_mode == 0`` will be printed.
+
+        save_trajectory
+            If ``True``, a list of parameters at each iteration will be saved, and
+            accessible via the ``trajectory`` attribute.
+
+        tolerance
+            Sets the convergence criterion. Convergence will occur when
+            :math:`\lVert \boldsymbol{g}_k \rVert_2 < \text{tolerance}`.
+
+        eta
+            Criterion for accepting an update. An update will be accepted if the ratio
+            of the actual reduction and the predicted reduction is greater than ``eta``:
+
+            ..math ::
+
+                \rho_k = \frac{f(x_k) - f(x_k - p_k)}{m_k(0) - m_k(p_k)} > \eta
+
+        initial_trust_radius
+            The initial value of the radius of the trust region.
+
+        max_trust_radius
+            The largest permitted radius for the trust region.
 
         _log
             Ignore this!
@@ -1165,14 +1195,9 @@ class _Estimator1DProc(Estimator):
                 "initial_guess", initial_guess, sfuncs.check_initial_guess,
                 (self.dim,), {}, True,
             ),
-            ("method", method, sfuncs.check_one_of, ("lbfgs", "gauss-newton", "exact")),
+            ("hessian", hessian, sfuncs.check_one_of, ("gauss-newton", "exact")),
             ("phase_variance", phase_variance, sfuncs.check_bool),
             ("mode", mode, sfuncs.check_optimiser_mode),
-            (
-                "max_iterations", max_iterations, sfuncs.check_int, (),
-                {"min_value": 1}, True,
-            ),
-            ("fprint", fprint, sfuncs.check_bool),
             (
                 "mpm_trim", mpm_trim, sfuncs.check_int, (),
                 {"min_value": 1}, True,
@@ -1185,10 +1210,29 @@ class _Estimator1DProc(Estimator):
                 "cut_ratio", cut_ratio, sfuncs.check_float, (),
                 {"min_value": 1.}, True,
             ),
+            (
+                "max_iterations", max_iterations, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            ("output_mode", output_mode, sfuncs.check_int, (), {"min_value": 0}, True),
+            ("save_trajectory", save_trajectory, sfuncs.check_bool),
+            (
+                "tolerance", tolerance, sfuncs.check_float, (),
+                {"min_value": np.finfo(float).eps},
+            ),
+            ("eta", eta, sfuncs.check_float, (), {"min_value": 0.0, "max_value": 1.0}),
+            (
+                "initial_trust_radius", initial_trust_radius, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
         )
         sanity_check(
             self._region_check(region, region_unit, "region"),
             self._region_check(noise_region, region_unit, "noise_region"),
+            (
+                "max_trust_radius", max_trust_radius, sfuncs.check_float, (),
+                {"min_value": initial_trust_radius},
+            ),
         )
 
         if region is None:
@@ -1238,7 +1282,7 @@ class _Estimator1DProc(Estimator):
                 mpm_expinfo,
                 mpm_signal[..., :mpm_trim],
                 oscillators=oscillators,
-                fprint=fprint,
+                fprint=isinstance(output_mode, int),
             ).get_params()
 
             if x0 is None:
@@ -1258,10 +1302,17 @@ class _Estimator1DProc(Estimator):
             nlp_signal[..., :nlp_trim],
             x0,
             phase_variance=phase_variance,
-            method=method,
+            hessian=hessian,
             mode=mode,
             max_iterations=max_iterations,
-            fprint=fprint,
+            output_mode=output_mode,
+            # TODO update in the future
+            negative_amps="remove",
+            save_trajectory=save_trajectory,
+            tolerance=tolerance,
+            eta=eta,
+            initial_trust_radius=initial_trust_radius,
+            max_trust_radius=max_trust_radius,
         )
 
         self._results.append(
