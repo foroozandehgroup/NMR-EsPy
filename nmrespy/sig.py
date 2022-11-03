@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 04 Oct 2022 15:04:18 BST
+# Last Edited: Thu 03 Nov 2022 14:46:25 GMT
 
 """Manipulating and processing NMR signals."""
 
@@ -193,6 +193,45 @@ def exp_apodisation(
     return fid * np.einsum(
         index_notation,
         *[np.exp(-k * np.linspace(0, 1, n)) if i in axes
+          else np.ones(n)
+          for i, n in enumerate(fid.shape)],
+    )
+
+
+def sinebell_apodisation(
+    fid: np.ndarray,
+    axes: Optional[Iterable[int]] = None,
+) -> np.ndarray:
+    """Apply sine-bell apodisation to an FID.
+
+    The FID is multiplied by ``np.exp(-k * np.linspace(0, 1, n))`` in each dimension
+    specified by ``axes``, where ``n`` is the size of each dimension.
+
+    .. warning::
+        This is not intended for manipulating the FID prior to estimation.
+
+    Parameters
+    ----------
+    fid
+        FID to process.
+
+    axes
+        The axes to apply the apodiisation over. If ``None``, all axes are apodised.
+    """
+    sanity_check(
+        ("fid", fid, sfuncs.check_ndarray),
+    )
+    dim = fid.ndim
+    sanity_check(_axes_check(axes, dim))
+
+    axes = _process_axes(axes, dim)
+
+    indices = [chr(i) for i in range(105, 105 + dim)]
+    index_notation = ",".join(indices) + "->" + "".join(indices)
+
+    return fid * np.einsum(
+        index_notation,
+        *[np.sin(np.pi * np.linspace(0, 1, n)) if i in axes
           else np.ones(n)
           for i, n in enumerate(fid.shape)],
     )
