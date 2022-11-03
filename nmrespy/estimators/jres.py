@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 02 Nov 2022 17:08:29 GMT
+# Last Edited: Thu 03 Nov 2022 15:29:28 GMT
 
 from __future__ import annotations
 import copy
@@ -283,8 +283,17 @@ class Estimator2DJ(_Estimator1DProc):
 
     @property
     def spectrum(self) -> np.ndarray:
+        "Spectrum of the data."
         data = copy.deepcopy(self.data)
         data[0, 0] *= 0.5
+        return sig.ft(data)
+
+    @property
+    def spectrum_sinebell(self) -> np.ndarray:
+        """Spectrum with sine-bell apodisation."""
+        data = copy.deepcopy(self.data)
+        data[0, 0] *= 0.5
+        data = sig.sinebell_apodisation(data)
         return sig.ft(data)
 
     @property
@@ -645,6 +654,7 @@ class Estimator2DJ(_Estimator1DProc):
         contour_factor: Optional[float] = None,
         contour_lw: float = 0.5,
         contour_color: Any = "k",
+        jres_sinebell: bool = True,
         multiplet_colors: Any = None,
         multiplet_lw: float = 1.,
         multiplet_vertical_shift: float = 0.,
@@ -733,6 +743,9 @@ class Estimator2DJ(_Estimator1DProc):
 
         contour_color
             The color of the 2DJ spectrum plot.
+
+        jres_sinebell
+            If ``True``, applies a sine-bell apodisation to the 2DJ spectrum.
 
         multiplet_colors
             **TODO**
@@ -832,6 +845,7 @@ class Estimator2DJ(_Estimator1DProc):
                 {"min_value": 1.}, True,
             ),
             ("contour_lw", contour_lw, sfuncs.check_float, (), {"min_value": 0.}),
+            ("jres_sinebell", jres_sinebell, sfuncs.check_bool),
             ("marker_size", marker_size, sfuncs.check_float, (), {"min_value": 0.}),
             (
                 "multiplet_colors", multiplet_colors, sfuncs.check_oscillator_colors,
@@ -940,6 +954,10 @@ class Estimator2DJ(_Estimator1DProc):
         multiplet_indices = []
 
         conv = f"{region_unit}->idx"
+        full_spectrum = np.abs(
+            self.spectrum_sinebell if jres_sinebell else self.spectrum
+        ).real
+
         for idx, region in zip(merge_indices, merge_regions):
             slice_ = slice(*expinfo_1d.convert([region], conv)[0])
             highres_slice = slice(*expinfo_1d_highres.convert([region], conv)[0])
@@ -950,7 +968,7 @@ class Estimator2DJ(_Estimator1DProc):
             shifts_1d.append(full_shifts_1d[slice_])
             shifts_1d_highres.append(full_shifts_1d_highres[highres_slice])
 
-            spectra_2d.append(np.abs(self.spectrum).real[:, slice_])
+            spectra_2d.append(np.abs(full_spectrum).real[:, slice_])
             spectra_1d.append(self.spectrum_zero_t1.real[slice_])
             neg_45_spectra.append(
                 sig.ft(
