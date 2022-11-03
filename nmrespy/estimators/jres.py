@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 27 Oct 2022 15:39:43 BST
+# Last Edited: Wed 02 Nov 2022 17:08:29 GMT
 
 from __future__ import annotations
 import copy
@@ -46,6 +46,8 @@ class Estimator2DJ(_Estimator1DProc):
 
     default_mpm_trim = 256
     default_nlp_trim = 1024
+    default_max_iterations_exact_hessian = 40
+    default_max_iterations_gn_hessian = 80
 
     @classmethod
     def new_bruker(

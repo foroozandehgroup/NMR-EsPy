@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 01 Nov 2022 16:30:12 GMT
+# Last Edited: Wed 02 Nov 2022 17:00:13 GMT
 
 from dataclasses import dataclass
 import math
@@ -27,6 +27,7 @@ TABLE_WIDTHS = (0, 7, 14, 14, 14, 0)
 @dataclass
 class NLPResult:
     x: np.ndarray
+    errors: Optional[np.ndarray]
     trajectory: Optional[Iterable[np.ndarray]]
     result_message: Iterable[str]
     iterations: int
@@ -249,7 +250,7 @@ def trust_ncg(
     print(result_message)
     time_elapsed = time.time() - start
 
-    return NLPResult(x, trajectory, result_message, k, time_elapsed)
+    return NLPResult(x, None, trajectory, result_message, k, time_elapsed)
 
 
 def get_boundaries(z, d, trust_radius):

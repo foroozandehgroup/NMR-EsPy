@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 14 Oct 2022 14:05:33 BST
+# Last Edited: Wed 02 Nov 2022 17:08:33 GMT
 
 from __future__ import annotations
 import copy
@@ -55,6 +55,8 @@ class Estimator1D(_Estimator1DProc):
 
     default_mpm_trim = 4096
     default_nlp_trim = None
+    default_max_iterations_exact_hessian = 100
+    default_max_iterations_gn_hessian = 200
 
     @classmethod
     def new_bruker(

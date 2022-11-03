@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 01 Nov 2022 17:48:40 GMT
+# Last Edited: Thu 03 Nov 2022 11:48:14 GMT
 
 from __future__ import annotations
 import datetime
@@ -26,7 +26,7 @@ from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy import sig
 from nmrespy.freqfilter import Filter
 from nmrespy.mpm import MatrixPencil
-from nmrespy.nlp import NonlinearProgramming
+from nmrespy.nlp import nonlinear_programming
 from nmrespy.write import ResultWriter
 from nmrespy.write.textfile import experiment_info, titled_table
 
@@ -1058,6 +1058,7 @@ class _Estimator1DProc(Estimator):
         region_unit: str = "hz",
         initial_guess: Optional[Union[np.ndarray, int]] = None,
         mode: str = "apfd",
+        amp_thold: Optional[float] = None,
         phase_variance: bool = True,
         cut_ratio: Optional[float] = 1.1,
         mpm_trim: Optional[int] = None,
@@ -1108,27 +1109,28 @@ class _Estimator1DProc(Estimator):
             oscillators. If a NumPy array, this array will be used as the initial
             guess.
 
-        method
-            Specifies the optimisation method.
+        hessian
+            Specifies how to construct the Hessian matrix.
 
-            * ``"exact"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be exact.
-            * ``"gauss-newton"`` Uses SciPy's
-              `trust-constr routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr>`_
-              The Hessian will be approximated based on the
-              `Gauss-Newton method <https://en.wikipedia.org/wiki/
+            * ``"exact"`` The Hessian will be exact.
+            * ``"gauss-newton"`` The Hessian will be approximated as is done with
+              the `Gauss-Newton method <https://en.wikipedia.org/wiki/
               Gauss%E2%80%93Newton_algorithm>`_
-            * ``"lbfgs"`` Uses SciPy's
-              `L-BFGS-B routine <https://docs.scipy.org/doc/scipy/reference/
-              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_.
 
         mode
             A string containing a subset of the characters ``"a"`` (amplitudes),
             ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
             Specifies which types of parameters should be considered for optimisation.
+
+        amp_thold
+            A value that imposes a threshold for deleting oscillators of
+            negligible ampltiude. If ``None``, does nothing. If a float,
+            oscillators with amplitudes satisfying :math:`a_m <
+            a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2`` will be
+            removed from the parameter array, where :math:`\lVert
+            \boldsymbol{a} \rVert_2` is the Euclidian norm of the vector of
+            all the oscillator amplitudes. It is advised to set ``amp_thold``
+            at least a couple of orders of magnitude below 1.
 
         phase_variance
             Whether or not to include the variance of oscillator phases in the cost
@@ -1198,6 +1200,10 @@ class _Estimator1DProc(Estimator):
             ("hessian", hessian, sfuncs.check_one_of, ("gauss-newton", "exact")),
             ("phase_variance", phase_variance, sfuncs.check_bool),
             ("mode", mode, sfuncs.check_optimiser_mode),
+            (
+                "amp_thold", amp_thold, sfuncs.check_float, (),
+                {"greater_than_zero": True}, True,
+            ),
             (
                 "mpm_trim", mpm_trim, sfuncs.check_int, (),
                 {"min_value": 1}, True,
@@ -1297,13 +1303,20 @@ class _Estimator1DProc(Estimator):
                 )
                 return
 
-        result = NonlinearProgramming(
+        if max_iterations is None:
+            if hessian == "exact":
+                max_iterations = self.default_max_iterations_exact_hessian
+            elif hessian == "gauss-newton":
+                max_iterations = self.default_max_iterations_gn_hessian
+
+        result = nonlinear_programming(
             nlp_expinfo,
             nlp_signal[..., :nlp_trim],
             x0,
             phase_variance=phase_variance,
             hessian=hessian,
             mode=mode,
+            amp_thold=amp_thold,
             max_iterations=max_iterations,
             output_mode=output_mode,
             # TODO update in the future
@@ -1317,8 +1330,8 @@ class _Estimator1DProc(Estimator):
 
         self._results.append(
             Result(
-                result.get_params(),
-                result.get_errors(),
+                result.x,
+                result.errors,
                 region,
                 noise_region,
                 self.sfo,
