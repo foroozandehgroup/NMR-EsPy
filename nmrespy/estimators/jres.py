@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 03 Nov 2022 15:29:28 GMT
+# Last Edited: Mon 07 Nov 2022 16:38:26 GMT
 
 from __future__ import annotations
 import copy
@@ -241,7 +241,7 @@ class Estimator2DJ(_Estimator1DProc):
         )
 
         if domain == "freq":
-            spectrum = np.abs(self.spectrum) if abs_ else self.spectrum
+            spectrum = np.abs(self.spectrum_sinebell) if abs_ else self.spectrum
             app = ContourApp(spectrum, self.expinfo)
             app.mainloop()
 
@@ -1070,6 +1070,7 @@ class Estimator2DJ(_Estimator1DProc):
                     s=marker_size,
                     marker=marker_shape,
                     color=color,
+                    edgecolor="none",
                     zorder=100,
                 )
                 if label_peaks:

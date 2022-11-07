@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 03 Nov 2022 11:48:14 GMT
+# Last Edited: Mon 07 Nov 2022 16:05:42 GMT
 
 from __future__ import annotations
 import datetime
@@ -923,7 +923,6 @@ class Estimator(ne.ExpInfo):
             result.get_noise_region()[-1],
             region_unit="hz",
             initial_guess=x0,
-            fprint=False,
             _log=False,
             **estimate_kwargs,
         )
@@ -1680,7 +1679,7 @@ class _Estimator1DProc(Estimator):
 
             break_kwargs = {
                 "marker": [(-1, -3), (1, 3)],
-                "markersize": 10,
+                "markersize": 6,
                 "linestyle": "none",
                 "color": "k",
                 "mec": "k",
