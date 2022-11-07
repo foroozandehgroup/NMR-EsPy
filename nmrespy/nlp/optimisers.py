@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 02 Nov 2022 17:00:13 GMT
+# Last Edited: Mon 07 Nov 2022 11:39:54 GMT
 
 from dataclasses import dataclass
 import math
@@ -132,13 +132,11 @@ def trust_ncg(
     trust_radius = initial_trust_radius
     k = 0
 
-    if isinstance(monitor_negative_amps, int):
+    if monitor_negative_amps:
         oscs = m.args[2]
         active_idx = m.args[4]
         if 0 in active_idx:
             amp_slice = slice(0, oscs)
-        else:
-            monitor_negative_amps = None
 
     if isinstance(output_mode, int) and output_mode > 0:
         print_title()
@@ -185,6 +183,7 @@ def trust_ncg(
 
             r_next = r + alpha * Bd
             r_next_sq = r_next.T @ r_next
+
             if math.sqrt(r_next_sq) < epsilon:
                 hits_boundary = False
                 p = z_next
@@ -203,6 +202,7 @@ def trust_ncg(
 
         actual_reduction = m.objective - m_proposed.objective
         predicted_reduction = m.objective - predicted_value
+
         if predicted_reduction <= 0:
             result_message = result_messages["noimprov"]
             break
