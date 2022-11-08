@@ -77,3 +77,13 @@ Features
 * `Esimator1D` now provides the `subband_estimate` method. This enables the
   entire signal to be estimated by iteratively performing estimation on
   frequency-filtered "sub-bands" of the signal.
+
+Version 1.1.5 -> Version 2.0
+----------------------------
+
+Features
+^^^^^^^^
+
+* Major update to large swathes of the code base.
+* Support for 2DJ datasets.
+* GUI changes for 1D data and GUI available for 2DJ data.

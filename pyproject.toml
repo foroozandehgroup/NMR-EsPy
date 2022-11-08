@@ -5,7 +5,72 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "nmrespy"
+version = "2.0"
+authors = [
+    {name = "Simon Hulse", email = "simon.hulse@chem.ox.ac.uk"}
+]
+license = {file = "LICENSE"}
+keywords = [
+    "Estimation",
+    "NMR",
+    "Signal Processing",
+    "Optimisation",
+]
+description = "NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python"
+readme = "README.rst"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "scipy",
+    "bruker_utils",
+    "pybaselines",
+]
+
+[project.urls]
+documentation = "https://foroozandehgroup.github.io/NMR-EsPy/"
+github = "https://github.com/foroozandehgroup/NMR-EsPy"
+
+[project.optional-dependencies]
+dev = [
+    "pyproject-flake8",
+    "pytest",
+    "pytest-cov",
+]
+docs = [
+    "Sphinx",
+    "sphinx-nameko-theme",
+]
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q -s --cov=nmrespy/ --cov-config=.coveragerc --cov-report html"
 testpaths = ["tests"]
+
+[tool.flake8]
+ignore = [
+    "E203",
+    "E731",
+    "E741",
+    "W504",
+]
+per_file_ignores = [
+    "python/nmrespy/__init__.py: E402,F401",
+]
+max-line-length = 88
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+]
