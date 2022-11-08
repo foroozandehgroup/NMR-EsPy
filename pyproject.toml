@@ -52,6 +52,9 @@ docs = [
     "sphinx-nameko-theme",
 ]
 
+[tool.setuptools]
+py-modules = []
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q -s --cov=nmrespy/ --cov-config=.coveragerc --cov-report html"
