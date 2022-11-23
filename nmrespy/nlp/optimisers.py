@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 07 Nov 2022 11:39:54 GMT
+# Last Edited: Tue 22 Nov 2022 12:49:47 GMT
 
 from dataclasses import dataclass
 import math
@@ -74,6 +74,7 @@ def trust_ncg(
     max_iterations: int = 100,
     save_trajectory: bool = False,
     monitor_negative_amps: bool = False,
+    check_neg_amps_every: int = 50,
 ) -> NLPResult:
     r"""Newton Conjugate Gradient Trust-Region Algorithm.
 
@@ -137,6 +138,7 @@ def trust_ncg(
         active_idx = m.args[4]
         if 0 in active_idx:
             amp_slice = slice(0, oscs)
+        neg_amp_status = {}
 
     if isinstance(output_mode, int) and output_mode > 0:
         print_title()
@@ -228,7 +230,7 @@ def trust_ncg(
             print_entry(k, m, trust_radius)
 
         # Check negative amps
-        if monitor_negative_amps:
+        if monitor_negative_amps and (k != 0) and (k % check_neg_amps_every == 0):
             neg_amps = np.where(x[amp_slice] <= 0)[0]
             if neg_amps.size > 0:
                 result_message = result_messages["negamp"]
