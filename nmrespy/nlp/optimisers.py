@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 22 Nov 2022 12:49:47 GMT
+# Last Edited: Wed 23 Nov 2022 10:40:35 GMT
 
 from dataclasses import dataclass
 import math
@@ -226,7 +226,7 @@ def trust_ncg(
             trajectory.append(np.copy(x))
 
         # Print output
-        if k % output_mode == 0:
+        if isinstance(output_mode, int) and (k % output_mode == 0):
             print_entry(k, m, trust_radius)
 
         # Check negative amps
@@ -246,7 +246,7 @@ def trust_ncg(
             result_message = result_messages["maxiter"]
             break
 
-    if output_mode > 0:
+    if isinstance(output_mode, int) and output_mode > 0:
         print("└" + "┴".join(w * "─" for w in TABLE_WIDTHS[1:-1]) + "┘")
 
     print(result_message)

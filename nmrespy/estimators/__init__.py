@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 07 Nov 2022 16:05:42 GMT
+# Last Edited: Thu 17 Nov 2022 11:50:40 GMT
 
 from __future__ import annotations
 import datetime
@@ -914,7 +914,7 @@ class Estimator(ne.ExpInfo):
         index: int,
         **estimate_kwargs,
     ) -> None:
-        for key in estimate_kwargs.keys():
+        for key in list(estimate_kwargs.keys()):
             if key in ("region", "noise_region", "region_unit", "initial_guess"):
                 del estimate_kwargs[key]
 

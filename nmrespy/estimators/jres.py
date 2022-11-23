@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 07 Nov 2022 16:38:26 GMT
+# Last Edited: Thu 17 Nov 2022 11:48:22 GMT
 
 from __future__ import annotations
 import copy
@@ -516,7 +516,7 @@ class Estimator2DJ(_Estimator1DProc):
         params = self.get_params()
         multiplets = self.predict_multiplets(thold=thold)
         spurious = {}
-        for cfreq, oscs in multiplets.items:
+        for cfreq, oscs in multiplets.items():
             if len(oscs) == 1 and abs(cfreq) > thold:
                 # osc_loc is a tuple of the form (result_index, osc_index)
                 osc_loc = self.find_osc(params[oscs[0]])
