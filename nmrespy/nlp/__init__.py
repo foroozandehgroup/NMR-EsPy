@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 03 Nov 2022 14:20:00 GMT
+# Last Edited: Wed 04 Jan 2023 20:19:21 GMT
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -428,7 +428,7 @@ def nonlinear_programming(
     proc_errors[active_slice] = errors
     if 0 in active_idx:
         proc_errors[: m] *= norm
-    proc_errors.reshape((m, p), order="F")
+    proc_errors = proc_errors.reshape((m, p), order="F")
 
     # --- Format the trajectory arrays ---
     if save_trajectory:
@@ -454,6 +454,7 @@ def nonlinear_programming(
     return optimisers.NLPResult(
         theta, proc_errors, proc_trajectories, opt_messages, iterations, opt_time,
     )
+
 
 def _get_active_passive_indices(
     mode: str, dim: int
