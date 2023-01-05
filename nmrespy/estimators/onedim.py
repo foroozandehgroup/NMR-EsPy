@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 02 Nov 2022 17:08:33 GMT
+# Last Edited: Thu 05 Jan 2023 17:04:09 GMT
 
 from __future__ import annotations
 import copy
@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._files import cd, check_existent_dir
+from nmrespy._files import cd, check_existent_dir, check_saveable_dir
 from nmrespy._paths_and_links import NMRESPYPATH, SPINACHPATH
 from nmrespy._sanity import (
     sanity_check,
@@ -269,6 +269,9 @@ class Estimator1D(_Estimator1DProc):
         sfo
             The transmitter frequency (MHz).
 
+        nucleus
+            The identity of the nucleus.
+
         snr
             The signal-to-noise ratio. If ``None`` then no noise will be added
             to the FID.
@@ -278,6 +281,7 @@ class Estimator1D(_Estimator1DProc):
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
             ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float, (), {}, True),
+            ("nucleus", nucleus, sfuncs.check_nucleus),
             ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}, True),
             ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
@@ -287,6 +291,7 @@ class Estimator1D(_Estimator1DProc):
             sw=sw,
             offset=offset,
             sfo=sfo,
+            nuclei=nucleus,
             default_pts=pts,
         )
 
@@ -348,89 +353,69 @@ class Estimator1D(_Estimator1DProc):
 
         plt.show()
 
-    def write_to_topspin(
+    def write_to_bruker(
         self,
         path: Union[str, Path],
-        expno: int,
-        force_overwrite: bool = False,
         indices: Optional[Iterable[int]] = None,
         pts: Optional[Iterable[int]] = None,
+        expno: Optional[int] = None,
+        procno: Optional[int] = None,
+        force_overwrite: bool = False,
     ) -> None:
-        # TODO: Work in progress
-        res_len = len(self._results)
+        """Write an estimated signal to Bruker format.
+
+        Note that TopSpin data is stored in the following format:
+
+        * ``<path>/<expno>/`` contains the time-domain data and information
+            (``fid``, ``acqus``)
+        * ``<path>/<expno>/pdata/<procno>/`` contains the processed data and
+            information (``pdata``, ``procs``)
+
+        Parameters
+        ----------
+        path
+            The path to the root directory to store the data in.
+
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        pts
+            The number of points to construct the estimated signal from.
+
+        expno
+            The experiment number. If ``None``, the smallest int ``x`` for which the
+            directory ``<path>/<x>/`` doesn't exist will be used.
+
+        procno
+            The processed data number. If ``None``, the smallest int ``y`` for which
+            the directory ``<path>/<expno>/pdata/<y>`` doesn't exist will be used.
+
+        force_overwrite
+            If ``False`` and the directory ``<path>/<expno>/pdata/<procno>``
+            already exists, an error will be raised. If ``True``, said directory
+            will be overwritten.
+
+        .. warning::
+
+             There is a known problem that the spectral data has timepoints along
+             the x-axis rather than chemical shifts. I will try to figure out why
+             and fix this in due course!
+        """
+        # TODO: figure out x-axis issue (see warning above).
+        self._check_results_exist()
         sanity_check(
-            ("expno", expno, sfuncs.check_int, (), {"min_value": 1}),
+            ("path", path, check_saveable_dir, (True,)),
+            self._indices_check(indices),
+            self._pts_check(pts),
+            ("expno", expno, sfuncs.check_int, (), {"min_value": 1}, True),
+            ("procno", procno, sfuncs.check_int, (), {"min_value": 1}, True),
             ("force_overwrite", force_overwrite, sfuncs.check_bool),
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {"min_value": -res_len, "max_value": res_len - 1}, True,
-            ),
-            (
-                "pts", pts, sfuncs.check_int_list, (),
-                {
-                    "length": self.dim,
-                    "len_one_can_be_listless": True,
-                    "min_value": 1,
-                },
-                True,
-            ),
         )
-
-        fid = self.make_fid(indices, pts)
-        fid_uncomplex = np.zeros((2 * fid.size,), dtype="float64")
-        fid_uncomplex[::2] = fid.real
-        fid_uncomplex[1::2] = fid.imag
-
-        with open(NMRESPYPATH / "ts_templates/acqus", "r") as fh:
-            text = fh.read()
-
-        int_regex = r"-?\d+"
-        float_regex = r"-?\d+(\.\d+)?"
-        text = re.sub(
-            r"\$BF1= " + float_regex,
-            "$BF1= " +
-            str(self.bf[0] if self.bf is not None else 500. - 1e-6 * self.offset()[0]),
-            text,
-        )
-        text = re.sub(r"\$BYTORDA= " + int_regex, "$BYTORDA= 0", text)
-        text = re.sub(r"\$DTYPA= " + int_regex, "$DTYPA= 2", text)
-        text = re.sub(r"\$GRPDLY= " + float_regex, "$GRPDLY= 0", text)
-        text = re.sub(
-            r"\$NUC1= <\d+[a-zA-Z]+>",
-            "$NUC1= <" +
-            (self.nuclei[0] if self.nuclei is not None else "1H") +
-            ">",
-            text,
-        )
-        text = re.sub(r"\$O1= " + float_regex, f"$O1= {self.offset()[0]}", text)
-        text = re.sub(
-            r"\$SFO1= " + float_regex,
-            "$SFO1= " +
-            str(self.sfo[0] if self.sfo is not None else 500.0),
-            text,
-        )
-        text = re.sub(
-            r"\$SW= " + float_regex,
-            "$SW= " +
-            str(self.sw(unit="ppm")[0] if self.hz_ppm_valid else self.sw()[0] / 500.0),
-            text,
-        )
-        text = re.sub(r"\$SW_h= " + float_regex, f"$SW_h= {self.sw()[0]}", text)
-        text = re.sub(r"\$TD= " + int_regex, f"$TD= {fid.size}", text)
-
-        path = Path(path).expanduser()
-        if not path.is_dir():
-            path.mkdir()
-        if (expdir := path / str(expno)).is_dir():
-            shutil.rmtree(expdir)
-        expdir.mkdir()
-
-        with open(expdir / "acqus", "w") as fh:
-            fh.write(text)
-        with open(expdir / "acqu", "w") as fh:
-            fh.write(text)
-        with open(expdir / "fid", "wb") as fh:
-            fh.write(fid_uncomplex.astype("<f8").tobytes())
+        fid = self.make_fid_from_result(indices=indices, pts=pts)
+        # calls ExpInfo.write_to_bruker()
+        super().write_to_bruker(fid, path, expno, procno, force_overwrite)
 
     @logger
     def plot_result(

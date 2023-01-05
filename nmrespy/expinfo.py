@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 15:37:14 BST
+# Last Edited: Thu 05 Jan 2023 17:01:58 GMT
 
 import datetime
 import os
@@ -767,7 +767,7 @@ class ExpInfo(FrequencyConverter):
                 with open(directory / fname, "w") as fh:
                     fh.write(text)
 
-    def write_to_topspin(
+    def write_to_bruker(
         self,
         fid: np.ndarray,
         path: Union[str, Path],
@@ -814,6 +814,7 @@ class ExpInfo(FrequencyConverter):
             ("path & expno", acqu_dir, check_saveable_dir, (force_overwrite,)),
         )
         acqu_dir.mkdir(exist_ok=True)
+
         if not (pdata_dir := acqu_dir / "pdata").is_dir():
             pdata_dir.mkdir()
         if procno is None:
@@ -877,6 +878,7 @@ class ExpInfo(FrequencyConverter):
             f"{os.getlogin()}@{os.uname()[1]}"
         )
 
+        # TODO: Create dummy values in case sfo unknown
         shape = fid.shape
         for i, (acqu_text, proc_text) in enumerate(zip(acqu_texts, proc_texts)):
             s = str(i + 1) if i != 0 else ""
