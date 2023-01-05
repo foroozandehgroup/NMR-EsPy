@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 17 Nov 2022 11:48:22 GMT
+# Last Edited: Thu 05 Jan 2023 19:15:51 GMT
 
 from __future__ import annotations
 import copy
@@ -23,7 +23,7 @@ from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy.app.custom_widgets import MyEntry
 from nmrespy.plot import make_color_cycle
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._files import cd, check_existent_dir
+from nmrespy._files import cd, check_existent_dir, check_saveable_dir
 from nmrespy._paths_and_links import SPINACHPATH
 from nmrespy._sanity import (
     sanity_check,
@@ -633,6 +633,97 @@ class Estimator2DJ(_Estimator1DProc):
         return self.make_fid(
             edited_params, pts=pts, indirect_modulation=indirect_modulation,
         )
+
+    def construct_multiplet_fids(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        pts: Optional[int] = None,
+        thold: Optional[float] = None,
+        freq_unit: str = "hz",
+    ) -> Iterable[np.ndarray]:
+        #TODO: CHECKING
+        multiplets = self.predict_multiplets(
+            indices=indices,
+            thold=thold,
+            freq_unit=freq_unit,
+        )
+
+        # Sort by frequency
+        multiplets = sorted(list(multiplets.items()), key=lambda item: item[0])
+
+        fids = []
+        for (_, idx) in multiplets:
+            fids.append(
+                self.make_fid_from_result(
+                    indices=indices,
+                    osc_indices=idx,
+                    pts=pts,
+                )
+            )
+
+        return fids
+
+    def write_multiplets_to_bruker(
+        self,
+        path: Union[Path, str],
+        indices: Optional[Iterable[int]] = None,
+        pts: Optional[int] = None,
+        thold: Optional[float] = None,
+    ) -> None:
+        """Write each individual multiplet structure to a Bruker data directory.
+
+        Each multiplet is saved to a directory of the form
+        ``<path>/<expno_prefix><x>/pdata/1`` where ``<x>`` is iterated from 0 onwards.
+
+        Parameters
+        ----------
+        path
+            The path to the root directory to store the data in.
+
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        pts
+            The number of points to construct the mutliplets from.
+
+        thold
+            Frequency threshold. All oscillators that make up a multiplet are assumed
+            to obey the following expression:
+
+            .. math::
+                f_c - f_t < f_{2,m} - f_{1,m} < f_c + f_t
+
+            where :math:`f_c` is the central frequency of the multiplet, and `f_t` is
+            ``thold``
+        """
+        self._check_results_exist()
+        sanity_check(
+            ("path", path, check_saveable_dir, (True,)),
+            self._indices_check(indices),
+            self._pts_check(pts),
+            ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+        )
+
+        path = Path(path).expanduser()
+        multiplet_fids = self.construct_multiplet_fids(
+            indices=indices,
+            pts=pts,
+            thold=thold,
+        )
+        # Establish list of expno names
+        n = len(multiplet_fids)
+        ndigits = int(np.log10(n)) + 1
+        expno = 99 * (10 ** ndigits) + 1
+
+        expinfo_1d = self.direct_expinfo
+        # Save each multiplet to an expino directory
+        for fid in multiplet_fids:
+            expinfo_1d.write_to_bruker(
+                fid, path, expno=expno, procno=1, force_overwrite=True,
+            )
+            expno += 1
 
     @logger
     def plot_result(
