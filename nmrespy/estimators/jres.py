@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 05 Jan 2023 19:15:51 GMT
+# Last Edited: Thu 05 Jan 2023 23:29:22 GMT
 
 from __future__ import annotations
 import copy
@@ -22,7 +22,7 @@ from matplotlib.backends.backend_tkagg import (
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy.app.custom_widgets import MyEntry
 from nmrespy.plot import make_color_cycle
-from nmrespy._colors import RED, END, USE_COLORAMA
+from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._files import cd, check_existent_dir, check_saveable_dir
 from nmrespy._paths_and_links import SPINACHPATH
 from nmrespy._sanity import (
@@ -641,7 +641,7 @@ class Estimator2DJ(_Estimator1DProc):
         thold: Optional[float] = None,
         freq_unit: str = "hz",
     ) -> Iterable[np.ndarray]:
-        #TODO: CHECKING
+        # TODO: CHECKING
         multiplets = self.predict_multiplets(
             indices=indices,
             thold=thold,
@@ -650,13 +650,15 @@ class Estimator2DJ(_Estimator1DProc):
 
         # Sort by frequency
         multiplets = sorted(list(multiplets.items()), key=lambda item: item[0])
+        full_params = self.get_params(indices=indices)[:, [0, 1, 3, 5]]
+        direct_expinfo = self.direct_expinfo
 
         fids = []
         for (_, idx) in multiplets:
+            params = full_params[idx]
             fids.append(
-                self.make_fid_from_result(
-                    indices=indices,
-                    osc_indices=idx,
+                direct_expinfo.make_fid(
+                    params=params,
                     pts=pts,
                 )
             )
@@ -666,19 +668,25 @@ class Estimator2DJ(_Estimator1DProc):
     def write_multiplets_to_bruker(
         self,
         path: Union[Path, str],
+        expno_prefix: Optional[int] = None,
         indices: Optional[Iterable[int]] = None,
         pts: Optional[int] = None,
         thold: Optional[float] = None,
+        force_overwrite: bool = False,
     ) -> None:
         """Write each individual multiplet structure to a Bruker data directory.
 
         Each multiplet is saved to a directory of the form
-        ``<path>/<expno_prefix><x>/pdata/1`` where ``<x>`` is iterated from 0 onwards.
+        ``<path>/<expno_prefix><x>/pdata/1`` where ``<x>`` is iterated from 1 onwards.
 
         Parameters
         ----------
         path
             The path to the root directory to store the data in.
+
+        expinfo_prefix
+            Prefix to the experiment numbers for storing the multiplets to. If
+            ``None``, experiments will be numbered ``1``, ``2``, etc.
 
         indices
             The indices of results to include. Index ``0`` corresponds to the first
@@ -697,33 +705,62 @@ class Estimator2DJ(_Estimator1DProc):
 
             where :math:`f_c` is the central frequency of the multiplet, and `f_t` is
             ``thold``
+
+        force_overwite
+            If ``False``, if any directories that will be written to already exist,
+            you will be promted if you are happy to overwrite. If ``True``,
+            overwriting will take place without asking.
         """
         self._check_results_exist()
         sanity_check(
             ("path", path, check_saveable_dir, (True,)),
+            (
+                "expno_prefix", expno_prefix, sfuncs.check_int, (), {"min_value": 1},
+                True,
+            ),
             self._indices_check(indices),
-            self._pts_check(pts),
+            # Not a "normal" pts check as checking for valid 1D value rather than 2D
+            (
+                "pts", pts, sfuncs.check_int, (), {"min_value": 1},
+                self.default_pts is not None,
+            ),
             ("thold", thold, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
 
         path = Path(path).expanduser()
-        multiplet_fids = self.construct_multiplet_fids(
+        fids = self.construct_multiplet_fids(
             indices=indices,
             pts=pts,
             thold=thold,
         )
+
         # Establish list of expno names
-        n = len(multiplet_fids)
-        ndigits = int(np.log10(n)) + 1
-        expno = 99 * (10 ** ndigits) + 1
+        n = len(fids)
+        if expno_prefix is None:
+            expnos = list(range(1, n + 1))
+        else:
+            ndigits = int(np.log10(n)) + 1
+            first = expno_prefix * (10 ** ndigits) + 1
+            expnos = list(range(first, first + n))
+
+        if not force_overwrite:
+            for expno in expnos:
+                sanity_check(
+                    (
+                        "expno_prefix", path / str(expno), check_saveable_dir, (False,),
+                    ),
+                )
 
         expinfo_1d = self.direct_expinfo
-        # Save each multiplet to an expino directory
-        for fid in multiplet_fids:
+        for (fid, expno) in zip(fids, expnos):
             expinfo_1d.write_to_bruker(
                 fid, path, expno=expno, procno=1, force_overwrite=True,
             )
-            expno += 1
+
+        print(
+            f"{GRE}Saved multiplets to folders `{path}/[{expnos[0]}->{expnos[-1]}]/`"
+            f"{END}"
+        )
 
     @logger
     def plot_result(
