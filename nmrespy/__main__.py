@@ -1,7 +1,7 @@
 # __main__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 27 Oct 2022 11:13:04 BST
+# Last Edited: Fri 06 Jan 2023 00:19:20 GMT
 
 """Run when the user calls the nmrespy module from a command line.
 

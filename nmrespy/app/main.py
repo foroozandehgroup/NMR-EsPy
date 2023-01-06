@@ -1,7 +1,7 @@
-# __init__.py
+# main.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 18 Oct 2022 15:58:49 BST
+# Last Edited: Fri 06 Jan 2023 00:26:54 GMT
 
 # This is currently only applicable to 1D NMR data.
 
@@ -76,7 +76,7 @@ class NMREsPyApp(tk.Tk):
         )
         style.configure("Region.TNotebook", background=cf.NOTEBOOKCOLOR)
 
-        if topspin:
+        if topspin and dtype == "1D":
             # Open window to ask user for data type (fid or pdata)
             # from this, self acquires the attirbutes dtype and path
             path = Path(path)
@@ -89,7 +89,6 @@ class NMREsPyApp(tk.Tk):
             # Jump straight to the result window.
             self.estimator = Estimator.from_pickle(path)
             self.result()
-
         else:
             # Create Estimator instance from the provided path
             if dtype == "1D":

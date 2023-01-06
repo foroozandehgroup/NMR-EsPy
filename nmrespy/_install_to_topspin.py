@@ -1,7 +1,7 @@
 # _install_to_topspin.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 23 May 2022 11:34:19 BST
+# Last Edited: Fri 06 Jan 2023 00:17:53 GMT
 
 import glob
 import pathlib
@@ -141,17 +141,18 @@ def get_pdflatex_executable(opsys):
         return None
 
 
-def install(install_paths, txt):
+def install(install_paths, contents):
     """Try to write ``txt`` to each file path."""
     for path in install_paths:
-        try:
-            dst = pathlib.Path(path) / "exp/stan/nmr/py/user/nmrespy.py"
-            with open(dst, "w") as fh:
-                fh.write(txt)
-            print(f"\nSUCCESS:\n\t{str(dst)}")
+        for (file, txt) in contents.items():
+            try:
+                dst = pathlib.Path(path) / f"exp/stan/nmr/py/user/{file}"
+                with open(dst, "w") as fh:
+                    fh.write(txt)
+                print(f"\nSUCCESS:\n\t{str(dst)}")
 
-        except Exception as e:
-            print(f"\nFAIL:\n\t{str(dst)}\n" f"ERROR MESSAGE:\n\t{e}")
+            except Exception as e:
+                print(f"\nFAIL:\n\t{str(dst)}\n" f"ERROR MESSAGE:\n\t{e}")
 
 
 def main():
@@ -173,19 +174,22 @@ def main():
     # pdflatex executable (if present)
     pdflatex_exe = get_pdflatex_executable(opsys)
 
-    # --- Write executables to app._topspin.py ---------------------------
-    path = pathlib.Path(__file__).parent.resolve() / "app" / "_topspin.py"
-    with open(path, "r") as fh:
-        txt = fh.read()
+    script_dir = pathlib.Path(__file__).parent.resolve() / "app/topspin_scripts"
+    contents = {}
+    for file in ("espy1d.py", "espy2dj.py"):
+        path = script_dir / file
+        with open(path, "r") as fh:
+            txt = fh.read()
 
-    txt = txt.replace("py_exe = None", f"py_exe = \"{py_exe}\"")
-    if pdflatex_exe is not None:
-        txt = txt.replace(
-            "pdflatex_exe = \"None\"",
-            f"pdflatex_exe = \"{pdflatex_exe}\"",
-        )
+        txt = txt.replace("PY_EXE = None", f"PY_EXE = \"{py_exe}\"")
+        if pdflatex_exe is not None:
+            txt = txt.replace(
+                "PDFLATEX_EXE = \"None\"",
+                f"PDFLATEX_EXE = \"{pdflatex_exe}\"",
+            )
+        contents[file] = txt
 
-    install(install_paths, txt)
+    install(install_paths, contents)
 
 
 if __name__ == "__main__":
