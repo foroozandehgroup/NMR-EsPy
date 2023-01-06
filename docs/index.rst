@@ -19,12 +19,6 @@ Welcome to NMR-EsPy's Documentatation
 
 .. only:: latex
 
-  .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png
-    :align: center
-    :width: 250
-
-.. only:: latex
-
    .. |github| image:: media/github.png
              :scale: 8%
 
@@ -55,24 +49,22 @@ If you come across any unexpected behavior, please get in touch with Simon,
 via email (see the email icon in the sidebar), or `file an issue
 <https://github.com/foroozandehgroup/NMR-EsPy/issues>`_.
 
-Contents
---------
+.. only:: latex
+
+  .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png
+    :align: center
+    :width: 250
+
+ **Contents**
 
 .. toctree::
    :maxdepth: 2
 
-   content/install
-   content/theory_overview
-   content/walkthrough
-   content/jres_walkthrough
-   content/gui/index
-   content/references/index
-   content/contributors
-
-Publications
-------------
-
-* Simon G. Hulse, Mohammadali Foroozandeh. Newton meets Ockham: Parameter
-  estimation and model selection of NMR data with NMR-EsPy. *J. Magn. Reson.*
-  338 (2022) 107173. :raw-html:`<br />`
-  `<https://doi.org/10.1016/j.jmr.2022.107173>`_
+   install
+   theory_overview
+   walkthrough
+   jres_walkthrough
+   gui/index
+   references/index
+   contributors
+   publications

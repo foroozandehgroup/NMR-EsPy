@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 24 May 2022 10:46:43 BST
+# Last Edited: Fri 06 Jan 2023 13:05:48 GMT
 
 import os
 import sys
@@ -91,26 +91,36 @@ latex_elements = {
     "preamble": r"""
 \usepackage[math-style=ISO,bold-style=ISO]{unicode-math}
 \usepackage{fontspec}
-\setmainfont{EBGaramond}[
-Path           = ../../fonts/ebgaramond/,%
-Extension      = .otf,%
+\setmainfont{FiraSans}[
+Path           = ../../fonts/FiraSans/,%
+Extension      = .ttf,%
 UprightFont    = *-Regular,%
 BoldFont       = *-Bold,%
 ItalicFont     = *-Italic,%
 BoldItalicFont = *-BoldItalic,%
 ]
-\setmathfont{Garamond-Math}[
-Extension    = .otf,%
-Path         = ../../fonts/ebgaramond/,%
-StylisticSet = {1,8,5},%
-]
-\setmonofont{UbuntuMono}[
-Path           = ../../fonts/ubuntumono/,%
+\setsansfont{FiraSans}[
+Path           = ../../fonts/FiraSans/,%
 Extension      = .ttf,%
-UprightFont    = *-R,%
-BoldFont       = *-B,%
-ItalicFont     = *-RI,%
-BoldItalicFont = *-BI,%
+UprightFont    = *-Regular,%
+BoldFont       = *-Bold,%
+ItalicFont     = *-Italic,%
+BoldItalicFont = *-BoldItalic,%
+]
+%% MATH FONT: GARAMOND MATH
+\setmathfont{FiraMath-Regular}[
+  Scale       = MatchLowercase,%
+    Extension    = .otf,%
+    Path         = ../../fonts/,%
+    % StylisticSet = {3, 5},%
+]
+%% MONO FONT: JULIA MONO
+\setmonofont{FiraMono}[
+  Scale       = 0.92,%
+  Path        = ../../fonts/FiraMono/,%
+  Extension   = .ttf,%
+  UprightFont = *-Regular,%
+  BoldFont    = *-Bold,%
 ]
 """
 }
