@@ -27,6 +27,7 @@ fi
 
 cd $NMRESPYPATH/docs
 $NMRESPYPATH/.venv/bin/sphinx-build -b html . ./_build/html
+xdotool key "Super_L+Right" && xdotool key "Ctrl+r" && xdotool key "Super_L+Left"
 $NMRESPYPATH/.venv/bin/sphinx-build -b latex . ./_build/latex
 python latex_fudge.py
 cd ./_build/latex/

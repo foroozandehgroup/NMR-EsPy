@@ -7,13 +7,6 @@ links:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    topspin_install
    usage/index
-
-.. only:: html
-
-  .. image:: ../media/gui/windows/setup_window_plain.png
-    :scale: 70%
-    :align: center

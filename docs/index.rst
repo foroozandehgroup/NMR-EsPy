@@ -38,12 +38,14 @@ NMR-EsPy (**N**\ uclear **M**\ agnetic **R**\ esonance **Es**\ timation in
 describe NMR signals.
 
 As with the majority of packages that do a lot of number crunching in Python,
-NMR-EsPy relies heavily on `NumPy <https://numpy.org/>`_ as well as
-`SciPy <https://www.scipy.org/>`_ routines to function efficiently.
+NMR-EsPy relies heavily on the `NumPy <https://numpy.org/> ecosystem`_ to
+function efficiently.
 
 The NMR-EsPy package is a product of work carried out during Simon's Ph.D
 within the Foroozandeh group. To find out more about the group, take a look
-at our `website. <http://foroozandeh.chem.ox.ac.uk/home>`_
+at our `website. <http://foroozandeh.chem.ox.ac.uk/home>`_. If you are
+interested in the details of NMR-EsPy, take a look at our Open Source
+`2022 JMR paper <https://doi.org/10.1016/j.jmr.2022.107173>`_
 
 If you come across any unexpected behavior, please get in touch with Simon,
 via email (see the email icon in the sidebar), or `file an issue
@@ -61,9 +63,7 @@ via email (see the email icon in the sidebar), or `file an issue
    :maxdepth: 2
 
    install
-   theory_overview
-   walkthrough
-   jres_walkthrough
+   walkthroughs/index
    gui/index
    references/index
    contributors

@@ -96,6 +96,8 @@ If you wish to check the packages are available, use ``kpsewhich``:
 If a pathname appears, the package is installed to that path. These packages
 are pretty ubiquitous, so it is likely that they have been installed already.
 
+.. _SPINACH_INSTALL:
+
 MATLAB and Spinach (Optional)
 -----------------------------
 

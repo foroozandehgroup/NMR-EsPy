@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 05 Jan 2023 17:04:09 GMT
+# Last Edited: Fri 06 Jan 2023 23:49:03 GMT
 
 from __future__ import annotations
 import copy
@@ -127,7 +127,7 @@ class Estimator1D(_Estimator1DProc):
         nucleus: str = "1H",
         snr: Optional[float] = 20.,
         lb: float = 6.91,
-    ) -> None:
+    ) -> Estimator1D:
         r"""Create a new instance from a pulse-acquire Spinach simulation.
 
         Parameters
@@ -239,7 +239,6 @@ class Estimator1D(_Estimator1DProc):
         sfo: float = 500.,
         nucleus: str = "1H",
         snr: Optional[float] = 20.,
-        lb: float = 6.91,
     ) -> Estimator1D:
         """Generate an estimator instance from an array of oscillator parameters.
 

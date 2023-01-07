@@ -18,9 +18,6 @@ In what follows, as I am using TopSpin 4.0.8, I shall be replacing
 I recommend that you follow this walk-through using a Python interpreter to
 ensure everything runs smoothly on your system.
 
-This walk-through provides a fairly bare-bones description of the key
-features of NMR-EsPy. For a rigorous description of the API, you should
-consult the :doc:`Reference <references/index>` afterwards.
 
 TL;DR: A Full Script
 ^^^^^^^^^^^^^^^^^^^^
