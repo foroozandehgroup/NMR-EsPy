@@ -107,7 +107,7 @@ sophisticated library for spin dynamics simulations using `MATLAB
 routines that enable the generation of datasets via Spinach. For this you will
 need:
 
-* MATLAB installed - I won't go through his here.
+* MATLAB installed
 * Spinach downloaded, and present in the MATLAB path list (see `the
   installation instructions
   <https://spindynamics.org/wiki/index.php?title=Installation>`_)
