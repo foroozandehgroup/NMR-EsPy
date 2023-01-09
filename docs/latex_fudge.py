@@ -1,7 +1,7 @@
 # latex_fudge.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 06 Jan 2023 13:53:41 GMT
+# Last Edited: Mon 09 Jan 2023 13:39:00 GMT
 
 # This file should be run directly after `sphinx-build -b latex . latex`
 # You should be in the `docs` drectory when this is run.
@@ -12,7 +12,7 @@ import socket
 hostname = socket.gethostname()
 if hostname in ("precision", "spectre"):
     basedir = Path("~/Documents/DPhil").expanduser()
-elif hostname in ("belladonna", "parsley"):
+elif hostname in ("belladonna.chem.ox.ac.uk", "parsley.chem.ox.ac.uk"):
     basedir = Path("~/DPhil").expanduser()
 fname = basedir / "projects/spectral_estimation/NMR-EsPy/docs/_build/latex/nmr-espy.tex"
 

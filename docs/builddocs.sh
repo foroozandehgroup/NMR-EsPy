@@ -11,8 +11,9 @@ do
 done
 
 if [ $found = 1 ]; then
-    for pc in $personal_pcs
+    for pc in $work_pcs
     do
+        echo $pc
         if [ $HOSTNAME = $pc ] ; then
             NMRESPYPATH=/u/mf/jesu2901/DPhil/projects/spectral_estimation/NMR-EsPy
             found=0
@@ -27,9 +28,9 @@ fi
 
 cd $NMRESPYPATH/docs
 $NMRESPYPATH/.venv/bin/sphinx-build -b html . ./_build/html
-xdotool key "Super_L+Right" && xdotool key "Ctrl+r" && xdotool key "Super_L+Left"
+# xdotool key "Super_L+Right" && xdotool key "Ctrl+r" && xdotool key "Super_L+Left"
 $NMRESPYPATH/.venv/bin/sphinx-build -b latex . ./_build/latex
 python latex_fudge.py
 cd ./_build/latex/
-xelatex nmr-espy.tex
-xelatex nmr-espy.tex
+xelatex --shell-escape nmr-espy.tex
+xelatex --shell-escape nmr-espy.tex

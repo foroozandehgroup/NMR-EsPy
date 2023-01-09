@@ -38,7 +38,7 @@ NMR-EsPy (**N**\ uclear **M**\ agnetic **R**\ esonance **Es**\ timation in
 describe NMR signals.
 
 As with the majority of packages that do a lot of number crunching in Python,
-NMR-EsPy relies heavily on the `NumPy <https://numpy.org/> ecosystem`_ to
+NMR-EsPy relies heavily on the `NumPy ecosystem <https://numpy.org/>`_ to
 function efficiently.
 
 The NMR-EsPy package is a product of work carried out during Simon's Ph.D
@@ -56,8 +56,6 @@ via email (see the email icon in the sidebar), or `file an issue
   .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png
     :align: center
     :width: 250
-
- **Contents**
 
 .. toctree::
    :maxdepth: 2
