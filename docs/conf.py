@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 09 Jan 2023 13:53:09 GMT
+# Last Edited: Mon 09 Jan 2023 23:40:15 GMT
 
 import os
 import sys
@@ -12,8 +12,10 @@ sys.path.insert(0, os.path.abspath("exts"))
 sys.path.insert(0, os.path.abspath(".."))
 
 project = "NMR-EsPy"
-copyright = "2022, Simon Hulse & Mohammadali Foroozandeh"
 author = "Simon Hulse & Mohammadali Foroozandeh"
+copyright = "2023, Simon Hulse & Mohammadali Foroozandeh"
+version = "2.0"
+release = version
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -27,31 +29,8 @@ extensions = [
 ]
 
 master_doc = "index"
-
-todo_include_todos = True
-
-autosectionlabel_prefix_document = True
-autoclass_content = "both"
-autodoc_typehints = "description"
-autodoc_typehints_format = "short"
-
-html_static_path = ["_static"]
-templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-
-html_theme = "nameko"
-html_theme_path = [sphinx_nameko_theme.get_html_theme_path()]
-html_scaled_image_link = False
-html_sidebars = {
-    "**": [
-        "links.html",
-        "localtoc.html",
-        "relations.html",
-        "sourcelink.html",
-        "searchbox.html",
-    ]
-}
-
+templates_path = ["_templates"]
 rst_prolog = """
 .. raw:: html
 
@@ -79,6 +58,30 @@ rst_prolog = """
 .. role:: regiongreen
 .. role:: regionblue
 """
+
+todo_include_todos = True
+
+pygments_style = "gruvboxlight"
+autosectionlabel_prefix_document = True
+autoclass_content = "both"
+autodoc_typehints = "description"
+autodoc_typehints_format = "short"
+
+# HTML Settings
+html_static_path = ["_static"]
+html_theme = "nameko"
+html_theme_path = [sphinx_nameko_theme.get_html_theme_path()]
+html_scaled_image_link = False
+html_sidebars = {
+    "**": [
+        "links.html",
+        "localtoc.html",
+        "relations.html",
+        "sourcelink.html",
+        "searchbox.html",
+    ]
+}
+
 
 autosummary_generate = True
 
@@ -124,3 +127,4 @@ BoldItalicFont = *-BoldItalic,%
 ]
 """
 }
+latex_logo = "media/nmrespy_full.png"
