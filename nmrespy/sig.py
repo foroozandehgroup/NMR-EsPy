@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 03 Nov 2022 14:46:25 GMT
+# Last Edited: Tue 10 Jan 2023 23:00:10 GMT
 
 """Manipulating and processing NMR signals."""
 
@@ -377,6 +377,7 @@ def proc_phase_modulated(data: np.ndarray) -> np.ndarray:
     sanity_check(
         ("data", data, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(0, 2)]}),
     )
+    data[:, 0, 0] *= 0.5
     p_t1_f2, n_t1_f2 = [ft(x, axes=1) for x in (data[0], data[1])]
 
     spectra = np.zeros((4, *data.shape[1:]))

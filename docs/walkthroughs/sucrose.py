@@ -1,7 +1,7 @@
 # sucrose.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 Jan 2023 19:01:19 GMT
+# Last Edited: Wed 11 Jan 2023 00:01:07 GMT
 
 from pathlib import Path
 import pickle
@@ -86,7 +86,7 @@ params_1d = estimator.get_params(indices=indices)[:, [0, 1, 3, 5]]
 expinfo_1d = estimator.direct_expinfo
 spectra = []
 for (freq, idx) in multiplets.items():
-    print(f"{freq:.2f}Hz: {idx}")
+    print(f"{freq / estimator.sfo[1]:.4f}ppm: {idx}")
     mp_params = params_1d[idx]
     fid = expinfo_1d.make_fid(mp_params)
     fid[0] *= 0.5
@@ -109,3 +109,33 @@ ax.set_position([0.03, 0.175, 0.94, 0.83])
 ax.set_xlabel(f"{estimator.latex_nuclei[1]} (ppm)")
 # ========================
 fig.savefig("media/multiplets.png")
+
+sheared_fid = estimator.sheared_signal(indirect_modulation="phase")
+print(sheared_fid.shape)
+# Generates 2rr, 2ri, 2ir, 2ii spectra
+sheared_spectrum = ne.sig.proc_phase_modulated(sheared_fid)
+print(sheared_spectrum.shape)
+spectrum_2rr = sheared_spectrum[0]
+shifts_f1, shifts_f2 = estimator.get_shifts(unit="ppm")
+fig, ax = plt.subplots(figsize=(4.5, 2.5))
+# Contour levels
+base, factor, nlevels = 20, 1.4, 10
+levels = [base * factor ** i for i in range(nlevels)]
+ax.contour(
+    shifts_f2,
+    shifts_f1,
+    spectrum_2rr,
+    colors="k",
+    levels=levels,
+    linewidths=0.2,
+)
+ax.set_xlim(4.7, 3.8)
+ax.set_ylim(10., -10.)
+# ========================
+# These lines are just for plot aesthetics
+ax.set_xticks([4.7 - 0.1 * i for i in range(10)])
+ax.set_position([0.12, 0.175, 0.85, 0.79])
+ax.set_xlabel(f"{estimator.latex_nuclei[1]} (ppm)", labelpad=1)
+ax.set_ylabel("Hz", labelpad=1)
+# ========================
+fig.savefig("media/sheared_spectrum.png")

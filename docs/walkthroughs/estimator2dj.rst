@@ -255,18 +255,18 @@ direct-dimension damping factor (third line).
     ...     spectrum = ne.sig.ft(fid).real
     ...     spectra.append(spectrum)
     ...
-    1166.69Hz: [1, 4]
-    1167.31Hz: [0, 2, 3, 5]
-    1180.32Hz: [6, 7, 8]
-    1206.15Hz: [9, 10]
-    1212.47Hz: [11, 12, 13, 14]
-    1247.93Hz: [15, 16, 17]
-    1286.28Hz: [18, 19, 20, 21, 22, 23, 24, 25]
-    1322.50Hz: [26, 27, 28, 29, 30, 31, 32, 33]
-    1355.01Hz: [34, 35]
-    1366.11Hz: [36, 37, 38, 39, 40, 41, 42, 43]
-    1390.48Hz: [44, 45, 46, 47, 48, 49]
-    >>> Create an infinte iterable which cycles through values
+    3.8890ppm: [1, 4]
+    3.8910ppm: [0, 2, 3, 5]
+    3.9344ppm: [6, 7, 8]
+    4.0205ppm: [9, 10]
+    4.0416ppm: [11, 12, 13, 14]
+    4.1598ppm: [15, 16, 17]
+    4.2876ppm: [18, 19, 20, 21, 22, 23, 24, 25]
+    4.4083ppm: [26, 27, 28, 29, 30, 31, 32, 33]
+    4.5167ppm: [34, 35]
+    4.5537ppm: [36, 37, 38, 39, 40, 41, 42, 43]
+    4.6349ppm: [44, 45, 46, 47, 48, 49]
+    >>> # Create an iterator which cycles through values infinitely
     >>> from itertools import cycle
     >>> colors = cycle(["#84c757", "#ef476f", "#ffd166", "#36c9c6"])
     >>> # Chemical shifts in direct dimension
@@ -291,3 +291,59 @@ direct-dimension damping factor (third line).
 
 .. image:: ../media/multiplets.png
    :align: center
+
+Generating tilted spectra
+-------------------------
+
+The well-known 45° "tilt" that is applied to 2DJ spectra for orthogonal
+separation of chemical shifts and scalar couplings effectively maps the
+frequencies in the direct dimension :math:`f^{(2)}` to :math:`f^{(2)} -
+f^{(1)}`. Armed with an estimation result, a signal with these adjusted
+frequencies can easily be constructed. As well as this, generating a pair of
+phase- or amplitude-modulated FIDs enables the construction of absorption-mode
+spectra. Use :py:meth:`nmrespy.Estimator2DJ.sheared_signal`, with
+``indirect_modulation`` set to either ``"amp"`` or ``"phase"`` to generate the
+desired spectra. Then, you can use either
+:py:func:`nmrespy.sig.proc_phase_modulated` or
+:py:func:`nmrespy.sig.proc_amp_modulated` as appropriate to construct the
+spectrum:
+
+.. code::
+
+    >>> # Generate P- and N- type FIDs with "sheared" frequencies
+    >>> sheared_fid = estimator.sheared_signal(indirect_modulation="phase")
+    >>> # sheared_fid[0] -> P-type, sheared_fid[1] -> N-type
+    >>> sheared_fid.shape
+    (2, 64, 4096)
+    >>> # Generates 2rr, 2ri, 2ir, 2ii spectra
+    >>> sheared_spectrum = ne.sig.proc_phase_modulated(sheared_fid)
+    >>> sheared_spectrum.shape
+    (4, 64, 4096)
+    >>> spectrum_2rr = sheared_spectrum[0]
+    >>> # Note the `meshgrid` kwarg is True here to make 2D shift arrays
+    >>> shifts_f1, shifts_f2 = estimator.get_shifts(unit="ppm")
+    >>> fig, ax = plt.subplots(figsize=(4.5, 2.5))
+    >>> # Contour levels
+    >>> base, factor, nlevels = 25, 1.3, 10
+    >>> levels = [base * factor ** i for i in range(nlevels)]
+    >>> ax.contour(
+    ...     shifts_f2,
+    ...     shifts_f1,
+    ...     spectrum_2rr,
+    ...     colors="k",
+    ...     levels=levels,
+    ...     linewidths=0.3,
+    ... )
+    >>> ax.set_xlim(4.7, 3.8)
+    >>> ax.set_ylim(10., -10.)
+    >>> # ========================
+    >>> # These lines are just for plot aesthetics
+    >>> ax.set_xticks([4.7 - 0.1 * i for i in range(10)])
+    >>> ax.set_position([0.12, 0.175, 0.85, 0.79])
+    >>> ax.set_xlabel(f"{estimator.latex_nuclei[1]} (ppm)", labelpad=1)
+    >>> ax.set_ylabel("Hz", labelpad=1)
+    >>> # ========================
+    >>> fig.savefig("sheared_spectrum.png")
+
+.. image:: ../media/sheared_spectrum.png
+    :align: center
