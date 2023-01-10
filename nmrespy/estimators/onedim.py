@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 06 Jan 2023 23:49:03 GMT
+# Last Edited: Tue 10 Jan 2023 14:53:43 GMT
 
 from __future__ import annotations
 import copy
@@ -49,7 +49,7 @@ class Estimator1D(_Estimator1DProc):
 
         * :py:meth:`new_bruker`
         * :py:meth:`new_synthetic_from_parameters`
-        * :py:meth:`new_synthetic_from_simulation`
+        * :py:meth:`new_spinach`
         * :py:meth:`from_pickle` (re-loads a previously saved estimator).
     """
 

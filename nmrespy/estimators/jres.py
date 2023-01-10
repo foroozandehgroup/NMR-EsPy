@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 05 Jan 2023 23:29:22 GMT
+# Last Edited: Tue 10 Jan 2023 18:36:26 GMT
 
 from __future__ import annotations
 import copy
@@ -104,7 +104,7 @@ class Estimator2DJ(_Estimator1DProc):
     def new_spinach(
         cls,
         shifts: Iterable[float],
-        couplings: Optional[Iterable[Tuple(int, int, float)]],
+        couplings: Iterable[Tuple(int, int, float)],
         pts: Tuple[int, int],
         sw: Tuple[float, float],
         offset: float,
@@ -232,7 +232,7 @@ class Estimator2DJ(_Estimator1DProc):
         domain
             Must be ``"freq"`` or ``"time"``.
 
-        abs_
+        abs\_
             Whether or not to display frequency-domain data in absolute-value mode.
         """
         sanity_check(
@@ -307,7 +307,7 @@ class Estimator2DJ(_Estimator1DProc):
         return 0.5 * (self.sw()[0] / self.default_pts[0])
 
     @logger
-    def negative_45_signal(
+    def cupid_signal(
         self,
         indices: Optional[Iterable[int]] = None,
         pts: Optional[int] = None,
@@ -338,16 +338,7 @@ class Estimator2DJ(_Estimator1DProc):
         """
         self._check_results_exist()
         sanity_check(
-            (
-                "indices", indices, sfuncs.check_int_list, (),
-                {
-                    "len_one_can_be_listless": True,
-                    "min_value": -len(self._results),
-                    "max_value": len(self._results) - 1,
-                },
-                True,
-
-            ),
+            self._indices_check(indices),
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}, True),
         )
 
@@ -370,6 +361,42 @@ class Estimator2DJ(_Estimator1DProc):
         )
 
         return signal
+
+    @logger
+    def cupid_spectrum(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        pts: Optional[int] = None,
+        _log: bool = True,
+    ) -> np.ndarray:
+        """Generate a homodecoupled spectrum according to the CUPID method.
+
+        This generates the FT of :py:meth:`cupid_signal`.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        pts
+            The number of points to construct the signal from. If ``None``,
+            ``self.default_pts`` will be used.
+
+        _log
+            Ignore this!
+        """
+        self._check_results_exist()
+        sanity_check(
+            self._indices_check(indices),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}, True),
+        )
+
+        fid = self.cupid_signal(indices=indices, pts=pts)
+        fid[0] *= 0.5
+        return sig.ft(fid)
+
 
     @logger
     def predict_multiplets(
@@ -407,7 +434,7 @@ class Estimator2DJ(_Estimator1DProc):
 
         Returns
         -------
-        multiplets
+        Dict[float, Iterable[int]]
             A dictionary with keys as the multiplet's central frequency, and values
             as a list of oscillator indices which make up the multiplet.
         """
@@ -798,7 +825,7 @@ class Estimator2DJ(_Estimator1DProc):
 
         The figure includes a contour plot of the 2DJ spectrum, a 1D plot of the
         first slice through the indirect dimension, plots of estimated multiplets,
-        and a plot of the spectrum generated from :py:meth:`negative_45_signal`.
+        and a plot of the spectrum generated from :py:meth:`cupid_signal`.
 
         Parameters
         ----------
@@ -819,7 +846,7 @@ class Estimator2DJ(_Estimator1DProc):
 
         high_resolution_pts
             Indicates the number of points used to generate the multiplet structures
-            and :py:meth:`negative_45_signal` spectrum. Should be greater than or
+            and :py:meth:`cupid_signal` spectrum. Should be greater than or
             equal to ``self.default_pts[1]``.
 
         ratio_1d_2d
@@ -1099,10 +1126,8 @@ class Estimator2DJ(_Estimator1DProc):
             spectra_2d.append(np.abs(full_spectrum).real[:, slice_])
             spectra_1d.append(self.spectrum_zero_t1.real[slice_])
             neg_45_spectra.append(
-                sig.ft(
-                    self.negative_45_signal(
-                        indices=idx, pts=high_resolution_pts, _log=False,
-                    )
+                self.cupid_spectrum(
+                    indices=idx, pts=high_resolution_pts, _log=False,
                 ).real[highres_slice]
             )
 

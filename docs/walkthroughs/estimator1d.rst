@@ -1,3 +1,5 @@
+.. _ESTIMATOR1D:
+
 Using ``Estimator1D``
 =====================
 
@@ -154,6 +156,10 @@ the associated timepoints can be retrieved using
 :py:meth:`~nmrespy.Estimator1D.get_timepoints`.  The spectral data is accessed
 with :py:meth:`~nmrespy.Estimator1D.spectrum`, and the corresponding chemical
 shifts  with :py:meth:`~nmrespy.Estimator1D.get_shifts`.
+
+.. todo::
+
+   Provide an example of using these methods
 
 Estimating the dataset
 ----------------------

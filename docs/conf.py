@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 09 Jan 2023 23:40:15 GMT
+# Last Edited: Tue 10 Jan 2023 13:55:16 GMT
 
 import os
 import sys
@@ -61,7 +61,6 @@ rst_prolog = """
 
 todo_include_todos = True
 
-pygments_style = "gruvboxlight"
 autosectionlabel_prefix_document = True
 autoclass_content = "both"
 autodoc_typehints = "description"
