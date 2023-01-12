@@ -1,7 +1,7 @@
 # sucrose.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 11 Jan 2023 00:01:07 GMT
+# Last Edited: Thu 12 Jan 2023 17:40:19 GMT
 
 from pathlib import Path
 import pickle
@@ -139,3 +139,22 @@ ax.set_xlabel(f"{estimator.latex_nuclei[1]} (ppm)", labelpad=1)
 ax.set_ylabel("Hz", labelpad=1)
 # ========================
 fig.savefig("media/sheared_spectrum.png")
+
+fig, axs = estimator.plot_result(
+    indices=[1, 2, 3, 4, 5],
+    region_unit="ppm",
+    marker_size=5.,
+    figsize=(4.5, 2.5),
+    # Number of points to construct homodecoupled signal
+    # and multiplet structures from
+    high_resolution_pts=16384,
+    # There is a lot of scope for editing the colours of
+    # multiplets. See the reference!
+    # Here I specify a recognised name of a colourmap in
+    # matplotlib.
+    multiplet_colors="inferno",
+    # Argumnets of the position of the plot in the figure
+    axes_left=0.1,
+    axes_bottom=0.15,
+)
+fig.savefig("media/plot_result_2dj.png")

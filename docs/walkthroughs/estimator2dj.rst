@@ -28,7 +28,7 @@ direct-dimension, and baseline correction will be needed.
 .. code:: pycon
 
     >>> import nmrespy as ne
-    >>> estimator = ne.Estimator2DJ.new_bruker("/home/simon/nmr_data/dexamethasone/1")
+    >>> estimator = ne.Estimator2DJ.new_bruker("/home/simon/nmr_data/dexamethasone/2")
     >>> estimator.phase_data(p0=0.041, p1=-6.383, pivot=1923)
     >>> estimator.baseline_correction()
     <Estimator2DJ object at 0x7f4b7e1f5cd0>
@@ -181,6 +181,12 @@ and so we force the optimiser to us the true number (see the lines involving
 Acquiring a homodecoupled spectrum
 ----------------------------------
 
+The :py:meth:`~nmrespy.Estimator2DJ.cupid_spectrum` method produces a
+homodecoupled spectrum using the estimation parameters. In the code snippet
+below, a figure is made comparing the homodecoupled spectrum with the spectrum
+of the first direct-dimension slice in the 2DJ data, which is a normal 1D
+spectrum.
+
 .. code::
 
     >>> # Normal 1D spectrum
@@ -246,7 +252,7 @@ direct-dimension damping factor (third line).
     >>> expinfo_1d = estimator.direct_expinfo
     >>> spectra = []
     >>> for (freq, idx) in multiplets.items():
-    ...     print(f"{freq:.2f}Hz: {idx}")
+    ...     print(f"{freq / estimator.sfo[1]:.4f}ppm: {idx}")
     ...     mp_params = params_1d[idx]
     ...     fid = expinfo_1d.make_fid(mp_params)
     ...     # Halve first point prior to FT to prevent vertical baseline shift
@@ -347,3 +353,52 @@ spectrum:
 
 .. image:: ../media/sheared_spectrum.png
     :align: center
+
+Plotting result figures
+-----------------------
+
+The :py:meth:`~nmrespy.Estimator2DJ.plot_result` method enables the generation of a figure giving an overview of the estimation result. The figure comprises the following, from top to bottom:
+
+* The homodecoupled spectrum generated using
+  :py:meth:`~nmrespy.Estimator2DJ.cupid_spectrum`.
+* The 1D spectrum corresponding to the 2DJ dataset.
+* The multiplet structures predicted. Note that to get decent multiplet
+  assignments, you may need to increase the value of the ``multiplet_thold``
+  argument manually.
+* A contour plot of the 2DJ spectrum, with points indicating the positions of
+  estimated peaks.
+
+.. code:: pycon
+
+    >>> fig, axs = estimator.plot_result(
+    ...     indices=[1, 2, 3, 4, 5],
+    ...     region_unit="ppm",
+    ...     marker_size=5.,
+    ...     figsize=(4.5, 2.5),
+    ...     # Number of points to construct homodecoupled signal
+    ...     # and multiplet structures from
+    ...     high_resolution_pts=16384,
+    ...     # There is a lot of scope for editing the colours of
+    ...     # multiplets. See the reference!
+    ...     # Here I specify a recognised name of a colourmap in
+    ...     # matplotlib.
+    ...     multiplet_colors="inferno",
+    ...     # Argumnets of the position of the plot in the figure
+    ...     axes_left=0.1,
+    ...     axes_bottom=0.15,
+    ... )
+    >>> fig.savefig("plot_result_2dj.png")
+
+.. image:: ../media/plot_result_2dj.png
+   :align: center
+
+Miscellaneous
+-------------
+
+For writing result tables to text and PDF files, saving estimators to binary
+files for later use, and saving log files, look at the relevant sections in the
+:ref:`ESTIMATOR1D` walkthrough. The process is identical.
+
+.. todo::
+
+   Writing multiplets/homodecoupled spectra to TopSpin
