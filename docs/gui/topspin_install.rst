@@ -5,10 +5,6 @@ It is possible to directly load the NMR-EsPy GUI from within TopSpin. The GUI
 can be installed to TopSpin either at the point of installing NMR-EsPy using
 ``pip install``, or at any subsequent point.
 
-.. note::
-
-   On this page, ``<pyexe>`` denotes the symbolic link/path to the Python
-   executable you are using.
 
 Automatic installation
 ^^^^^^^^^^^^^^^^^^^^^^

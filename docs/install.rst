@@ -1,18 +1,89 @@
 Installation
 ============
 
+.. note::
+
+   On this page, ``<pyexe>`` denotes the symbolic link/path to the Python
+   executable you are using.
+
 NMR-EsPy is available via the
 `Python Package Index <https://pypi.org/project/nmrespy/>`_. The latest stable
 version can be installed using:
 
-.. code::
+.. code:: none
 
-   $ python3 -m pip install nmrespy
+   $ <pyexe> -m pip install nmrespy
 
-You need to be using Python 3.8 or above.
+**You need to be using Python 3.8 or above.**
+
+.. note::
+
+  **Windows users**
+
+  To load a command prompt, press ``<Win>+R``, and then type ``cmd`` into the
+  window that pops up. Finally, press ``<Return>``.
+
+Installing the GUI to TopSpin
+-----------------------------
+
+NMR-EsPy has an accompanying Graphical User Interface (GUI) which is accessible
+via both the command line and Bruker's TopSpin software. Installing the
+relevant scripts to TopSpin is rather painless, especially if you can use the
+Automated method below.
+
+Automatic TopSpin installation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+After installing NMR-EsPy using ``pip install``, enter the following into a
+terminal:
+
+.. code:: none
+
+   $ <pyexe> -m nmrespy --install-to-topspin
+
+The script searches for directories matching the following glob pattern in your
+system:
+
+* UNIX: ``/opt/topspin*``
+* Windows: ``C:\Bruker\TopSpin*``
+
+If there are valid directories, you will see a message similar to this:
+
+.. code:: none
+
+    The following TopSpin path(s) were found on your system:
+        [1] /opt/topspin4.0.8
+    For each installation that you would like to install the nmrespy app to,
+    provide the corresponding numbers, separated by whitespaces.
+    If you want to cancel the install to TopSpin, enter 0.
+    If you want to install to all the listed TopSpin installations, press <Return>:
+
+In this example, pressing ``1`` or ``<Return>`` would install the scripts to
+TopSpin 4.0.8. Pressing ``0`` would cancel the operation.
+
+For each specified path, the script will try to generate two files:
+
+* ``/<path to>/topspin<x.y.z>/exp/stan/nmr/py/user/espy1d.py``
+* ``/<path to>/topspin<x.y.z>/exp/stan/nmr/py/user/espy2dj.py``
+
+where ``<x.y.z>`` is the TopSpin version number.
+
+If you are greeted with the following meesage instead, you either need to
+install TopSpin, or manually install the script (see the next section):
+
+.. code:: none
+
+   No TopSpin installations were found on your system! If you don't have
+   TopSpin, I guess that makes sense. If you do have TopSpin, perhaps it is
+   installed in a non-default location? You'll have to perform a manual
+   installation in this case. See the documentation for details.
+
+
 
 Python Packages
 ---------------
+
+These are installed automatically when you run ``pip install``.
 
 +-------------------------------------------------------------------+------------+----------------------------------------+
 | Package                                                           | Version    | Details                                |
@@ -44,14 +115,8 @@ The easiest way to get LaTeX is probably to install `TexLive
 <https://tug.org/texlive/>`_.
 
 As a simple check that your system has LaTeX available, the command ``pdflatex``
-should exist. Open a terminal/command prompt.
+should exist. Open a terminal.
 
-.. note::
-
-  **Windows users**
-
-  Press ``Win`` + ``R``, and then type ``cmd`` into the
-  window that pops up. Finally, press ``<Return>``.
 
 Enter the following command:
 
