@@ -44,6 +44,8 @@ you run ``pip install``.
 |                                                                   |            | output.                                |
 +-------------------------------------------------------------------+------------+----------------------------------------+
 
+.. _TOPSPIN_INSTALL:
+
 Installing the GUI to TopSpin
 -----------------------------
 
@@ -160,62 +162,62 @@ Editing the loader scripts
 Now you need to open the newly created files and make some edits to configure
 path information.
 
-1. Load TopSpin
-2. Enter ``edpy`` in the bottom-left command prompt
-3. Select the ``user`` subdirectory from ``Source``
+#. Load TopSpin
+#. Enter ``edpy`` in the bottom-left command prompt
+#. Select the ``user`` subdirectory from ``Source``
 
-For both ``espy1d.py`` and ``espy2dj.py``:
+Then do the following things for both ``espy1d.py`` and ``espy2dj.py``:
 
-4. Double click the file
-5. You need to set ``py_exe`` (which is ``None`` initially) with the path to
-your Python executable. One way to determine this which should be independent
-of Operating System is to load a Python REPL and enter the following lines
-(below is an example on Windows):
+#. Double click the file
+#. You need to set ``py_exe`` (which is ``None`` initially) with the path to
+   your Python executable. One way to determine this which should be independent
+   of Operating System is to load a Python REPL and enter the following lines
+   (below is an example on Windows):
 
    .. code:: pycon
 
-       >>> import sys
-       >>> exe = sys.executable.replace('\\', '\\\\') # replace is needed for Windows
-       >>> print(f"\"{exe}\"")
-       "C:\\Users\\simon\\.venv\\Scripts\\python.exe"
+      >>> import sys
+      >>> exe = sys.executable.replace('\\', '\\\\') # replace is needed for Windows
+      >>> print(f"\"{exe}\"")
+      "C:\\Users\\simon\\.venv\\Scripts\\python.exe"
 
    You should set ``py_exe`` as the **EXACT** output you get from this:
 
    .. code:: python
 
-       py_exe = "C:\\Users\\simon\\.venv\\Scripts\\python.exe"
+      py_exe = "C:\\Users\\simon\\.venv\\Scripts\\python.exe"
 
-6. (Optional) If you have ``pdflatex`` on your system (see the *LaTeX* section
+#. (Optional) If you have ``pdflatex`` on your system (see the *LaTeX* section
    below), and you want to be able to produce PDF result files, you will also
    have to specify the path to the ``pdflatex`` executable, given by the
    variable ``pdflatex_exe``, which is set to ``None`` by default. To find this
    path, enter the following into a REPL:
 
-  + *UNIX*
+   + *UNIX*
 
-    .. code:: python
+     .. code:: python
 
-      >>> from subprocess import check_output as co
-      >>> exe = check_output("which pdflatex", shell=True)
-      >>> exe = str(exe, 'utf-8').rstrip()
-      >>> print(f"\"{exe}\"")
-      "/usr/bin/pdflatex"
+         >>> from subprocess import check_output
+         >>> exe = check_output(["which", "pdflatex"])
+         >>> exe = str(exe, 'utf-8').rstrip()
+         >>> print(f"\"{exe}\"")
+         "/usr/bin/pdflatex"
 
-  + *Windows*
+   + *Windows*
 
-    .. code:: python
+     .. code:: python
 
-      >>> from subprocess import check_output
-      >>> exe = check_output("where pdflatex", shell=True)
-      >>> exe = str(exe, 'utf-8').rstrip().replace("\\", "\\\\")
-      >>> print(f"\"{exe}\"")
-      "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
+         >>> from subprocess import check_output
+         >>> exe = check_output("where pdflatex", shell=True)
+         >>> exe = str(exe, 'utf-8').rstrip().replace("\\", "\\\\")
+         >>> print(f"\"{exe}\"")
+         "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
 
-  You should set ``pdflatex_exe`` as the **EXACT** output you get from this:
+   You should set ``pdflatex_exe`` as the **EXACT** output you get from this:
 
-  .. code:: python
+   .. code:: python
 
-     pdflatex_exe = "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
+        pdflatex_exe = "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
 
 .. _LATEX_INSTALL:
 
@@ -238,7 +240,7 @@ Enter the following command:
 
 If you see something similar to the following:
 
-.. code::
+.. code:: none
 
   pdfTeX 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian)
   kpathsea version 6.3.1
