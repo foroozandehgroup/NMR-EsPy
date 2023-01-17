@@ -4,7 +4,7 @@ Installation
 .. note::
 
    On this page, ``<pyexe>`` denotes the symbolic link/path to the Python
-   executable you are using.
+   executable you are using. **You need to be using Python 3.8 or above.**
 
 NMR-EsPy is available via the
 `Python Package Index <https://pypi.org/project/nmrespy/>`_. The latest stable
@@ -14,76 +14,15 @@ version can be installed using:
 
    $ <pyexe> -m pip install nmrespy
 
-**You need to be using Python 3.8 or above.**
-
-.. note::
-
-  **Windows users**
-
-  To load a command prompt, press ``<Win>+R``, and then type ``cmd`` into the
-  window that pops up. Finally, press ``<Return>``.
-
-Installing the GUI to TopSpin
------------------------------
-
-NMR-EsPy has an accompanying Graphical User Interface (GUI) which is accessible
-via both the command line and Bruker's TopSpin software. Installing the
-relevant scripts to TopSpin is rather painless, especially if you can use the
-Automated method below.
-
-Automatic TopSpin installation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-After installing NMR-EsPy using ``pip install``, enter the following into a
-terminal:
+If you want to install the development and documentation-building requirements,
+use the following command:
 
 .. code:: none
 
-   $ <pyexe> -m nmrespy --install-to-topspin
+   $ <pyexe> -m pip install nmrespy[dev,docs]
 
-The script searches for directories matching the following glob pattern in your
-system:
-
-* UNIX: ``/opt/topspin*``
-* Windows: ``C:\Bruker\TopSpin*``
-
-If there are valid directories, you will see a message similar to this:
-
-.. code:: none
-
-    The following TopSpin path(s) were found on your system:
-        [1] /opt/topspin4.0.8
-    For each installation that you would like to install the nmrespy app to,
-    provide the corresponding numbers, separated by whitespaces.
-    If you want to cancel the install to TopSpin, enter 0.
-    If you want to install to all the listed TopSpin installations, press <Return>:
-
-In this example, pressing ``1`` or ``<Return>`` would install the scripts to
-TopSpin 4.0.8. Pressing ``0`` would cancel the operation.
-
-For each specified path, the script will try to generate two files:
-
-* ``/<path to>/topspin<x.y.z>/exp/stan/nmr/py/user/espy1d.py``
-* ``/<path to>/topspin<x.y.z>/exp/stan/nmr/py/user/espy2dj.py``
-
-where ``<x.y.z>`` is the TopSpin version number.
-
-If you are greeted with the following meesage instead, you either need to
-install TopSpin, or manually install the script (see the next section):
-
-.. code:: none
-
-   No TopSpin installations were found on your system! If you don't have
-   TopSpin, I guess that makes sense. If you do have TopSpin, perhaps it is
-   installed in a non-default location? You'll have to perform a manual
-   installation in this case. See the documentation for details.
-
-
-
-Python Packages
----------------
-
-These are installed automatically when you run ``pip install``.
+NMR-EsPy has the follwoing dependencies which are installed automatically when
+you run ``pip install``.
 
 +-------------------------------------------------------------------+------------+----------------------------------------+
 | Package                                                           | Version    | Details                                |
@@ -104,6 +43,179 @@ These are installed automatically when you run ``pip install``.
 |                                                                   |            | work, allowing coloured terminal       |
 |                                                                   |            | output.                                |
 +-------------------------------------------------------------------+------------+----------------------------------------+
+
+Installing the GUI to TopSpin
+-----------------------------
+
+NMR-EsPy has an accompanying Graphical User Interface (GUI) which is accessible
+via both the terminal and Bruker's TopSpin software. The following two sections
+describe ways to install the scripts for accessing the GUI via TopSpin.
+
+Automatic TopSpin installation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. note::
+
+   Use this method if you can, it is less error prone!
+
+Enter the following into a terminal:
+
+.. code:: none
+
+   $ <pyexe> -m nmrespy --install-to-topspin
+
+Directories matching the following glob pattern will be searched for on your
+system:
+
+* UNIX: ``/opt/topspin*``
+* Windows: ``C:\Bruker\TopSpin*``
+
+If there are valid directories, you will see a message similar to this:
+
+.. code:: none
+
+    The following TopSpin path(s) were found on your system:
+        [1] /opt/topspin4.0.8
+    For each TopSpin version you would like to install the nmrespy app to,
+    provide the corresponding numbers, separated by whitespaces.
+    If you want to cancel the install to TopSpin, enter 0.
+    If you want to install to all the listed TopSpin installations, press <Return>:
+
+In this example, pressing ``1`` or ``<Return>`` would install the scripts to
+TopSpin 4.0.8. Pressing ``0`` would cancel the operation.
+
+For each specified path, two files will be generated:
+
+* ``/<path to>/topspin<x.y.z>/exp/stan/nmr/py/user/espy1d.py``
+* ``/<path to>/topspin<x.y.z>/exp/stan/nmr/py/user/espy2dj.py``
+
+where ``<x.y.z>`` is the TopSpin version number.
+
+.. code:: none
+
+    SUCCESS:
+        /opt/topspin4.0.8/exp/stan/nmr/py/user/espy1d.py
+
+    SUCCESS:
+        /opt/topspin4.0.8/exp/stan/nmr/py/user/espy2dj.py
+
+If you get the following message instead, you either need to install TopSpin,
+or manually install the script (see the next section):
+
+.. code:: none
+
+   No TopSpin installations were found on your system! If you don't have
+   TopSpin, I guess that makes sense. If you do have TopSpin, perhaps it is
+   installed in a non-default location? You'll have to perform a manual
+   installation in this case. See the documentation for details.
+
+Manual TopSpin installation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If automatic installation failed, perhaps because TopSpin isn't installed in
+the default location, you can get the TopSpin GUI loader up-and-running with
+the following steps.
+
+Copying the loader scripts
+""""""""""""""""""""""""""
+
+Load a Python REPL and enter the following to determine where the GUI loading
+scripts are located:
+
+.. code:: pycon
+
+   $ <pyexe>
+   >>> from nmrespy import TOPSPINPATHS as tp
+   >>> for file in tp:
+   ...      print(file)
+   ...
+   /home/simon/.venv/lib/python3.9/site-packages/nmrespy/app/topspin_scripts/espy2dj.py
+   /home/simon/.venv/lib/python3.9/site-packages/nmrespy/app/topspin_scripts/espy1d.py
+
+Copy these files to your TopSpin installation.
+
+* UNIX:
+
+  You may need ``sudo`` depending on where your TopSpin directory is.
+
+  .. code:: none
+
+     $ cp /home/simon/.venv/lib/python3.9/site-packages/nmrespy/app/topspin_scripts/espy2dj.py \
+     > /path/to/.../topspinx.y.z/exp/stan/nmr/py/user/
+     $ cp /home/simon/.venv/lib/python3.9/site-packages/nmrespy/app/topspin_scripts/espy1d.py \
+     > /path/to/.../topspinx.y.z/exp/stan/nmr/py/user/
+
+* Windows:
+
+  .. code:: none
+
+      > copy C:\Users\simon\.venv\Lib\site-packages\nmrespy\app\topspin_scripts\espy2dj.py ^
+      More? C:\path\to\...\TopSpinx.y.z\exp\stan\nmr\py\user\
+      > copy C:\Users\simon\.venv\Lib\site-packages\nmrespy\app\topspin_scripts\espy1d.py ^
+      More? C:\path\to\...\TopSpinx.y.z\exp\stan\nmr\py\user\
+
+Editing the loader scripts
+""""""""""""""""""""""""""
+
+Now you need to open the newly created files and make some edits to configure
+path information.
+
+1. Load TopSpin
+2. Enter ``edpy`` in the bottom-left command prompt
+3. Select the ``user`` subdirectory from ``Source``
+
+For both ``espy1d.py`` and ``espy2dj.py``:
+
+4. Double click the file
+5. You need to set ``py_exe`` (which is ``None`` initially) with the path to
+your Python executable. One way to determine this which should be independent
+of Operating System is to load a Python REPL and enter the following lines
+(below is an example on Windows):
+
+   .. code:: pycon
+
+       >>> import sys
+       >>> exe = sys.executable.replace('\\', '\\\\') # replace is needed for Windows
+       >>> print(f"\"{exe}\"")
+       "C:\\Users\\simon\\.venv\\Scripts\\python.exe"
+
+   You should set ``py_exe`` as the **EXACT** output you get from this:
+
+   .. code:: python
+
+       py_exe = "C:\\Users\\simon\\.venv\\Scripts\\python.exe"
+
+6. (Optional) If you have ``pdflatex`` on your system (see the *LaTeX* section
+   below), and you want to be able to produce PDF result files, you will also
+   have to specify the path to the ``pdflatex`` executable, given by the
+   variable ``pdflatex_exe``, which is set to ``None`` by default. To find this
+   path, enter the following into a REPL:
+
+  + *UNIX*
+
+    .. code:: python
+
+      >>> from subprocess import check_output as co
+      >>> exe = check_output("which pdflatex", shell=True)
+      >>> exe = str(exe, 'utf-8').rstrip()
+      >>> print(f"\"{exe}\"")
+      "/usr/bin/pdflatex"
+
+  + *Windows*
+
+    .. code:: python
+
+      >>> from subprocess import check_output
+      >>> exe = check_output("where pdflatex", shell=True)
+      >>> exe = str(exe, 'utf-8').rstrip().replace("\\", "\\\\")
+      >>> print(f"\"{exe}\"")
+      "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
+
+  You should set ``pdflatex_exe`` as the **EXACT** output you get from this:
+
+  .. code:: python
+
+     pdflatex_exe = "C:\\texlive\\2020\\bin\\win32\\pdflatex.exe"
 
 .. _LATEX_INSTALL:
 

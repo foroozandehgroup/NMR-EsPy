@@ -1,7 +1,7 @@
 # _install_to_topspin.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 06 Jan 2023 00:17:53 GMT
+# Last Edited: Tue 17 Jan 2023 09:48:47 GMT
 
 import glob
 import pathlib
@@ -62,7 +62,7 @@ def get_install_paths(topspin_paths):
     print(
         "\nThe following TopSpin path(s) were found on your system:"
         f"\n\t{path_list}\n"
-        "For each installation that you would like to install the nmrespy "
+        "For each TopSpin version you would like to install the nmrespy "
         "app to, provide the corresponding numbers, separated by "
         "whitespaces.\nIf you want to cancel the install to TopSpin, enter "
         "0.\nIf you want to install to all the listed TopSpin "
