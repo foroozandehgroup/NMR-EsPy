@@ -1,5 +1,5 @@
-nmrespy.ExpInfo
-^^^^^^^^^^^^^^^
+ExpInfo
+^^^^^^^
 
 .. autoclass:: nmrespy.ExpInfo
    :members:

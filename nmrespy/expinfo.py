@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 17 Jan 2023 15:49:32 GMT
+# Last Edited: Wed 18 Jan 2023 17:06:52 GMT
 
 import datetime
 import os
@@ -166,8 +166,10 @@ class ExpInfo(FrequencyConverter):
         super().__init__(self.sfo, self.sw(), self.offset(), self.default_pts)
 
     @property
-    def fn_mode(self) -> str:
-        """Get acquisiton mode in indirect dimensions."""
+    def fn_mode(self) -> Optional[str]:
+        """Get acquisiton mode in indirect dimensions. If ``self.dim == 1``,
+        returns ``None``.
+        """
         return self._fn_mode
 
     @property
@@ -199,7 +201,11 @@ class ExpInfo(FrequencyConverter):
 
     @property
     def bf(self) -> Optional[Iterable[Optional[float]]]:
-        """Get the basic frequency (MHz)."""
+        """Get the basic frequency (MHz).
+
+        For each dimension where :py:meth:`sfo` is not ``None``, this is
+        equivalent to ``self.sfo[i] - self.offset()[i]``
+        """
         if self.sfo is None:
             return None
         return tuple(
@@ -240,13 +246,12 @@ class ExpInfo(FrequencyConverter):
 
     @property
     def latex_nuclei(self) -> Optional[Iterable[Optional[str]]]:
-        """Get the nuclei associated with each channel with for use in LaTeX.
+        r"""Get the nuclei associated with each channel with for use in LaTeX.
 
-        .. code:: python3
+        Examples:
 
-           >>> expinfo = ExpInfo(..., nuclei=("1H", "15N"), ...)
-           >>> expinfo.latex_nuclei
-           ('\\textsuperscript{1}H', '\\textsuperscript{15}N')
+        * ``"1H"`` → ``"\\textsuperscript{1}H"``
+        * ``"195Pt"`` → ``"\\textsuperscript{195}Pt"``
         """
         if self._nuclei is None:
             return None
@@ -293,18 +298,20 @@ class ExpInfo(FrequencyConverter):
             used.
 
         start_time
-            The start time in each dimension. If set to `None`, the initial
-            point in each dimension with be ``0.0``. To set non-zero start times,
-            a list of floats or strings can be used. If floats are used, they
-            specify the first value in each dimension in seconds. Alternatively,
-            strings of the form ``f'{N}dt'``, where ``N`` is an integer, may be
-            used, which indicates a cetain multiple of the difference in time
-            between two adjacent points.
+            The start time in each dimension. If set to ``None``, the initial
+            point in each dimension will be ``0.0``. To set non-zero start times,
+            a list of floats or strings can be used.
+
+            * If floats are used, they specify the first value in each
+              dimension in seconds.
+            * Strings of the form ``f'{N}dt'``, where ``N`` is an integer, may be
+              used, which indicates a cetain multiple of the dwell time.
 
         meshgrid
             If time-points are being derived for a N-dimensional signal (N > 1),
             setting this argument to ``True`` will return N-dimensional arrays
-            corresponding to all combinations of points in each dimension.
+            corresponding to all combinations of points in each dimension. If
+            ``False``, an iterable of 1D arrays will be returned.
         """
         sanity_check(
             self._pts_check(pts),
@@ -355,22 +362,22 @@ class ExpInfo(FrequencyConverter):
         Parameters
         ----------
         pts
-            The number of points to construct the time-points with in each dimesnion.
+            The number of points to construct the shifts with in each dimesnion.
             If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
             used.
 
         unit
-            Must be ``"hz"``, ``"ppm"``.
+            Must be one of ``"hz"`` or ``"ppm"``.
 
         flip
             If ``True``, the shifts will be returned in descending order, as is
-            conventional in NMR. If `False`, the shifts will be in ascending order.
+            conventional in NMR. If ``False``, the shifts will be in ascending order.
 
         meshgrid
             If time-points are being derived for a N-dimensional signal (N > 1),
             setting this argument to ``True`` will return N-dimensional arrays
-            corresponding to all combinations of points in each dimension.
-            plot/contour plot.
+            corresponding to all combinations of points in each dimension. If
+            ``False``, an iterable of 1D arrays will be returned.
         """
         sanity_check(
             self._pts_check(pts),
@@ -406,7 +413,7 @@ class ExpInfo(FrequencyConverter):
         decibels: bool = True,
         indirect_modulation: Optional[str] = None,
     ) -> np.ndarray:
-        r"""Construct a FID, as a summation of damped complex sinusoids.
+        r"""Construct an FID from an array of oscillator parameters.
 
         Parameters
         ----------
@@ -445,41 +452,62 @@ class ExpInfo(FrequencyConverter):
             to the FID.
 
         decibels
-            If `True`, the snr is taken to be in units of decibels. If `False`,
+            If ``True``, the snr is taken to be in units of decibels. If `False`,
             it is taken to be simply the ratio of the singal power over the
             noise power.
 
         indirect_modulation
-            Acquisition mode in indirect dimensions of a 2D experiment. If the
-            data is 2-dimensional, this should be one of:
+            Acquisition mode in the indirect dimension if the data is 2D.
+            If the data is 1D, this argument is ignored.
 
             * ``None`` - hypercomplex dataset:
-              :math:`y \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+
+              .. math::
+
+                  y \left(t_1, t_2\right) = \sum_{m} a_m e^{\mathrm{i} \phi_m}
+                  e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+                  e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}
+
             * ``"amp"`` - amplitude modulated pair:
-              :math:`y_{\mathrm{cos}} \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              \cos\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
-              :math:`y_{\mathrm{sin}} \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              \sin\left(\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1\right)
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+
+              .. math::
+
+                  y_{\mathrm{cos}} \left(t_1, t_2\right) = \sum_{m} a_m
+                  e^{\mathrm{i} \phi_m} \cos\left(\left(2 \pi \mathrm{i} f_{1,
+                  m} - \eta_{1, m}\right) t_1\right) e^{\left(2 \pi \mathrm{i}
+                  f_{2, m} - \eta_{2, m}\right) t_2}
+
+              .. math::
+
+                  y_{\mathrm{sin}} \left(t_1, t_2\right) = \sum_{m} a_m
+                  e^{\mathrm{i} \phi_m} \sin\left(\left(2 \pi \mathrm{i} f_{1,
+                  m} - \eta_{1, m}\right) t_1\right) e^{\left(2 \pi \mathrm{i}
+                  f_{2, m} - \eta_{2, m}\right) t_2}
+
             * ``"phase"`` - phase-modulated pair:
-              :math:`y_{\mathrm{P}} \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              e^{\left(2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
-              :math:`y_{\mathrm{N}} \left(t_1, t_2\right) = \sum_{m} a_m
-              e^{\mathrm{i} \phi_m}
-              e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
-              e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}`
+
+              .. math::
+
+                  y_{\mathrm{P}} \left(t_1, t_2\right) = \sum_{m} a_m
+                  e^{\mathrm{i} \phi_m} e^{\left(2 \pi \mathrm{i} f_{1, m} -
+                  \eta_{1, m}\right) t_1} e^{\left(2 \pi \mathrm{i} f_{2, m} -
+                  \eta_{2, m}\right) t_2}
+
+              .. math::
+
+                  y_{\mathrm{N}} \left(t_1, t_2\right) = \sum_{m} a_m
+                  e^{\mathrm{i} \phi_m}
+                  e^{\left(-2 \pi \mathrm{i} f_{1, m} - \eta_{1, m}\right) t_1}
+                  e^{\left(2 \pi \mathrm{i} f_{2, m} - \eta_{2, m}\right) t_2}
 
             ``None`` will lead to an array of shape ``(n1, n2)``. ``amp`` and ``phase``
             will lead to an array of shape ``(2, n1, n2)``, with ``fid[0]`` and
             ``fid[1]`` being the two components of the pair.
+
+        See Also
+        --------
+        :py:func:`nmrespy.sig.proc_amp_modulated`
+        :py:func:`nmrespy.sig.proc_phase_modulated`
         """
         sanity_check(
             self._params_check(params),

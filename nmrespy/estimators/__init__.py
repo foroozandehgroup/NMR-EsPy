@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 05 Jan 2023 18:24:27 GMT
+# Last Edited: Wed 18 Jan 2023 18:41:34 GMT
 
 from __future__ import annotations
 import datetime
@@ -60,8 +60,7 @@ class Estimator(ne.ExpInfo):
         expinfo: ne.ExpInfo,
         datapath: Optional[Path] = None,
     ) -> None:
-        """Initialise a class instance.
-
+        """
         Parameters
         ----------
         data
@@ -266,17 +265,6 @@ class Estimator(ne.ExpInfo):
     ) -> Estimator:
         """Load a pickled estimator instance.
 
-        Parameters
-        ----------
-        path
-            The path to the pickle file.
-
-        Returns
-        -------
-        estimator : :py:class:`Estimator`
-
-        Notes
-        -----
         .. warning::
            `From the Python docs:`
 
@@ -286,16 +274,15 @@ class Estimator(ne.ExpInfo):
            that could have come from an untrusted source, or that could have
            been tampered with."*
 
-           You should only use :py:meth:`from_pickle` on files that
-           you are 100% certain were generated using
-           :py:meth:`to_pickle`. If you load pickled data from a .pkl file,
-           and the resulting output is not an instance of
-           :py:class:`Estimator`, an error will be raised.
+           You should only use ``from_pickle`` on files that you are 100%
+           certain were generated using :py:meth:`to_pickle`. If you load
+           pickled data from a .pkl file, and the resulting output is not an
+           estimator object, an error will be raised.
 
-        See Also
-        --------
-
-        :py:meth:`Estimator.to_pickle`
+        Parameters
+        ----------
+        path
+            The path to the pickle file. Do not include the ``.pkl`` suffix.
         """
         sanity_check(("path", path, check_existent_path, ("pkl",)))
         path = configure_path(path, "pkl")
@@ -356,9 +343,6 @@ class Estimator(ne.ExpInfo):
         params = full_params[osc_indices]
         return self.make_fid(params, pts, indirect_modulation=indirect_modulation)
 
-    def estimate(*args, **kwargs):
-        pass
-
     def get_results(self, indices: Optional[Iterable[int]] = None) -> Iterable[Result]:
         """Obtain a subset of the estimation results obtained.
 
@@ -396,20 +380,26 @@ class Estimator(ne.ExpInfo):
             used.
 
         merge
-            If ``True``, a single array of all parameters from each specified
-            estiamtion result specified will be returned. If ``False``, an iterable
-            of each individual estimation result's parameters will be returned.
+            * If ``True``, a single array of all parameters will be returned.
+            * If ``False``, an iterable of each individual estimation result's
+              parameters will be returned.
 
         funit
             The unit to express frequencies in. Must be one of ``"hz"`` and ``"ppm"``.
 
         sort_by
             Specifies the parameter by which the oscillators are ordered by.
-            Should be one of ``"a"`` for amplitudes ``"p"`` for phase, ``"f<n>"``
-            for frequency in the ``<n>``-th dimension, ``"d<n>"`` for the damping
-            factor in the ``<n>``-th dimension. By setting ``<n>`` to ``-1``, the
-            final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
-            can be used to specify the frequency or damping factor.
+
+            Should be one of
+
+            * ``"a"`` for amplitude
+            * ``"p"`` for phase
+            * ``"f<n>"`` for frequency in the ``<n>``-th dimension
+            * ``"d<n>"`` for the damping factor in the ``<n>``-th dimension.
+
+            By setting ``<n>`` to ``-1``, the final (direct) dimension will be
+            used. For 1D data, ``"f"`` and ``"d"`` can be used to specify the
+            frequency or damping factor.
         """
         self._check_results_exist()
         sanity_check(
@@ -438,20 +428,30 @@ class Estimator(ne.ExpInfo):
             the next, etc.  If ``None``, all results will be used.
 
         merge
-            If ``True``, a single array of all parameters from each specified
-            estiamtion result specified will be returned. If ``False``, an iterable
-            of each individual estimation result's parameters will be returned.
+            * If ``True``, a single array of all parameters will be returned.
+            * If ``False``, an iterable of each individual estimation result's
+              parameters will be returned.
 
         funit
             The unit to express frequencies in. Must be one of ``"hz"`` and ``"ppm"``.
 
         sort_by
             Specifies the parameter by which the oscillators are ordered by.
-            Should be one of ``"a"`` for amplitudes ``"p"`` for phase, ``"f<n>"``
-            for frequency in the ``<n>``-th dimension, ``"d<n>"`` for the damping
-            factor in the ``<n>``-th dimension. By setting ``<n>`` to ``-1``, the
-            final (direct) dimension will be used. For 1D data, ``"f"`` and ``"d"``
-            can be used to specify the frequency or damping factor.
+
+            Note the errors are re-ordered such that they would agree with the
+            parameters from :py:meth:`get_params` when given the same ``sort_by``
+            argument.
+
+            Should be one of
+
+            * ``"a"`` for amplitude
+            * ``"p"`` for phase
+            * ``"f<n>"`` for frequency in the ``<n>``-th dimension
+            * ``"d<n>"`` for the damping factor in the ``<n>``-th dimension.
+
+            By setting ``<n>`` to ``-1``, the final (direct) dimension will be
+            used. For 1D data, ``"f"`` and ``"d"`` can be used to specify the
+            frequency or damping factor.
         """
         self._check_results_exist()
         sanity_check(
@@ -507,10 +507,102 @@ class Estimator(ne.ExpInfo):
         index: int = -1,
         add_oscs: Optional[np.ndarray] = None,
         rm_oscs: Optional[Iterable[int]] = None,
-        merge_oscs: Optional[Iterable[int]] = None,
+        merge_oscs: Optional[Iterable[Iterable[int]]] = None,
         split_oscs: Optional[Dict[int, Optional[Dict]]] = None,
         **estimate_kwargs,
     ) -> None:
+        """Manipulate an estimation result. After the result has been changed,
+        it is subjected to optimisation.
+
+        There are four types of edits that you can make:
+
+        * *Add* new oscillators with defined parameters.
+        * *Remove* oscillators.
+        * *Merge* multiple oscillators into a single oscillator.
+        * *Split* an oscillator into many oscillators.
+
+        Parameters
+        ----------
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. You can also use ``-1`` for the most recent result,
+            ``-2`` for the second most recent, etc. By default, the most
+            recently obtained result will be edited.
+
+        add_oscs
+            The parameters of new oscillators to be added. Should be of shape
+            ``(n, 2 * (1 + self.dim))``, where ``n`` is the number of new
+            oscillators to add. Even when one oscillator is being added this
+            should be a 2D array, i.e.
+
+            * 1D data:
+
+                .. code::
+
+                    params = np.array([[a, φ, f, η]])
+
+            * 2D data:
+
+                .. code::
+
+                    params = np.array([[a, φ, f₁, f₂, η₁, η₂]])
+
+        rm_oscs
+            An iterable of ints for the indices of oscillators to remove from
+            the result.
+
+        merge_oscs
+            An iterable of iterables. Each sub-iterable denotes the indices of
+            oscillators to merge together. For example, ``[[0, 2], [6, 7]]``
+            would mean that oscillators 0 and 2 are merged, and oscillators 6
+            and 7 are merged. A merge involves removing all the oscillators,
+            and creating a single new oscillator with the sum of amplitudes,
+            and the average of phases, freqeuncies and damping factors.
+
+        split_oscs
+            A dictionary with ints as keys, denoting the oscillators to split.
+            The values should themselves be dicts, with the following permitted
+            key/value pairs:
+
+            * ``"separation"`` - An list of length equal to ``self.dim``.
+              Indicates the frequency separation of the split oscillators in Hz.
+              If not specified, this will be the spectral resolution in each
+              dimension.
+            * ``"number"`` - An int indicating how many oscillators to split
+              into. If not specified, this will be ``2``.
+            * ``"amp_ratio"`` A list of floats with length equal to the number of
+              oscillators to be split into (see ``"number"``). Specifies the
+              relative amplitudes of the oscillators. If not specified, the amplitudes
+              will be equal.
+
+            As an example for a 1D estimator:
+
+            .. code::
+
+                split_oscs = {
+                    2: {
+                        "separation": 1.,  # if 1D, don't need a list
+                    },
+                    5: {
+                        "number": 3,
+                        "amp_ratio": [1., 2., 1.],
+                    },
+                }
+
+            Here, 2 oscillators will be split.
+
+            * Oscillator 2 will be split into 2 (default) oscillators with
+              equal amplitude (default). These will be separated by 1Hz.
+            * Oscillator 5 will be split into 3 oscillators with relative
+              amplitudes 1:2:1. These will be separated by ``self.sw()[0] /
+              self.default_pts()[0]`` Hz (default).
+
+        estimate_kwargs
+            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
+            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
+            will be ignored if given.
+        """
         self._check_results_exist()
         sanity_check(self._index_check(index))
         index, = self._process_indices([index])
@@ -566,11 +658,6 @@ class Estimator(ne.ExpInfo):
                         def_n, def_amp_ratio, def_split_dim
                     sep = def_sep(split_dim)
                 else:
-                    if "dim" in split_info:
-                        split_dim = split_info["dim"]
-                    else:
-                        split_dim = def_split_dim
-
                     if "separation" in split_info:
                         sep = split_info["separation"]
                     else:
@@ -621,291 +708,6 @@ class Estimator(ne.ExpInfo):
             params = np.vstack((params, oscs_to_add))
 
         self._optimise_after_edit(params, result, index, **estimate_kwargs)
-
-    @logger
-    def merge_oscillators(
-        self,
-        oscillators: Iterable[int],
-        index: int = -1,
-        **estimate_kwargs,
-    ) -> None:
-        """Merge oscillators in an estimation result.
-
-        Removes the osccilators specified, and constructs a single new
-        oscillator with a cumulative amplitude, and averaged phase,
-        frequency and damping. Then runs optimisation on the updated set of
-        oscillators.
-
-        Parameters
-        ----------
-        oscillators
-            A list of indices corresponding to the oscillators to be merged.
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. By default, the most recently obtained result will be
-            edited.
-
-        estimate_kwargs
-            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
-            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
-            will be ignored if given.
-
-        Notes
-        -----
-        Assuming that an estimation result contains a subset of oscillators
-        denoted by indices :math:`\\{m_1, m_2, \\cdots, m_J\\}`, where :math:`J
-        \\leq M`, the new oscillator formed by the merging of the oscillator
-        subset will possess the following parameters prior to re-running estimation:
-
-            * :math:`a_{\\mathrm{new}} = \\sum_{i=1}^J a_{m_i}`
-            * :math:`\\phi_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
-              \\phi_{m_i}`
-            * :math:`f_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J f_{m_i}`
-            * :math:`\\eta_{\\mathrm{new}} = \\frac{1}{J} \\sum_{i=1}^J
-              \\eta_{m_i}`
-        """
-        self._check_results_exist()
-        sanity_check(self._index_check(index))
-        index, = self._process_indices([index])
-        result = self._results[index]
-        x0 = result.get_params()
-        sanity_check(
-            (
-                "oscillators", oscillators, sfuncs.check_int_list,
-                (), {"min_value": 0, "max_value": x0.shape[0] - 1},
-            )
-        )
-
-        to_merge = x0[oscillators]
-        # Sum amps, phases, freqs and damping over the oscillators
-        # to be merged.
-        # keepdims ensures that the final array is [[a, φ, f, η]]
-        # rather than [a, φ, f, η]
-        new_osc = np.sum(to_merge, axis=0, keepdims=True)
-
-        # Get mean for phase, frequency and damping
-        new_osc[:, 1:] = new_osc[:, 1:] / float(len(oscillators))
-        # wrap phase
-        new_osc[:, 1] = (new_osc[:, 1] + np.pi) % (2 * np.pi) - np.pi
-
-        x0 = np.delete(x0, oscillators, axis=0)
-        x0 = np.vstack((x0, new_osc))
-
-        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
-
-    @logger
-    def split_oscillator(
-        self,
-        oscillator: int,
-        index: int = -1,
-        separation_frequency: Optional[Iterable[float]] = None,
-        unit: str = "hz",
-        split_number: int = 2,
-        amp_ratio: Optional[Iterable[float]] = None,
-        **estimate_kwargs,
-    ) -> None:
-        """Splits an oscillator in an estimation result into multiple oscillators.
-
-        Removes an oscillator, and incorporates two or more oscillators whose
-        cumulative amplitudes match that of the removed oscillator. Then runs
-        optimisation on the updated set of oscillators.
-
-        Parameters
-        ----------
-        oscillator
-            The index of the oscillator to be split.
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. By default, the most recently obtained result will be
-            edited.
-
-        separation_frequency
-            The frequency separation given to adjacent oscillators formed
-            from the splitting. If ``None``, the splitting will be set to
-            ``sw / n`` in each dimension where ``sw`` is the sweep width and
-            ``n`` is the number of points in the data.
-
-        unit
-            The unit that ``separation_frequency`` is expressed in.
-
-        split_number
-            The number of peaks to split the oscillator into.
-
-        amp_ratio
-            The ratio of amplitudes to be fulfilled by the newly formed
-            peaks. If a list, ``len(amp_ratio) == split_number`` must be
-            satisfied. The first element will relate to the highest
-            frequency oscillator constructed, and the last element will
-            relate to the lowest frequency oscillator constructed. If `None`,
-            all oscillators will be given equal amplitudes.
-
-        estimate_kwargs
-            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
-            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
-            will be ignored if given.
-        """
-        self._check_results_exist()
-        sanity_check(
-            self._index_check(index),
-            (
-                "separation_frequency", separation_frequency, sfuncs.check_float_list,
-                (), {"length": self.dim, "len_one_can_be_listless": True}, True,
-            ),
-            ("unit", unit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
-            ("split_number", split_number, sfuncs.check_int, (), {"min_value": 2}),
-        )
-        index, = self._process_indices([index])
-        result = self._results[index]
-        x0 = result.get_params()
-        sanity_check(
-            (
-                "amp_ratio", amp_ratio, sfuncs.check_float_list, (),
-                {
-                    "length": split_number,
-                    "must_be_positive": True,
-                },
-                True,
-            ),
-            (
-                "oscillator", oscillator, sfuncs.check_int, (),
-                {"min_value": 0, "max_value": x0.shape[0] - 1},
-            ),
-        )
-
-        if separation_frequency is None:
-            separation_frequency = [
-                sw / pts for sw, pts in zip(self.sw(unit), self.default_pts)
-            ]
-        else:
-            if isinstance(separation_frequency, float):
-                separation_frequency = [separation_frequency]
-            separation_frequency = (
-                self.convert(separation_frequency, f"{unit}->hz")
-            )
-
-        if amp_ratio is None:
-            amp_ratio = np.ones((split_number,))
-        else:
-            amp_ratio = np.array(amp_ratio)
-
-        osc = x0[oscillator]
-        amps = osc[0] * amp_ratio / amp_ratio.sum()
-        # Highest frequency of all the new oscillators
-        max_freqs = [
-            osc[i] + ((split_number - 1) * separation_frequency[i - 2] / 2)
-            for i in range(2, 2 + self.dim)
-        ]
-        # Array of all frequencies (lowest to highest)
-        freqs = np.array(
-            [
-                [max_freq - i * sep_freq for i in range(split_number)]
-                for max_freq, sep_freq in zip(max_freqs, separation_frequency)
-            ],
-            dtype="float64",
-        ).T
-
-        new_oscs = np.zeros((split_number, 2 * (1 + self.dim)), dtype="float64")
-        new_oscs[:, 0] = amps
-        new_oscs[:, 1] = osc[1]
-        new_oscs[:, 2 : 2 + self.dim] = freqs
-        new_oscs[:, 2 + self.dim :] = osc[2 + self.dim :]
-
-        x0 = np.delete(x0, oscillator, axis=0)
-        x0 = np.vstack((x0, new_oscs))
-
-        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
-
-    @logger
-    def add_oscillators(
-        self,
-        params: np.ndarray,
-        index: int = -1,
-        **estimate_kwargs,
-    ) -> None:
-        """Add oscillators to an estimation result.
-
-        Optimisation is carried out afterwards, on the updated set of oscillators.
-
-        Parameters
-        ----------
-        params
-            The parameters of new oscillators to be added. Should be of shape
-            ``(n, 2 * (1 + self.dim))``, where ``n`` is the number of new
-            oscillators to add. Even when one oscillator is being added this
-            should be a 2D array, i.e.:
-
-            .. code:: python3
-
-                params = oscillators = np.array([[a, φ, f, η]])
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. By default, the most recently obtained result will be
-            edited.
-
-        estimate_kwargs
-            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
-            that ``"region"``, ``noise_region"``, ``"initial_guess"`` and
-            ``"region_unit"`` are set internally and will be ignored if given.
-        """
-        self._check_results_exist()
-        sanity_check(
-            (
-                "params", params, sfuncs.check_ndarray, (),
-                {"dim": 2, "shape": ((1, 2 * (self.dim + 1)),)},
-            ),
-            self._index_check(index),
-        )
-        index, = self._process_indices([index])
-        result = self._results[index]
-        x0 = np.vstack((result.get_params(), params))
-        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
-
-    @logger
-    def remove_oscillators(
-        self,
-        oscillators: Iterable[int],
-        index: int = -1,
-        **estimate_kwargs,
-    ) -> None:
-        """Remove oscillators from an estimation result.
-
-        Optimisation is carried out afterwards, on the updated set of oscillators.
-
-        Parameters
-        ----------
-        oscillators
-            A list of indices corresponding to the oscillators to be removed.
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. By default, the most recently obtained result will be
-            edited.
-
-        estimate_kwargs
-            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
-            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
-            will be ignored if given.
-        """
-        self._check_results_exist()
-        sanity_check(self._index_check(index))
-        index, = self._process_indices([index])
-        result = self._results[index]
-        x0 = result.get_params()
-        sanity_check(
-            (
-                "oscillators", oscillators, sfuncs.check_int_list, (),
-                {"min_value": 0, "max_value": x0.shape[0] - 1},
-            ),
-        )
-        x0 = np.delete(x0, oscillators, axis=0)
-        self._optimise_after_edit(x0, result, index, **estimate_kwargs)
 
     def _optimise_after_edit(
         self,
@@ -969,6 +771,10 @@ class _Estimator1DProc(Estimator):
         pivot
             Index of the pivot. ``0`` corresponds to the leftmost point in the
             spectrum.
+
+        See also
+        --------
+        :py:meth:`manual_phase_data`
         """
         sanity_check(
             ("p0", p0, sfuncs.check_float),
@@ -999,6 +805,27 @@ class _Estimator1DProc(Estimator):
         self,
         max_p1: float = 10 * np.pi,
     ) -> Tuple[float, float]:
+        """Manually phase the data using a Graphical User Interface.
+
+        Parameters
+        ----------
+        max_p1
+            The largest permitted first order correction (rad). Set this to a larger
+            value than the default (10π) if you anticipate having to apply a
+            very large first order correction.
+
+        Returns
+        -------
+        p0
+            Zero order phase (rad)
+
+        p1
+            First prder phase (rad)
+
+        See also
+        --------
+        :py:meth:`phase_data`
+        """
         sanity_check(
             ("max_p1", max_p1, sfuncs.check_float, (), {"greater_than_zero": True}),
         )
@@ -1022,7 +849,28 @@ class _Estimator1DProc(Estimator):
         self._data = sig.exp_apodisation(self._data, k, axes=[-1])
 
     def baseline_correction(self, min_length: int = 50) -> None:
-        """TODO"""
+        """Apply baseline correction to the estimator's data.
+
+        The algorithm applied is desribed in [#]_. This uses an implementation
+        provided by `pybaselines
+        <https://pybaselines.readthedocs.io/en/latest/api/pybaselines/api/index.html#pybaselines.api.Baseline.fabc>`_.
+
+        Parameters
+        ----------
+        min_length
+            *From the pybaseline docs:* Any region of consecutive baseline
+            points less than ``min_length`` is considered to be a false
+            positive and all points in the region are converted to peak points.
+            A higher ``min_length`` ensures less points are falsely assigned as
+            baseline points.  Default is 2, which only removes lone baseline
+            points.
+
+        References
+        ----------
+        .. [#] Cobas, J., et al. A new general-purpose fully automatic
+           baseline-correction procedure for 1D and 2D NMR data. Journal of
+           Magnetic Resonance, 2006, 183(1), 145-151.
+        """
         shape = self.data.shape
         direct_size = shape[-1]
         sanity_check(
@@ -1066,7 +914,7 @@ class _Estimator1DProc(Estimator):
         max_iterations: Optional[int] = None,
         output_mode: Optional[int] = 10,
         save_trajectory: bool = False,
-        tolerance: float = 1.0e-8,
+        epsilon: float = 1.0e-8,
         eta: float = 0.15,
         initial_trust_radius: float = 1.0,
         max_trust_radius: float = 4.0,
@@ -1076,20 +924,23 @@ class _Estimator1DProc(Estimator):
 
         The basic steps that this method carries out are:
 
-        * (Optional, but highly advised) Generate a frequency-filtered signal
-          corresponding to the specified region.
-        * (Optional) Generate an inital guess using the Matrix Pencil Method (MPM).
+        * (Optional, but highly advised) Generate a frequency-filtered "sub-FID"
+          corresponding to a specified region of interest.
+        * (Optional) Generate an initial guess using the Minimum Description
+          Length (MDL) [#]_ and Matrix Pencil Method (MPM) [#]_ [#]_
         * Apply numerical optimisation to determine a final estimate of the signal
-          parameters
+          parameters. The optimisation routine employed is the Trust Newton Conjugate
+          Gradient (NCG) algorithm ([#]_ , Algorithm 7.2).
 
         Parameters
         ----------
         region
             The frequency range of interest. Should be of the form ``[left, right]``
             where ``left`` and ``right`` are the left and right bounds of the region
-            of interest. If ``None``, the full signal will be considered, though
-            for sufficently large and complex signals it is probable that poor and
-            slow performance will be achieved.
+            of interest in Hz or ppm (see ``region_unit``). If ``None``, the
+            full signal will be considered, though for sufficently large and
+            complex signals it is probable that poor and slow performance will
+            be realised.
 
         noise_region
             If ``region`` is not ``None``, this must be of the form ``[left, right]``
@@ -1101,35 +952,39 @@ class _Estimator1DProc(Estimator):
             and ``noise_region`` have been given as.
 
         initial_guess
-            If ``None``, an initial guess will be generated using the MPM,
-            with the Minimum Descritpion Length being used to estimate the
-            number of oscilltors present. If and int, the MPM will be used to
-            compute the initial guess with the value given being the number of
-            oscillators. If a NumPy array, this array will be used as the initial
-            guess.
+            * If ``None``, an initial guess will be generated using the MPM
+              with the MDL being used to estimate the number of oscillators
+              present.
+            * If an int, the MPM will be used to compute the initial guess with
+              the value given being the number of oscillators.
+            * If a NumPy array, this array will be used as the initial guess.
 
         hessian
             Specifies how to construct the Hessian matrix.
 
-            * ``"exact"`` The Hessian will be exact.
-            * ``"gauss-newton"`` The Hessian will be approximated as is done with
-              the `Gauss-Newton method <https://en.wikipedia.org/wiki/
-              Gauss%E2%80%93Newton_algorithm>`_
+            * If ``"exact"``, the exact Hessian will be used.
+            * If ``"gauss-newton"``, the Hessian will be approximated as is
+              done with the Gauss-Newton method. See the *"Derivation from
+              Newton's method"* section of `this article
+              <https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm>`_.
 
         mode
             A string containing a subset of the characters ``"a"`` (amplitudes),
             ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
             Specifies which types of parameters should be considered for optimisation.
+            In most scenarios, you are likely to want the default value, ``"apfd"``.
 
         amp_thold
             A value that imposes a threshold for deleting oscillators of
-            negligible ampltiude. If ``None``, does nothing. If a float,
-            oscillators with amplitudes satisfying :math:`a_m <
-            a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2`` will be
-            removed from the parameter array, where :math:`\lVert
-            \boldsymbol{a} \rVert_2` is the Euclidian norm of the vector of
-            all the oscillator amplitudes. It is advised to set ``amp_thold``
-            at least a couple of orders of magnitude below 1.
+            negligible ampltiude.
+
+            * If ``None``, does nothing.
+            * If a float, oscillators with amplitudes satisfying :math:`a_m <
+              a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2` will be
+              removed from the parameter array, where :math:`\lVert
+              \boldsymbol{a} \rVert_2` is the Euclidian norm of the vector of
+              all the oscillator amplitudes. It is advised to set ``amp_thold``
+              at least a couple of orders of magnitude below 1.
 
         phase_variance
             Whether or not to include the variance of oscillator phases in the cost
@@ -1156,25 +1011,31 @@ class _Estimator1DProc(Estimator):
             the value of ``hessian``.
 
         output_mode
-            Should be an integer greater than or equal to ``0`` or ``None``. If
-            ``None``, no output will be given. If ``0``, only a message on the
-            outcome of the optimisation will be printed. If an integer greater
-            than ``0``, information for each iteration ``k`` which satisfies
-            ``k % output_mode == 0`` will be printed.
+            Dictates what information is sent to stdout.
+
+            * If ``None``, nothing will be sent.
+            * If ``0``, only a message on the outcome of the optimisation will
+              be sent.
+            * If a positive int ``k``, information on the cost function,
+              gradient norm, and trust region radius is sent every kth
+              iteration.
 
         save_trajectory
             If ``True``, a list of parameters at each iteration will be saved, and
             accessible via the ``trajectory`` attribute.
 
-        tolerance
+            .. warning:: Not implemented yet!
+
+        epsilon
             Sets the convergence criterion. Convergence will occur when
-            :math:`\lVert \boldsymbol{g}_k \rVert_2 < \text{tolerance}`.
+            :math:`\lVert \boldsymbol{g}_k \rVert_2 < \epsilon`.
 
         eta
-            Criterion for accepting an update. An update will be accepted if the ratio
-            of the actual reduction and the predicted reduction is greater than ``eta``:
+            Criterion for accepting an update. An update will be accepted if
+            the ratio of the actual reduction and the predicted reduction is
+            greater than ``eta``:
 
-            ..math ::
+            .. math ::
 
                 \rho_k = \frac{f(x_k) - f(x_k - p_k)}{m_k(0) - m_k(p_k)} > \eta
 
@@ -1186,6 +1047,24 @@ class _Estimator1DProc(Estimator):
 
         _log
             Ignore this!
+
+        References
+        ----------
+        .. [#] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
+           parameters of exponentially damped/undamped sinusoids in noise”. In:
+           IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
+
+        .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy
+           NMR signals: applications to delayed acquisition data”. In: J. Magn.
+           Reson. 128.1 (1997), pp. 30–41.
+
+        .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
+           criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
+           33 (2) (1985) 387–392.
+
+        .. [#] Jorge Nocedal and Stephen J. Wright. Numerical optimization. 2nd
+               ed. Springer series in operations research. New York: Springer,
+               2006.
         """
         sanity_check(
             (
@@ -1222,7 +1101,7 @@ class _Estimator1DProc(Estimator):
             ("output_mode", output_mode, sfuncs.check_int, (), {"min_value": 0}, True),
             ("save_trajectory", save_trajectory, sfuncs.check_bool),
             (
-                "tolerance", tolerance, sfuncs.check_float, (),
+                "epsilon", epsilon, sfuncs.check_float, (),
                 {"min_value": np.finfo(float).eps},
             ),
             ("eta", eta, sfuncs.check_float, (), {"min_value": 0.0, "max_value": 1.0}),
@@ -1321,7 +1200,7 @@ class _Estimator1DProc(Estimator):
             # TODO update in the future
             negative_amps="remove",
             save_trajectory=save_trajectory,
-            tolerance=tolerance,
+            tolerance=epsilon,
             eta=eta,
             initial_trust_radius=initial_trust_radius,
             max_trust_radius=max_trust_radius,

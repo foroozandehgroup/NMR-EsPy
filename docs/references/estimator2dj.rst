@@ -1,5 +1,5 @@
-nmrespy.Estimator2DJ
-^^^^^^^^^^^^^^^^^^^^
+Estimator2DJ
+^^^^^^^^^^^^
 
 .. autoclass:: nmrespy.Estimator2DJ
    :members:

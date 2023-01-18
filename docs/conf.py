@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 Jan 2023 13:55:16 GMT
+# Last Edited: Wed 18 Jan 2023 15:44:05 GMT
 
 import os
 import sys
@@ -63,8 +63,8 @@ todo_include_todos = True
 
 autosectionlabel_prefix_document = True
 autoclass_content = "both"
-autodoc_typehints = "description"
-autodoc_typehints_format = "short"
+autodoc_typehints = "signature"
+autodoc_typehints_format = "fully-qualified"
 
 # HTML Settings
 html_static_path = ["_static"]

@@ -1,5 +1,5 @@
-nmrespy.Estimator1D
-^^^^^^^^^^^^^^^^^^^
+Estimator1D
+^^^^^^^^^^^
 
 .. autoclass:: nmrespy.Estimator1D
    :members:

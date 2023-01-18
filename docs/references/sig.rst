@@ -1,5 +1,5 @@
-nmrespy.sig
-^^^^^^^^^^^
+sig
+^^^
 
 .. automodule:: nmrespy.sig
    :members:

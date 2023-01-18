@@ -1,15 +1,13 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 Jan 2023 14:53:43 GMT
+# Last Edited: Wed 18 Jan 2023 18:26:55 GMT
 
 from __future__ import annotations
 import copy
 import io
 import os
 from pathlib import Path
-import re
-import shutil
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import numpy as np
@@ -19,7 +17,7 @@ import matplotlib.pyplot as plt
 from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import cd, check_existent_dir, check_saveable_dir
-from nmrespy._paths_and_links import NMRESPYPATH, SPINACHPATH
+from nmrespy._paths_and_links import SPINACHPATH
 from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
@@ -40,15 +38,16 @@ if MATLAB_AVAILABLE:
 
 
 class Estimator1D(_Estimator1DProc):
-    """Estimator class for 1D data.
+    """Estimator class for 1D data. For a tutorial on the basic functionailty
+    this provides, see :ref:`ESTIMATOR1D`.
 
     .. note::
 
-        To create an instance of ``Estimator1D``, you should use one of the following
-        methods:
+        To create an instance of ``Estimator1D``, you are advised to use one of
+        the following methods if any are appropriate:
 
         * :py:meth:`new_bruker`
-        * :py:meth:`new_synthetic_from_parameters`
+        * :py:meth:`new_from_parameters`
         * :py:meth:`new_spinach`
         * :py:meth:`from_pickle` (re-loads a previously saved estimator).
     """
@@ -77,8 +76,6 @@ class Estimator1D(_Estimator1DProc):
 
         Notes
         -----
-        **Directory Requirements**
-
         There are certain file paths expected to be found relative to ``directory``
         which contain the data and parameter files. Here is an extensive list of
         the paths expected to exist, for different data types:
@@ -130,6 +127,8 @@ class Estimator1D(_Estimator1DProc):
     ) -> Estimator1D:
         r"""Create a new instance from a pulse-acquire Spinach simulation.
 
+        See :ref:`SPINACH_INSTALL` for requirments to use this method.
+
         Parameters
         ----------
         shifts
@@ -156,7 +155,13 @@ class Estimator1D(_Estimator1DProc):
             The transmitter frequency (MHz).
 
         nucleus
-            The identity of the nucleus targeted in the pulse sequence.
+            The identity of the nucleus. Should be of the form ``"<mass><sym>"``
+            where ``<mass>`` is the atomic mass and ``<sym>`` is the element symbol.
+            Examples:
+
+            * ``"1H"``
+            * ``"13C"``
+            * ``"195Pt"``
 
         snr
             The signal-to-noise ratio of the resulting signal, in decibels. ``None``
@@ -230,7 +235,7 @@ class Estimator1D(_Estimator1DProc):
         return cls(fid, expinfo)
 
     @classmethod
-    def new_synthetic_from_parameters(
+    def new_from_parameters(
         cls,
         params: np.ndarray,
         pts: int,
@@ -240,7 +245,8 @@ class Estimator1D(_Estimator1DProc):
         nucleus: str = "1H",
         snr: Optional[float] = 20.,
     ) -> Estimator1D:
-        """Generate an estimator instance from an array of oscillator parameters.
+        """Generate an estimator instance with sythetic data created from an
+        array of oscillator parameters.
 
         Parameters
         ----------
@@ -269,10 +275,12 @@ class Estimator1D(_Estimator1DProc):
             The transmitter frequency (MHz).
 
         nucleus
-            The identity of the nucleus.
+            The identity of the nucleus. Should be of the form ``"<mass><sym>"``
+            where ``<mass>`` is the atomic mass and ``<sym>`` is the element symbol.
+            Examples: ``"1H"``, ``"13C"``, ``"195Pt"``
 
         snr
-            The signal-to-noise ratio. If ``None`` then no noise will be added
+            The signal-to-noise ratio (dB). If ``None`` then no noise will be added
             to the FID.
         """
         sanity_check(

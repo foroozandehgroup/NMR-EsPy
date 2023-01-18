@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 17 Oct 2022 11:19:25 BST
+# Last Edited: Wed 18 Jan 2023 18:41:36 GMT
 
 from pathlib import Path
 import re
