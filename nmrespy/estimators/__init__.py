@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 19 Jan 2023 14:43:13 GMT
+# Last Edited: Thu 19 Jan 2023 15:46:43 GMT
 
 from __future__ import annotations
 import datetime
@@ -506,7 +506,7 @@ class Estimator(ne.ExpInfo):
         """Manipulate an estimation result. After the result has been changed,
         it is subjected to optimisation.
 
-        There are four types of edits that you can make:
+        There are four types of edit that you can make:
 
         * *Add* new oscillators with defined parameters.
         * *Remove* oscillators.
@@ -549,8 +549,8 @@ class Estimator(ne.ExpInfo):
             oscillators to merge together. For example, ``[[0, 2], [6, 7]]``
             would mean that oscillators 0 and 2 are merged, and oscillators 6
             and 7 are merged. A merge involves removing all the oscillators,
-            and creating a single new oscillator with the sum of amplitudes,
-            and the average of phases, freqeuncies and damping factors.
+            and creating a new oscillator with the sum of amplitudes, and the
+            average of phases, freqeuncies and damping factors.
 
         split_oscs
             A dictionary with ints as keys, denoting the oscillators to split.
@@ -699,6 +699,7 @@ class Estimator(ne.ExpInfo):
         if oscs_to_add is not None:
             params = np.vstack((params, oscs_to_add))
 
+        print("Editing result {index}")
         self._optimise_after_edit(params, result, index, **estimate_kwargs)
 
     def _optimise_after_edit(
@@ -854,8 +855,7 @@ class _Estimator1DProc(Estimator):
             points less than ``min_length`` is considered to be a false
             positive and all points in the region are converted to peak points.
             A higher ``min_length`` ensures less points are falsely assigned as
-            baseline points.  Default is 2, which only removes lone baseline
-            points.
+            baseline points.
 
         References
         ----------
@@ -919,7 +919,7 @@ class _Estimator1DProc(Estimator):
         * (Optional, but highly advised) Generate a frequency-filtered "sub-FID"
           corresponding to a specified region of interest.
         * (Optional) Generate an initial guess using the Minimum Description
-          Length (MDL) [#]_ and Matrix Pencil Method (MPM) [#]_ [#]_
+          Length (MDL) [#]_ and Matrix Pencil Method (MPM) [#]_ [#]_ [#]_ [#]_
         * Apply numerical optimisation to determine a final estimate of the signal
           parameters. The optimisation routine employed is the Trust Newton Conjugate
           Gradient (NCG) algorithm ([#]_ , Algorithm 7.2).
@@ -1049,6 +1049,15 @@ class _Estimator1DProc(Estimator):
         .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy
            NMR signals: applications to delayed acquisition data”. In: J. Magn.
            Reson. 128.1 (1997), pp. 30–41.
+
+        .. [#] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
+           enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
+           International Conference on Acoustics, Speech, and Signal Processing.
+           IEEE. 1991, pp. 3073–3076.
+
+        .. [#] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
+           using modified matrix pencil method”. In: IEEE Trans. Signal Process.
+           55.2 (2007), pp. 718–724.
 
         .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
            criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing

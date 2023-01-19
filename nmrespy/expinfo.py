@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 19 Jan 2023 14:29:06 GMT
+# Last Edited: Thu 19 Jan 2023 16:47:13 GMT
 
 import datetime
 import os
@@ -502,8 +502,10 @@ class ExpInfo(FrequencyConverter):
 
         See Also
         --------
-        :py:func:`nmrespy.sig.proc_amp_modulated`
-        :py:func:`nmrespy.sig.proc_phase_modulated`
+        * For converting amplitude-modulated data to spectral data, see
+          :py:func:`nmrespy.sig.proc_amp_modulated`
+        * For converting phase-modulated data to spectral data, see
+          :py:func:`nmrespy.sig.proc_phase_modulated`
         """
         sanity_check(
             self._params_check(params),

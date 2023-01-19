@@ -1,3 +1,5 @@
+.. _ESTIMATOR2DJ:
+
 Using ``Estimator2DJ``
 ======================
 
