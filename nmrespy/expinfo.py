@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 19 Jan 2023 16:47:13 GMT
+# Last Edited: Thu 19 Jan 2023 17:00:26 GMT
 
 import datetime
 import os
@@ -22,15 +22,19 @@ from nmrespy import sig
 
 
 class ExpInfo(FrequencyConverter):
-    """Stores information about NMR experiments."""
+    """Stores information about NMR experiments.
 
+    ``ExpInfo`` provides useful methods which require this information, such as
+    generating FIDs, creating samples (time-points, chemical shifts), etc. It is
+    a parent class to all estimator objects.
+    """
     def __init__(
         self,
         dim: int,
         sw: Iterable[float],
         offset: Optional[Iterable[float]] = None,
-        sfo: Optional[Iterable[float]] = None,
-        nuclei: Optional[Iterable[str]] = None,
+        sfo: Optional[Optional[Iterable[float]]] = None,
+        nuclei: Optional[Optional[Iterable[str]]] = None,
         default_pts: Optional[Iterable[int]] = None,
         fn_mode: Optional[str] = None,
         **kwargs,
@@ -609,7 +613,7 @@ class ExpInfo(FrequencyConverter):
             Number of oscillators.
 
         pts
-            The number of points to construct the time-points with in each dimesnion.
+            The number of points to construct the signal with in each dimesnion.
             If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
             used.
 
@@ -707,8 +711,8 @@ class ExpInfo(FrequencyConverter):
             integrating.
 
         scale_relative_to
-            If an int, the integral corresponding to ``params[scale_relative_to]``
-            is set to ``1``, and other integrals are scaled accordingly.
+            If an int, the integral corresponding to the assigned oscillator is
+            set to ``1``, and other integrals are scaled accordingly.
 
         Notes
         -----
