@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 18 Jan 2023 17:06:52 GMT
+# Last Edited: Thu 19 Jan 2023 14:29:06 GMT
 
 import datetime
 import os
@@ -229,11 +229,7 @@ class ExpInfo(FrequencyConverter):
     def unicode_nuclei(self) -> Optional[Iterable[Optional[str]]]:
         """Get the nuclei associated with each channel with superscript numbers.
 
-        .. code:: python3
-
-           >>> expinfo = ExpInfo(..., nuclei=("1H", "15N"), ...)
-           >>> expinfo.unicode_nuclei
-           ('¹H', '¹⁵N')
+        Examples: ``"1H"`` → ``"¹H"``, ``"15N"`` → ``"¹⁵N"``.
         """
         if self._nuclei is None:
             return None

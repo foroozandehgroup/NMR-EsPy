@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 18 Jan 2023 18:41:34 GMT
+# Last Edited: Thu 19 Jan 2023 14:43:13 GMT
 
 from __future__ import annotations
 import datetime
@@ -180,9 +180,10 @@ class Estimator(ne.ExpInfo):
             The path to save the log to.
 
         force_overwrite
-            If ``path`` already exists, ``force_overwrite`` set to ``True`` will get
-            the user to confirm whether they are happy to overwrite the file.
-            If ``False``, the file will be overwritten without prompt.
+            If ``path`` already exists and ``force_overwrite`` is set to ``False``,
+            the user will be asked to confirm whether they are happy to
+            overwrite the file. If ``True``, the file will be overwritten
+            without prompt.
 
         fprint
             Specifies whether or not to print infomation to the terminal.
@@ -198,13 +199,6 @@ class Estimator(ne.ExpInfo):
         path = configure_path(path, "log")
         save_file(self.get_log(), path, fprint=fprint)
 
-    @classmethod
-    def new_bruker(*args, **kwargs):
-        pass
-
-    def view_data(*args, **kwargs):
-        pass
-
     @logger
     def to_pickle(
         self,
@@ -217,26 +211,24 @@ class Estimator(ne.ExpInfo):
         Parameters
         ----------
         path
-            Path of file to save the byte stream to. `'.pkl'` is added to the end of
-            the path if this is not given by the user. If ``None``,
-            ``./estimator_<x>.pkl`` will be used, where ``<x>`` is the first number
-            that doesn't cause a clash with an already existent file.
+            Path of file to save the byte stream to. Do not include the
+            ``'".pkl"`` suffix. If ``None``, ``./estimator_<x>.pkl`` will be
+            used, where ``<x>`` is the first number that doesn't cause a clash
+            with an already existent file.
 
         force_overwrite
             Defines behaviour if the specified path already exists:
 
-            * If ``force_overwrite`` is set to ``False``, the user will be prompted
-              if they are happy overwriting the current file.
-            * If ``force_overwrite`` is set to ``True``, the current file will be
-              overwritten without prompt.
+            * If ``False``, the user will be prompted if they are happy
+              overwriting the current file.
+            * If ``True``, the current file will be overwritten without prompt.
 
         fprint
             Specifies whether or not to print infomation to the terminal.
 
         See Also
         --------
-
-        :py:meth:`Estimator.from_pickle`
+        :py:meth:`from_pickle`
         """
         sanity_check(
             ("force_overwrite", force_overwrite, sfuncs.check_bool),
@@ -1224,12 +1216,18 @@ class _Estimator1DProc(Estimator):
         nsubbands: Optional[int] = None,
         **estimate_kwargs,
     ) -> None:
-        r"""Perform estiamtion on the entire signal via estimation of frequency-filtered
-        sub-bands.
+        r"""Perform estiamtion on the entire signal via estimation of
+        frequency-filtered sub-bands.
 
         This method splits the signal up into ``nsubbands`` equally-sized region
         and extracts parameters from each region before finally concatenating all
         the results together.
+
+        .. warning::
+
+            This method is a work-in-progress. It is unlikely to produce decent
+            results at the moment! I aim to improve the way that regions are
+            created in the future.
 
         Parameters
         ----------
@@ -1389,7 +1387,7 @@ class _Estimator1DProc(Estimator):
         fprint: bool = True,
         pdflatex_exe: Optional[Union[str, Path]] = None,
     ) -> None:
-        """Write estimation results to text and PDF files.
+        """Write estimation result tables to a text/PDF file.
 
         Parameters
         ----------
@@ -1402,31 +1400,36 @@ class _Estimator1DProc(Estimator):
             If ``None``, all results will be included.
 
         fmt
-            Must be one of ``"txt"`` or ``"pdf"``.
+            Must be one of ``"txt"`` or ``"pdf"``. If you wish to generate a PDF, you
+            must have a LaTeX installation. See :ref:`LATEX_INSTALL`\.
 
         description
-            A description to add to the result file.
+            Descriptive text to add to the top of the file.
 
         sig_figs
             The number of significant figures to give to parameters. If
-            ``None``, the full value will be used.
+            ``None``, the full value will be used. By default this is set to ``5``.
 
         sci_lims
-            Given a value ``(-x, y)``, for ints ``x`` and ``y``, any parameter ``p``
+            Given a value ``(-x, y)`` with ints ``x`` and ``y``, any parameter ``p``
             with a value which satisfies ``p < 10 ** -x`` or ``p >= 10 ** y`` will be
-            expressed in scientific notation, rather than explicit notation.
-            If ``None``, all values will be expressed explicitely.
+            expressed in scientific notation. If ``None``, scientific notation
+            will never be used.
 
         integral_mode
-            One of ``"relative"`` or ``"absolute"``. With ``"relative"``, the smallest
-            integral will be set to ``1``, and all other integrals will be scaled
-            accordingly. With ``"absolute"``, the absolute integral will be computed.
-            This should be used if you wish to directly compare different datasets.
+            One of ``"relative"`` or ``"absolute"``.
+
+            * If ``"relative"``, the smallest integral will be set to ``1``,
+              and all other integrals will be scaled accordingly.
+            * If ``"absolute"``, the absolute integral will be computed. This
+              should be used if you wish to directly compare different datasets.
 
         force_overwrite
-            If the file specified already exists, and this is set to ``False``, the
-            user will be prompted to specify that they are happy overwriting the
-            current file.
+            Defines behaviour if the specified path already exists:
+
+            * If ``False``, the user will be prompted if they are happy
+              overwriting the current file.
+            * If ``True``, the current file will be overwritten without prompt.
 
         fprint
             Specifies whether or not to print information to the terminal.
