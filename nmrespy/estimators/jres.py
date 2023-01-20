@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 19 Jan 2023 16:50:42 GMT
+# Last Edited: Fri 20 Jan 2023 16:37:34 GMT
 
 from __future__ import annotations
 import copy
@@ -314,6 +314,21 @@ class Estimator2DJ(_Estimator1DProc):
         data = copy.deepcopy(self.data)
         data[0, 0] *= 0.5
         return sig.ft(data)
+
+    @property
+    def spectrum_tilt(self) -> np.ndarray:
+        """Generate the spectrum of the data with a 45° tilt."""
+        spectrum = np.abs(self.spectrum_sinebell).real
+        sw1, sw2 = self.sw()
+        n1, n2 = self.default_pts
+        tilt_factor = (sw1 * n2) / (sw2 * n1)
+        for i, row in enumerate(spectrum):
+            spectrum[i] = np.roll(
+                row,
+                shift=int(tilt_factor * (n1 // 2 - i)),
+            )
+
+        return spectrum
 
     @property
     def spectrum_sinebell(self) -> np.ndarray:
@@ -1402,6 +1417,148 @@ class Estimator2DJ(_Estimator1DProc):
         axs[1, 0].set_ylabel("Hz")
 
         return fig, axs
+
+    def edit_result(
+        self,
+        index: int = -1,
+        add_oscs: Optional[np.ndarray] = None,
+        rm_oscs: Optional[Iterable[int]] = None,
+        merge_oscs: Optional[Iterable[Iterable[int]]] = None,
+        split_oscs: Optional[Dict[int, Optional[Dict]]] = None,
+        mirror_oscs: Optional[Iterable[int]] = None,
+        **estimate_kwargs,
+    ) -> None:
+        r"""Manipulate an estimation result. After the result has been changed,
+        it is subjected to optimisation.
+
+        There are five types of edit that you can make:
+
+        * *Add* new oscillators with defined parameters.
+        * *Remove* oscillators.
+        * *Merge* multiple oscillators into a single oscillator.
+        * *Split* an oscillator into many oscillators.
+        * **Unique to 2DJ**: *Mirror* an oscillator. This allows you add a new
+          oscillator with the same parameters as an osciallator in the result,
+          except with the following frequencies:
+
+            .. math::
+
+                f^{(1)}_{\text{new}} = -f^{(1)}_{\text{old}}
+
+            .. math::
+
+                f^{(2)}_{\text{new}} = f^{(2)}_{\text{old}} - f^{(1)}_{\text{old}}
+
+        Parameters
+        ----------
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. You can also use ``-1`` for the most recent result,
+            ``-2`` for the second most recent, etc. By default, the most
+            recently obtained result will be edited.
+
+        add_oscs
+            The parameters of new oscillators to be added. Should be of shape
+            ``(n, 2 * (1 + self.dim))``, where ``n`` is the number of new
+            oscillators to add. Even when one oscillator is being added this
+            should be a 2D array, i.e.
+
+            * 1D data:
+
+                .. code::
+
+                    params = np.array([[a, φ, f, η]])
+
+            * 2D data:
+
+                .. code::
+
+                    params = np.array([[a, φ, f₁, f₂, η₁, η₂]])
+
+        rm_oscs
+            An iterable of ints for the indices of oscillators to remove from
+            the result.
+
+        merge_oscs
+            An iterable of iterables. Each sub-iterable denotes the indices of
+            oscillators to merge together. For example, ``[[0, 2], [6, 7]]``
+            would mean that oscillators 0 and 2 are merged, and oscillators 6
+            and 7 are merged. A merge involves removing all the oscillators,
+            and creating a new oscillator with the sum of amplitudes, and the
+            average of phases, freqeuncies and damping factors.
+
+        split_oscs
+            A dictionary with ints as keys, denoting the oscillators to split.
+            The values should themselves be dicts, with the following permitted
+            key/value pairs:
+
+            * ``"separation"`` - An list of length equal to ``self.dim``.
+              Indicates the frequency separation of the split oscillators in Hz.
+              If not specified, this will be the spectral resolution in each
+              dimension.
+            * ``"number"`` - An int indicating how many oscillators to split
+              into. If not specified, this will be ``2``.
+            * ``"amp_ratio"`` A list of floats with length equal to the number of
+              oscillators to be split into (see ``"number"``). Specifies the
+              relative amplitudes of the oscillators. If not specified, the amplitudes
+              will be equal.
+
+            As an example for a 1D estimator:
+
+            .. code::
+
+                split_oscs = {
+                    2: {
+                        "separation": 1.,  # if 1D, don't need a list
+                    },
+                    5: {
+                        "number": 3,
+                        "amp_ratio": [1., 2., 1.],
+                    },
+                }
+
+            Here, 2 oscillators will be split.
+
+            * Oscillator 2 will be split into 2 (default) oscillators with
+              equal amplitude (default). These will be separated by 1Hz.
+            * Oscillator 5 will be split into 3 oscillators with relative
+              amplitudes 1:2:1. These will be separated by ``self.sw()[0] /
+              self.default_pts()[0]`` Hz (default).
+
+        mirror_oscs
+            An interable of oscillators to mirror (see the description above).
+
+        estimate_kwargs
+            Keyword arguments to provide to the call to :py:meth:`estimate`. Note
+            that ``"initial_guess"`` and ``"region_unit"`` are set internally and
+            will be ignored if given.
+        """
+        sanity_check(self._index_check(index))
+        index, = self._process_indices([index])
+        result, = self.get_results(indices=[index])
+        params = result.get_params()
+        max_osc_idx = len(params) - 1
+        sanity_check(
+            (
+                "mirror_oscs", mirror_oscs, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": max_osc_idx}, True,
+            ),
+        )
+        if mirror_oscs is not None:
+            to_mirror = params[mirror_oscs]
+            mirrored = copy.deepcopy(to_mirror)
+            mirrored[:, 2] = -mirrored[:, 2]
+            mirrored[:, 3] += mirrored[:, 2]
+
+            if isinstance(add_oscs, np.ndarray):
+                add_oscs = np.vstack((add_oscs, mirrored))
+            else:
+                add_oscs = mirrored
+
+        super().edit_result(
+            index, add_oscs, rm_oscs, merge_oscs, split_oscs, **estimate_kwargs,
+        )
 
 
 class ContourApp(tk.Tk):

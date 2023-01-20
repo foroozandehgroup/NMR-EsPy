@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 19 Jan 2023 15:46:43 GMT
+# Last Edited: Fri 20 Jan 2023 15:37:05 GMT
 
 from __future__ import annotations
 import datetime
@@ -634,7 +634,7 @@ class Estimator(ne.ExpInfo):
                 if oscs_to_add is None:
                     oscs_to_add = new_osc
                 else:
-                    oscs_to_add = np.vstack(oscs_to_add, new_osc)
+                    oscs_to_add = np.vstack((oscs_to_add, new_osc))
 
                 idx_to_remove.extend(oscs)
 
@@ -699,7 +699,7 @@ class Estimator(ne.ExpInfo):
         if oscs_to_add is not None:
             params = np.vstack((params, oscs_to_add))
 
-        print("Editing result {index}")
+        print(f"Editing result {index}")
         self._optimise_after_edit(params, result, index, **estimate_kwargs)
 
     def _optimise_after_edit(
@@ -1136,7 +1136,7 @@ class _Estimator1DProc(Estimator):
                 region,
                 noise_region,
                 region_unit=region_unit,
-                twodim_dtype=None if self.dim == 1 else "jres",
+                twodim_dtype=None if self.dim == 1 else "hyper",
             )
 
             region = filter_.get_region()
