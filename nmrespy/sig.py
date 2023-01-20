@@ -1,9 +1,9 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 Jan 2023 23:00:10 GMT
+# Last Edited: Fri 20 Jan 2023 12:19:41 GMT
 
-"""Manipulating and processing NMR signals."""
+"""A module for manipulating and processing NMR signals."""
 
 import copy
 import re
@@ -27,26 +27,23 @@ def make_virtual_echo(
 ) -> np.ndarray:
     """Generate a virtual echo [#]_ from a time-domain signal.
 
-    A vitrual echo is a signal with a purely real Fourier-Tranform and
-    absorption mode line shape if the data is phased.
+    A vitrual echo is a signal with a purely real Fourier-Tranform.
 
     Parameters
     ----------
     data
         The data to construct the virtual echo from. If the data comprises a pair
         of amplitude/phase modulated signals, these should be stored in a single
-        3D array with ``shape[2] == 2``, such that ``data[:, :, 0]`` if the cos/p
-        signal, and ``data[:, :, 1]`` is the sin/n signal.
+        3D array with ``shape[0] == 2``, such that ``data[0]`` is the cos/p
+        signal, and ``data[1]`` is the sin/n signal.
 
     twodim_dtype
         If the data is 2D, this parameter specifies the way to process the data.
         Allowed options are:
 
-        * ``"jres"``: The data should be derived from a J-Resolved (2DJ) experiment.
-        * ``"amp"``: the two signals in axis 2 of ``data`` should be an
-          amplitude modulated pair.
-        * ``"phase"``: the two signals in axis 2 of ``data`` should be a phase
-          modulated pair.
+        * ``"hyper"``: The data is hypercomplex.
+        * ``"amp"``: The data comprises an amplitude-modulated pair.
+        * ``"phase"``: The data comprises a phase-modulated pair.
 
     References
     ----------
@@ -57,7 +54,7 @@ def make_virtual_echo(
     sanity_check(("data", data, sfuncs.check_ndarray))
     if data.ndim == 2:
         sanity_check(
-            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("jres",))
+            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("hyper",))
         )
     elif data.ndim == 3:
         sanity_check(
@@ -72,7 +69,7 @@ def make_virtual_echo(
         ve[pts:] = data[1:][::-1].conj()
         return ve
 
-    if twodim_dtype == "jres":
+    if twodim_dtype == "hyper":
         pts = data.shape
         ve = np.zeros((pts[0], 2 * pts[1] - 1), dtype="complex")
         ve[:, 0] = np.real(data[:, 0])
@@ -82,12 +79,12 @@ def make_virtual_echo(
 
     if twodim_dtype == "amp":
         # TODO NEEDS FIXING
-        cos = data[:, :, 0]
-        sin = data[:, :, 1]
+        cos = data[0]
+        sin = data[1]
 
     elif twodim_dtype == "phase":
-        cos = 0.5 * (data[:, :, 0] + data[:, :, 1])
-        sin = -1j * 0.5 * (data[:, :, 0] - data[:, :, 1])
+        cos = 0.5 * (data[0] + data[1])
+        sin = -1j * 0.5 * (data[0] - data[1])
 
     # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
     # where: Re(cos) -> R₁R₂, Im(cos) -> R₁I₂, Re(sin) -> I₁R₂, Im(sin) -> I₁I₂
@@ -247,7 +244,7 @@ def ft(
     It is conventional in NMR to plot spectra from high to low going
     left to right/down to up. This function utilises the
     `numpy.fft <https://numpy.org/doc/stable/reference/routines.fft.html>`_
-    module to carry out the Fourier Transformation.
+    module.
 
     Parameters
     ----------
@@ -288,7 +285,7 @@ def ift(
 
     This function utilises the
     `numpy.fft <https://numpy.org/doc/stable/reference/routines.fft.html>`_
-    module to carry out the Fourier Transformation.
+    module.
 
     Parameters
     ----------
@@ -445,7 +442,8 @@ def manual_phase_data(
 ) -> Tuple[Optional[Iterable[float]], Optional[Iterable[float]]]:
     """Manual phase correction using a Graphical User Interface.
 
-    .. warning::
+    .. note::
+
        Only 1D spectral data is currently supported.
 
     Parameters
@@ -681,7 +679,7 @@ class PhaseApp(tk.Tk):
 
 
 def add_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
-    """Add noise to an FID.
+    """Add Gaussian white noise noise to an FID.
 
     Parameters
     ----------
@@ -689,22 +687,27 @@ def add_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
         Noiseless FID.
 
     snr
-        The signal-to-noise ratio.
+        The signal-to-noise ratio. The smaller this value, the greater the
+        variance of the noise.
 
     decibels
         If `True`, the snr is taken to be in units of decibels. If `False`,
         it is taken to be simply the ratio of the singal power and noise
         power.
+
+    See also
+    --------
+    :py:func:`make_noise`
     """
     sanity_check(
         ("fid", fid, sfuncs.check_ndarray),
         ("snr", snr, sfuncs.check_float),
         ("decibels", decibels, sfuncs.check_bool),
     )
-    return fid + _make_noise(fid, snr, decibels)
+    return fid + make_noise(fid, snr, decibels)
 
 
-def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
+def make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
     r"""Generate an array of white Guassian complex noise.
 
     The noise will be created with zero mean and a variance that abides by
@@ -735,6 +738,10 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
 
        \rho = \frac{\sum_{n=0}^{N-1} \left(x_n - \mu_x\right)^2}
        {N \cdot 20 \log_10 \left(\mathrm{SNR}_{\mathrm{dB}}\right)}
+
+    See also
+    --------
+    :py:func:`add_noise`
     """
     sanity_check(
         ("fid", fid, sfuncs.check_ndarray),
@@ -770,8 +777,10 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
 def convdta(data: np.ndarray, grpdly: float) -> np.ndarray:
     """Remove the digital filter from time-domain Bruker data.
 
-    This function is inspired by nmrglue's ``nmrglue.fileio.bruker.rm_dig_filter``
-    function.
+    This function is inspired by `nmrglue.fileio.bruker.rm_dig_filter
+    <https://nmrglue.readthedocs.io/en/latest/reference/generated/\
+    nmrglue.fileio.bruker.rm_dig_filter.html?highlight=rm_dig_filter#\
+    nmrglue.fileio.bruker.rm_dig_filter>`_.
 
     Parameters
     ----------
@@ -800,7 +809,10 @@ def baseline_correction(
 ) -> Tuple[np.ndarray, dict]:
     """Apply baseline correction to a 1D dataset.
 
-    The algorithm used for correction is presented in [#]_. **CITE PYBASELINES**
+    The algorithm applied is desribed in [#]_. This uses an implementation
+    provided by `pybaselines
+    <https://pybaselines.readthedocs.io/en/latest/api/pybaselines/api/index.html#\
+    pybaselines.api.Baseline.fabc>`_.
 
     Parameters
     ----------
@@ -808,17 +820,19 @@ def baseline_correction(
         Spectrum to apply baseline correction to.
 
     mask
-        If not ``None``, a boolean array with the same size as ``spectrum``.
-        ``True`` indicates that a particular point comprises baseline, and
-        ``False`` indicates that a point comprises a peak. If ``None``,
-        this is determined automatically.
+        Should be either:
+
+        * ``None``: the points which comprise noise are predicted automatically
+        * A boolean array with the same size as ``spectrum``.
+
+          - ``True`` indicates that a particular point comprises baseline.
+          - ``False`` indicates that a point comprises a peak.
 
     min_length
-        Any region of consecutive baseline points less than ``min_length`` is
-        considered to be a false positive and all points in the region are
-        converted to peak points.  A higher `min_length` ensures less points
-        are falsely assigned as baseline points.  Default is 2, which only
-        removes lone baseline points.
+        *from pybaselines:* Any region of consecutive baseline points less than
+        ``min_length`` is considered to be a false positive and all points in
+        the region are converted to peak points.  A higher `min_length` ensures
+        less points are falsely assigned as baseline points.
 
     Returns
     -------

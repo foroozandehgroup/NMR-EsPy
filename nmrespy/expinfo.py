@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 19 Jan 2023 17:00:26 GMT
+# Last Edited: Fri 20 Jan 2023 11:50:44 GMT
 
 import datetime
 import os
@@ -594,7 +594,7 @@ class ExpInfo(FrequencyConverter):
                 fid = np.einsum("ik,k,kj->ij", z1, alpha, z2)
 
         if snr is not None:
-            fid += sig._make_noise(fid, snr, decibels)
+            fid += sig.make_noise(fid, snr, decibels)
 
         return fid
 
