@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Feb 2023 11:19:27 GMT
+# Last Edited: Tue 21 Feb 2023 17:22:28 GMT
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -278,7 +278,7 @@ def nonlinear_programming(
     offset = expinfo.offset()
     theta0_proc = _shift_offset(theta0_proc, m, offset, "center")
     # Split parameter array into active and passive components
-    active, passive = _split_parameters(theta0_proc, active_idx, passive_idx)
+    active, passive = _split_parameters(theta0_proc, m, active_idx, passive_idx)
     # Get function factory
     function_factory = _get_function_factory(dim, hessian)
 
@@ -485,14 +485,14 @@ def _get_active_passive_indices(
 
 
 def _split_parameters(
-    theta: np.ndarray, active_idx: Iterable[int], passive_idx: Iterable[int],
+    theta: np.ndarray, m: int, active_idx: Iterable[int], passive_idx: Iterable[int],
 ) -> Tuple[np.ndarray, np.ndarray]:
     if not passive_idx:
         return theta, np.array([], dtype="float64")
 
     else:
-        active_slice = _get_slice(active_idx)
-        passive_slice = _get_slice(passive_idx)
+        active_slice = _get_slice(m, active_idx)
+        passive_slice = _get_slice(m, passive_idx)
         return theta[active_slice], theta[passive_slice]
 
 
