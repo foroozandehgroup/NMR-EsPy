@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Feb 2023 11:32:58 GMT
+# Last Edited: Tue 21 Feb 2023 16:56:57 GMT
 
 from __future__ import annotations
 import datetime
@@ -1162,19 +1162,8 @@ class _Estimator1DProc(Estimator):
             mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
             nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
 
-        def get_trim(trim, default, signal):
-            if trim is None:
-                if default is None:
-                    trim = signal.shape[-1]
-                else:
-                    trim = min(default, signal.shape[-1])
-            else:
-                trim = min(trim, signal.shape[-1])
-
-            return trim
-
-        mpm_trim = get_trim(mpm_trim, self.default_mpm_trim, mpm_signal)
-        nlp_trim = get_trim(nlp_trim, self.default_nlp_trim, nlp_signal)
+        mpm_trim = self._get_trim("mpm", mpm_trim, mpm_signal.shape[-1])
+        nlp_trim = self._get_trim("nlp", nlp_trim, nlp_signal.shape[-1])
 
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
@@ -1233,6 +1222,22 @@ class _Estimator1DProc(Estimator):
                 self.sfo,
             )
         )
+
+    def _get_trim(self, type_: str, trim: Optional[float], size: float):
+        default = (
+            self.default_mpm_trim if type_ == "mpm" else
+            self.default_nlp_trim
+        )
+
+        if trim is None:
+            if default is None:
+                trim = size
+            else:
+                trim = min(default, size)
+        else:
+            trim = min(trim, size)
+
+        return trim
 
     @logger
     def subband_estimate(
