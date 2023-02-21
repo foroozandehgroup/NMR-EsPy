@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 20 Jan 2023 15:37:05 GMT
+# Last Edited: Tue 21 Feb 2023 11:32:58 GMT
 
 from __future__ import annotations
 import datetime
@@ -904,6 +904,7 @@ class _Estimator1DProc(Estimator):
         nlp_trim: Optional[int] = None,
         hessian: str = "gauss-newton",
         max_iterations: Optional[int] = None,
+        negative_amps: str = "remove",
         output_mode: Optional[int] = 10,
         save_trajectory: bool = False,
         epsilon: float = 1.0e-8,
@@ -1002,6 +1003,19 @@ class _Estimator1DProc(Estimator):
             of maximum iterations is set, based on the the data dimension and
             the value of ``hessian``.
 
+        negative_amps
+            Indicates how to treat oscillators which have gained negative
+            amplitudes during the optimisation.
+
+            * ``"remove"`` will result in such oscillators being purged from
+              the parameter estimate. The optimisation routine will the be
+              re-run recursively until no oscillators have a negative
+              amplitude.
+            * ``"flip_phase"`` will retain oscillators with negative
+              amplitudes, but the the amplitudes will be multiplied by -1,
+              and a π radians phase shift will be applied.
+            * ``"ignore"`` will do nothing (negative amplitude oscillators will remain).
+
         output_mode
             Dictates what information is sent to stdout.
 
@@ -1098,6 +1112,10 @@ class _Estimator1DProc(Estimator):
             (
                 "max_iterations", max_iterations, sfuncs.check_int, (),
                 {"min_value": 1}, True,
+            ),
+            (
+                "negative_amps", negative_amps, sfuncs.check_one_of,
+                ("remove", "flip_phase", "ignore"),
             ),
             ("output_mode", output_mode, sfuncs.check_int, (), {"min_value": 0}, True),
             ("save_trajectory", save_trajectory, sfuncs.check_bool),
@@ -1197,9 +1215,8 @@ class _Estimator1DProc(Estimator):
             mode=mode,
             amp_thold=amp_thold,
             max_iterations=max_iterations,
+            negative_amps=negative_amps,
             output_mode=output_mode,
-            # TODO update in the future
-            negative_amps="remove",
             save_trajectory=save_trajectory,
             tolerance=epsilon,
             eta=eta,

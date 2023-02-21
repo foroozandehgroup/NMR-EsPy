@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 04 Jan 2023 20:19:21 GMT
+# Last Edited: Tue 21 Feb 2023 11:19:27 GMT
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -170,6 +170,7 @@ def nonlinear_programming(
         * ``"flip_phase"`` will retain oscillators with negative
           amplitudes, but the the amplitudes will be multiplied by -1,
           and a π radians phase shift will be applied.
+        * ``"ignore"`` will do nothing (negative amplitude oscillators will remain).
 
     output_mode
         Should be an integer greater than or equal to ``0`` or ``None``. If
@@ -220,7 +221,7 @@ def nonlinear_programming(
         ),
         (
             "negative_amps", negative_amps, sfuncs.check_one_of,
-            ("remove", "flip_phase"),
+            ("remove", "flip_phase", "ignore"),
         ),
         ("output_mode", output_mode, sfuncs.check_int, (), {"min_value": 0}, True),
         ("save_trajectory", save_trajectory, sfuncs.check_bool),
@@ -328,19 +329,22 @@ def nonlinear_programming(
         # `rerun` flag specifies whether or not to rerun the optimiser as some
         # oscillators have been purged.
         rerun = False
-        if 0 in active_idx:
+        if negative_amps == "ignore":
+            pass
+
+        elif 0 in active_idx:
             # Check for negative ampltiudes
             negative_idx = list(np.where(active[: m] <= 0.)[0])
 
             if negative_idx:
                 if output_mode is not None:
-                    print(
-                        f"{ORA}Negative amplitudes detected. These"
-                        f" oscillators will be removed{END}"
-                    )
+                    print(f"{ORA}Negative amplitudes detected.")
 
                 # Remove negative oscillators
                 if negative_amps == "remove":
+                    if output_mode is not None:
+                        print(f"These oscillators will be removed")
+
                     rerun = True
                     active = np.delete(
                         active, _get_slice(m, active_idx, osc_idx=negative_idx),
@@ -351,11 +355,16 @@ def nonlinear_programming(
                     m -= len(negative_idx)
 
                     if output_mode is not None:
-                        print(f"{ORA}Updated number of oscillators: {m}{END}")
+                        print(f"Updated number of oscillators: {m}{END}")
 
                 # Make negative amplitude oscillators positive and flip
                 # phase by 180°
                 elif negative_amps == "flip_phase":
+                    if output_mode is not None:
+                        print(
+                            "These oscillators will have their amplitudes "
+                            f"multiplied by -1, and phases shifted by 180°"
+                        )
                     amp_slice = _get_slice(m, [0], osc_idx=negative_idx)
                     active[amp_slice] *= -1
                     phase_slice = _get_slice(m, [1], osc_idx=negative_idx)
