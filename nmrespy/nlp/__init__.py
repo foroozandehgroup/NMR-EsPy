@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Feb 2023 17:22:28 GMT
+# Last Edited: Tue 21 Feb 2023 17:29:42 GMT
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -268,6 +268,9 @@ def nonlinear_programming(
     if amp_thold is None:
         amp_thold = 0.0
     # TODO: Frequency threshold processing
+
+    if "p" not in mode:
+        phase_variance = False
 
     active_idx, passive_idx = _get_active_passive_indices(mode, dim)
     # Flatten parameter array: (m, p) -> (p * m,)
