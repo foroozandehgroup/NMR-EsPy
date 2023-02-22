@@ -1,7 +1,7 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 01 Nov 2022 16:11:35 GMT
+# Last Edited: Wed 22 Feb 2023 19:34:27 GMT
 
 """Definitions of fidelities, gradients, and Hessians."""
 
@@ -357,8 +357,7 @@ def obj_1d(active: np.ndarray, *args: args_type) -> float:
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
         phases = theta[i * m : (i + 1) * m]
-        mu = np.einsum("i->", phases) / m
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
+        obj += pv_obj(phases)
 
     return obj
 
@@ -433,12 +432,10 @@ def obj_grad_1d(active: np.ndarray, *args: args_type) -> Tuple[float, np.ndarray
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
         phases = theta[i * m : (i + 1) * m]
-        mu = np.einsum("i->", phases) / m
+        pv_obj, pv_grad = pv_obj_grad(phases)
+        obj += pv_obj
+        grad[i * m : (i + 1) * m] += pv_grad
 
-        # Var(φ)
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
-        # ∂Var(φ)/∂φᵢ
-        grad[i * m : (i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
     return obj, grad
 
 
@@ -528,11 +525,8 @@ def hess_1d(active: np.ndarray, *args: args_type) -> np.ndarray:
         # If 0 in idx, phases will be between m and 2m, as amps
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
-        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] -= 2 / (m ** 2 * np.pi)
-        hess[
-            main_diagonals[0][i * m : (i + 1) * m],
-            main_diagonals[1][i * m : (i + 1) * m],
-        ] += 2 / (np.pi * m)
+        phases = theta[i * m : (i + 1) * m]
+        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] += pv_hess(phases)
 
     return hess
 
@@ -663,18 +657,10 @@ def obj_grad_gauss_newton_hess_1d(
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
         phases = theta[i * m : (i + 1) * m]
-        mu = np.einsum("i->", phases) / m
-        # Var(φ)
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
-        # ∂Var(φ)/∂φᵢ
-        grad[i * m : (i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
-        # ∂²Var(φ)/∂φᵢ∂φⱼ
-        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] -= 2 / (m ** 2 * np.pi)
-        main_diagonals = _diagonal_indices(hess.shape[0], k=0)
-        hess[
-            main_diagonals[0][i * m : (i + 1) * m],
-            main_diagonals[1][i * m : (i + 1) * m],
-        ] += 2 / (np.pi * m)
+        pv_obj, pv_grad, pv_hess = pv_obj_grad_hess(phases)
+        obj += pv_obj
+        grad[i * m : (i + 1) * m] += pv_grad
+        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] += pv_hess
 
     return obj, grad, hess
 
@@ -779,17 +765,10 @@ def obj_grad_true_hess_1d(active: np.ndarray, *args):
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
         phases = theta[i * m : (i + 1) * m]
-        mu = np.einsum("i->", phases) / m
-        # Var(φ)
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
-        # ∂Var(φ)/∂φᵢ
-        grad[i * m : (i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
-        # ∂²Var(φ)/∂φᵢ∂φⱼ
-        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] -= 2 / (m ** 2 * np.pi)
-        hess[
-            main_diagonals[0][i * m : (i + 1) * m],
-            main_diagonals[1][i * m : (i + 1) * m],
-        ] += 2 / (np.pi * m)
+        pv_obj, pv_grad, pv_hess = pv_obj_grad_hess(phases)
+        obj += pv_obj
+        grad[i * m : (i + 1) * m] += pv_grad
+        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] += pv_hess
 
     return obj, grad, hess
 
@@ -1155,9 +1134,11 @@ def obj_2d(active: np.ndarray, *args: args_type) -> float:
     obj = np.real(np.einsum("ij,ij->", diff.conj(), diff))
 
     if phasevar:
-        phases = theta[m : 2 * m]
-        mu = np.einsum("i->", phases) / m
-        obj += data.shape[0] * np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
+        # If 0 in idx, phases will be between m and 2m, as amps
+        # also present if not, phases will be between 0 and m
+        i = 1 if 0 in idx else 0
+        phases = theta[i * m : (i + 1) * m]
+        obj += pv_obj(phases)
 
     return obj
 
@@ -1250,11 +1231,9 @@ def obj_grad_2d(active: np.ndarray, *args: args_type) -> Tuple[float, np.ndarray
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
         phases = theta[i * m : (i + 1) * m]
-        mu = np.einsum("i->", phases) / m
-        # Var(φ)
-        obj += data.shape[0] * np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
-        # ∂Var(φ)/∂φᵢ
-        grad[i * m : (i + 1) * m] += data.shape[0] * ((2 / m) * (phases - mu)) / np.pi
+        pv_obj, pv_grad = pv_obj_grad(phases)
+        obj += pv_obj
+        grad[i * m : (i + 1) * m] += pv_grad
 
     return obj, grad
 
@@ -1355,12 +1334,8 @@ def hess_2d(active: np.ndarray, *args: args_type) -> np.ndarray:
         # If 0 in idx, phases will be between m and 2m, as amps
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
-        # ∂²Var(φ)/∂φᵢ∂φⱼ
-        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] -= 2 / (m ** 2 * np.pi)
-        hess[
-            main_diag_indices[0][i * m : (i + 1) * m],
-            main_diag_indices[1][i * m : (i + 1) * m],
-        ] += data.shape[0] * 2 / (np.pi * m)
+        phases = theta[i * m : (i + 1) * m]
+        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] += pv_hess(phases)
 
     return hess
 
@@ -1506,20 +1481,14 @@ def obj_grad_gauss_newton_hess_2d(
     hess = 2 * np.real(np.einsum("ijk,ijl->kl", d1.conj(), d1, optimize=path))
 
     if phasevar:
+        # If 0 in idx, phases will be between m and 2m, as amps
+        # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
         phases = theta[i * m : (i + 1) * m]
-        mu = np.einsum("i->", phases) / m
-        # Var(φ)
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
-        # ∂Var(φ)/∂φᵢ
-        grad[i * m : (i + 1) * m] += ((2 / m) * (phases - mu)) / np.pi
-        # ∂²Var(φ)/∂φᵢ∂φⱼ
-        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] -= 2 / (m ** 2 * np.pi)
-        main_diagonals = _diagonal_indices(hess.shape[0], k=0)
-        hess[
-            main_diagonals[0][i * m : (i + 1) * m],
-            main_diagonals[1][i * m : (i + 1) * m],
-        ] += 2 / (np.pi * m)
+        pv_obj, pv_grad, pv_hess = pv_obj_grad_hess(phases)
+        obj += pv_obj
+        grad[i * m : (i + 1) * m] += pv_grad
+        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] += pv_hess
 
     return obj, grad, hess
 
@@ -1632,17 +1601,80 @@ def obj_grad_true_hess_2d(active: np.ndarray, *args):
         # also present if not, phases will be between 0 and m
         i = 1 if 0 in idx else 0
         phases = theta[i * m : (i + 1) * m]
-        mu = np.einsum("i->", phases) / m
-        # Var(φ)
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
-        # ∂Var(φ)/∂φᵢ
-        grad[i * m : (i + 1) * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
-        # ∂²Var(φ)/∂φᵢ∂φⱼ
-        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] -= 2 / (m ** 2 * np.pi)
-        hess[
-            main_diag_indices[0][i * m : (i + 1) * m],
-            main_diag_indices[1][i * m : (i + 1) * m],
-        ] += 2 / (np.pi * m)
+        pv_obj, pv_grad, pv_hess = pv_obj_grad_hess(phases)
+        obj += pv_obj
+        grad[i * m : (i + 1) * m] += pv_grad
+        hess[i * m : (i + 1) * m, i * m : (i + 1) * m] += pv_hess
+
+    return obj, grad, hess
+
+
+def cos_sum(phases: np.ndarray) -> float:
+    return np.sum(np.cos(phases))
+
+
+def sin_sum(phases: np.ndarray) -> float:
+    return np.sum(np.cos(phases))
+
+
+def pv_obj(phases: np.ndarray) -> float:
+    return 1 - np.sqrt(cos_sum(phases) ** 2 + sin_sum(phases) ** 2) / phases.size
+
+
+def pv_obj_grad(phases: np.ndarray) -> Tuple[float, np.ndarray]:
+    cs = cos_sum(phases)
+    ss = sin_sum(phases)
+    r = np.sqrt(cs ** 2 + ss ** 2)
+    m = phases.size
+    # Var(φ)
+    obj = 1 - (r / m)
+    # ∂Var(φ)/∂φᵢ
+    grad = (1 / (m * r)) * (np.sin(phases) * cs - np.cos(phases) * ss)
+
+    return obj, grad
+
+
+def pv_hess(phases: np.ndarray) -> np.ndarray:
+    c_sum = cos_sum(phases)
+    s_sum = sin_sum(phases)
+    cos = np.cos(phases)
+    sin = np.sin(phases)
+    r = np.sqrt(c_sum ** 2 + s_sum ** 2)
+    m = phases.size
+
+    x = (sin * c_sum) - (cos * s_sum)
+    term_1 = (1 / (r ** 2)) * np.outer(x, x)
+    phis = np.zeros((m, m))
+    phis[:] = phases
+    term_2 = -np.cos(phis.T - phis)
+
+    hess = term_1 + term_2
+    hess[np.diag_indices(m)] += cos * c_sum + sin * s_sum
+
+    return hess
+
+
+def pv_obj_grad_hess(phases: np.ndarray) -> Tuple[float, np.ndarray, np.ndarray]:
+    c_sum = cos_sum(phases)
+    s_sum = sin_sum(phases)
+    cos = np.cos(phases)
+    sin = np.sin(phases)
+    r = np.sqrt(c_sum ** 2 + s_sum ** 2)
+    m = phases.size
+
+    # Var(φ)
+    obj = 1 - (r / m)
+    # ∂Var(φ)/∂φᵢ
+    grad = (1 / (m * r)) * (np.sin(phases) * c_sum - np.cos(phases) * s_sum)
+    # ∂²Var(φ)/∂φᵢ∂φⱼ
+    x = (sin * c_sum) - (cos * s_sum)
+    term_1 = (1 / (r ** 2)) * np.outer(x, x)
+    phis = np.zeros((m, m))
+    phis[:] = phases
+    term_2 = -np.cos(phis.T - phis)
+
+    hess = term_1 + term_2
+    hess[np.diag_indices(m)] += cos * c_sum + sin * s_sum
 
     return obj, grad, hess
 
