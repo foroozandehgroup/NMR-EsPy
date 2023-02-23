@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 23 Feb 2023 00:27:06 GMT
+# Last Edited: Thu 23 Feb 2023 12:22:21 GMT
 
 from pathlib import Path
 from typing import Iterable, Optional, Tuple, Union
@@ -272,6 +272,44 @@ class EstimatorSeq1D(_Estimator1DProc):
 
         self._results.append(results)
 
+    def fit(self, index: int, osc: int, func: str) -> Tuple[float, float]:
+        sanity_check(
+            self._index_check(index),
+            ("func", func, sfuncs.check_one_of, ("T1",)),
+        )
+        res = self.get_results(indices=[index])[0]
+        n_oscs = res[0].get_params().shape[0]
+        sanity_check(
+            (
+                "osc", osc, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": n_oscs - 1},
+            ),
+        )
+
+        integrals = np.array(
+            [
+                np.real(
+                    self.oscillator_integrals(
+                        np.expand_dims(r.get_params()[osc], axis=0),
+                        absolute=False,
+                    )
+                )
+                for r in res
+            ]
+        )[:, 0]
+        x0 = np.array([integrals[-1], 1.])
+
+        if func == "T1":
+            function_factory = FunctionFactoryInvRec
+
+        result = trust_ncg(
+            x0=x0,
+            function_factory=function_factory,
+            args=(integrals, self.increments),
+        ).x
+
+        return result
+
     def plot_result(self):
         result = self.get_results([0])[0]
         region = result[0].get_region()
@@ -303,31 +341,29 @@ class EstimatorInvRec(EstimatorSeq1D):
     ) -> None:
         super().__init__(data, expinfo, datapath, increments, unit="s")
 
-    def fit(self, index: int, osc: int) -> Tuple[float, float]:
-        res = self.get_results(indices=[index])[0]
-        integrals = np.array(
-            [
-                np.real(
-                    self.oscillator_integrals(
-                        np.expand_dims(r.get_params()[osc], axis=0),
-                        absolute=False,
-                    )
-                )
-                for r in res
-            ]
-        )[:, 0]
-        x0 = np.array([integrals[-1], 1.])
+    def fit(self, index: int, osc: int) -> Tuple[int, int]:
+        r"""Fit estimation result.
 
-        I0, T1 = trust_ncg(
-            x0=x0,
-            function_factory=FunctionFactoryInvRec,
-            args=(integrals, self.increments),
-        ).x
+        .. math::
 
+            I = I_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
+        """
+        I0, T1 = super().fit(index, osc, func="T1")
         return I0, T1
 
     @staticmethod
-    def obj_grad_hess(theta: np.ndarray, *args: Tuple[np.ndarray, np.ndarray]) -> float:
+    def _obj_grad_hess(
+        theta: np.ndarray,
+        *args: Tuple[np.ndarray, np.ndarray],
+    ) -> float:
+        r"""
+        Objective, gradient and Hessian for fitting inversion recovery (T1) data.
+        The model to be fit is given by
+
+        .. math::
+
+            I = I_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
+        """
         I0, T1 = theta
         integrals, taus = args
 
@@ -361,4 +397,4 @@ class EstimatorInvRec(EstimatorSeq1D):
 
 class FunctionFactoryInvRec(FunctionFactory):
     def __init__(self, theta: np.ndarray, *args) -> None:
-        super().__init__(theta, EstimatorInvRec.obj_grad_hess, *args)
+        super().__init__(theta, EstimatorInvRec._obj_grad_hess, *args)
