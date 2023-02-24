@@ -1,7 +1,7 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Feb 2023 11:04:41 GMT
+# Last Edited: Fri 24 Feb 2023 11:11:21 GMT
 
 """Definitions of fidelities, gradients, and Hessians."""
 
@@ -1634,7 +1634,7 @@ def pv_obj_grad(phases: np.ndarray) -> Tuple[float, np.ndarray]:
     return obj, grad
 
 
-def pv_hess(phases: np.darray) -> np.ndarray:
+def pv_hess(phases: np.ndarray) -> np.ndarray:
     cos = np.cos(phases)
     c_sum = np.sum(cos)
     sin = np.sin(phases)
