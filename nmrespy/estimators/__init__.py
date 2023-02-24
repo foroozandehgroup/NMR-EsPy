@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Feb 2023 16:56:57 GMT
+# Last Edited: Fri 24 Feb 2023 14:40:17 GMT
 
 from __future__ import annotations
 import datetime
@@ -875,7 +875,7 @@ class _Estimator1DProc(Estimator):
         new_shape = (*shape[:-1], new_size)
         new_data = np.zeros(new_shape, dtype="complex128")
 
-        if self.dim == 1:
+        if self.data.ndim == 1:
             data = np.expand_dims(self.data, axis=0)
             new_data = np.expand_dims(new_data, axis=0)
         else:
@@ -886,8 +886,10 @@ class _Estimator1DProc(Estimator):
             spectrum, _ = sig.baseline_correction(spectrum, min_length=min_length)
             new_data[i] = sig.ift(spectrum)[:new_size]
 
-        self._data = new_data[0] if self.dim == 1 else new_data
-        self.default_pts = self._data.shape
+        self._data = new_data[0] if self.data.ndim == 1 else new_data
+        new_default_pts = list(self.default_pts)
+        new_default_pts[-1] = self._data.shape[-1]
+        self._default_pts = tuple(new_default_pts)
 
     @logger
     def estimate(

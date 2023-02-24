@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 19 Jan 2023 14:48:40 GMT
+# Last Edited: Fri 24 Feb 2023 15:12:53 GMT
 
 from __future__ import annotations
 import copy
@@ -437,6 +437,8 @@ class Estimator1D(_Estimator1DProc):
         xaxis_label_height: float = 0.02,
         xaxis_ticks: Optional[Iterable[Tuple[int, Iterable[float]]]] = None,
         oscillator_colors: Any = None,
+        plot_model: bool = True,
+        plot_residual: bool = True,
         model_shift: Optional[float] = None,
         label_peaks: bool = True,
         denote_regions: bool = False,
@@ -518,6 +520,16 @@ class Estimator1D(_Estimator1DProc):
               + :oscgreen:`#2BB539`
               + :oscred:`#D4200C`
 
+        plot_model
+            .. todo::
+
+                Add description
+
+        plot_residual
+            .. todo::
+
+                Add description
+
         model_shift
             The vertical displacement of the model relative to the data.
 
@@ -552,10 +564,10 @@ class Estimator1D(_Estimator1DProc):
                 "high_resolution_pts", high_resolution_pts, sfuncs.check_int, (),
                 {"min_value": self.default_pts[-1]}, True,
             ),
-            (
-                "figure_size", figure_size, sfuncs.check_float_list, (),
-                {"length": 2, "must_be_positive": True},
-            ),
+            # (
+            #     "figure_size", figure_size, sfuncs.check_float_list, (),
+            #     {"length": 2, "must_be_positive": True},
+            # ),
             self._funit_check(region_unit, "region_unit"),
             (
                 "axes_left", axes_left, sfuncs.check_float, (),
@@ -581,6 +593,8 @@ class Estimator1D(_Estimator1DProc):
                 "xaxis_label_height", xaxis_label_height, sfuncs.check_float, (),
                 {"min_value": 0., "max_value": 1.},
             ),
+            ("plot_model", plot_model, sfuncs.check_bool),
+            ("plot_residual", plot_residual, sfuncs.check_bool),
             (
                 "model_shift", model_shift, sfuncs.check_float, (),
                 {"min_value": 0.}, True,
@@ -632,8 +646,16 @@ class Estimator1D(_Estimator1DProc):
             model_shift,
         )
 
-        self._plot_data(axs[0], data, merge_indices, oscillator_colors)
-        self._set_ylim(axs[0], data)
+        self._plot_data(
+            axs[0],
+            data,
+            merge_indices,
+            oscillator_colors,
+            label_peaks,
+            plot_model,
+            plot_residual,
+        )
+        self._set_ylim(axs[0], data, plot_model, plot_residual)
 
         return fig, axs
 
@@ -701,9 +723,10 @@ class Estimator1D(_Estimator1DProc):
 
         rest_lines = (
             [osc[1] for oscs in data["oscillators"] for osc in oscs] +
-            [spectrum for spectrum in data["spectra"]] +
-            [model for model in data["models"]]
+            [model for model in data["models"]] +
+            [spectrum for spectrum in data["spectra"]]
         )
+
         rest_span = self._get_data_span(rest_lines)
 
         t = ((resid_span[1] - resid_span[0]) + (rest_span[1] - rest_span[0])) / 0.91
@@ -726,15 +749,20 @@ class Estimator1D(_Estimator1DProc):
         data: Dict,
         merge_indices: Iterable[Iterable[int]],
         oscillator_colors: Any,
+        label_peaks: bool,
+        plot_model: bool,
+        plot_residual: bool,
     ) -> None:
-        for ax, shifts_, residual in zip(axs, data["shifts"], data["residuals"]):
-            ax.plot(shifts_, residual, color="#808080")
+        if plot_residual:
+            for ax, shifts_, residual in zip(axs, data["shifts"], data["residuals"]):
+                ax.plot(shifts_, residual, color="#808080")
 
         for ax, shifts_, spectrum in zip(axs, data["shifts"], data["spectra"]):
             ax.plot(shifts_, spectrum, color="#000000")
 
-        for ax, shifts_hr, model in zip(axs, data["shifts_highres"], data["models"]):
-            ax.plot(shifts_hr, model, color="#808080")
+        if plot_model:
+            for ax, shifts_hr, model in zip(axs, data["shifts_highres"], data["models"]):  # noqa: E501
+                ax.plot(shifts_hr, model, color="#808080")
 
         noscs = sum(len(oscs) for oscs in data["oscillators"])
         colors = make_color_cycle(oscillator_colors, noscs)
@@ -747,11 +775,13 @@ class Estimator1D(_Estimator1DProc):
             for i, (label, osc) in enumerate(oscs):
                 color = next(colors)
                 ax.plot(shifts_hr, osc, color=color)
-                ax.annotate(
-                    str(label),
-                    xy=(shifts_hr[np.argmax(osc)], np.amax(osc)),
-                    color=color,
-                )
+                if label_peaks:
+                    label_idx = np.argmax(np.abs(osc))
+                    ax.annotate(
+                        str(label),
+                        xy=(shifts_hr[label_idx], osc[label_idx]),
+                        color=color,
+                    )
 
     @staticmethod
     def _get_data_span(data: Iterable[np.ndarray]) -> Tuple[float, float]:
@@ -760,13 +790,22 @@ class Estimator1D(_Estimator1DProc):
             max([np.amax(datum) for datum in data]),
         )
 
-    def _set_ylim(self, axs: Iterable[mpl.axes.Axes], data: Dict) -> None:
+    def _set_ylim(
+        self,
+        axs: Iterable[mpl.axes.Axes],
+        data: Dict,
+        plot_model: bool,
+        plot_residual: bool,
+    ) -> None:
         all_lines = (
             [osc[1] for oscs in data["oscillators"] for osc in oscs] +
-            [spectrum for spectrum in data["spectra"]] +
-            [model for model in data["models"]] +
-            [residual for residual in data["residuals"]]
+            [spectrum for spectrum in data["spectra"]]
         )
+        if plot_model:
+            all_lines += [model for model in data["models"]]
+        if plot_residual:
+            all_lines += [residual for residual in data["residuals"]]
+
         data_span = self._get_data_span(all_lines)
         h = data_span[1] - data_span[0]
         bottom = data_span[0] - (0.03 * h)
