@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Feb 2023 16:08:37 GMT
+# Last Edited: Fri 24 Feb 2023 19:23:09 GMT
 
 import copy
 from pathlib import Path
@@ -404,8 +404,7 @@ class EstimatorSeq1D(Estimator1D):
         )
         results = [
             Result(
-                x0,
-                # initial_result.x,
+                initial_result.x,
                 initial_result.errors,
                 region,
                 noise_region,
@@ -471,19 +470,20 @@ class EstimatorSeq1D(Estimator1D):
             function_factory = FunctionFactoryInvRec
 
         results = []
+        errors = []
         for integs in integrals:
             if func == "T1":
                 x0 = np.array([integs[-1], 1.])
 
-            results.append(
-                trust_ncg(
-                    x0=x0,
-                    function_factory=function_factory,
-                    args=(integs, self.increments),
-                ).x
+            nlp_result = trust_ncg(
+                x0=x0,
+                function_factory=function_factory,
+                args=(integs, self.increments),
             )
+            results.append(nlp_result.x)
+            errors.append(nlp_result.errors / np.sqrt(len(self.increments)))
 
-        return results
+        return results, errors
 
     def integrals(
         self,
@@ -719,8 +719,8 @@ class EstimatorInvRec(EstimatorSeq1D):
             the first element corresponds to :math:`I_{\infty}`, and the second
             element corresponds to :math:`T_1`.
         """
-        result = self._fit("T1", oscs, index=index)
-        return result
+        result, errors = self._fit("T1", oscs, index=index)
+        return result, errors
 
     def model(
         self,
@@ -811,6 +811,145 @@ class EstimatorInvRec(EstimatorSeq1D):
         hess = -2 * (np.einsum("i,ijk->jk", y_minus_x, d2) - d1.T @ d1)
 
         return obj, grad, hess
+
+    def plot_fit_single_oscillator(
+        self,
+        osc: int,
+        index: int = -1,
+        fit_increments: int = 100,
+        color: Any = "#808080",
+        **kwargs,
+    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
+        sanity_check(
+            self._index_check(index),
+            (
+                "fit_increments", fit_increments, sfuncs.check_int, (),
+                {"min_value": len(self.increments)},
+            ),
+            ("color", color, sfuncs.check_mpl_color),
+        )
+        n_oscs = self.get_results(indices=[index])[0][0].get_params().shape[0]
+        sanity_check(
+            ("osc", osc, sfuncs.check_int, (), {"min_value": 0, "max_value": n_oscs - 1}),  # noqa: E501
+        )
+        params, errors = self.fit([osc], index)
+        Iinfty, T1 = params[0]
+        Iinfty_error, T1_error = errors[0]
+
+        fig, ax = plt.subplots(**kwargs)
+        x = np.linspace(self.increments[0], self.increments[-1], fit_increments)
+        ax.plot(x, self.model(Iinfty, T1, x), color=color)
+        ax.scatter(self.increments, self.integrals(oscs=[osc], index=index), color=color)  # noqa: E501
+        ax.set_xlabel(self.increment_label)
+        ax.set_ylabel("$I$")
+
+        text = (
+            f"$I_{{\\infty}} = \\num{{{Iinfty:.4g}}} \\pm "
+            f"\\num{{{Iinfty_error:.4g}}}$\n"
+            f"$T_1 = \\num{{{T1:.4g}}} \\pm "
+            f"\\num{{{T1_error:.4g}}}$ s"
+        )
+        ax.text(0.02, 0.98, text, ha="left", va="top", transform=ax.transAxes)
+
+        return fig, ax
+
+    def plot_fit_multi_oscillators(
+        self,
+        oscs: Optional[Iterable[int]] = None,
+        index: int = -1,
+        fit_increments: int = 100,
+        xs: str = "osc_idx",
+        colors: Any = None,
+        azim: float = 45.,
+        elev: float = 45.,
+        **kwargs,
+    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
+        sanity_check(
+            self._index_check(index),
+            (
+                "fit_increments", fit_increments, sfuncs.check_int, (),
+                {"min_value": len(self.increments)},
+            ),
+            ("xs", xs, sfuncs.check_one_of, ("osc_idx", "hz", "ppm")),
+            ("colors", colors, sfuncs.check_oscillator_colors, (), {}, True),
+            ("elev", elev, sfuncs.check_float),
+            ("azim", azim, sfuncs.check_float),
+        )
+        res_params = self.get_results(indices=[index])[0][0].get_params()
+        n_oscs = res_params.shape[0]
+        sanity_check(self._oscs_check(oscs, n_oscs))
+        oscs = self._proc_oscs(oscs, n_oscs)
+
+        params, errors = self.fit(oscs, index)
+        integrals = self.integrals(oscs, index=index)
+
+        fig = plt.figure(**kwargs)
+        ax = fig.add_subplot(projection="3d")
+
+        colors = make_color_cycle(colors, len(oscs))
+        zorder = n_oscs
+        span_data = []
+
+        if xs == "osc_idx":
+            xs = oscs
+            xlabel = "osc"
+        else:
+            nuc = self.unicode_nuclei
+            unit = xs.replace("h", "H")
+            if nuc is None:
+                xlabel = unit
+            else:
+                xlabel = f"{nuc[-1]} ({unit})"
+            if xs == "hz":
+                xs = res_params[oscs, 2]
+            elif xs == "ppm":
+                xs = res_params[oscs, 2] / self.sfo[-1]
+
+        for x, (Iinfty, T1), integs in zip(xs, params, integrals):
+            color = next(colors)
+            x_scatter = np.full(self.increments.shape, x)
+            y_scatter = self.increments
+            z_scatter = integs
+            span_data.append(z_scatter)
+            ax.scatter(
+                x_scatter,
+                y_scatter,
+                z_scatter,
+                color=color,
+                zorder=zorder,
+                lw=0.,
+                depthshade=False,
+            )
+
+            x_fit = np.full(fit_increments, x)
+            y_fit = np.linspace(self.increments[0], self.increments[-1], fit_increments)
+            z_fit = self.model(Iinfty, T1, y_fit)
+            span_data.append(z_fit)
+            ax.plot(x_fit, y_fit, z_fit, color=color, zorder=zorder)
+
+            zorder -= 1
+
+        # azim at 270 provies a face-on view of the spectra.
+        ax.view_init(elev=elev, azim=270. + azim)
+
+        ax.set_xlabel(xlabel)
+        ax.set_xlim(reversed(ax.get_xlim()))
+
+        # Configure y-axis
+        ax.set_ylim(self.increments[0], self.increments[-1])
+        if self.increment_label is not None:
+            ax.set_ylabel(self.increment_label)
+
+        span = self._get_data_span(span_data)
+
+        # Configure z-axis
+        h = span[1] - span[0]
+        bottom = span[0] - 0.03 * h
+        top = span[1] + 0.03 * h
+        ax.set_zlim(bottom, top)
+        ax.set_zlabel("$I$")
+
+        return fig, ax
 
 
 class FunctionFactoryInvRec(FunctionFactory):
