@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Feb 2023 15:15:26 GMT
+# Last Edited: Fri 24 Feb 2023 16:08:37 GMT
 
 import copy
 from pathlib import Path
@@ -448,7 +448,12 @@ class EstimatorSeq1D(Estimator1D):
 
         self._results.append(results)
 
-    def _fit(self, osc: int, func: str, index: int = -1,) -> Tuple[float, float]:
+    def _fit(
+        self,
+        func: str,
+        oscs: Optional[Iterable[int]] = None,
+        index: int = -1,
+    ) -> Iterable[np.ndarray]:
         sanity_check(
             self._index_check(index),
             ("func", func, sfuncs.check_one_of, ("T1",)),
@@ -456,49 +461,57 @@ class EstimatorSeq1D(Estimator1D):
         res = self.get_results(indices=[index])[0]
         n_oscs = res[0].get_params().shape[0]
         sanity_check(
-            (
-                "osc", osc, sfuncs.check_int, (),
-                {"min_value": 0, "max_value": n_oscs - 1},
-            ),
+            self._oscs_check(oscs, n_oscs),
         )
+        oscs = self._proc_oscs(oscs, n_oscs)
 
-        integrals = self.integrals(osc, index=index)
-        x0 = np.array([integrals[-1], 1.])
+        integrals = self.integrals(oscs, index=index)
 
         if func == "T1":
             function_factory = FunctionFactoryInvRec
 
-        result = trust_ncg(
-            x0=x0,
-            function_factory=function_factory,
-            args=(integrals, self.increments),
-        ).x
+        results = []
+        for integs in integrals:
+            if func == "T1":
+                x0 = np.array([integs[-1], 1.])
 
-        return result
+            results.append(
+                trust_ncg(
+                    x0=x0,
+                    function_factory=function_factory,
+                    args=(integs, self.increments),
+                ).x
+            )
 
-    def integrals(self, osc: int, index: int = -1) -> np.ndarray:
+        return results
+
+    def integrals(
+        self,
+        oscs: Optional[Iterable[int]] = None,
+        index: int = -1,
+    ) -> Iterable[np.ndarray]:
         sanity_check(
             self._index_check(index),
         )
         res = self.get_results(indices=[index])[0]
         n_oscs = res[0].get_params().shape[0]
         sanity_check(
-            (
-                "osc", osc, sfuncs.check_int, (),
-                {"min_value": 0, "max_value": n_oscs - 1},
-            ),
+            self._oscs_check(oscs, n_oscs),
         )
-
+        oscs = self._proc_oscs(oscs, n_oscs)
         res, = self.get_results(indices=[index])
-        return np.array(
-            [
-                self.oscillator_integrals(
-                    np.expand_dims(r.get_params()[osc], axis=0),
-                    absolute=False,
-                )
-                for r in res
-            ]
-        )[:, 0].real
+        return [
+            np.array(
+                [
+                    self.oscillator_integrals(
+                        np.expand_dims(r.get_params()[osc], axis=0),
+                        absolute=False,
+                    )
+                    for r in res
+                ]
+            )[:, 0].real
+            for osc in oscs
+        ]
 
     def plot_result(
         self,
@@ -619,6 +632,27 @@ class EstimatorSeq1D(Estimator1D):
 
         return fig, axs
 
+    def _oscs_check(self, x: Any, n_oscs: int):
+        return (
+            "oscs", x, sfuncs.check_int_list, (),
+            {
+                "min_value": 0,
+                "max_value": n_oscs - 1,
+                "len_one_can_be_listless": True,
+            }, True,
+        )
+
+    def _proc_oscs(
+        self,
+        oscs: Optional[Union[int, Iterable[int]]],
+        n_oscs: int,
+    ) -> Iterable[int]:
+        if oscs is None:
+            oscs = list(range(n_oscs))
+        elif isinstance(oscs, int):
+            oscs = [oscs]
+        return oscs
+
 
 class EstimatorInvRec(EstimatorSeq1D):
     """Estimation class for the consideration of datasets acquired by an inversion
@@ -650,11 +684,15 @@ class EstimatorInvRec(EstimatorSeq1D):
         super().__init__(
             data, expinfo, datapath, increments=delays, increment_label="$\\tau$ (s)")
 
-    def fit(self, osc: int, index: int = -1) -> Tuple[float, float]:
-        r"""Fit estimation result for a given oscillator across increments in
+    def fit(
+        self,
+        oscs: Optional[Iterable[int]] = None,
+        index: int = -1
+    ) -> Iterable[np.ndarray]:
+        r"""Fit estimation result for the given oscillators across increments in
         order to predict the longitudinal relaxtation time, :math:`T_1`.
 
-        For the oscillator specified, the integral of the oscilator's peak is
+        For the oscillators specified, the integrals of the oscilators' peaks are
         determined at each increment, and the following function is fit:
 
         .. math::
@@ -667,21 +705,22 @@ class EstimatorInvRec(EstimatorSeq1D):
 
         Parameters
         ----------
-        index
-            The result index.
+        oscs
+            The indices of the oscillators to considier. If ``None``, all oscillators
+            are consdiered.
 
-        osc
-            The index of the oscillator to considier.
+        index
+            The result index. By default, the last result acquired is considered.
 
         Returns
         -------
-        I0
-
-        T1
-            The predicted longitudinal relaxation time (s).
+        Iterable[np.ndarray]
+            Iterable (list) of numpy arrays of shape ``(2,)``. For each array,
+            the first element corresponds to :math:`I_{\infty}`, and the second
+            element corresponds to :math:`T_1`.
         """
-        I0, T1 = self._fit(osc, func="T1", index=index)
-        return I0, T1
+        result = self._fit("T1", oscs, index=index)
+        return result
 
     def model(
         self,
