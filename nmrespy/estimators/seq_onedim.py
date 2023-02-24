@@ -1,30 +1,27 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 23 Feb 2023 12:22:21 GMT
+# Last Edited: Fri 24 Feb 2023 11:42:20 GMT
 
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import nmrespy as ne
 from nmrespy._sanity import sanity_check, funcs as sfuncs
+from nmrespy.estimators import Result
+from nmrespy.estimators.onedim import Estimator1D
 from nmrespy.freqfilter import Filter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import nonlinear_programming
 from nmrespy.nlp.optimisers import trust_ncg
+from nmrespy.plot import make_color_cycle
 from nmrespy.nlp._funcs import FunctionFactory
-from . import _Estimator1DProc, Result
 
 
-class EstimatorSeq1D(_Estimator1DProc):
-
-    default_mpm_trim = 4096
-    default_nlp_trim = None
-    default_max_iterations_exact_hessian = 100
-    default_max_iterations_gn_hessian = 200
+class EstimatorSeq1D(Estimator1D):
 
     def __init__(
         self,
@@ -32,7 +29,7 @@ class EstimatorSeq1D(_Estimator1DProc):
         expinfo: ne.ExpInfo,
         datapath: Optional[Path] = None,
         increments: Optional[np.ndarray] = None,
-        unit: Optional[str] = None,
+        increment_type: Optional[str] = None,
     ) -> None:
         super().__init__(data[0], expinfo, datapath)
         self._data = data
@@ -41,30 +38,10 @@ class EstimatorSeq1D(_Estimator1DProc):
                 "increments", increments, sfuncs.check_ndarray, (),
                 {"dim": 1, "shape": [(0, data.shape[0])]}, True,
             ),
-            ("unit", unit, sfuncs.check_str, (), {}, True),
+            ("increment_type", increment_type, sfuncs.check_str, (), {}, True),
         )
         self.increments = increments
-        self.unit = unit
-
-    def get_shifts(
-        self,
-        pts: Optional[int] = None,
-        unit: str = "hz",
-        flip: bool = True,
-        meshgrid: bool = True,
-    ) -> Iterable[np.ndarray]:
-        sanity_check(
-            self._pts_check(pts),
-            self._funit_check(unit),
-            ("flip", flip, sfuncs.check_bool),
-            ("meshgrid", meshgrid, sfuncs.check_bool),
-        )
-        shifts = super().get_shifts(pts, unit, flip)[0]
-
-        if meshgrid:
-            return tuple(np.meshgrid(shifts, self.increments, indexing="ij"))
-        else:
-            return (shifts, self.increments)
+        self.increment_type = increment_type
 
     def estimate(
         self,
@@ -272,7 +249,7 @@ class EstimatorSeq1D(_Estimator1DProc):
 
         self._results.append(results)
 
-    def fit(self, index: int, osc: int, func: str) -> Tuple[float, float]:
+    def fit(self, osc: int, func: str, index: int = -1,) -> Tuple[float, float]:
         sanity_check(
             self._index_check(index),
             ("func", func, sfuncs.check_one_of, ("T1",)),
@@ -286,17 +263,7 @@ class EstimatorSeq1D(_Estimator1DProc):
             ),
         )
 
-        integrals = np.array(
-            [
-                np.real(
-                    self.oscillator_integrals(
-                        np.expand_dims(r.get_params()[osc], axis=0),
-                        absolute=False,
-                    )
-                )
-                for r in res
-            ]
-        )[:, 0]
+        integrals = self.integrals(osc, index=index)
         x0 = np.array([integrals[-1], 1.])
 
         if func == "T1":
@@ -310,24 +277,124 @@ class EstimatorSeq1D(_Estimator1DProc):
 
         return result
 
-    def plot_result(self):
-        result = self.get_results([0])[0]
-        region = result[0].get_region()
-        shifts = self.get_shifts(meshgrid=False)[0]
+    def integrals(self, osc: int, index: int = -1) -> np.ndarray:
+        sanity_check(
+            self._index_check(index),
+        )
+        res = self.get_results(indices=[index])[0]
+        n_oscs = res[0].get_params().shape[0]
+        sanity_check(
+            (
+                "osc", osc, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": n_oscs - 1},
+            ),
+        )
+
+        res, = self.get_results(indices=[index])
+        return np.array(
+            [
+                self.oscillator_integrals(
+                    np.expand_dims(r.get_params()[osc], axis=0),
+                    absolute=False,
+                )
+                for r in res
+            ]
+        )[:, 0].real
+
+    def plot_result(
+        self,
+        index: int = -1,
+        xaxis_unit: str = "hz",
+        oscillator_colors: Any = None,
+        elev: float = 45.,
+        azim: float = 45.,
+        **kwargs,
+    ):
+        sanity_check(
+            self._index_check(index),
+            self._funit_check(xaxis_unit, "xaxis_unit"),
+            (
+                "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
+                (), {}, True,
+            ),
+            ("elev", elev, sfuncs.check_float),
+            ("azim", azim, sfuncs.check_float),
+        )
+
+        result, = self.get_results([index])
+        region, = result[0].get_region(unit=xaxis_unit)
+        slice_ = slice(
+            *self.convert([region], f"{xaxis_unit}->idx")[0]
+        )
+        shifts, = self.get_shifts(unit=xaxis_unit)
+        shifts = shifts[slice_]
+
+        fig = plt.figure(**kwargs)
+        ax = fig.add_subplot(projection="3d")
+
         params_set = [res.get_params() for res in result]
-        for i, (fid, params) in enumerate(zip(self.data, params_set)):
-            fig, ax = plt.subplots()
+        spectra = []
+        oscillators = []
+        for (fid, params) in zip(self.data, params_set):
             fid[0] *= 0.5
-            spec = ne.sig.ft(fid)
-            ax.plot(shifts, spec)
+            spectra.append(ne.sig.ft(fid).real[slice_])
+            incr_oscillators = []
             for p in params:
                 p = np.expand_dims(p, axis=0)
                 osc = self.make_fid(p)
                 osc[0] *= 0.5
-                osc_spec = ne.sig.ft(osc)
-                ax.plot(shifts, osc_spec)
-            ax.set_xlim(region[0][0], region[0][1])
-            fig.savefig(Path(f"~/fig{i}.pdf").expanduser())
+                incr_oscillators.append(ne.sig.ft(osc).real[slice_])
+            oscillators.append(incr_oscillators)
+
+        span = self._get_data_span(
+            spectra +
+            [osc for incr_oscillators in oscillators for osc in incr_oscillators]
+        )
+
+        noscs = len(oscillators[0])
+
+        for spec, incr, oscs in zip(
+            reversed(spectra), reversed(self.increments), reversed(oscillators)
+        ):
+            colors = make_color_cycle(oscillator_colors, noscs)
+            y = np.full(shifts.shape, incr)
+            ax.plot(shifts, y, spec, color="#000000")
+            for osc in oscs:
+                ax.plot(shifts, y, osc, color=next(colors), lw=0.6)
+
+        # azim at 270 provies a face-on view of the spectra.
+        ax.view_init(elev=elev, azim=270. + azim)
+
+        # Configure x-axis
+        ax.set_xlim(shifts[0], shifts[-1])
+        nuc = self.unicode_nuclei
+        unit = xaxis_unit.replace("h", "H")
+        if nuc is None:
+            xlabel = unit
+        else:
+            xlabel = f"{nuc[-1]} ({unit})"
+        ax.set_xlabel(xlabel)
+
+        # Configure y-axis
+        ax.set_ylim(self.increments[0], self.increments[-1])
+        if self.increment_type is not None:
+            ax.set_ylabel(self.increment_type)
+
+        # Configure z-axis
+        h = span[1] - span[0]
+        bottom = span[0] - 0.03 * h
+        top = span[1] + 0.03 * h
+        ax.set_zlim(bottom, top)
+        ax.set_zticks([])
+
+        return fig, ax
+
+    @staticmethod
+    def _get_data_span(data: Iterable[np.ndarray]) -> Tuple[float, float]:
+        return (
+            min([np.amin(datum) for datum in data]),
+            max([np.amax(datum) for datum in data]),
+        )
 
 
 class EstimatorInvRec(EstimatorSeq1D):
@@ -339,30 +406,78 @@ class EstimatorInvRec(EstimatorSeq1D):
         increments: np.ndarray,
         datapath: Optional[Path] = None,
     ) -> None:
-        super().__init__(data, expinfo, datapath, increments, unit="s")
+        super().__init__(
+            data, expinfo, datapath, increments, increment_type="$\\tau$ (s)")
 
-    def fit(self, index: int, osc: int) -> Tuple[int, int]:
-        r"""Fit estimation result.
+    def fit(self, osc: int, index: int = -1) -> Tuple[float, float]:
+        r"""Fit estimation result for a given oscillator across increments in
+        order to predict the longitudinal relaxtation time, :math:`T_1`. The
+        function that is fit is:
 
         .. math::
 
-            I = I_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
+            x\left(I_0, T_1\right) =
+            I_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
+
+        where :math:`I_0` is the predicted integral of the oscillator peak in
+        the limit of :math:`\tau \rightarrow \infty`.
+
+        Parameters
+        ----------
+        index
+            The result index.
+
+        osc
+            The index of the oscillator to considier.
+
+        Returns
+        -------
+        I0
+
+        T1
+            The predicted longitudinal relaxation time (s).
         """
-        I0, T1 = super().fit(index, osc, func="T1")
+        I0, T1 = super().fit(osc, func="T1", index=index)
         return I0, T1
+
+    def model(
+        self,
+        I0: float,
+        T1: float,
+        taus: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        sanity_check(
+            ("I0", I0, sfuncs.check_float),
+            ("T1", T1, sfuncs.check_float),
+            ("taus", taus, sfuncs.check_ndarray, (), {"dim": 1}, True),
+        )
+
+        if taus is None:
+            taus = self.increments
+        return I0 * (1 - 2 * np.exp(-taus / T1))
 
     @staticmethod
     def _obj_grad_hess(
         theta: np.ndarray,
         *args: Tuple[np.ndarray, np.ndarray],
-    ) -> float:
-        r"""
-        Objective, gradient and Hessian for fitting inversion recovery (T1) data.
+    ) -> Tuple[float, np.ndarray, np.ndarray]:
+        r"""Objective, gradient and Hessian for fitting inversion recovery data.
         The model to be fit is given by
 
         .. math::
 
             I = I_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
+
+        Parameters
+        ----------
+        theta
+            Parameters of the model: :math:`I_0` and :math:`T_1`.
+
+        args
+            Comprises two items:
+
+            * integrals across each increment.
+            * delays (:math:`\tau`).
         """
         I0, T1 = theta
         integrals, taus = args
