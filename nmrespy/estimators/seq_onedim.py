@@ -1,17 +1,19 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Feb 2023 11:42:20 GMT
+# Last Edited: Fri 24 Feb 2023 15:15:26 GMT
 
+import copy
 from pathlib import Path
 from typing import Any, Iterable, Optional, Tuple, Union
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
 import nmrespy as ne
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-from nmrespy.estimators import Result
+from nmrespy.estimators import Result, logger
 from nmrespy.estimators.onedim import Estimator1D
 from nmrespy.freqfilter import Filter
 from nmrespy.mpm import MatrixPencil
@@ -29,8 +31,32 @@ class EstimatorSeq1D(Estimator1D):
         expinfo: ne.ExpInfo,
         datapath: Optional[Path] = None,
         increments: Optional[np.ndarray] = None,
-        increment_type: Optional[str] = None,
+        increment_label: Optional[str] = None,
     ) -> None:
+        """
+        Parameters
+        ----------
+        data
+            The data associated with the binary file in `path`.
+
+        datapath
+            The path to the directory containing the NMR data.
+
+        expinfo
+            Experiment information.
+
+        increments
+            The values of increments used to acquire the 1D signals. Examples would
+            include:
+
+            * Delay times in an inversion recovery experiment.
+            * Gradient strengths in a diffusion experiment.
+
+        increment_label
+            A label to describe what the increment is. This will appear in relavent
+            plots. For example, a suitable value could be ``"$G_z$
+            (Gcm\\textsuperscript{-1})"`` for a diffusion experiment.
+        """
         super().__init__(data[0], expinfo, datapath)
         self._data = data
         sanity_check(
@@ -38,10 +64,10 @@ class EstimatorSeq1D(Estimator1D):
                 "increments", increments, sfuncs.check_ndarray, (),
                 {"dim": 1, "shape": [(0, data.shape[0])]}, True,
             ),
-            ("increment_type", increment_type, sfuncs.check_str, (), {}, True),
+            ("increment_label", increment_label, sfuncs.check_str, (), {}, True),
         )
         self.increments = increments
-        self.increment_type = increment_type
+        self.increment_label = increment_label
 
     def estimate(
         self,
@@ -66,6 +92,179 @@ class EstimatorSeq1D(Estimator1D):
         max_trust_radius: float = 4.0,
         _log: bool = True,
     ) -> None:
+        r"""Estimate a specified region of the signal.
+
+        The basic steps that this method carries out are:
+
+        * (Optional, but highly advised) Generate a frequency-filtered "sub-FID"
+          corresponding to a specified region of interest for each increment.
+        * (Optional) For the first increment in the data, generate an initial
+          guess using the Minimum Description Length (MDL) [#]_ and Matrix
+          Pencil Method (MPM) [#]_ [#]_ [#]_ [#]_
+        * Apply numerical optimisation to determine a final estimate of the signal
+          parameters for the first increment. The optimisation routine employed
+          is the Trust Newton Conjugate Gradient (NCG) algorithm ([#]_ ,
+          Algorithm 7.2).
+        * For each successive increment, use the previous increment's estiamtion
+          result as the initial guess, and optimise the amplitudes only, again using
+          the NCG algorithm.
+
+        Parameters
+        ----------
+        region
+            The frequency range of interest. Should be of the form ``[left, right]``
+            where ``left`` and ``right`` are the left and right bounds of the region
+            of interest in Hz or ppm (see ``region_unit``). If ``None``, the
+            full signal will be considered, though for sufficently large and
+            complex signals it is probable that poor and slow performance will
+            be realised.
+
+        noise_region
+            If ``region`` is not ``None``, this must be of the form ``[left, right]``
+            too. This should specify a frequency range where no noticeable signals
+            reside, i.e. only noise exists.
+
+        region_unit
+            One of ``"hz"`` or ``"ppm"`` Specifies the units that ``region``
+            and ``noise_region`` have been given as.
+
+        initial_guess
+            * If ``None``, an initial guess will be generated using the MPM
+              with the MDL being used to estimate the number of oscillators
+              present.
+            * If an int, the MPM will be used to compute the initial guess with
+              the value given being the number of oscillators.
+            * If a NumPy array, this array will be used as the initial guess.
+
+        hessian
+            Specifies how to construct the Hessian matrix.
+
+            * If ``"exact"``, the exact Hessian will be used.
+            * If ``"gauss-newton"``, the Hessian will be approximated as is
+              done with the Gauss-Newton method. See the *"Derivation from
+              Newton's method"* section of `this article
+              <https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm>`_.
+
+        mode
+            A string containing a subset of the characters ``"a"`` (amplitudes),
+            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
+            Specifies which types of parameters should be considered for optimisation.
+            In most scenarios, you are likely to want the default value, ``"apfd"``.
+
+        amp_thold
+            A value that imposes a threshold for deleting oscillators of
+            negligible ampltiude.
+
+            * If ``None``, does nothing.
+            * If a float, oscillators with amplitudes satisfying :math:`a_m <
+              a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2` will be
+              removed from the parameter array, where :math:`\lVert
+              \boldsymbol{a} \rVert_2` is the Euclidian norm of the vector of
+              all the oscillator amplitudes. It is advised to set ``amp_thold``
+              at least a couple of orders of magnitude below 1.
+
+        phase_variance
+            Whether or not to include the variance of oscillator phases in the cost
+            function. This should be set to ``True`` in cases where the signal being
+            considered is derived from well-phased data.
+
+        mpm_trim
+            Specifies the maximal size allowed for the filtered signal when
+            undergoing the Matrix Pencil. If ``None``, no trimming is applied
+            to the signal. If an int, and the filtered signal has a size
+            greater than ``mpm_trim``, this signal will be set as
+            ``signal[:mpm_trim]``.
+
+        nlp_trim
+            Specifies the maximal size allowed for the filtered signal when undergoing
+            nonlinear programming. By default (``None``), no trimming is applied to
+            the signal. If an int, and the filtered signal has a size greater than
+            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
+
+        max_iterations
+            A value specifiying the number of iterations the routine may run
+            through before it is terminated. If ``None``, a default number
+            of maximum iterations is set, based on the the data dimension and
+            the value of ``hessian``.
+
+        negative_amps
+            Indicates how to treat oscillators which have gained negative
+            amplitudes during the optimisation.
+
+            * ``"remove"`` will result in such oscillators being purged from
+              the parameter estimate. The optimisation routine will the be
+              re-run recursively until no oscillators have a negative
+              amplitude.
+            * ``"flip_phase"`` will retain oscillators with negative
+              amplitudes, but the the amplitudes will be multiplied by -1,
+              and a π radians phase shift will be applied.
+            * ``"ignore"`` will do nothing (negative amplitude oscillators will remain).
+
+        output_mode
+            Dictates what information is sent to stdout.
+
+            * If ``None``, nothing will be sent.
+            * If ``0``, only a message on the outcome of the optimisation will
+              be sent.
+            * If a positive int ``k``, information on the cost function,
+              gradient norm, and trust region radius is sent every kth
+              iteration.
+
+        save_trajectory
+            If ``True``, a list of parameters at each iteration will be saved, and
+            accessible via the ``trajectory`` attribute.
+
+            .. warning:: Not implemented yet!
+
+        epsilon
+            Sets the convergence criterion. Convergence will occur when
+            :math:`\lVert \boldsymbol{g}_k \rVert_2 < \epsilon`.
+
+        eta
+            Criterion for accepting an update. An update will be accepted if
+            the ratio of the actual reduction and the predicted reduction is
+            greater than ``eta``:
+
+            .. math ::
+
+                \rho_k = \frac{f(x_k) - f(x_k - p_k)}{m_k(0) - m_k(p_k)} > \eta
+
+        initial_trust_radius
+            The initial value of the radius of the trust region.
+
+        max_trust_radius
+            The largest permitted radius for the trust region.
+
+        _log
+            Ignore this!
+
+        References
+        ----------
+        .. [#] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
+           parameters of exponentially damped/undamped sinusoids in noise”. In:
+           IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
+
+        .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy
+           NMR signals: applications to delayed acquisition data”. In: J. Magn.
+           Reson. 128.1 (1997), pp. 30–41.
+
+        .. [#] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
+           enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
+           International Conference on Acoustics, Speech, and Signal Processing.
+           IEEE. 1991, pp. 3073–3076.
+
+        .. [#] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
+           using modified matrix pencil method”. In: IEEE Trans. Signal Process.
+           55.2 (2007), pp. 718–724.
+
+        .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
+           criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
+           33 (2) (1985) 387–392.
+
+        .. [#] Jorge Nocedal and Stephen J. Wright. Numerical optimization. 2nd
+               ed. Springer series in operations research. New York: Springer,
+               2006.
+        """
         sanity_check(
             (
                 "region_unit", region_unit, sfuncs.check_frequency_unit,
@@ -249,7 +448,7 @@ class EstimatorSeq1D(Estimator1D):
 
         self._results.append(results)
 
-    def fit(self, osc: int, func: str, index: int = -1,) -> Tuple[float, float]:
+    def _fit(self, osc: int, func: str, index: int = -1,) -> Tuple[float, float]:
         sanity_check(
             self._index_check(index),
             ("func", func, sfuncs.check_one_of, ("T1",)),
@@ -377,8 +576,8 @@ class EstimatorSeq1D(Estimator1D):
 
         # Configure y-axis
         ax.set_ylim(self.increments[0], self.increments[-1])
-        if self.increment_type is not None:
-            ax.set_ylabel(self.increment_type)
+        if self.increment_label is not None:
+            ax.set_ylabel(self.increment_label)
 
         # Configure z-axis
         h = span[1] - span[0]
@@ -389,38 +588,82 @@ class EstimatorSeq1D(Estimator1D):
 
         return fig, ax
 
-    @staticmethod
-    def _get_data_span(data: Iterable[np.ndarray]) -> Tuple[float, float]:
-        return (
-            min([np.amin(datum) for datum in data]),
-            max([np.amax(datum) for datum in data]),
+    @logger
+    def plot_result_increment(
+        self,
+        increment: int = 0,
+        **kwargs,
+    ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
+        sanity_check(
+            (
+                "increment", increment, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": len(self.increments) - 1},
+            ),
         )
+
+        # Temporarily fudge the `_results`, and `_data` attributes so
+        # `Estimator1D.plot_result` will work
+        results_cp = copy.deepcopy(self._results)
+        data_cp = copy.deepcopy(self.data)
+
+        self._results = [r[increment] for r in results_cp]
+        self._data = self.data[increment]
+
+        if "plot_model" not in kwargs:
+            kwargs["plot_model"] = False
+
+        fig, axs = super().plot_result(**kwargs)
+
+        self._results = results_cp
+        self._data = data_cp
+
+        return fig, axs
 
 
 class EstimatorInvRec(EstimatorSeq1D):
+    """Estimation class for the consideration of datasets acquired by an inversion
+    recovery experiment, for the purpose of determining longitudinal relaxation
+    times (:math:`T_1`)."""
 
     def __init__(
         self,
         data: np.ndarray,
         expinfo: ne.ExpInfo,
-        increments: np.ndarray,
+        delays: np.ndarray,
         datapath: Optional[Path] = None,
     ) -> None:
+        """
+        Parameters
+        ----------
+        data
+            The data associated with the binary file in `path`.
+
+        expinfo
+            Experiment information.
+
+        delays
+            Delays used in the inversion recovery experiment.
+
+        datapath
+            The path to the directory containing the NMR data.
+        """
         super().__init__(
-            data, expinfo, datapath, increments, increment_type="$\\tau$ (s)")
+            data, expinfo, datapath, increments=delays, increment_label="$\\tau$ (s)")
 
     def fit(self, osc: int, index: int = -1) -> Tuple[float, float]:
         r"""Fit estimation result for a given oscillator across increments in
-        order to predict the longitudinal relaxtation time, :math:`T_1`. The
-        function that is fit is:
+        order to predict the longitudinal relaxtation time, :math:`T_1`.
+
+        For the oscillator specified, the integral of the oscilator's peak is
+        determined at each increment, and the following function is fit:
 
         .. math::
 
-            x\left(I_0, T_1\right) =
-            I_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
+            I \left(I_{\infty}, T_1, \tau\right) =
+            I_{\infty} \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
 
-        where :math:`I_0` is the predicted integral of the oscillator peak in
-        the limit of :math:`\tau \rightarrow \infty`.
+        where :math:`I` is the peak integral when the delay is :math:`\tau`, and
+        :math:`I_{\infty} = \lim_{\tau \rightarrow \infty} I`.
 
         Parameters
         ----------
@@ -437,24 +680,45 @@ class EstimatorInvRec(EstimatorSeq1D):
         T1
             The predicted longitudinal relaxation time (s).
         """
-        I0, T1 = super().fit(osc, func="T1", index=index)
+        I0, T1 = self._fit(osc, func="T1", index=index)
         return I0, T1
 
     def model(
         self,
-        I0: float,
+        Iinfty: float,
         T1: float,
-        taus: Optional[np.ndarray] = None,
+        delays: Optional[np.ndarray] = None,
     ) -> np.ndarray:
+        r"""Return the function
+
+        .. math::
+
+            \boldsymbol{I}\left(I_{\infty}, T_1, \boldsymbol{\tau} \right) =
+                I_{\infty} \left[
+                    1 - 2 \exp\left(- \frac{\boldsymbol{\tau}}{T_1} \right)
+                \right]
+
+        Parameters
+        ----------
+        Iinfty
+            :math:`I_{\infty}`.
+
+        T1
+            :math:`T_1`.
+
+        delays
+            The delays to consider (:math:`\boldsymbol{\tau}`). If ``None``,
+            ``self.increments`` will be used.
+        """
         sanity_check(
-            ("I0", I0, sfuncs.check_float),
+            ("Iinfty", Iinfty, sfuncs.check_float),
             ("T1", T1, sfuncs.check_float),
-            ("taus", taus, sfuncs.check_ndarray, (), {"dim": 1}, True),
+            ("delays", delays, sfuncs.check_ndarray, (), {"dim": 1}, True),
         )
 
-        if taus is None:
-            taus = self.increments
-        return I0 * (1 - 2 * np.exp(-taus / T1))
+        if delays is None:
+            delays = self.increments
+        return Iinfty * (1 - 2 * np.exp(-delays / T1))
 
     @staticmethod
     def _obj_grad_hess(

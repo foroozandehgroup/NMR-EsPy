@@ -13,13 +13,14 @@ Reference
 
 
 The average user is likely to only be concerned with the estimator object they
-wish to use (either ``Estimator1D`` or ``Estimator2DJ``). Also of potential
-interest is ``nmrespy.sig``, a module of functions for processing signals,
-including FT/IFT, apodisation, phasing, etc.
+wish to use (``Estimator1D``, ``EstimatorInvRec``, or ``Estimator2DJ``). Also
+of potential interest is ``nmrespy.sig``, a module of functions for processing
+signals, including FT/IFT, apodisation, phasing, etc.
 
 .. toctree::
    :maxdepth: 1
 
    estimator1d
+   estimatorinvrec
    estimator2dj
    sig
