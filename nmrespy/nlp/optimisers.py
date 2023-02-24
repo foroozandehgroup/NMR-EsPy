@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 23 Nov 2022 10:40:35 GMT
+# Last Edited: Fri 24 Feb 2023 18:20:26 GMT
 
 from dataclasses import dataclass
 import math
@@ -110,7 +110,6 @@ def trust_ncg(
         optimisation will be printed. If an integer greater than ``0``, information
         for each iteration ``k`` which satisfies ``k % output_mode == 0`` will be
         printed.
-
     max_iterations
         The greaterest number of iterations allowed before the optimiser is
         terminated.
@@ -252,7 +251,9 @@ def trust_ncg(
     print(result_message)
     time_elapsed = time.time() - start
 
-    return NLPResult(x, None, trajectory, result_message, k, time_elapsed)
+    errors = np.sqrt(m.objective * np.abs(np.diag(np.linalg.inv(m.hessian))))
+
+    return NLPResult(x, errors, trajectory, result_message, k, time_elapsed)
 
 
 def get_boundaries(z, d, trust_radius):
