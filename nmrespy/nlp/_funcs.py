@@ -1,7 +1,7 @@
 # _funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 22 Feb 2023 21:15:54 GMT
+# Last Edited: Fri 24 Feb 2023 11:04:41 GMT
 
 """Definitions of fidelities, gradients, and Hessians."""
 
@@ -1609,41 +1609,41 @@ def obj_grad_true_hess_2d(active: np.ndarray, *args):
     return obj, grad, hess
 
 
-def cos_sum(phases: np.ndarray) -> float:
-    return np.sum(np.cos(phases))
-
-
-def sin_sum(phases: np.ndarray) -> float:
-    return np.sum(np.sin(phases))
-
-
 def pv_obj(phases: np.ndarray) -> float:
-    return 1 - (np.sqrt(cos_sum(phases) ** 2 + sin_sum(phases) ** 2) / phases.size)
+    c_sum = np.sum(np.cos(phases))
+    s_sum = np.sum(np.sin(phases))
+    r = np.sqrt(c_sum ** 2 + s_sum ** 2)
+    m = phases.size
+
+    return 1 - (r / m)
 
 
 def pv_obj_grad(phases: np.ndarray) -> Tuple[float, np.ndarray]:
-    cs = cos_sum(phases)
-    ss = sin_sum(phases)
-    r = np.sqrt(cs ** 2 + ss ** 2)
+    cos = np.cos(phases)
+    c_sum = np.sum(cos)
+    sin = np.sin(phases)
+    s_sum = np.sum(sin)
+    r = np.sqrt(c_sum ** 2 + s_sum ** 2)
     m = phases.size
+
     # Var(φ)
     obj = 1 - (r / m)
     # ∂Var(φ)/∂φᵢ
-    grad = (1 / (m * r)) * (np.sin(phases) * cs - np.cos(phases) * ss)
+    grad = (sin * c_sum - cos * s_sum) / (m * r)
 
     return obj, grad
 
 
-def pv_hess(phases: np.ndarray) -> np.ndarray:
-    c_sum = cos_sum(phases)
-    s_sum = sin_sum(phases)
+def pv_hess(phases: np.darray) -> np.ndarray:
     cos = np.cos(phases)
+    c_sum = np.sum(cos)
     sin = np.sin(phases)
+    s_sum = np.sum(sin)
     r = np.sqrt(c_sum ** 2 + s_sum ** 2)
     m = phases.size
 
     x = (sin * c_sum) - (cos * s_sum)
-    term_1 = (1 / (r ** 2)) * np.outer(x, x)
+    term_1 = np.outer(x, x) / (r ** 2)
     phis = np.zeros((m, m))
     phis[:] = phases
     term_2 = -np.cos(phis.T - phis)
@@ -1651,30 +1651,31 @@ def pv_hess(phases: np.ndarray) -> np.ndarray:
     hess = term_1 + term_2
     hess[np.diag_indices(m)] += cos * c_sum + sin * s_sum
 
-    return hess
+    return hess / (m * r)
 
 
 def pv_obj_grad_hess(phases: np.ndarray) -> Tuple[float, np.ndarray, np.ndarray]:
-    c_sum = cos_sum(phases)
-    s_sum = sin_sum(phases)
     cos = np.cos(phases)
+    c_sum = np.sum(cos)
     sin = np.sin(phases)
+    s_sum = np.sum(sin)
     r = np.sqrt(c_sum ** 2 + s_sum ** 2)
     m = phases.size
 
     # Var(φ)
     obj = 1 - (r / m)
     # ∂Var(φ)/∂φᵢ
-    grad = (1 / (m * r)) * (np.sin(phases) * c_sum - np.cos(phases) * s_sum)
+    grad = (sin * c_sum - cos * s_sum) / (m * r)
     # ∂²Var(φ)/∂φᵢ∂φⱼ
     x = (sin * c_sum) - (cos * s_sum)
-    term_1 = (1 / (r ** 2)) * np.outer(x, x)
+    term_1 = np.outer(x, x) / (r ** 2)
     phis = np.zeros((m, m))
     phis[:] = phases
     term_2 = -np.cos(phis.T - phis)
 
     hess = term_1 + term_2
     hess[np.diag_indices(m)] += cos * c_sum + sin * s_sum
+    hess /= m * r
 
     return obj, grad, hess
 
@@ -1725,15 +1726,10 @@ def _finite_diff(
 
     if phasevar:
         phases = active[m : 2 * m]
-        mu = np.einsum("i->", phases) / m
-        obj += np.einsum("i->", (phases - mu) ** 2) / (np.pi * m)
-        grad[m : 2 * m] += 0.8 * ((2 / m) * (phases - mu)) / np.pi
-        hess[m : 2 * m, m : 2 * m] -= 2 / (m ** 2 * np.pi)
-        main_diagonals = _diagonal_indices(p, k=0)
-        hess[
-            main_diagonals[0][m : 2 * m],
-            main_diagonals[1][m : 2 * m],
-        ] += 2 / (np.pi * m)
+        pv_obj, pv_grad, pv_hess = pv_obj_grad_hess(phases)
+        obj += pv_obj
+        grad[m : 2 * m] += pv_grad
+        hess[m : 2 * m, m : 2 * m] += pv_hess
 
     return obj, grad, hess
 
