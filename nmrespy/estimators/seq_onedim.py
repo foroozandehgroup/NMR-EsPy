@@ -1,8 +1,9 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Feb 2023 19:23:09 GMT
+# Last Edited: Sun 26 Feb 2023 01:01:07 GMT
 
+from __future__ import annotations
 import copy
 from pathlib import Path
 from typing import Any, Iterable, Optional, Tuple, Union
@@ -68,6 +69,26 @@ class EstimatorSeq1D(Estimator1D):
         )
         self.increments = increments
         self.increment_label = increment_label
+
+    def view_data(
+        self,
+        increment: int = 0,
+        domain: str = "freq",
+        components: str = "real",
+        freq_unit: str = "hz",
+    ) -> None:
+        sanity_check(
+            (
+                "increment", increment, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": self.increments - 1},
+            ),
+        )
+        data_cp = copy.deepcopy(self.data)
+        self._data = self.data[increment]
+
+        super().view_data(domain=domain, components=components, freq_unit=freq_unit)
+
+        self._data = data_cp
 
     def estimate(
         self,
@@ -479,6 +500,7 @@ class EstimatorSeq1D(Estimator1D):
                 x0=x0,
                 function_factory=function_factory,
                 args=(integs, self.increments),
+                output_mode=None,
             )
             results.append(nlp_result.x)
             errors.append(nlp_result.errors / np.sqrt(len(self.increments)))
@@ -684,6 +706,74 @@ class EstimatorInvRec(EstimatorSeq1D):
         super().__init__(
             data, expinfo, datapath, increments=delays, increment_label="$\\tau$ (s)")
 
+    @classmethod
+    def new_spinach(
+        cls,
+        shifts: Iterable[float],
+        couplings: Optional[Iterable[Tuple(int, int, float)]],
+        n_delays: int,
+        max_delay: float,
+        t1s: Union[Iterable[float], float],
+        pts: int,
+        sw: float,
+        t2s: Union[Iterable[float], float] = 5.,
+        offset: float = 0.,
+        sfo: float = 500.,
+        nucleus: str = "1H",
+        snr: Optional[float] = 20.,
+    ) -> EstimatorInvRec:
+        sanity_check(
+            ("shifts", shifts, sfuncs.check_float_list),
+            ("n_delays", n_delays, sfuncs.check_int, (), {"min_value": 1}),
+            ("max_delay", max_delay, sfuncs.check_float, (), {"greater_than_zero": True}),  # noqa: E501
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
+            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("offset", offset, sfuncs.check_float),
+            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("nucleus", nucleus, sfuncs.check_nucleus),
+            ("snr", snr, sfuncs.check_float),
+        )
+
+        nspins = len(shifts)
+        if isinstance(t1s, float):
+            t1s = nspins * [t1s]
+        if isinstance(t2s, float):
+            t2s = nspins * [t2s]
+
+        sanity_check(
+            ("couplings", couplings, sfuncs.check_spinach_couplings, (nspins,)),
+            (
+                "t1s", t1s, sfuncs.check_float_list, (),
+                {"length": nspins, "must_be_positive": True},
+            ),
+            (
+                "t2s", t2s, sfuncs.check_float_list, (),
+                {"length": nspins, "must_be_positive": True},
+            ),
+        )
+
+        if couplings is None:
+            couplings = []
+
+        fid = cls._run_spinach(
+            "invrec_sim", shifts, couplings, float(n_delays), float(max_delay), t1s,
+            t2s, pts, sw, offset, sfo, nucleus, to_double=[4, 5],
+        ).reshape((pts, n_delays)).T
+
+        if snr is not None:
+            fid = ne.sig.add_noise(fid, snr)
+
+        expinfo = ne.ExpInfo(
+            dim=1,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            nuclei=nucleus,
+            default_pts=pts,
+        )
+
+        return cls(fid, expinfo, np.linspace(0, max_delay, n_delays))
+
     def fit(
         self,
         oscs: Optional[Iterable[int]] = None,
@@ -859,9 +949,12 @@ class EstimatorInvRec(EstimatorSeq1D):
         index: int = -1,
         fit_increments: int = 100,
         xs: str = "osc_idx",
+        T1_labels: bool = True,
         colors: Any = None,
         azim: float = 45.,
         elev: float = 45.,
+        label_zshift: float = 0.,
+        label_fontsize: int = 7,
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
         sanity_check(
@@ -874,6 +967,8 @@ class EstimatorInvRec(EstimatorSeq1D):
             ("colors", colors, sfuncs.check_oscillator_colors, (), {}, True),
             ("elev", elev, sfuncs.check_float),
             ("azim", azim, sfuncs.check_float),
+            ("label_zshift", label_zshift, sfuncs.check_float),
+            ("label_fontsize", label_fontsize, sfuncs.check_int, (), {"min_value": 1}),
         )
         res_params = self.get_results(indices=[index])[0][0].get_params()
         n_oscs = res_params.shape[0]
@@ -918,7 +1013,6 @@ class EstimatorInvRec(EstimatorSeq1D):
                 color=color,
                 zorder=zorder,
                 lw=0.,
-                depthshade=False,
             )
 
             x_fit = np.full(fit_increments, x)
@@ -926,6 +1020,17 @@ class EstimatorInvRec(EstimatorSeq1D):
             z_fit = self.model(Iinfty, T1, y_fit)
             span_data.append(z_fit)
             ax.plot(x_fit, y_fit, z_fit, color=color, zorder=zorder)
+
+            ax.text(
+                x_fit[-1],
+                y_fit[-1],
+                z_fit[-1] + label_zshift,
+                f"{T1:.3g}",
+                color=color,
+                zdir="z",
+                ha="center",
+                fontsize=label_fontsize,
+            )
 
             zorder -= 1
 
