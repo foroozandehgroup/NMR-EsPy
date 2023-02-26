@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 26 Feb 2023 14:11:42 GMT
+# Last Edited: Sun 26 Feb 2023 14:48:55 GMT
 
 from __future__ import annotations
 import copy
@@ -783,7 +783,10 @@ class EstimatorInvRec(EstimatorSeq1D):
             t2s = nspins * [t2s]
 
         sanity_check(
-            ("couplings", couplings, sfuncs.check_spinach_couplings, (nspins,)),
+            (
+                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
+                {}, True,
+            ),
             (
                 "t1s", t1s, sfuncs.check_float_list, (),
                 {"length": nspins, "must_be_positive": True},
@@ -797,9 +800,12 @@ class EstimatorInvRec(EstimatorSeq1D):
         if couplings is None:
             couplings = []
 
+        r1s = [1 / t1 for t1 in t1s]
+        r2s = [1 / t2 for t2 in t2s]
+
         fid = cls._run_spinach(
-            "invrec_sim", shifts, couplings, float(n_delays), float(max_delay), t1s,
-            t2s, pts, sw, offset, sfo, nucleus, to_double=[4, 5],
+            "invrec_sim", shifts, couplings, float(n_delays), float(max_delay), r1s,
+            r2s, pts, sw, offset, sfo, nucleus, to_double=[4, 5],
         ).reshape((pts, n_delays)).T
 
         if snr is not None:
