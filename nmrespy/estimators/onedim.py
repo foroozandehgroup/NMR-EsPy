@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Feb 2023 15:12:53 GMT
+# Last Edited: Sun 26 Feb 2023 00:40:24 GMT
 
 from __future__ import annotations
 import copy
@@ -31,10 +31,6 @@ from . import logger, _Estimator1DProc
 if USE_COLORAMA:
     import colorama
     colorama.init()
-
-if MATLAB_AVAILABLE:
-    import matlab
-    import matlab.engine
 
 
 class Estimator1D(_Estimator1DProc):
@@ -173,14 +169,6 @@ class Estimator1D(_Estimator1DProc):
             be multiplied by ``np.exp(-lb)``. The default results in the final
             point being decreased in value by a factor of roughly 1000.
         """
-        if not MATLAB_AVAILABLE:
-            raise NotImplementedError(
-                f"{RED}MATLAB isn't accessible to Python. To get up and running, "
-                "take at look here:\n"
-                "https://www.mathworks.com/help/matlab/matlab_external/"
-                f"install-the-matlab-engine-for-python.html{END}"
-            )
-
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
@@ -199,29 +187,10 @@ class Estimator1D(_Estimator1DProc):
         if couplings is None:
             couplings = []
 
-        with cd(SPINACHPATH):
-            devnull = io.StringIO(str(os.devnull))
-            try:
-                eng = matlab.engine.start_matlab()
-                fid = eng.onedim_sim(
-                    shifts, couplings, pts, sw, offset, sfo, nucleus,
-                    stdout=devnull, stderr=devnull,
-                )
-            except matlab.engine.MatlabExecutionError:
-                raise ValueError(
-                    f"{RED}Something went wrong in trying to run Spinach.\n"
-                    "Read what is stated below the line "
-                    "\"matlab.engine.MatlabExecutionError:\" "
-                    f"for more details on the error raised.{END}"
-                )
-
-        fid = sig.exp_apodisation(
-            sig.add_noise(
-                np.array(fid).flatten(),
-                snr,
-            ),
-            lb,
+        fid = cls._run_spinach(
+            "onedim_sim", shifts, couplings, pts, sw, offset, sfo, nucleus,
         )
+        fid = sig.exp_apodisation(sig.add_noise(fid, snr), lb)
 
         expinfo = ExpInfo(
             dim=1,

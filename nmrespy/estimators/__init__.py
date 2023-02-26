@@ -1,11 +1,13 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Feb 2023 14:40:17 GMT
+# Last Edited: Sun 26 Feb 2023 00:43:11 GMT
 
 from __future__ import annotations
 import datetime
 import functools
+import io
+import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
@@ -15,12 +17,14 @@ import numpy as np
 import nmrespy as ne
 from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._files import (
+    cd,
     check_saveable_path,
     check_existent_path,
     configure_path,
     open_file,
     save_file,
 )
+from nmrespy._paths_and_links import SPINACHPATH
 from nmrespy._result_fetcher import ResultFetcher
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy import sig
@@ -33,6 +37,10 @@ from nmrespy.write.textfile import experiment_info, titled_table
 if USE_COLORAMA:
     import colorama
     colorama.init()
+
+if ne.MATLAB_AVAILABLE:
+    import matlab
+    import matlab.engine
 
 
 def logger(f: callable):
@@ -51,8 +59,6 @@ def logger(f: callable):
 
 class Estimator(ne.ExpInfo):
     """Base estimation class."""
-
-    matlab_available = ne.MATLAB_AVAILABLE
 
     def __init__(
         self,
@@ -131,6 +137,47 @@ class Estimator(ne.ExpInfo):
     def _check_results_exist(self) -> None:
         if not self._results:
             raise ValueError(f"{RED}No estimation has been carried out yet!{END}")
+
+    @staticmethod
+    def _run_spinach(
+        func: str,
+        *args,
+        to_int: Optional[Iterable[int]] = None,
+        to_double: Optional[Iterable[int]] = None,
+    ) -> np.ndarray:
+        if not ne.MATLAB_AVAILABLE:
+            raise NotImplementedError(
+                f"{RED}MATLAB isn't accessible to Python. To get up and running, "
+                "take at look here:\n"
+                "https://www.mathworks.com/help/matlab/matlab_external/"
+                f"install-the-matlab-engine-for-python.html{END}"
+            )
+
+        with cd(SPINACHPATH):
+            devnull = io.StringIO(str(os.devnull))
+            try:
+                eng = matlab.engine.start_matlab()
+                args = list(args)
+                to_double = [] if to_double is None else to_double
+                to_int = [] if to_int is None else to_int
+                for i in to_double:
+                    args[i] = matlab.double([args[i]])
+                for i in to_int:
+                    args[i] = matlab.int32([args[i]])
+                fid = np.array(
+                    eng.__getattr__(func).__call__(
+                        *args, stdout=devnull, stderr=devnull,
+                    )
+                ).flatten()
+            except matlab.engine.MatlabExecutionError:
+                raise ValueError(
+                    f"{RED}Something went wrong in trying to run Spinach.\n"
+                    "Read what is stated below the line "
+                    "\"matlab.engine.MatlabExecutionError:\" "
+                    f"for more details on the error raised.{END}"
+                )
+
+        return fid
 
     @property
     def bruker_params(self) -> Optional[dict]:
