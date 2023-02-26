@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 20 Jan 2023 16:37:34 GMT
+# Last Edited: Sun 26 Feb 2023 01:04:39 GMT
 
 from __future__ import annotations
 import copy
@@ -53,7 +53,7 @@ class Estimator2DJ(_Estimator1DProc):
         the following methods if any are appropriate:
 
         * :py:meth:`new_bruker`
-        * :py:meth:`new_spinach`
+        * :py:meth:`increment=i, new_spinach`
         * :py:meth:`from_pickle` (re-loads a previously saved estimator).
     """
 
@@ -169,23 +169,21 @@ class Estimator2DJ(_Estimator1DProc):
             be multiplied by ``np.exp(-lb)``. The default results in the final
             point being decreased in value by a factor of roughly 1000.
         """
-        if not MATLAB_AVAILABLE:
-            raise NotImplementedError(
-                f"{RED}MATLAB isn't accessible to Python. To get up and running, "
-                "take at look here:\n"
-                "https://www.mathworks.com/help/matlab/matlab_external/"
-                f"install-the-matlab-engine-for-python.html{END}"
-            )
-
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
-            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
-            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("pts", pts, sfuncs.check_int_list, (), {"length": 2, "min_value": 1}),
+            (
+                "sw", sw, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": 0.},
+            ),
             ("offset", offset, sfuncs.check_float),
-            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": 0.}),
             ("nucleus", nucleus, sfuncs.check_nucleus),
             ("snr", snr, sfuncs.check_float),
-            ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True})
+            (
+                "lb", lb, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
         )
         nspins = len(shifts)
         sanity_check(
@@ -195,28 +193,12 @@ class Estimator2DJ(_Estimator1DProc):
         if couplings is None:
             couplings = []
 
-        with cd(SPINACHPATH):
-            devnull = io.StringIO(str(os.devnull))
-            try:
-                eng = matlab.engine.start_matlab()
-                fid = eng.jres_sim(
-                    shifts, couplings, pts, matlab.double(sw), matlab.double(offset),
-                    sfo, nucleus, stdout=devnull, stderr=devnull,
-                )
-            except matlab.engine.MatlabExecutionError:
-                raise ValueError(
-                    f"{RED}Something went wrong in trying to run Spinach. This "
-                    "is likely due to one of two things:\n"
-                    "1. An inappropriate argument was given which was not noticed by "
-                    "sanity checks. For example, you provided an isotope of the "
-                    "correct format but which is unknown\n"
-                    "2. You have not correctly configured Spinach.\n"
-                    "Read what is stated below the line "
-                    "\"matlab.engine.MatlabExecutionError:\" "
-                    f"for more details on the error raised.{END}"
-                )
+        fid = cls._run_spinach(
+            "jres_sim", shifts, couplings, pts, sw, offset, sfo, nucleus,
+            to_int=[2], to_double=[3, 4],
+        ).reshape(pts)
 
-        fid = sig.phase(np.array(fid), (0., np.pi / 2), (0., 0.))
+        fid = sig.phase(fid, (0., np.pi / 2), (0., 0.))
 
         # Apply exponential damping
         for i, k in enumerate(lb):

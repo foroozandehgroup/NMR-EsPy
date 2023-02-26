@@ -1,7 +1,6 @@
 function [fid, sfo] = jres_sim(shifts, couplings, pts, sw, offset, sfo, nucleus)
     field = get_field(sfo, nucleus, offset);
     sys.magnet = field;
-    sys.isotopes = isotopes;
     nspins = length(shifts);
     isotopes = cell(nspins, 1);
     for i = 1:nspins
