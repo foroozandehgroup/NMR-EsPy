@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 26 Feb 2023 00:40:24 GMT
+# Last Edited: Sun 26 Feb 2023 13:43:41 GMT
 
 from __future__ import annotations
 import copy
@@ -319,9 +319,9 @@ class Estimator1D(_Estimator1DProc):
             x = self.get_shifts(unit=freq_unit)[0]
             y[0] /= 2
             y = sig.ft(y)
-            label = f"$\\omega$ ({freq_unit.replace('h', 'H')})"
+            label, = self._axis_freq_labels(freq_unit)
         elif domain == "time":
-            x = self.get_timepoints()[0]
+            x, = self.get_timepoints()
             label = "$t$ (s)"
 
         if components in ["real", "both"]:

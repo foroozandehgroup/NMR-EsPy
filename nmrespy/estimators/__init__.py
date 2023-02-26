@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 26 Feb 2023 00:43:11 GMT
+# Last Edited: Sun 26 Feb 2023 13:38:18 GMT
 
 from __future__ import annotations
 import datetime
@@ -1662,12 +1662,7 @@ class _Estimator1DProc(Estimator):
             for i, ticks in xaxis_ticks:
                 axs[-1, i].set_xticks(ticks)
 
-        nuc = self.unicode_nuclei
-        unit = region_unit.replace("h", "H")
-        if nuc is None:
-            label = unit
-        else:
-            label = f"{nuc[-1]} ({unit})"
+        label = self._axis_freq_labels(region_unit)[-1]
 
         fig.text(
             x=(axes_left + axes_right) / 2,
