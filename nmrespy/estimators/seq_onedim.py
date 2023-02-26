@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 26 Feb 2023 01:01:07 GMT
+# Last Edited: Sun 26 Feb 2023 14:11:42 GMT
 
 from __future__ import annotations
 import copy
@@ -19,9 +19,9 @@ from nmrespy.estimators.onedim import Estimator1D
 from nmrespy.freqfilter import Filter
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import nonlinear_programming
+from nmrespy.nlp._funcs import FunctionFactory
 from nmrespy.nlp.optimisers import trust_ncg
 from nmrespy.plot import make_color_cycle
-from nmrespy.nlp._funcs import FunctionFactory
 
 
 class EstimatorSeq1D(Estimator1D):
@@ -71,6 +71,48 @@ class EstimatorSeq1D(Estimator1D):
         self.increment_label = increment_label
 
     def view_data(
+        self,
+        domain: str = "freq",
+        components: str = "real",
+        freq_unit: str = "hz",
+    ) -> None:
+        fig = plt.figure()
+        ax = fig.add_subplot(projection="3d")
+
+        if domain == "freq":
+            x, = self.get_shifts(unit=freq_unit)
+            zs = copy.deepcopy(self.data)
+            zs[:, 0] *= 0.5
+            zs = ne.sig.ft(zs, axes=-1)
+
+        elif domain == "time":
+            x, = self.get_timepoints()
+            z = self.data
+
+        ys = self.increments
+
+        if components in ("real", "both"):
+            for (y, z) in zip(ys, zs):
+                y_arr = np.full(z.shape, y)
+                ax.plot(x, y_arr, z.real, color="k")
+        if components in ("imag", "both"):
+            for (y, z) in zip(ys, zs):
+                y_arr = np.full(z.shape, y)
+                ax.plot(x, y_arr, z.imag, color="#808080")
+
+        if domain == "freq":
+            xlabel, = self._axis_freq_labels(freq_unit)
+        elif domain == "time":
+            xlabel = "$t$ (s)"
+
+        ax.set_xlim(x[0], x[-1])
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(self.increment_label)
+        ax.set_zticks([])
+
+        plt.show()
+
+    def view_data_increment(
         self,
         increment: int = 0,
         domain: str = "freq",
