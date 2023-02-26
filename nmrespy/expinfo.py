@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 20 Jan 2023 11:50:44 GMT
+# Last Edited: Sun 26 Feb 2023 13:35:19 GMT
 
 import datetime
 import os
@@ -267,6 +267,20 @@ class ExpInfo(FrequencyConverter):
             else None
             for c in components
         ])
+
+    def _axis_freq_labels(self, unit: str) -> Iterable[str]:
+        labels = []
+        for sfo, nuc in zip(self.sfo, self.unicode_nuclei):
+            if sfo is None:
+                u = "Hz"
+            else:
+                u = unit.replace("h", "H")
+            if nuc is None:
+                labels.append(u)
+            else:
+                labels.append(f"{nuc} ({u})")
+
+        return labels
 
     def unpack(self, *args) -> Tuple[Any]:
         """Unpack attributes.
