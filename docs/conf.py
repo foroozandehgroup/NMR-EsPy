@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 18 Jan 2023 15:44:05 GMT
+# Last Edited: Mon 27 Feb 2023 12:15:51 GMT
 
 import os
 import sys

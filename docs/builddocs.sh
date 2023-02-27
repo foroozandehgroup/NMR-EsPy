@@ -5,7 +5,7 @@ found=1
 for pc in $personal_pcs
 do
     if [ $HOSTNAME = $pc ] ; then
-        NMRESPYPATH=/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy
+        NMRESPYPATH=/home/simon/Documents/DPhil/projects/NMR-EsPy
         found=0
     fi
 done
