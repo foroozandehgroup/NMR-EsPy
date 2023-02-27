@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 26 Feb 2023 14:48:55 GMT
+# Last Edited: Mon 27 Feb 2023 19:39:29 GMT
 
 from __future__ import annotations
 import copy
@@ -119,6 +119,24 @@ class EstimatorSeq1D(Estimator1D):
         components: str = "real",
         freq_unit: str = "hz",
     ) -> None:
+        """View the data (FID or spectrum) of a paricular increment in the dataset
+        with an interacitve matplotlib plot.
+
+        Parameters
+        ----------
+        increment
+            The increment to view. The data displayed is ``self.data[increment]``.
+
+        domain
+            Must be ``"freq"`` or ``"time"``.
+
+        components
+            Must be ``"real"``, ``"imag"``, or ``"both"``.
+
+        freq_unit
+            Must be ``"hz"`` or ``"ppm"``. If ``domain`` is ``"freq"``, this
+            determines which unit to set chemical shifts to.
+        """
         sanity_check(
             (
                 "increment", increment, sfuncs.check_int, (),
@@ -554,6 +572,21 @@ class EstimatorSeq1D(Estimator1D):
         oscs: Optional[Iterable[int]] = None,
         index: int = -1,
     ) -> Iterable[np.ndarray]:
+        """Get the integrals associated with specified oscillators for a given result.
+
+        Parameters
+        ----------
+        oscs
+            Oscillators to get integrals for. By default (``None``) all oscillators
+            are considered.
+
+        index
+            The index of the result to edit. Index ``0`` corresponds to the
+            first result obtained using the estimator, ``1`` corresponds to the
+            next, etc. You can also use ``-1`` for the most recent result,
+            ``-2`` for the second most recent, etc. By default, the most
+            recently obtained result will be considered.
+        """
         sanity_check(
             self._index_check(index),
         )
@@ -579,16 +612,78 @@ class EstimatorSeq1D(Estimator1D):
 
     def plot_result(
         self,
-        index: int = -1,
+        indices: Optional[Iterable[int]] = None,
         xaxis_unit: str = "hz",
+        xaxis_ticks: Optional[Iterable[float]] = None,
+        region_separation: float = 0.02,
         oscillator_colors: Any = None,
         elev: float = 45.,
         azim: float = 45.,
         **kwargs,
     ):
+        """Generate a figure of the estimation result.
+
+        A 3D plot is generated, showing the estimation result for each increment in
+        the data.
+
+        Paramters
+        ---------
+        indices
+            The indices of results to include. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            If ``None``, all results will be included.
+
+        xaxis_unit
+            The unit to express chemical shifts in. Should be ``"hz"`` or ``"ppm"``.
+
+        xaxis_ticks
+            .. todo:
+                Describe
+
+        region_separation
+            .. todo:
+                Describe
+
+        oscillator_colors
+            Describes how to color individual oscillators. The following
+            is a complete list of options:
+
+            * If a `valid matplotlib colour
+              <https://matplotlib.org/stable/tutorials/colors/colors.html>`_ is
+              given, all oscillators will be given this color.
+            * If a string corresponding to a `matplotlib colormap
+              <https://matplotlib.org/stable/tutorials/colors/colormaps.html>`_
+              is given, the oscillators will be consecutively shaded by linear
+              increments of this colormap.
+            * If an iterable object containing valid matplotlib colors is
+              given, these colors will be cycled.
+              For example, if ``oscillator_colors = ['r', 'g', 'b']``:
+
+              + Oscillators 0, 3, 6, ... would be :red:`red (#FF0000)`
+              + Oscillators 1, 4, 7, ... would be :green:`green (#008000)`
+              + Oscillators 2, 5, 8, ... would be :blue:`blue (#0000FF)`
+
+            * If ``None``, the default colouring method will be applied, which
+              involves cycling through the following colors:
+
+              + :oscblue:`#1063E0`
+              + :oscorange:`#EB9310`
+              + :oscgreen:`#2BB539`
+              + :oscred:`#D4200C`
+
+        elev
+            Elevation angle for the plot view.
+
+        azim
+            Azimuthal angle for the plot view.
+        """
         sanity_check(
-            self._index_check(index),
+            self._indices_check(indices),
             self._funit_check(xaxis_unit, "xaxis_unit"),
+            (
+                "region_separation", region_separation, sfuncs.check_float,
+                (), {"min_value": 0., "max_value": 1.},
+            ),
             (
                 "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
                 (), {}, True,
@@ -596,72 +691,120 @@ class EstimatorSeq1D(Estimator1D):
             ("elev", elev, sfuncs.check_float),
             ("azim", azim, sfuncs.check_float),
         )
+        indices = self._process_indices(indices)
 
-        result, = self.get_results([index])
-        region, = result[0].get_region(unit=xaxis_unit)
-        slice_ = slice(
-            *self.convert([region], f"{xaxis_unit}->idx")[0]
+        # Temporarily change `self._results` so `_plot_regions` works
+        results_cp = copy.deepcopy(self._results)
+        self._results = [res[0] for res in self._results]
+        merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
+        n_regions = len(merge_regions)
+        self._results = results_cp
+
+        # Default xticks
+        # Get the default xticks from `Estimator1D.plot_result`.
+        # Filter any away that are outside the region
+        default_xaxis_ticks = []
+        _, _axs = self.plot_result_increment(indices=indices, region_unit=xaxis_unit)
+        for i, (_ax, region) in enumerate(zip(_axs[0], merge_regions)):
+            mn, mx = min(region), max(region)
+            default_xaxis_ticks.append(
+                (i, [x for x in _ax.get_xticks() if mn <= x <= mx])
+            )
+        xaxis_ticks = default_xaxis_ticks if xaxis_ticks is None else xaxis_ticks
+        sanity_check(
+            (
+                "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
+                (merge_regions,), {}, True,
+            ),
         )
-        shifts, = self.get_shifts(unit=xaxis_unit)
-        shifts = shifts[slice_]
+
+        for i, _ in enumerate(merge_regions):
+            found = any([x[0] == i for x in xaxis_ticks])
+            if not found:
+                xaxis_ticks.append(default_xaxis_ticks[i])
+
+        xaxis_ticks = sorted(xaxis_ticks, key=lambda x: x[0])
+        xaxis_ticks = [x[1] for x in xaxis_ticks]
+
+        # x-axis will span [0, 1].
+        # Figure out sections of this range to assign each region
+        plot_width = 1 - (n_regions - 1) * region_separation
+        merge_region_widths = [max(mr) - min(mr) for mr in merge_regions]
+        merge_region_sum = sum(merge_region_widths)
+        merge_region_widths = [
+            mrw / merge_region_sum * plot_width
+            for mrw in merge_region_widths
+        ]
+        merge_region_lefts = [
+            1 - (i * region_separation) - sum(merge_region_widths[:i])
+            for i in range(n_regions)
+        ]
+        merge_region_spans = [
+            (mrl, mrl - mrw)
+            for mrl, mrw in zip(merge_region_lefts, merge_region_widths)
+        ]
+
+        xticks_scaled, xticklabels = [], []
+        for xticks, region, span in zip(xaxis_ticks, merge_regions, merge_region_spans):
+            diff = max(region) - min(region)
+            m = 1 / diff
+            c = -min(region) * m
+            # Fractional position in region
+            xticks_ = [xtick * m + c for xtick in xticks]
+
+            m = max(span) - min(span)
+            c = min(span)
+            xticks_ = [xtick * m + c for xtick in xticks_]
+
+            xticks_scaled.extend(xticks_)
+            xticklabels.extend([f"{xtick:.3g}" for xtick in xticks])
+
+        spectra = []
+        for fid in self.data:
+            fid[0] *= 0.5
+            spectra.append(ne.sig.ft(fid).real)
+
+        params = self.get_params(indices)
 
         fig = plt.figure(**kwargs)
         ax = fig.add_subplot(projection="3d")
-
-        params_set = [res.get_params() for res in result]
-        spectra = []
-        oscillators = []
-        for (fid, params) in zip(self.data, params_set):
-            fid[0] *= 0.5
-            spectra.append(ne.sig.ft(fid).real[slice_])
-            incr_oscillators = []
-            for p in params:
-                p = np.expand_dims(p, axis=0)
-                osc = self.make_fid(p)
-                osc[0] *= 0.5
-                incr_oscillators.append(ne.sig.ft(osc).real[slice_])
-            oscillators.append(incr_oscillators)
-
-        span = self._get_data_span(
-            spectra +
-            [osc for incr_oscillators in oscillators for osc in incr_oscillators]
+        colorcycles = (
+            len(self.increments) *
+            [make_color_cycle(oscillator_colors, params[0].shape[0])]
         )
+        ax.set_xticks([])
 
-        noscs = len(oscillators[0])
-
-        for spec, incr, oscs in zip(
-            reversed(spectra), reversed(self.increments), reversed(oscillators)
+        for (idx, region, span) in zip(
+            merge_indices, merge_regions, merge_region_spans
         ):
-            colors = make_color_cycle(oscillator_colors, noscs)
-            y = np.full(shifts.shape, incr)
-            ax.plot(shifts, y, spec, color="#000000")
-            for osc in oscs:
-                ax.plot(shifts, y, osc, color=next(colors), lw=0.6)
+            slice_ = slice(
+                *self.convert([region], f"{xaxis_unit}->idx")[0]
+            )
+            x = np.linspace(span[0], span[1], slice_.stop - slice_.start)
+            for i, (spectrum, p, incr) in enumerate(
+                zip(
+                    reversed(spectra), reversed(params), reversed(self.increments)
+                )
+            ):
+                colorcycle = colorcycles[i]
+                spec = spectrum[slice_]
+                y = np.full(x.shape, incr)
+                ax.plot(x, y, spec, color="k")
+                for osc_params in p:
+                    osc_params = np.expand_dims(osc_params, axis=0)
+                    osc = self.make_fid(osc_params)
+                    osc[0] *= 0.5
+                    osc_spec = ne.sig.ft(osc).real[slice_]
+                    ax.plot(x, y, osc_spec, color=next(colorcycle), lw=0.6)
 
+        ax.set_xticks(xticks_scaled)
+        ax.set_xticklabels(xticklabels)
+        ax.set_xlim(reversed(ax.get_xlim()))
+        ax.set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
+        ax.set_ylabel(self.increment_label)
+        ax.set_zticks([])
         # azim at 270 provies a face-on view of the spectra.
         ax.view_init(elev=elev, azim=270. + azim)
-
-        # Configure x-axis
-        ax.set_xlim(shifts[0], shifts[-1])
-        nuc = self.unicode_nuclei
-        unit = xaxis_unit.replace("h", "H")
-        if nuc is None:
-            xlabel = unit
-        else:
-            xlabel = f"{nuc[-1]} ({unit})"
-        ax.set_xlabel(xlabel)
-
-        # Configure y-axis
-        ax.set_ylim(self.increments[0], self.increments[-1])
-        if self.increment_label is not None:
-            ax.set_ylabel(self.increment_label)
-
-        # Configure z-axis
-        h = span[1] - span[0]
-        bottom = span[0] - 0.03 * h
-        top = span[1] + 0.03 * h
-        ax.set_zlim(bottom, top)
-        ax.set_zticks([])
 
         return fig, ax
 
@@ -671,6 +814,20 @@ class EstimatorSeq1D(Estimator1D):
         increment: int = 0,
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
+        """Generate a figure of the estimation result for a particular increment.
+
+        Parameters
+        ----------
+        increment
+            The increment to view. By default, the first increment in used (``0``).
+
+        kwargs
+            All kwargs are accepted by :py:meth:`nmrespy.Estimator1D.plot_result`.
+
+        See Also
+        --------
+        :py:meth:`nmrespy.Estimator1D.plot_result`.
+        """
         sanity_check(
             (
                 "increment", increment, sfuncs.check_int, (),
@@ -695,6 +852,25 @@ class EstimatorSeq1D(Estimator1D):
         self._data = data_cp
 
         return fig, axs
+
+    def get_params(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        merge: bool = True,
+        funit: str = "hz",
+        sort_by: str = "f-1",
+    ) -> Optional[Union[Iterable[np.ndarray], np.ndarray]]:
+        if isinstance(self._results[0], list):
+            results_cp = copy.deepcopy(self._results)
+            params = []
+            for i, _ in enumerate(self.increments):
+                self._results = [res[i] for res in results_cp]
+                params.append(super().get_params(indices, merge, funit, sort_by))
+                self._results = results_cp
+        else:
+            params = super().get_params(indices, merge, funit, sort_by)
+
+        return params
 
     def _oscs_check(self, x: Any, n_oscs: int):
         return (
@@ -756,14 +932,88 @@ class EstimatorInvRec(EstimatorSeq1D):
         n_delays: int,
         max_delay: float,
         t1s: Union[Iterable[float], float],
+        t2s: Union[Iterable[float], float],
         pts: int,
         sw: float,
-        t2s: Union[Iterable[float], float] = 5.,
         offset: float = 0.,
         sfo: float = 500.,
         nucleus: str = "1H",
         snr: Optional[float] = 20.,
     ) -> EstimatorInvRec:
+        r"""Create a new instance from an inversion-recovery Spinach simulation.
+
+        A data is acquired with linear increments of delay:
+
+        .. math::
+
+            \boldsymbol{\tau} =
+                \left[
+                    0,
+                    \frac{\tau_{\text{max}}}{N_{\text{delays}} - 1},
+                    \frac{2 \tau_{\text{max}}}{N_{\text{delays}} - 1},
+                    \cdots,
+                    \tau_{\text{max}}
+                \right]
+
+        with :math:`\tau_{\text{max}}` being ``max_delay`` and
+        :math:`N_{\text{delays}}` being ``n_delays``.
+
+
+        See :ref:`SPINACH_INSTALL` for requirments to use this method.
+
+        Parameters
+        ----------
+        shifts
+            A list of tuple of chemical shift values for each spin.
+
+        couplings
+            The scalar couplings present in the spin system. Given ``shifts`` is of
+            length ``n``, couplings should be an iterable with entries of the form
+            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
+            the two spins involved in the coupling, and ``coupling`` is the value
+            of the scalar coupling in Hz. ``None`` will set all spins to be
+            uncoupled.
+
+        t1s
+            The :math:`T_1` times for each spin. Should be either a list of floats
+            with the same length as ``shifts``, or a float. If a float, all spins will
+            be assigned the same :math:`T_1`. Note that :math:`T_1 = 1 / R_1`.
+
+        t2s
+            The :math:`T_2` times for each spin. See ``t1s`` for the required form.
+            Note that :math:`T_2 = 1 / R_2`.
+
+        n_delays
+            The number of delays.
+
+        max_delay
+            The largest delay, in seconds.
+
+        pts
+            The number of points the signal comprises.
+
+        sw
+            The sweep width of the signal (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        sfo
+            The transmitter frequency (MHz).
+
+        nucleus
+            The identity of the nucleus. Should be of the form ``"<mass><sym>"``
+            where ``<mass>`` is the atomic mass and ``<sym>`` is the element symbol.
+            Examples:
+
+            * ``"1H"``
+            * ``"13C"``
+            * ``"195Pt"``
+
+        snr
+            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
+            produces a noiseless signal.
+        """
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
             ("n_delays", n_delays, sfuncs.check_int, (), {"min_value": 1}),
