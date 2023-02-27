@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 18 Jan 2023 18:41:36 GMT
+# Last Edited: Mon 27 Feb 2023 17:54:12 GMT
 
 from pathlib import Path
 import re
@@ -708,4 +708,40 @@ def check_split_oscs(obj: Any, dim: int, n: int) -> Optional[str]:
             if len(value["amp_ratio"]) == 1:
                 return msg.replace("<KEY>", "amp_ratio").replace(
                     "<RESULT>", "Should be at least 2 elements long.",
+                )
+
+
+def check_xaxis_ticks(
+    obj: Any,
+    regions: Iterable[Tuple[float, float]],
+) -> Optional[str]:
+    msg = (
+        "Should be a list or tuple with each element being of the form "
+        "`[int, [float, float, ...]]`"
+    )
+
+    if not isiter(obj):
+        return msg
+    n_regions = len(regions)
+    already_found = []
+    for i, (elem, region) in enumerate(zip(obj, regions)):
+        if not isiter(elem) or len(elem) != 2 or not isint(elem[0]):
+            return msg
+
+        msg_prefix = f"Issue with element {i}:\n"
+        if elem[0] < 0 or elem[0] >= n_regions:
+            return f"{msg_prefix}Region index should be between 0-{n_regions - 1}."
+        if elem[0] in already_found:
+            return f"Duplicated region index: {elem[0]}."
+        already_found.append(elem[0])
+        if not isiter(elem[1]):
+            return f"{msg_prefix}Tick specification should be a list or tuple."
+        for tick in elem[1]:
+            if not isfloat(tick):
+                return "{msg_prefix}Tick specifications should be floats."
+            mn, mx = min(region), max(region)
+            if mn > tick or mx < tick:
+                return (
+                    f"{msg_prefix}At least one tick is out of bounds "
+                    f"(should be within the range {mn}-{mx})."
                 )

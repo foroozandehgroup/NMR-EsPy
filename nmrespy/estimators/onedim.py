@@ -1,12 +1,10 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 26 Feb 2023 13:43:41 GMT
+# Last Edited: Mon 27 Feb 2023 19:45:19 GMT
 
 from __future__ import annotations
 import copy
-import io
-import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
@@ -14,10 +12,9 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from nmrespy import MATLAB_AVAILABLE, ExpInfo, sig
+from nmrespy import ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._files import cd, check_existent_dir, check_saveable_dir
-from nmrespy._paths_and_links import SPINACHPATH
+from nmrespy._files import check_existent_dir, check_saveable_dir
 from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
@@ -533,10 +530,6 @@ class Estimator1D(_Estimator1DProc):
                 "high_resolution_pts", high_resolution_pts, sfuncs.check_int, (),
                 {"min_value": self.default_pts[-1]}, True,
             ),
-            # (
-            #     "figure_size", figure_size, sfuncs.check_float_list, (),
-            #     {"length": 2, "must_be_positive": True},
-            # ),
             self._funit_check(region_unit, "region_unit"),
             (
                 "axes_left", axes_left, sfuncs.check_float, (),
