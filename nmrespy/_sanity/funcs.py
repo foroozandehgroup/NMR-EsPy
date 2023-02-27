@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 27 Feb 2023 17:54:12 GMT
+# Last Edited: Mon 27 Feb 2023 23:25:43 GMT
 
 from pathlib import Path
 import re
@@ -724,7 +724,7 @@ def check_xaxis_ticks(
         return msg
     n_regions = len(regions)
     already_found = []
-    for i, (elem, region) in enumerate(zip(obj, regions)):
+    for i, elem in enumerate(obj):
         if not isiter(elem) or len(elem) != 2 or not isint(elem[0]):
             return msg
 
@@ -734,6 +734,7 @@ def check_xaxis_ticks(
         if elem[0] in already_found:
             return f"Duplicated region index: {elem[0]}."
         already_found.append(elem[0])
+        region = regions[elem[0]]
         if not isiter(elem[1]):
             return f"{msg_prefix}Tick specification should be a list or tuple."
         for tick in elem[1]:
