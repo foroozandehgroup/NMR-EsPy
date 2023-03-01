@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Feb 2023 18:20:26 GMT
+# Last Edited: Wed 01 Mar 2023 15:35:23 GMT
 
 from dataclasses import dataclass
 import math
@@ -129,7 +129,7 @@ def trust_ncg(
     start = time.time()
     x = x0 if isinstance(x0, np.ndarray) else x0.x
     m = function_factory(x, *args)
-    trust_radius = initial_trust_radius
+    trust_radius = min(initial_trust_radius, max_trust_radius)
     k = 0
 
     if monitor_negative_amps:
@@ -246,9 +246,12 @@ def trust_ncg(
             break
 
     if isinstance(output_mode, int) and output_mode > 0:
+        if (k % output_mode != 0):
+            print_entry(k, m, trust_radius)
         print("└" + "┴".join(w * "─" for w in TABLE_WIDTHS[1:-1]) + "┘")
 
-    print(result_message)
+    if isinstance(output_mode, int):
+        print(result_message)
     time_elapsed = time.time() - start
 
     errors = np.sqrt(m.objective * np.abs(np.diag(np.linalg.inv(m.hessian))))
