@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 27 Feb 2023 19:39:29 GMT
+# Last Edited: Wed 01 Mar 2023 12:30:45 GMT
 
 from __future__ import annotations
 import copy
@@ -531,22 +531,21 @@ class EstimatorSeq1D(Estimator1D):
     def _fit(
         self,
         func: str,
+        indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
-        index: int = -1,
     ) -> Iterable[np.ndarray]:
         sanity_check(
-            self._index_check(index),
             ("func", func, sfuncs.check_one_of, ("T1",)),
+            self._indices_check(indices),
         )
-        res = self.get_results(indices=[index])[0]
-        n_oscs = res[0].get_params().shape[0]
+        params = self.get_params(indices=indices)
+        n_oscs = params[0].shape[0]
         sanity_check(
             self._oscs_check(oscs, n_oscs),
         )
         oscs = self._proc_oscs(oscs, n_oscs)
 
-        integrals = self.integrals(oscs, index=index)
-
+        integrals = self.integrals(indices, oscs)
         if func == "T1":
             function_factory = FunctionFactoryInvRec
 
@@ -569,8 +568,8 @@ class EstimatorSeq1D(Estimator1D):
 
     def integrals(
         self,
+        indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
-        index: int = -1,
     ) -> Iterable[np.ndarray]:
         """Get the integrals associated with specified oscillators for a given result.
 
@@ -588,26 +587,22 @@ class EstimatorSeq1D(Estimator1D):
             recently obtained result will be considered.
         """
         sanity_check(
-            self._index_check(index),
+            self._indices_check(indices),
         )
-        res = self.get_results(indices=[index])[0]
-        n_oscs = res[0].get_params().shape[0]
+        params = self.get_params(indices)
+        n_oscs = params[0].shape[0]
         sanity_check(
             self._oscs_check(oscs, n_oscs),
         )
         oscs = self._proc_oscs(oscs, n_oscs)
-        res, = self.get_results(indices=[index])
+        params = [p[oscs] for p in params]
+        if len(oscs) == 1:
+            params = [np.expand_dims(p, axis=0) for p in params]
+
+        params = np.array(params).transpose(1, 0, 2)
         return [
-            np.array(
-                [
-                    self.oscillator_integrals(
-                        np.expand_dims(r.get_params()[osc], axis=0),
-                        absolute=False,
-                    )
-                    for r in res
-                ]
-            )[:, 0].real
-            for osc in oscs
+            np.array(self.oscillator_integrals(osc, absolute=False)).real
+            for osc in np.array(params)
         ]
 
     def plot_result(
@@ -693,24 +688,8 @@ class EstimatorSeq1D(Estimator1D):
         )
         indices = self._process_indices(indices)
 
-        # Temporarily change `self._results` so `_plot_regions` works
-        results_cp = copy.deepcopy(self._results)
-        self._results = [res[0] for res in self._results]
         merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
-        n_regions = len(merge_regions)
-        self._results = results_cp
 
-        # Default xticks
-        # Get the default xticks from `Estimator1D.plot_result`.
-        # Filter any away that are outside the region
-        default_xaxis_ticks = []
-        _, _axs = self.plot_result_increment(indices=indices, region_unit=xaxis_unit)
-        for i, (_ax, region) in enumerate(zip(_axs[0], merge_regions)):
-            mn, mx = min(region), max(region)
-            default_xaxis_ticks.append(
-                (i, [x for x in _ax.get_xticks() if mn <= x <= mx])
-            )
-        xaxis_ticks = default_xaxis_ticks if xaxis_ticks is None else xaxis_ticks
         sanity_check(
             (
                 "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
@@ -718,46 +697,18 @@ class EstimatorSeq1D(Estimator1D):
             ),
         )
 
-        for i, _ in enumerate(merge_regions):
-            found = any([x[0] == i for x in xaxis_ticks])
-            if not found:
-                xaxis_ticks.append(default_xaxis_ticks[i])
+        merge_region_spans = self._get_3d_xaxis_spans(
+            merge_regions,
+            region_separation,
+        )
 
-        xaxis_ticks = sorted(xaxis_ticks, key=lambda x: x[0])
-        xaxis_ticks = [x[1] for x in xaxis_ticks]
-
-        # x-axis will span [0, 1].
-        # Figure out sections of this range to assign each region
-        plot_width = 1 - (n_regions - 1) * region_separation
-        merge_region_widths = [max(mr) - min(mr) for mr in merge_regions]
-        merge_region_sum = sum(merge_region_widths)
-        merge_region_widths = [
-            mrw / merge_region_sum * plot_width
-            for mrw in merge_region_widths
-        ]
-        merge_region_lefts = [
-            1 - (i * region_separation) - sum(merge_region_widths[:i])
-            for i in range(n_regions)
-        ]
-        merge_region_spans = [
-            (mrl, mrl - mrw)
-            for mrl, mrw in zip(merge_region_lefts, merge_region_widths)
-        ]
-
-        xticks_scaled, xticklabels = [], []
-        for xticks, region, span in zip(xaxis_ticks, merge_regions, merge_region_spans):
-            diff = max(region) - min(region)
-            m = 1 / diff
-            c = -min(region) * m
-            # Fractional position in region
-            xticks_ = [xtick * m + c for xtick in xticks]
-
-            m = max(span) - min(span)
-            c = min(span)
-            xticks_ = [xtick * m + c for xtick in xticks_]
-
-            xticks_scaled.extend(xticks_)
-            xticklabels.extend([f"{xtick:.3g}" for xtick in xticks])
+        xaxis_ticks, xaxis_ticklabels = self._get_3d_xticks_and_labels(
+            xaxis_ticks,
+            indices,
+            xaxis_unit,
+            merge_regions,
+            merge_region_spans,
+        )
 
         spectra = []
         for fid in self.data:
@@ -772,7 +723,6 @@ class EstimatorSeq1D(Estimator1D):
             len(self.increments) *
             [make_color_cycle(oscillator_colors, params[0].shape[0])]
         )
-        ax.set_xticks([])
 
         for (idx, region, span) in zip(
             merge_indices, merge_regions, merge_region_spans
@@ -797,8 +747,8 @@ class EstimatorSeq1D(Estimator1D):
                     osc_spec = ne.sig.ft(osc).real[slice_]
                     ax.plot(x, y, osc_spec, color=next(colorcycle), lw=0.6)
 
-        ax.set_xticks(xticks_scaled)
-        ax.set_xticklabels(xticklabels)
+        ax.set_xticks(xaxis_ticks)
+        ax.set_xticklabels(xaxis_ticklabels)
         ax.set_xlim(reversed(ax.get_xlim()))
         ax.set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
         ax.set_ylabel(self.increment_label)
@@ -806,7 +756,140 @@ class EstimatorSeq1D(Estimator1D):
         # azim at 270 provies a face-on view of the spectra.
         ax.view_init(elev=elev, azim=270. + azim)
 
+        # TODO
+        # # Working on custom x-axis spin with breaks.
+        # # Not yet working. Yet to figure out how to get the lines that are plotted
+        # # to lie right at the end of the y-axis
+        # xspine = ax.w_xaxis.line
+        # xspine_kwargs = {
+        #     "lw": xspine.get_linewidth(),
+        #     "color": xspine.get_color(),
+        # }
+        # ax.w_xaxis.line.set_visible(False)
+
+        # curr_xlim = ax.get_xlim()
+        # curr_ylim = ax.get_ylim()
+        # curr_zlim = ax.get_zlim()
+
+        # spine_y = 2 * [curr_ylim[0]]
+        # spine_z = 2 * [curr_zlim[0]]
+        # for span in merge_region_spans:
+        #     ax.plot(span, spine_y, spine_z, **xspine_kwargs)
+
+        # ax.set_xlim(curr_xlim)
+        # ax.set_ylim(curr_ylim)
+        # ax.set_zlim(curr_zlim)
+
         return fig, ax
+
+    def _plot_regions(
+        self,
+        indices: Iterable[int],
+        xaxis_unit: str,
+    ) -> Iterable[Tuple[float, float]]:
+        if isinstance(self._results[0], list):
+            # Temporarily change `self._results` so `Estimator1D._plot_regions` works
+            results_cp = copy.deepcopy(self._results)
+            self._results = [res[0] for res in self._results]
+            merge_indices, merge_regions = super()._plot_regions(indices, xaxis_unit)
+            self._results = results_cp
+        else:
+            merge_indices, merge_regions = super()._plot_regions(indices, xaxis_unit)
+
+        return merge_indices, merge_regions
+
+    def _get_3d_xticks_and_labels(
+        self,
+        xaxis_ticks: Optional[Iterable[int, Iterable[float]]],
+        indices: Iterable[int],
+        xaxis_unit: str,
+        merge_regions: Iterable[Tuple[float, float]],
+        merge_region_spans: Iterable[Tuple[float, float]],
+    ) -> Tuple[Iterable[float], Iterable[str]]:
+        # Get the default xticks from `Estimator1D.plot_result`.
+        # Filter any away that are outside the region
+        default_xaxis_ticks = []
+        _, _axs = self.plot_result_increment(indices=indices, region_unit=xaxis_unit)
+        for i, (_ax, region) in enumerate(zip(_axs[0], merge_regions)):
+            mn, mx = min(region), max(region)
+            default_xaxis_ticks.append(
+                (i, [x for x in _ax.get_xticks() if mn <= x <= mx])
+            )
+
+        flatten = lambda lst: [x for sublist in lst for x in sublist]
+        if xaxis_ticks is None:
+            xaxis_ticks = default_xaxis_ticks
+        else:
+            for i, _ in enumerate(merge_regions):
+                found = any([x[0] == i for x in xaxis_ticks])
+                if not found:
+                    xaxis_ticks.append(default_xaxis_ticks[i])
+
+        xaxis_ticks = flatten([x[1] for x in xaxis_ticks])
+
+        # Scale xaxis ticks so the lie in the range [0-1]
+        xaxis_ticks_scaled = self._transform_freq_to_xaxis(
+            [ticks for ticks in xaxis_ticks],
+            merge_regions,
+            merge_region_spans,
+        )
+
+        # TODO Better formatting of tick labels
+        xaxis_ticklabels = [f"{xtick:.3g}" for xtick in xaxis_ticks]
+
+        return xaxis_ticks_scaled, xaxis_ticklabels
+
+    @staticmethod
+    def _transform_freq_to_xaxis(
+        values: Iterable[float],
+        merge_regions: Iterable[Tuple[float, float]],
+        merge_region_spans: Iterable[Tuple[float, float]],
+    ) -> Iterable[float]:
+        transformed_values = []
+        coefficients = []
+        for region, span in zip(merge_regions, merge_region_spans):
+            min_region, max_region = min(region), max(region)
+            m1 = 1 / (max_region - min_region)
+            c1 = -min_region * m1
+            m2 = max(span) - min(span)
+            c2 = min(span)
+            coefficients.append([m1, c1, m2, c2])
+
+        scale = lambda x, coeffs: (x * coeffs[0] + coeffs[1]) * coeffs[2] + coeffs[3]
+
+        for value in values:
+            # Determine which region the value lies in
+            for region, coeffs in zip(merge_regions, coefficients):
+                if min(region) <= value <= max(region):
+                    transformed_values.append(scale(value, coeffs))
+                    break
+
+        return transformed_values
+
+    @staticmethod
+    def _get_3d_xaxis_spans(
+        merge_regions: Iterable[float, float],
+        region_separation: float,
+    ) -> Iterable[Tuple[float, float]]:
+        n_regions = len(merge_regions)
+        # x-axis will span [0, 1].
+        # Figure out sections of this range to assign each region
+        plot_width = 1 - (n_regions - 1) * region_separation
+        merge_region_widths = [max(mr) - min(mr) for mr in merge_regions]
+        merge_region_sum = sum(merge_region_widths)
+        merge_region_widths = [
+            mrw / merge_region_sum * plot_width
+            for mrw in merge_region_widths
+        ]
+        merge_region_lefts = [
+            1 - (i * region_separation) - sum(merge_region_widths[:i])
+            for i in range(n_regions)
+        ]
+        merge_region_spans = [
+            (mrl, mrl - mrw)
+            for mrl, mrw in zip(merge_region_lefts, merge_region_widths)
+        ]
+        return merge_region_spans
 
     @logger
     def plot_result_increment(
@@ -1074,8 +1157,8 @@ class EstimatorInvRec(EstimatorSeq1D):
 
     def fit(
         self,
+        indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
-        index: int = -1
     ) -> Iterable[np.ndarray]:
         r"""Fit estimation result for the given oscillators across increments in
         order to predict the longitudinal relaxtation time, :math:`T_1`.
@@ -1107,7 +1190,7 @@ class EstimatorInvRec(EstimatorSeq1D):
             the first element corresponds to :math:`I_{\infty}`, and the second
             element corresponds to :math:`T_1`.
         """
-        result, errors = self._fit("T1", oscs, index=index)
+        result, errors = self._fit("T1", indices, oscs)
         return result, errors
 
     def model(
@@ -1243,10 +1326,12 @@ class EstimatorInvRec(EstimatorSeq1D):
 
     def plot_fit_multi_oscillators(
         self,
+        indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
-        index: int = -1,
         fit_increments: int = 100,
-        xs: str = "osc_idx",
+        xaxis_unit: str = "ppm",
+        xaxis_ticks: Optional[Union[Iterable[int], Iterable[Iterable[int, Iterable[float]]]]] = None,  # noqa: E501
+        region_separation: float = 0.02,
         T1_labels: bool = True,
         colors: Any = None,
         azim: float = 45.,
@@ -1256,25 +1341,31 @@ class EstimatorInvRec(EstimatorSeq1D):
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
         sanity_check(
-            self._index_check(index),
+            self._indices_check(indices),
             (
                 "fit_increments", fit_increments, sfuncs.check_int, (),
                 {"min_value": len(self.increments)},
             ),
-            ("xs", xs, sfuncs.check_one_of, ("osc_idx", "hz", "ppm")),
+            ("xaxis_unit", xaxis_unit, sfuncs.check_one_of, ("osc_idx", "hz", "ppm")),
             ("colors", colors, sfuncs.check_oscillator_colors, (), {}, True),
             ("elev", elev, sfuncs.check_float),
             ("azim", azim, sfuncs.check_float),
             ("label_zshift", label_zshift, sfuncs.check_float),
             ("label_fontsize", label_fontsize, sfuncs.check_int, (), {"min_value": 1}),
         )
-        res_params = self.get_results(indices=[index])[0][0].get_params()
-        n_oscs = res_params.shape[0]
+        if xaxis_unit != "osc_idx":
+            sanity_check(self._funit_check(xaxis_unit, "xaxis_unit"))
+
+        indices = self._process_indices(indices)
+
+        params = self.get_params(indices=indices, funit=xaxis_unit)
+        n_oscs = params[0].shape[0]
         sanity_check(self._oscs_check(oscs, n_oscs))
         oscs = self._proc_oscs(oscs, n_oscs)
+        params = [p[oscs] for p in params]
 
-        params, errors = self.fit(oscs, index)
-        integrals = self.integrals(oscs, index=index)
+        integrals = self.integrals(indices, oscs)
+        fit, errors = self.fit(indices, oscs)
 
         fig = plt.figure(**kwargs)
         ax = fig.add_subplot(projection="3d")
@@ -1283,22 +1374,50 @@ class EstimatorInvRec(EstimatorSeq1D):
         zorder = n_oscs
         span_data = []
 
-        if xs == "osc_idx":
+        if xaxis_unit == "osc_idx":
+            sanity_check(
+                (
+                    "xaxis_ticks", xaxis_ticks, sfuncs.check_list_with_elements_in,
+                    (oscs,), {}, True,
+                )
+            )
             xs = oscs
-            xlabel = "osc"
-        else:
-            nuc = self.unicode_nuclei
-            unit = xs.replace("h", "H")
-            if nuc is None:
-                xlabel = unit
-            else:
-                xlabel = f"{nuc[-1]} ({unit})"
-            if xs == "hz":
-                xs = res_params[oscs, 2]
-            elif xs == "ppm":
-                xs = res_params[oscs, 2] / self.sfo[-1]
+            xlabel = "oscillator index"
 
-        for x, (Iinfty, T1), integs in zip(xs, params, integrals):
+        else:
+            merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
+            sanity_check(
+                (
+                    "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
+                    (merge_regions,), {}, True,
+                ),
+                (
+                    "region_separation", region_separation, sfuncs.check_float,
+                    (), {"min_value": 0., "max_value": 1.},
+                ),
+            )
+
+            merge_region_spans = self._get_3d_xaxis_spans(
+                merge_regions,
+                region_separation,
+            )
+
+            xaxis_ticks, xaxis_ticklabels = self._get_3d_xticks_and_labels(
+                xaxis_ticks,
+                indices,
+                xaxis_unit,
+                merge_regions,
+                merge_region_spans,
+            )
+            xs = self._transform_freq_to_xaxis(
+                params[0][:, 2],
+                merge_regions,
+                merge_region_spans,
+            )
+
+            xlabel, = self._axis_freq_labels(xaxis_unit)
+
+        for x, (Iinfty, T1), integs in zip(xs, fit, integrals):
             color = next(colors)
             x_scatter = np.full(self.increments.shape, x)
             y_scatter = self.increments
@@ -1336,20 +1455,18 @@ class EstimatorInvRec(EstimatorSeq1D):
         ax.view_init(elev=elev, azim=270. + azim)
 
         ax.set_xlabel(xlabel)
-        ax.set_xlim(reversed(ax.get_xlim()))
+        ax.set_xticks(xaxis_ticks)
+        ax.set_xlim(1, 0)
+        # `None` is possible here if `xaxis_unit="osc_idx"` and `xaxis_ticks=None`
+        if xaxis_ticklabels is not None:
+            ax.set_xticklabels(xaxis_ticklabels)
 
         # Configure y-axis
         ax.set_ylim(self.increments[0], self.increments[-1])
         if self.increment_label is not None:
             ax.set_ylabel(self.increment_label)
 
-        span = self._get_data_span(span_data)
-
         # Configure z-axis
-        h = span[1] - span[0]
-        bottom = span[0] - 0.03 * h
-        top = span[1] + 0.03 * h
-        ax.set_zlim(bottom, top)
         ax.set_zlabel("$I$")
 
         return fig, ax
