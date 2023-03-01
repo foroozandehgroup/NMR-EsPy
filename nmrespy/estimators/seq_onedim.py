@@ -1,18 +1,19 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 01 Mar 2023 12:30:45 GMT
+# Last Edited: Wed 01 Mar 2023 19:05:36 GMT
 
 from __future__ import annotations
 import copy
 from pathlib import Path
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
 import nmrespy as ne
+from nmrespy._misc import proc_kwargs_dict
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy.estimators import Result, logger
 from nmrespy.estimators.onedim import Estimator1D
@@ -22,6 +23,19 @@ from nmrespy.nlp import nonlinear_programming
 from nmrespy.nlp._funcs import FunctionFactory
 from nmrespy.nlp.optimisers import trust_ncg
 from nmrespy.plot import make_color_cycle
+
+
+# Patch Axes3D to prevent annoying padding
+# https://stackoverflow.com/questions/16488182/removing-axes-margins-in-3d-plot
+from mpl_toolkits.mplot3d.axis3d import Axis
+if not hasattr(Axis, "_get_coord_info_old"):
+    def _get_coord_info_new(self, renderer):
+        mins, maxs, centers, deltas, tc, highs = self._get_coord_info_old(renderer)
+        mins += deltas / 4
+        maxs -= deltas / 4
+        return mins, maxs, centers, deltas, tc, highs
+    Axis._get_coord_info_old = Axis._get_coord_info
+    Axis._get_coord_info = _get_coord_info_new
 
 
 class EstimatorSeq1D(Estimator1D):
@@ -559,7 +573,9 @@ class EstimatorSeq1D(Estimator1D):
                 x0=x0,
                 function_factory=function_factory,
                 args=(integs, self.increments),
-                output_mode=None,
+                initial_trust_radius=0.1,
+                max_trust_radius=0.1,
+                output_mode=5,
             )
             results.append(nlp_result.x)
             errors.append(nlp_result.errors / np.sqrt(len(self.increments)))
@@ -596,14 +612,364 @@ class EstimatorSeq1D(Estimator1D):
         )
         oscs = self._proc_oscs(oscs, n_oscs)
         params = [p[oscs] for p in params]
-        if len(oscs) == 1:
-            params = [np.expand_dims(p, axis=0) for p in params]
 
         params = np.array(params).transpose(1, 0, 2)
         return [
             np.array(self.oscillator_integrals(osc, absolute=False)).real
             for osc in np.array(params)
         ]
+
+    def plot_fit_single_oscillator(
+        self,
+        osc: int,
+        index: int = -1,
+        fit_increments: int = 100,
+        fit_line_kwargs: Dict = None,
+        scatter_kwargs: Dict = None,
+        **kwargs,
+    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
+        """Plot the fit across increments for a particular oscillator.
+
+        osc
+            Index for the oscillator of interest.
+
+        index
+            Index for the result of interest. By default (``-1``), the last acquired
+            result is used.
+
+        fit_increments
+            The number of points in the fit line.
+
+        fit_line_kwargs
+            Keyword arguments for the fit line. Use this to specify features such
+            as color, linewidth etc. All keys should be valid arguments for
+            `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+
+        scatter_kwargs
+            Keyword arguments for the scatter plot. All keys should be valid arguments
+            for
+            `matplotlib.axes.Axes.scatter
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.scatter.html>`_.
+
+        kwargs
+            Keyword arguments for
+            `matplotlib.pyplot.figure
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.figure.html#matplotlib-pyplot-figure>`_
+
+        Returns
+        -------
+        fig
+            The figure generated
+
+        ax
+            The axes assigned to the figure.
+        """
+        sanity_check(
+            self._index_check(index),
+            (
+                "fit_increments", fit_increments, sfuncs.check_int, (),
+                {"min_value": len(self.increments)},
+            ),
+        )
+        n_oscs = self.get_params(indices=[index])[0].shape[0]
+        sanity_check(
+            ("osc", osc, sfuncs.check_int, (), {"min_value": 0, "max_value": n_oscs - 1}),  # noqa: E501
+        )
+
+        proc_kwargs_dict(
+            fit_line_kwargs,
+            default={"color": "#808080"},
+        )
+        proc_kwargs_dict(
+            scatter_kwargs,
+            default={"color": "k", "marker": "x"},
+        )
+
+        fit, errors = self.fit([index], [osc])
+        Iinfty, T1 = fit[0]
+        Iinfty_error, T1_error = errors[0]
+
+        fig, ax = plt.subplots(ncols=1, nrows=1, **kwargs)
+        x = np.linspace(self.increments[0], self.increments[-1], fit_increments)
+        ax.plot(x, self.model(Iinfty, T1, x), **fit_line_kwargs)
+        integrals, = self.integrals([index], [osc])
+        ax.scatter(self.increments, integrals, **scatter_kwargs)
+        ax.set_xlabel(self.increment_label)
+        ax.set_ylabel("$\\integ$")
+
+        text = (
+            f"$I_{{\\infty}} = \\num{{{Iinfty:.4g}}} \\pm "
+            f"\\num{{{Iinfty_error:.4g}}}$\n"
+            f"$T_1 = \\num{{{T1:.4g}}} \\pm "
+            f"\\num{{{T1_error:.4g}}}$ s"
+        )
+        ax.text(0.02, 0.98, text, ha="left", va="top", transform=ax.transAxes)
+
+        return fig, ax
+
+    def plot_fit_multi_oscillators(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        oscs: Optional[Iterable[int]] = None,
+        fit_increments: int = 100,
+        xaxis_unit: str = "ppm",
+        xaxis_ticks: Optional[Union[Iterable[int], Iterable[Iterable[int, Iterable[float]]]]] = None,  # noqa: E501
+        region_separation: float = 0.02,
+        labels: bool = True,
+        colors: Any = None,
+        azim: float = 45.,
+        elev: float = 45.,
+        label_zshift: float = 0.,
+        fit_line_kwargs: Optional[Dict] = None,
+        scatter_kwargs: Optional[Dict] = None,
+        label_kwargs: Optional[Dict] = None,
+        **kwargs,
+    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
+        """Create a 3D figure showing fits for multiple oscillators.
+
+        The x-, y-, and z-axes comprise chemical shifts/oscillator indices,
+        increment values, and integral values, respectively.
+
+        Parameters
+        ----------
+        indices
+            The indices of results to return. Index ``0`` corresponds to the first
+            result obtained using the estimator, ``1`` corresponds to the next, etc.
+            By default (``None``), all results are considered.
+
+        oscs
+            Oscillators to consider. By default (``None``) all oscillators are
+            considered.
+
+        fit_increments
+            The number of points in the fit lines.
+
+        xaxis_unit
+            The unit of the x-axis. Should be one of:
+
+            * ``"hz"`` or ``"ppm"``: Fits are plotted at the oscillators'
+              frequecnies, either in Hz or ppm.
+            * ``"osc_idx"``: Fits are evenly spaced about the x-axis, featuring
+              at the oscillators' respective indices.
+
+        xaxis_ticks
+            Specifies custom x-axis ticks for each region, overwriting the default
+            ticks. Keeping this ``None`` (default) will use default ticks. Otherwise:
+
+            * If ``xaxis_unit`` if one of ``"hz"`` or ``"ppm"``, this should be
+              of the form: ``[(i, (a, b, ...)), (j, (c, d, ...)), ...]``
+              where ``i`` and ``j`` are ints indicating the region under consideration,
+              and ``a``-``d`` are floats indicating the tick values.
+            * If ``xaxis_unit`` is ``osc_idx``, this should be a list of ints,
+              all of which correspond to a valid oscillator index.
+
+        region_separation
+            The extent by which adjacent regions are separated in the figure,
+            in axes coordinates.
+
+        labels
+            If ``True``, the values extracted from the fits are written by each
+            fit.
+
+        colors
+            Colors to give to the fits. Behaves in the same way as
+            ``oscillator_colors`` in :py:meth:`~nmrespy.Estimator1D.plot_result`.
+
+        elev
+            Elevation angle for the plot view.
+
+        azim
+            Azimuthal angle for the plot view.
+
+        label_zshift
+            Vertical shift for the labels of T1 values (if the exist, see
+            ``labels``). Given in axes coordinates.
+
+        fit_line_kwargs
+            Keyword arguments for the fit line. Use this to specify features such
+            as color, linewidth etc. All keys should be valid arguments for
+            `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+            If ``"color"`` is included, it is ignored (colors are processed
+            based on the ``colors`` argument.
+
+        scatter_kwargs
+            Keyword arguments for the scatter plot. All keys should be valid arguments
+            for
+            `matplotlib.axes.Axes.scatter
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.scatter.html>`_.
+            If ``"color"`` is included, it is ignored (colors are procecessed
+            based on the ``colors`` argument.
+
+        label_kwargs
+            Keyword arguments for fit labels. All keys should be valid arguments for
+            `matplotlib.text.Text
+            <https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text>`_
+            If ``"color"`` is included, it is ignored (colors are procecessed
+            based on the ``colors`` argument. ``"horizontalalignment"``, ``"ha"``,
+            ``"verticalalignment"``, and ``"va"`` are also ignored.
+
+        kwargs
+            Keyword arguments for
+            `matplotlib.pyplot.figure
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.figure.html#matplotlib-pyplot-figure>`_
+        """
+        sanity_check(
+            self._indices_check(indices),
+            (
+                "fit_increments", fit_increments, sfuncs.check_int, (),
+                {"min_value": len(self.increments)},
+            ),
+            ("xaxis_unit", xaxis_unit, sfuncs.check_one_of, ("osc_idx", "hz", "ppm")),
+            ("labels", labels, sfuncs.check_bool),
+            ("colors", colors, sfuncs.check_oscillator_colors, (), {}, True),
+            ("elev", elev, sfuncs.check_float),
+            ("azim", azim, sfuncs.check_float),
+            ("label_zshift", label_zshift, sfuncs.check_float),
+        )
+        if xaxis_unit != "osc_idx":
+            sanity_check(self._funit_check(xaxis_unit, "xaxis_unit"))
+
+        scatter_kwargs = proc_kwargs_dict(
+            scatter_kwargs,
+            default={"lw": 0., "depthshade": False},
+            to_pop=("color", "c", "zorder"),
+        )
+        fit_line_kwargs = proc_kwargs_dict(
+            fit_line_kwargs,
+            to_pop=("color", "zorder"),
+        )
+        label_kwargs = proc_kwargs_dict(
+            label_kwargs,
+            to_pop=("ha", "horizontalalignment", "va", "verticalalignment", "color", "zdir"),  # noqa: E501
+        )
+
+        indices = self._process_indices(indices)
+        params = self.get_params(
+            indices=indices,
+            funit="ppm" if xaxis_unit == "ppm" else "hz",
+        )
+        n_oscs = params[0].shape[0]
+        sanity_check(self._oscs_check(oscs, n_oscs))
+        oscs = self._proc_oscs(oscs, n_oscs)
+        params = [p[oscs] for p in params]
+
+        integrals = self.integrals(indices, oscs)
+        fit, errors = self.fit(indices, oscs)
+
+        fig = plt.figure(**kwargs)
+        ax = fig.add_subplot(projection="3d")
+
+        colors = make_color_cycle(colors, len(oscs))
+        zorder = n_oscs
+
+        if xaxis_unit == "osc_idx":
+            sanity_check(
+                (
+                    "xaxis_ticks", xaxis_ticks, sfuncs.check_list_with_elements_in,
+                    (oscs,), {}, True,
+                )
+            )
+            xs = oscs
+            xlabel = "oscillator index"
+
+        else:
+            merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
+            sanity_check(
+                (
+                    "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
+                    (merge_regions,), {}, True,
+                ),
+                (
+                    "region_separation", region_separation, sfuncs.check_float,
+                    (), {"min_value": 0., "max_value": 1 / (len(merge_regions) - 1)},
+                ),
+            )
+
+            merge_region_spans = self._get_3d_xaxis_spans(
+                merge_regions,
+                region_separation,
+            )
+
+            xaxis_ticks, xaxis_ticklabels = self._get_3d_xticks_and_labels(
+                xaxis_ticks,
+                indices,
+                xaxis_unit,
+                merge_regions,
+                merge_region_spans,
+            )
+            xs = self._transform_freq_to_xaxis(
+                params[0][:, 2],
+                merge_regions,
+                merge_region_spans,
+            )
+
+            xlabel, = self._axis_freq_labels(xaxis_unit)
+
+
+        for x, params, integs in zip(xs, fit, integrals):
+            color = next(colors)
+            x_scatter = np.full(self.increments.shape, x)
+            y_scatter = self.increments
+            z_scatter = integs
+            ax.scatter(
+                x_scatter,
+                y_scatter,
+                z_scatter,
+                color=color,
+                zorder=zorder,
+                **scatter_kwargs,
+            )
+
+            x_fit = np.full(fit_increments, x)
+            y_fit = np.linspace(self.increments[0], self.increments[-1], fit_increments)
+            z_fit = self.model(*params, y_fit)
+            ax.plot(
+                x_fit,
+                y_fit,
+                z_fit,
+                color=color,
+                zorder=zorder,
+                **fit_line_kwargs,
+            )
+
+            ax.text(
+                x_fit[-1],
+                y_fit[-1],
+                z_fit[-1] + label_zshift,
+                f"{params[-1]:.3g}",
+                color=color,
+                zdir="z",
+                ha="center",
+                **label_kwargs,
+            )
+
+            zorder -= 1
+
+        # azim at 270 provies a face-on view of the spectra.
+        ax.view_init(elev=elev, azim=270. + azim)
+
+        ax.set_xlabel(xlabel)
+
+        if xaxis_ticks is not None:
+            ax.set_xticks(xaxis_ticks)
+            ax.set_xticklabels(xaxis_ticklabels)
+
+        # Configure y-axis
+        ax.set_ylim(self.increments[0], self.increments[-1])
+        if self.increment_label is not None:
+            ax.set_ylabel(self.increment_label)
+
+        # Configure z-axis
+        ax.set_zlabel("$\\int$")
+
+        if xaxis_unit != "osc_idx":
+            self._set_3d_axes_xspine_and_lims(ax, merge_region_spans)
+        else:
+            ax.set_xlim(n_oscs - 1, 0)
+
+        return fig, ax
 
     def plot_result(
         self,
@@ -614,6 +980,8 @@ class EstimatorSeq1D(Estimator1D):
         oscillator_colors: Any = None,
         elev: float = 45.,
         azim: float = 45.,
+        spec_line_kwargs: Optional[Dict] = None,
+        osc_line_kwargs: Optional[Dict] = None,
         **kwargs,
     ):
         """Generate a figure of the estimation result.
@@ -632,12 +1000,14 @@ class EstimatorSeq1D(Estimator1D):
             The unit to express chemical shifts in. Should be ``"hz"`` or ``"ppm"``.
 
         xaxis_ticks
-            .. todo:
-                Describe
+            Specifies custom x-axis ticks for each region, overwriting the default
+            ticks. Should be of the form: ``[(i, (a, b, ...)), (j, (c, d, ...)), ...]``
+            where ``i`` and ``j`` are ints indicating the region under consideration,
+            and ``a``-``d`` are floats indicating the tick values.
 
         region_separation
-            .. todo:
-                Describe
+            The extent by which adjacent regions are separated in the figure,
+            in axes coordinates.
 
         oscillator_colors
             Describes how to color individual oscillators. The following
@@ -671,14 +1041,29 @@ class EstimatorSeq1D(Estimator1D):
 
         azim
             Azimuthal angle for the plot view.
+
+        spec_line_kwargs
+            Keyword arguments for the spectrum lines. All keys should be valid
+            arguments for
+            `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+
+        osc_line_kwargs
+            Keyword arguments for the oscillator lines. All keys should be valid
+            arguments for
+            `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+            If ``"color"`` is included, it is ignored (colors are processed based on
+            the ``oscillator_colors`` argumnet.
+
+        kwargs
+            Keyword arguments for
+            `matplotlib.pyplot.figure
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.figure.html#matplotlib-pyplot-figure>`_
         """
         sanity_check(
             self._indices_check(indices),
             self._funit_check(xaxis_unit, "xaxis_unit"),
-            (
-                "region_separation", region_separation, sfuncs.check_float,
-                (), {"min_value": 0., "max_value": 1.},
-            ),
             (
                 "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
                 (), {}, True,
@@ -686,6 +1071,17 @@ class EstimatorSeq1D(Estimator1D):
             ("elev", elev, sfuncs.check_float),
             ("azim", azim, sfuncs.check_float),
         )
+
+        spec_line_kwargs = proc_kwargs_dict(
+            spec_line_kwargs,
+            default={"linewidth": 0.8, "color": "k"},
+        )
+        osc_line_kwargs = proc_kwargs_dict(
+            osc_line_kwargs,
+            default={"linewidth": 0.5},
+            to_pop=("color"),
+        )
+
         indices = self._process_indices(indices)
 
         merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
@@ -694,6 +1090,10 @@ class EstimatorSeq1D(Estimator1D):
             (
                 "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
                 (merge_regions,), {}, True,
+            ),
+            (
+                "region_separation", region_separation, sfuncs.check_float,
+                (), {"min_value": 0., "max_value": 1 / (len(merge_regions) - 1)},
             ),
         )
 
@@ -719,33 +1119,31 @@ class EstimatorSeq1D(Estimator1D):
 
         fig = plt.figure(**kwargs)
         ax = fig.add_subplot(projection="3d")
-        colorcycles = (
-            len(self.increments) *
-            [make_color_cycle(oscillator_colors, params[0].shape[0])]
-        )
 
-        for (idx, region, span) in zip(
-            merge_indices, merge_regions, merge_region_spans
-        ):
-            slice_ = slice(
-                *self.convert([region], f"{xaxis_unit}->idx")[0]
+        colorcycle = make_color_cycle(oscillator_colors, params[0].shape[0])
+        for i, (spectrum, p, incr) in enumerate(
+            zip(
+                reversed(spectra), reversed(params), reversed(self.increments)
             )
-            x = np.linspace(span[0], span[1], slice_.stop - slice_.start)
-            for i, (spectrum, p, incr) in enumerate(
-                zip(
-                    reversed(spectra), reversed(params), reversed(self.increments)
-                )
+        ):
+            cc = copy.deepcopy(colorcycle)
+
+            for (idx, region, span) in zip(
+                merge_indices, merge_regions, merge_region_spans
             ):
-                colorcycle = colorcycles[i]
-                spec = spectrum[slice_]
+                slice_ = slice(
+                    *self.convert([region], f"{xaxis_unit}->idx")[0]
+                )
+                x = np.linspace(span[0], span[1], slice_.stop - slice_.start)
                 y = np.full(x.shape, incr)
-                ax.plot(x, y, spec, color="k")
+                spec = spectrum[slice_]
+                ax.plot(x, y, spec, **spec_line_kwargs)
                 for osc_params in p:
                     osc_params = np.expand_dims(osc_params, axis=0)
                     osc = self.make_fid(osc_params)
                     osc[0] *= 0.5
                     osc_spec = ne.sig.ft(osc).real[slice_]
-                    ax.plot(x, y, osc_spec, color=next(colorcycle), lw=0.6)
+                    ax.plot(x, y, osc_spec, color=next(cc), **osc_line_kwargs)
 
         ax.set_xticks(xaxis_ticks)
         ax.set_xticklabels(xaxis_ticklabels)
@@ -756,29 +1154,8 @@ class EstimatorSeq1D(Estimator1D):
         # azim at 270 provies a face-on view of the spectra.
         ax.view_init(elev=elev, azim=270. + azim)
 
-        # TODO
-        # # Working on custom x-axis spin with breaks.
-        # # Not yet working. Yet to figure out how to get the lines that are plotted
-        # # to lie right at the end of the y-axis
-        # xspine = ax.w_xaxis.line
-        # xspine_kwargs = {
-        #     "lw": xspine.get_linewidth(),
-        #     "color": xspine.get_color(),
-        # }
-        # ax.w_xaxis.line.set_visible(False)
-
-        # curr_xlim = ax.get_xlim()
-        # curr_ylim = ax.get_ylim()
-        # curr_zlim = ax.get_zlim()
-
-        # spine_y = 2 * [curr_ylim[0]]
-        # spine_z = 2 * [curr_zlim[0]]
-        # for span in merge_region_spans:
-        #     ax.plot(span, spine_y, spine_z, **xspine_kwargs)
-
-        # ax.set_xlim(curr_xlim)
-        # ax.set_ylim(curr_ylim)
-        # ax.set_zlim(curr_zlim)
+        # x-axis spine with breaks.
+        self._set_3d_axes_xspine_and_lims(ax, merge_region_spans)
 
         return fig, ax
 
@@ -816,7 +1193,7 @@ class EstimatorSeq1D(Estimator1D):
                 (i, [x for x in _ax.get_xticks() if mn <= x <= mx])
             )
 
-        flatten = lambda lst: [x for sublist in lst for x in sublist]
+        flatten = lambda lst: [x for sublist in lst for x in sublist]  # noqa: E731
         if xaxis_ticks is None:
             xaxis_ticks = default_xaxis_ticks
         else:
@@ -855,7 +1232,7 @@ class EstimatorSeq1D(Estimator1D):
             c2 = min(span)
             coefficients.append([m1, c1, m2, c2])
 
-        scale = lambda x, coeffs: (x * coeffs[0] + coeffs[1]) * coeffs[2] + coeffs[3]
+        scale = lambda x, coeffs: (x * coeffs[0] + coeffs[1]) * coeffs[2] + coeffs[3]  # noqa: E501, E731
 
         for value in values:
             # Determine which region the value lies in
@@ -891,6 +1268,27 @@ class EstimatorSeq1D(Estimator1D):
         ]
         return merge_region_spans
 
+    def _set_3d_axes_xspine_and_lims(
+        self,
+        ax: mpl.axes.Axes,
+        merge_region_spans: Iterable[Tuple[float, float]],
+    ) -> None:
+        xspine = ax.w_xaxis.line
+        xspine_kwargs = {
+            "lw": xspine.get_linewidth(),
+            "color": xspine.get_color(),
+        }
+        ax.w_xaxis.line.set_visible(False)
+        curr_zlim = ax.get_zlim()
+        spine_y = 2 * [self.increments[0]]
+        spine_z = 2 * [curr_zlim[0]]
+        for span in merge_region_spans:
+            ax.plot(span, spine_y, spine_z, **xspine_kwargs)
+
+        ax.set_xlim(1, 0)
+        ax.set_ylim(self.increments[0], self.increments[-1])
+        ax.set_zlim(curr_zlim)
+
     @logger
     def plot_result_increment(
         self,
@@ -898,6 +1296,9 @@ class EstimatorSeq1D(Estimator1D):
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         """Generate a figure of the estimation result for a particular increment.
+
+        The figure created is of the same form as those generated by
+        :py:meth:`~nmrespy.Estimator1D.plot_result`.
 
         Parameters
         ----------
@@ -926,9 +1327,7 @@ class EstimatorSeq1D(Estimator1D):
         self._results = [r[increment] for r in results_cp]
         self._data = self.data[increment]
 
-        if "plot_model" not in kwargs:
-            kwargs["plot_model"] = False
-
+        kwargs = proc_kwargs_dict(kwargs, default={"plot_model": False})
         fig, axs = super().plot_result(**kwargs)
 
         self._results = results_cp
@@ -1282,194 +1681,6 @@ class EstimatorInvRec(EstimatorSeq1D):
         hess = -2 * (np.einsum("i,ijk->jk", y_minus_x, d2) - d1.T @ d1)
 
         return obj, grad, hess
-
-    def plot_fit_single_oscillator(
-        self,
-        osc: int,
-        index: int = -1,
-        fit_increments: int = 100,
-        color: Any = "#808080",
-        **kwargs,
-    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
-        sanity_check(
-            self._index_check(index),
-            (
-                "fit_increments", fit_increments, sfuncs.check_int, (),
-                {"min_value": len(self.increments)},
-            ),
-            ("color", color, sfuncs.check_mpl_color),
-        )
-        n_oscs = self.get_results(indices=[index])[0][0].get_params().shape[0]
-        sanity_check(
-            ("osc", osc, sfuncs.check_int, (), {"min_value": 0, "max_value": n_oscs - 1}),  # noqa: E501
-        )
-        params, errors = self.fit([osc], index)
-        Iinfty, T1 = params[0]
-        Iinfty_error, T1_error = errors[0]
-
-        fig, ax = plt.subplots(**kwargs)
-        x = np.linspace(self.increments[0], self.increments[-1], fit_increments)
-        ax.plot(x, self.model(Iinfty, T1, x), color=color)
-        ax.scatter(self.increments, self.integrals(oscs=[osc], index=index), color=color)  # noqa: E501
-        ax.set_xlabel(self.increment_label)
-        ax.set_ylabel("$I$")
-
-        text = (
-            f"$I_{{\\infty}} = \\num{{{Iinfty:.4g}}} \\pm "
-            f"\\num{{{Iinfty_error:.4g}}}$\n"
-            f"$T_1 = \\num{{{T1:.4g}}} \\pm "
-            f"\\num{{{T1_error:.4g}}}$ s"
-        )
-        ax.text(0.02, 0.98, text, ha="left", va="top", transform=ax.transAxes)
-
-        return fig, ax
-
-    def plot_fit_multi_oscillators(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        oscs: Optional[Iterable[int]] = None,
-        fit_increments: int = 100,
-        xaxis_unit: str = "ppm",
-        xaxis_ticks: Optional[Union[Iterable[int], Iterable[Iterable[int, Iterable[float]]]]] = None,  # noqa: E501
-        region_separation: float = 0.02,
-        T1_labels: bool = True,
-        colors: Any = None,
-        azim: float = 45.,
-        elev: float = 45.,
-        label_zshift: float = 0.,
-        label_fontsize: int = 7,
-        **kwargs,
-    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
-        sanity_check(
-            self._indices_check(indices),
-            (
-                "fit_increments", fit_increments, sfuncs.check_int, (),
-                {"min_value": len(self.increments)},
-            ),
-            ("xaxis_unit", xaxis_unit, sfuncs.check_one_of, ("osc_idx", "hz", "ppm")),
-            ("colors", colors, sfuncs.check_oscillator_colors, (), {}, True),
-            ("elev", elev, sfuncs.check_float),
-            ("azim", azim, sfuncs.check_float),
-            ("label_zshift", label_zshift, sfuncs.check_float),
-            ("label_fontsize", label_fontsize, sfuncs.check_int, (), {"min_value": 1}),
-        )
-        if xaxis_unit != "osc_idx":
-            sanity_check(self._funit_check(xaxis_unit, "xaxis_unit"))
-
-        indices = self._process_indices(indices)
-
-        params = self.get_params(indices=indices, funit=xaxis_unit)
-        n_oscs = params[0].shape[0]
-        sanity_check(self._oscs_check(oscs, n_oscs))
-        oscs = self._proc_oscs(oscs, n_oscs)
-        params = [p[oscs] for p in params]
-
-        integrals = self.integrals(indices, oscs)
-        fit, errors = self.fit(indices, oscs)
-
-        fig = plt.figure(**kwargs)
-        ax = fig.add_subplot(projection="3d")
-
-        colors = make_color_cycle(colors, len(oscs))
-        zorder = n_oscs
-        span_data = []
-
-        if xaxis_unit == "osc_idx":
-            sanity_check(
-                (
-                    "xaxis_ticks", xaxis_ticks, sfuncs.check_list_with_elements_in,
-                    (oscs,), {}, True,
-                )
-            )
-            xs = oscs
-            xlabel = "oscillator index"
-
-        else:
-            merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
-            sanity_check(
-                (
-                    "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
-                    (merge_regions,), {}, True,
-                ),
-                (
-                    "region_separation", region_separation, sfuncs.check_float,
-                    (), {"min_value": 0., "max_value": 1.},
-                ),
-            )
-
-            merge_region_spans = self._get_3d_xaxis_spans(
-                merge_regions,
-                region_separation,
-            )
-
-            xaxis_ticks, xaxis_ticklabels = self._get_3d_xticks_and_labels(
-                xaxis_ticks,
-                indices,
-                xaxis_unit,
-                merge_regions,
-                merge_region_spans,
-            )
-            xs = self._transform_freq_to_xaxis(
-                params[0][:, 2],
-                merge_regions,
-                merge_region_spans,
-            )
-
-            xlabel, = self._axis_freq_labels(xaxis_unit)
-
-        for x, (Iinfty, T1), integs in zip(xs, fit, integrals):
-            color = next(colors)
-            x_scatter = np.full(self.increments.shape, x)
-            y_scatter = self.increments
-            z_scatter = integs
-            span_data.append(z_scatter)
-            ax.scatter(
-                x_scatter,
-                y_scatter,
-                z_scatter,
-                color=color,
-                zorder=zorder,
-                lw=0.,
-            )
-
-            x_fit = np.full(fit_increments, x)
-            y_fit = np.linspace(self.increments[0], self.increments[-1], fit_increments)
-            z_fit = self.model(Iinfty, T1, y_fit)
-            span_data.append(z_fit)
-            ax.plot(x_fit, y_fit, z_fit, color=color, zorder=zorder)
-
-            ax.text(
-                x_fit[-1],
-                y_fit[-1],
-                z_fit[-1] + label_zshift,
-                f"{T1:.3g}",
-                color=color,
-                zdir="z",
-                ha="center",
-                fontsize=label_fontsize,
-            )
-
-            zorder -= 1
-
-        # azim at 270 provies a face-on view of the spectra.
-        ax.view_init(elev=elev, azim=270. + azim)
-
-        ax.set_xlabel(xlabel)
-        ax.set_xticks(xaxis_ticks)
-        ax.set_xlim(1, 0)
-        # `None` is possible here if `xaxis_unit="osc_idx"` and `xaxis_ticks=None`
-        if xaxis_ticklabels is not None:
-            ax.set_xticklabels(xaxis_ticklabels)
-
-        # Configure y-axis
-        ax.set_ylim(self.increments[0], self.increments[-1])
-        if self.increment_label is not None:
-            ax.set_ylabel(self.increment_label)
-
-        # Configure z-axis
-        ax.set_zlabel("$I$")
-
-        return fig, ax
 
 
 class FunctionFactoryInvRec(FunctionFactory):
