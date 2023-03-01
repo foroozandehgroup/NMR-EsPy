@@ -1,14 +1,14 @@
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 17:19:10 GMT
+# Last Edited: Wed 01 Mar 2023 17:11:12 GMT
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
 from collections.abc import Callable
 import functools
 import re
-from typing import Any
+from typing import Any, Dict, Iterable, Optional
 
 from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._sanity import sanity_check, funcs as sfuncs
@@ -104,3 +104,23 @@ def latex_nucleus(nucleus: str) -> str:
     mass = re.search(r"\d+", nucleus).group()
     sym = re.search(r"[a-zA-Z]+", nucleus).group()
     return f"$^{{{mass}}}${sym}"
+
+
+def proc_kwargs_dict(
+    kwargs: Optional[Dict],
+    default: Optional[Dict] = None,
+    to_pop: Optional[Iterable[str]] = None,
+) -> Dict:
+    if default is None:
+        default = {}
+
+    if kwargs is None:
+        kwargs = default
+    else:
+        if to_pop is not None:
+            for s in to_pop:
+                kwargs.pop(s, None)
+        for k, v in default.items():
+            kwargs.setdefault(k, v)
+
+    return kwargs
