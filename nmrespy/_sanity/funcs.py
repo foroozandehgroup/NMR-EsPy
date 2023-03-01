@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 27 Feb 2023 23:25:43 GMT
+# Last Edited: Wed 01 Mar 2023 11:30:26 GMT
 
 from pathlib import Path
 import re
@@ -64,6 +64,16 @@ def check_int(
         return f"Should be greater than or equal to {min_value}."
     if isint(max_value) and obj > max_value:
         return f"Should be less than or equal to {max_value}."
+
+
+def check_list_with_elements_in(obj: Any, allowed: Iterable[Any]) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a list of tuple."
+    if any([x not in allowed for x in obj]):
+        return (
+            "All elements should be one of the following values:\n" +
+            ", ".join(allowed)
+        )
 
 
 def check_index(obj: Any, length: int) -> Optional[str]:
