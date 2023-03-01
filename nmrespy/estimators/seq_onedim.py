@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 01 Mar 2023 19:05:36 GMT
+# Last Edited: Wed 01 Mar 2023 19:51:16 GMT
 
 from __future__ import annotations
 import copy
@@ -46,7 +46,6 @@ class EstimatorSeq1D(Estimator1D):
         expinfo: ne.ExpInfo,
         datapath: Optional[Path] = None,
         increments: Optional[np.ndarray] = None,
-        increment_label: Optional[str] = None,
     ) -> None:
         """
         Parameters
@@ -66,11 +65,6 @@ class EstimatorSeq1D(Estimator1D):
 
             * Delay times in an inversion recovery experiment.
             * Gradient strengths in a diffusion experiment.
-
-        increment_label
-            A label to describe what the increment is. This will appear in relavent
-            plots. For example, a suitable value could be ``"$G_z$
-            (Gcm\\textsuperscript{-1})"`` for a diffusion experiment.
         """
         super().__init__(data[0], expinfo, datapath)
         self._data = data
@@ -79,10 +73,20 @@ class EstimatorSeq1D(Estimator1D):
                 "increments", increments, sfuncs.check_ndarray, (),
                 {"dim": 1, "shape": [(0, data.shape[0])]}, True,
             ),
-            ("increment_label", increment_label, sfuncs.check_str, (), {}, True),
         )
         self.increments = increments
-        self.increment_label = increment_label
+
+    @property
+    def increment_label(self) -> str:
+        return getattr(self, "_increment_label", "")
+
+    @property
+    def fit_labels(self) -> Optional[str]:
+        return getattr(self, "_fit_labels", None)
+
+    @property
+    def fit_units(self) -> Optional[str]:
+        return getattr(self, "_fit_units", None)
 
     def view_data(
         self,
@@ -677,33 +681,48 @@ class EstimatorSeq1D(Estimator1D):
             ("osc", osc, sfuncs.check_int, (), {"min_value": 0, "max_value": n_oscs - 1}),  # noqa: E501
         )
 
-        proc_kwargs_dict(
+        fit_line_kwargs = proc_kwargs_dict(
             fit_line_kwargs,
             default={"color": "#808080"},
         )
-        proc_kwargs_dict(
+        scatter_kwargs = proc_kwargs_dict(
             scatter_kwargs,
             default={"color": "k", "marker": "x"},
         )
 
-        fit, errors = self.fit([index], [osc])
-        Iinfty, T1 = fit[0]
-        Iinfty_error, T1_error = errors[0]
+        params, errors = self.fit([index], [osc])
+        params = params[0]
+        errors = errors[0]
 
         fig, ax = plt.subplots(ncols=1, nrows=1, **kwargs)
         x = np.linspace(self.increments[0], self.increments[-1], fit_increments)
-        ax.plot(x, self.model(Iinfty, T1, x), **fit_line_kwargs)
+        ax.plot(x, self.model(*params, x), **fit_line_kwargs)
         integrals, = self.integrals([index], [osc])
         ax.scatter(self.increments, integrals, **scatter_kwargs)
         ax.set_xlabel(self.increment_label)
-        ax.set_ylabel("$\\integ$")
+        ax.set_ylabel("$\\int$", rotation="horizontal")
 
-        text = (
-            f"$I_{{\\infty}} = \\num{{{Iinfty:.4g}}} \\pm "
-            f"\\num{{{Iinfty_error:.4g}}}$\n"
-            f"$T_1 = \\num{{{T1:.4g}}} \\pm "
-            f"\\num{{{T1_error:.4g}}}$ s"
+        text = "\n".join(
+            [
+                f"$p_{{{i}}} = {para:.4g} \\pm {err:.4g}$U{i}"
+                for i, (para, err) in enumerate(zip(params, errors), start=1)
+            ]
         )
+        if self.fit_labels is not None:
+            for i, (flab, ulab) in enumerate(
+                zip(self.fit_labels, self.fit_units),
+                start=1,
+            ):
+                text = text.replace(f"p_{{{i}}}", flab)
+                text = text.replace(f"U{i}", f" {ulab}" if ulab != "" else "")
+        else:
+            i = 0
+            while True:
+                if (to_rm := f"U{i}") in text:
+                    text = text.replace(to_rm, "")
+                else:
+                    break
+
         ax.text(0.02, 0.98, text, ha="left", va="top", transform=ax.transAxes)
 
         return fig, ax
@@ -907,7 +926,6 @@ class EstimatorSeq1D(Estimator1D):
 
             xlabel, = self._axis_freq_labels(xaxis_unit)
 
-
         for x, params, integs in zip(xs, fit, integrals):
             color = next(colors)
             x_scatter = np.full(self.increments.shape, x)
@@ -958,8 +976,7 @@ class EstimatorSeq1D(Estimator1D):
 
         # Configure y-axis
         ax.set_ylim(self.increments[0], self.increments[-1])
-        if self.increment_label is not None:
-            ax.set_ylabel(self.increment_label)
+        ax.set_ylabel(self.increment_label)
 
         # Configure z-axis
         ax.set_zlabel("$\\int$")
@@ -1381,6 +1398,12 @@ class EstimatorInvRec(EstimatorSeq1D):
     recovery experiment, for the purpose of determining longitudinal relaxation
     times (:math:`T_1`)."""
 
+    _increment_label = "$\\tau$ (s)"
+    # Rendered in math mode
+    _fit_labels = ["I_{\\infty}", "T_1"]
+    # Rendered outside of math mode
+    _fit_units = ["", "s"]
+
     def __init__(
         self,
         data: np.ndarray,
@@ -1403,8 +1426,7 @@ class EstimatorInvRec(EstimatorSeq1D):
         datapath
             The path to the directory containing the NMR data.
         """
-        super().__init__(
-            data, expinfo, datapath, increments=delays, increment_label="$\\tau$ (s)")
+        super().__init__(data, expinfo, datapath, increments=delays)
 
     @classmethod
     def new_spinach(
