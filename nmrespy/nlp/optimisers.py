@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 01 Mar 2023 15:35:23 GMT
+# Last Edited: Thu 02 Mar 2023 14:59:07 GMT
 
 from dataclasses import dataclass
 import math
@@ -67,7 +67,7 @@ def trust_ncg(
     function_factory: FunctionFactory,
     args: Iterable[Any] = (),
     eta: float = 0.15,
-    initial_trust_radius: float = 1.0,
+    initial_trust_radius: Optional[float] = None,
     max_trust_radius: float = 4.0,
     tolerance: float = 1.e-8,
     output_mode: Optional[int] = 5,
@@ -95,10 +95,17 @@ def trust_ncg(
             \rho_k = \frac{f(x_k) - f(x_k - p_k)}{m_k(0) - m_k(p_k)} > \eta
 
     initial_trust_radius
-        The initial value of the radius of the trust region.
+        The initial value of the radius of the trust region. By default (``None``):
+
+        .. math ::
+
+            1 / 10 \right \rVert
+                \mathcal{F} \left( \boldsymbol{x}^{(0)} \right)
+            \left \lVert_2
 
     max_trust_radius
-        The largest permitted radius for the trust region.
+        The largest permitted radius for the trust region. If ``None``, this will be
+        ``16 * initial_trust_radius``.
 
     tolerance
         Sets the convergence criterion. Convergence will occur when
@@ -110,6 +117,7 @@ def trust_ncg(
         optimisation will be printed. If an integer greater than ``0``, information
         for each iteration ``k`` which satisfies ``k % output_mode == 0`` will be
         printed.
+
     max_iterations
         The greaterest number of iterations allowed before the optimiser is
         terminated.
@@ -129,7 +137,15 @@ def trust_ncg(
     start = time.time()
     x = x0 if isinstance(x0, np.ndarray) else x0.x
     m = function_factory(x, *args)
+
+    if initial_trust_radius is None:
+        # See Gould 2005: Sensitivity of trust-region algorithms and
+        # their parameters (p 231)
+        initial_trust_radius = 0.1 * m.gradient_norm
+    if max_trust_radius is None:
+        max_trust_radius = 16 * initial_trust_radius
     trust_radius = min(initial_trust_radius, max_trust_radius)
+
     k = 0
 
     if monitor_negative_amps:
@@ -137,7 +153,6 @@ def trust_ncg(
         active_idx = m.args[4]
         if 0 in active_idx:
             amp_slice = slice(0, oscs)
-        neg_amp_status = {}
 
     if isinstance(output_mode, int) and output_mode > 0:
         print_title()
