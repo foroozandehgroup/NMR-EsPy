@@ -1,9 +1,10 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 26 Feb 2023 13:38:18 GMT
+# Last Edited: Thu 02 Mar 2023 19:16:42 GMT
 
 from __future__ import annotations
+import copy
 import datetime
 import functools
 import io
@@ -12,7 +13,9 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import matplotlib as mpl
+from matplotlib import cm, pyplot as plt
 import numpy as np
+from pybaselines.classification import dietrich
 
 import nmrespy as ne
 from nmrespy._colors import RED, GRE, END, USE_COLORAMA
@@ -1287,6 +1290,84 @@ class _Estimator1DProc(Estimator):
             trim = min(trim, size)
 
         return trim
+
+    def predict_regions(
+        self,
+        unit: str = "hz",
+        min_baseline_length: int = 15,
+        true_region_filter: int = 200,
+    ) -> Iterable[Tuple[float, float]]:
+        # TODO: docstring
+        # TODO: sanity checking
+        if self.data.ndim == 1:
+            data = copy.deepcopy(self.data)
+        else:
+            data = self.data[0]
+        data[0] *= 0.5
+        spectrum = ne.sig.ft(data).real
+        shifts = self.get_shifts(unit=unit)[-1]
+        mask = dietrich(
+            spectrum,
+            x_data=shifts,
+            min_length=min_baseline_length,
+        )[1]["mask"].astype(int)
+        mask_diff = np.abs(np.diff(mask))
+        flip_idxs, = np.nonzero(mask_diff == 1)
+        flip_iter = iter(flip_idxs)
+
+        region_idxs = []
+        if mask[0] == 0:
+            region_idxs.append(0)
+        else:
+            region_idxs.append(int(next(flip_iter)))
+        region_idxs.extend([int(idx) for idx in flip_iter])
+        if mask[-1] == 0:
+            region_idxs.append(mask.size - 1)
+
+        region_freqs = iter(self.convert([region_idxs], f"idx->{unit}")[0])
+        regions = [(l, r) for l, r in zip(region_freqs, region_freqs)]  # noqa: E741
+
+        # Filter away sufficiently small regions
+        width_threshold = (
+            self.convert([0], f"idx->{unit}")[0] -
+            self.convert([true_region_filter], f"idx->{unit}")[0]
+        )
+        regions = list(filter(lambda r: r[0] - r[1] >= width_threshold, regions))
+
+        return regions
+
+    def view_proposed_regions(
+        self,
+        regions: Iterable[Tuple[float, float]],
+        unit: str = "hz",
+    ) -> None:
+        # TODO docstring
+        # TODO sanity checking
+        if self.data.ndim == 1:
+            data = copy.deepcopy(self.data)
+        else:
+            data = self.data[0]
+        data[0] *= 0.5
+        spectrum = ne.sig.ft(data).real
+        shifts = self.get_shifts(unit=unit)[-1]
+
+        fig, ax = plt.subplots()
+        ax.set_xlim(shifts[0], shifts[-1])
+        ax.plot(shifts, spectrum, color="k")
+        colors = cm.viridis(np.linspace(0, 1, len(regions)))
+        for region, color in zip(regions, colors):
+            ax.axvspan(
+                region[0],
+                region[1],
+                facecolor=color,
+                alpha=0.6,
+                edgecolor=None,
+            )
+
+        ax.set_yticks([])
+        ax.set_xlabel(self._axis_freq_labels(unit)[-1])
+
+        plt.show()
 
     @logger
     def subband_estimate(
