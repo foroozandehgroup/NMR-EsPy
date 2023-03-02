@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 01 Mar 2023 19:51:16 GMT
+# Last Edited: Thu 02 Mar 2023 15:00:24 GMT
 
 from __future__ import annotations
 import copy
@@ -564,6 +564,9 @@ class EstimatorSeq1D(Estimator1D):
         oscs = self._proc_oscs(oscs, n_oscs)
 
         integrals = self.integrals(indices, oscs)
+        norm = np.linalg.norm(integrals)
+        integrals /= norm
+
         if func == "T1":
             function_factory = FunctionFactoryInvRec
 
@@ -571,18 +574,24 @@ class EstimatorSeq1D(Estimator1D):
         errors = []
         for integs in integrals:
             if func == "T1":
-                x0 = np.array([integs[-1], 1.])
+                x0 = np.array([-integs[0], 1.])
+                args = (integs, self.increments)
 
             nlp_result = trust_ncg(
                 x0=x0,
+                args=args,
                 function_factory=function_factory,
-                args=(integs, self.increments),
-                initial_trust_radius=0.1,
                 max_trust_radius=0.1,
-                output_mode=5,
+                output_mode=None,
             )
-            results.append(nlp_result.x)
-            errors.append(nlp_result.errors / np.sqrt(len(self.increments)))
+
+            if func == "T1":
+                x = nlp_result.x
+                x[0] *= norm
+                errs = nlp_result.errors
+                errs[0] *= norm
+            results.append(x)
+            errors.append(errs / np.sqrt(len(self.increments)))
 
         return results, errors
 
@@ -833,6 +842,13 @@ class EstimatorSeq1D(Estimator1D):
             Keyword arguments for
             `matplotlib.pyplot.figure
             <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.figure.html#matplotlib-pyplot-figure>`_
+
+        Notes
+        -----
+        This function can take a bit of time to run (tens of seconds
+        sometimes), and timings will significantly vary depending on the
+        backend used (PGF, which I typically use, is quite time-consuming, for
+        example). You can't rush art.
         """
         sanity_check(
             self._indices_check(indices),
@@ -900,11 +916,17 @@ class EstimatorSeq1D(Estimator1D):
                     "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
                     (merge_regions,), {}, True,
                 ),
-                (
-                    "region_separation", region_separation, sfuncs.check_float,
-                    (), {"min_value": 0., "max_value": 1 / (len(merge_regions) - 1)},
-                ),
             )
+            if (n_regions := len(merge_regions)) > 1:
+                max_rs = 1 / (n_regions - 1)
+                sanity_check(
+                    (
+                        "region_separation", region_separation, sfuncs.check_float,
+                        (), {"min_value": 0., "max_value": max_rs},
+                    ),
+                )
+            else:
+                region_separation = 0.
 
             merge_region_spans = self._get_3d_xaxis_spans(
                 merge_regions,
@@ -1103,14 +1125,21 @@ class EstimatorSeq1D(Estimator1D):
 
         merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
 
+        if (n_regions := len(merge_regions)) > 1:
+            max_rs = 1 / (n_regions - 1)
+            sanity_check(
+                (
+                    "region_separation", region_separation, sfuncs.check_float,
+                    (), {"min_value": 0., "max_value": max_rs},
+                ),
+            )
+        else:
+            region_separation = 0.
+
         sanity_check(
             (
                 "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
                 (merge_regions,), {}, True,
-            ),
-            (
-                "region_separation", region_separation, sfuncs.check_float,
-                (), {"min_value": 0., "max_value": 1 / (len(merge_regions) - 1)},
             ),
         )
 
@@ -1427,6 +1456,105 @@ class EstimatorInvRec(EstimatorSeq1D):
             The path to the directory containing the NMR data.
         """
         super().__init__(data, expinfo, datapath, increments=delays)
+
+    @classmethod
+    def new_from_parameters(
+        cls,
+        params: np.ndarray,
+        t1s: Union[Iterable[float], float],
+        delays: np.ndarray,
+        pts: int,
+        sw: float,
+        offset: float,
+        sfo: float = 500.,
+        nucleus: str = "1H",
+        snr: Optional[float] = 20.,
+    ) -> EstimatorInvRec:
+        """Generate an estimator instance with sythetic data created from an
+        array of oscillator parameters.
+
+        Parameters
+        ----------
+        params
+            Parameter array with the following structure:
+
+              .. code:: python
+
+                 params = numpy.array([
+                    [a_1, φ_1, f_1, η_1],
+                    [a_2, φ_2, f_2, η_2],
+                    ...,
+                    [a_m, φ_m, f_m, η_m],
+                 ])
+
+        t1s
+            The longitudinal relaxation times associated with each oscillator in the
+            parameter array. Should be a list of floats with ``len(t1s) ==
+            params.shape[0]``.
+
+        increments
+           List of inversion recovery delays to generate the data from.
+
+        pts
+            The number of points the signal comprises.
+
+        sw
+            The sweep width of the signal (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        sfo
+            The transmitter frequency (MHz).
+
+        nucleus
+            The identity of the nucleus. Should be of the form ``"<mass><sym>"``
+            where ``<mass>`` is the atomic mass and ``<sym>`` is the element symbol.
+            Examples: ``"1H"``, ``"13C"``, ``"195Pt"``
+
+        snr
+            The signal-to-noise ratio (dB). If ``None`` then no noise will be added
+            to the FID.
+        """
+        sanity_check(
+            ("params", params, sfuncs.check_parameter_array, (1,)),
+            ("delays", delays, sfuncs.check_ndarray, (), {"dim": 1}, True),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
+            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("offset", offset, sfuncs.check_float, (), {}, True),
+            ("nucleus", nucleus, sfuncs.check_nucleus),
+            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+        )
+        noscs = params.shape[0]
+        sanity_check(
+            (
+                "t1s", t1s, sfuncs.check_float_list, (),
+                {"length": noscs, "must_be_positive": True},
+            ),
+        )
+
+        expinfo = ne.ExpInfo(
+            dim=1,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            nuclei=nucleus,
+            default_pts=pts,
+        )
+
+        a0s = params[:, 0]
+        t1s = np.array(t1s)
+        data = np.zeros((delays.size, pts), dtype="complex")
+        for i, tau in enumerate(delays):
+            print(i)
+            amps = a0s * (1 - 2 * np.exp(-tau / t1s))
+            p = copy.deepcopy(params)
+            p[:, 0] = amps
+            data[i] = expinfo.make_fid(p, snr=snr)
+            print(data[i])
+
+        return cls(data, expinfo, delays)
 
     @classmethod
     def new_spinach(
