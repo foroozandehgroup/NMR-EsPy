@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 06 Mar 2023 17:11:07 GMT
+# Last Edited: Mon 06 Mar 2023 17:23:55 GMT
 
 from __future__ import annotations
 import copy
@@ -838,9 +838,11 @@ class _Estimator1DProc(Estimator):
                 {"min_value": 0, "max_value": self.data.shape[-1] - 1},
             ),
         )
-        p0 = [0. if i != self.dim - 1 else p0 for i in range(self.dim)]
-        p1 = [0. if i != self.dim - 1 else p1 for i in range(self.dim)]
-        pivot = [0 if i != self.dim - 1 else pivot for i in range(self.dim)]
+
+        ndim = self.data.ndim
+        p0 = (ndim - 1) * [0.] + [p0]
+        p1 = (ndim - 1) * [0.] + [p1]
+        pivot = (ndim - 1) * [0.] + [pivot]
 
         self._data = sig.ift(
             sig.phase(
