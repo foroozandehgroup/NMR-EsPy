@@ -1,10 +1,11 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 02 Mar 2023 15:00:24 GMT
+# Last Edited: Mon 06 Mar 2023 11:04:41 GMT
 
 from __future__ import annotations
 import copy
+import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
@@ -13,16 +14,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import nmrespy as ne
+from nmrespy._colors import RED, END, USE_COLORAMA
+from nmrespy._files import check_existent_dir, check_existent_path
 from nmrespy._misc import proc_kwargs_dict
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy.estimators import Result, logger
 from nmrespy.estimators.onedim import Estimator1D
 from nmrespy.freqfilter import Filter
+from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import nonlinear_programming
 from nmrespy.nlp._funcs import FunctionFactory
 from nmrespy.nlp.optimisers import trust_ncg
 from nmrespy.plot import make_color_cycle
+
+
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
 
 
 # Patch Axes3D to prevent annoying padding
@@ -1703,6 +1712,96 @@ class EstimatorInvRec(EstimatorSeq1D):
         )
 
         return cls(fid, expinfo, np.linspace(0, max_delay, n_delays))
+
+    @classmethod
+    def new_bruker(
+        cls,
+        directory: Union[str, Path],
+        delay_file: Optional[str] = None,
+        convdta: bool = True,
+    ) -> Estimator1D:
+        sanity_check(
+            ("directory", directory, check_existent_dir),
+            ("convdta", convdta, sfuncs.check_bool),
+            ("delay_file", delay_file, sfuncs.check_str, (), {}, True),
+        )
+
+        directory = Path(directory).expanduser()
+        data, expinfo_2d = load_bruker(directory)
+
+        if data.ndim != 2:
+            raise ValueError(f"{RED}Data dimension should be 2.{END}")
+
+        float_list_files = cls._check_float_list_file(directory)
+
+        if not float_list_files:
+            raise ValueError(
+                f"{RED}Could not find a suitable delay file in directory: "
+                f"{directory}.{END}"
+            )
+
+        elif len(float_list_files) == 1:
+            name, floats = next(iter(float_list_files.items()))
+            if delay_file is None or name == delay_file:
+                delays = floats
+            else:
+                raise ValueError(
+                    f"{RED}`delay_file` ({delay_file}) either doesn't exist or is "
+                    f"of the incorrect format. Note that \"{name}\" is of the "
+                    f"correct format to be a delay file.{END}"
+                )
+
+        elif len(float_list_files) > 1:
+            if delay_file is None:
+                files = ", ".join(float_list_files.keys())
+                raise ValueError(
+                    f"{RED}Multiple files were found that are of the correct format "
+                    f"to be a delay file:\n{files}\nPlease specifiy the correct file "
+                    f"with the `delay_file` argument{END}."
+                )
+            elif delay_file in float_list_files.keys():
+                delays = float_list_files[delay_file]
+            else:
+                raise ValueError(
+                    f"{RED}`delay_file` ({delay_file}) either doesn't exist, or "
+                    f"it does not correspond to a correctly formatted file.{END}"
+                )
+
+        if convdta:
+            grpdly = expinfo_2d.parameters["acqus"]["GRPDLY"]
+            data = ne.sig.convdta(data, grpdly)
+
+        expinfo = ne.ExpInfo(
+            dim=1,
+            sw=expinfo_2d.sw()[-1],
+            offset=expinfo_2d.offset()[-1],
+            sfo=expinfo_2d.sfo[-1],
+            nuclei=expinfo_2d.nuclei[-1],
+            default_pts=data.shape[-1],
+            parameters=expinfo_2d.parameters
+        )
+
+        return cls(data, expinfo, delays, datapath=directory)
+
+    @staticmethod
+    def _check_float_list_file(
+        directory: Path,
+    ) -> Optional[Dict[str, np.ndarray]]:
+        ignore = ["acqus", "acqu2s", "ser", "pulseprogram"]
+        files = [directory / fname for fname in os.listdir(directory)]
+        files = [f for f in files if f.is_file() and f.name not in ignore]
+
+        float_list_files = {}
+
+        for f in files:
+            try:
+                with open(f, "r") as fh:
+                    vals = np.array([float(x) for x in fh.readlines()])
+                float_list_files[f.name] = vals
+            except ValueError:
+                pass
+
+        return float_list_files if float_list_files else None
 
     def fit(
         self,
