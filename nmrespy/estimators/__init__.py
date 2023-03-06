@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 02 Mar 2023 19:16:42 GMT
+# Last Edited: Mon 06 Mar 2023 14:29:10 GMT
 
 from __future__ import annotations
 import copy
@@ -872,10 +872,10 @@ class _Estimator1DProc(Estimator):
         sanity_check(
             ("max_p1", max_p1, sfuncs.check_float, (), {"greater_than_zero": True}),
         )
-        if self.dim == 1:
+        if self.data.ndim == 1:
             spectrum = self.spectrum
         else:
-            spectrum = self.spectrum_zero_t1
+            spectrum = self.spectrum_first_direct
 
         p0, p1 = sig.manual_phase_data(spectrum, max_p1=[max_p1])
         p0, p1 = p0[0], p1[0]

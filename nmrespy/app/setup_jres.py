@@ -1,7 +1,7 @@
 # setup_jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 20 Oct 2022 11:49:42 BST
+# Last Edited: Mon 06 Mar 2023 14:28:29 GMT
 
 import tkinter as tk
 from tkinter import ttk
@@ -64,7 +64,7 @@ class Setup2DJ(Setup1DType):
     def construct_1d_figure(self):
         super().construct_1d_figure(
             self.onedim_frame,
-            self.estimator.spectrum_zero_t1.real,
+            self.estimator.spectrum_first_direct.real,
             cf.NOTEBOOKCOLOR,
         )
 
