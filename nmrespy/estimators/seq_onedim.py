@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 06 Mar 2023 11:04:41 GMT
+# Last Edited: Tue 07 Mar 2023 13:06:58 GMT
 
 from __future__ import annotations
 import copy
@@ -16,10 +16,10 @@ import numpy as np
 import nmrespy as ne
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir, check_existent_path
-from nmrespy._misc import proc_kwargs_dict
+from nmrespy._misc import proc_kwargs_dict, wrap_phases
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy.estimators import Result, logger
-from nmrespy.estimators.onedim import Estimator1D
+from nmrespy.estimators.onedim import Estimator1D, _Estimator1DProc
 from nmrespy.freqfilter import Filter
 from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
@@ -47,7 +47,7 @@ if not hasattr(Axis, "_get_coord_info_old"):
     Axis._get_coord_info = _get_coord_info_new
 
 
-class EstimatorSeq1D(Estimator1D):
+class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
     def __init__(
         self,
@@ -475,6 +475,12 @@ class EstimatorSeq1D(Estimator1D):
         initial_fid = initial_fid[:nlp_trim]
         other_fids = [fid[:nlp_trim] for fid in other_fids]
 
+        # Phase `initial_fid` and `mpm_fid` by pi radians, so that it is positive
+        mpm_fid[0] *= 0.5
+        mpm_fid = ne.sig.ift(-1 * ne.sig.ft(mpm_fid))
+        initial_fid[0] *= 0.5
+        initial_fid = ne.sig.ift(-1 * ne.sig.ft(initial_fid))
+
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
         else:
@@ -502,7 +508,7 @@ class EstimatorSeq1D(Estimator1D):
             mode=mode,
             amp_thold=amp_thold,
             max_iterations=max_iterations,
-            negative_amps="flip_phase",
+            negative_amps="remove",
             output_mode=output_mode,
             save_trajectory=save_trajectory,
             tolerance=epsilon,
@@ -510,9 +516,14 @@ class EstimatorSeq1D(Estimator1D):
             initial_trust_radius=initial_trust_radius,
             max_trust_radius=max_trust_radius,
         )
+
+        # Account for pi phase correction
+        initial_x = initial_result.x
+        initial_x[:, 0] = -1 * initial_x[:, 0]
+
         results = [
             Result(
-                initial_result.x,
+                initial_x,
                 initial_result.errors,
                 region,
                 noise_region,
@@ -1241,7 +1252,7 @@ class EstimatorSeq1D(Estimator1D):
         # Get the default xticks from `Estimator1D.plot_result`.
         # Filter any away that are outside the region
         default_xaxis_ticks = []
-        _, _axs = self.plot_result_increment(indices=indices, region_unit=xaxis_unit)
+        _, _axs, _ = self.plot_result_increment(indices=indices, region_unit=xaxis_unit)
         for i, (_ax, region) in enumerate(zip(_axs[0], merge_regions)):
             mn, mx = min(region), max(region)
             default_xaxis_ticks.append(
@@ -1383,12 +1394,12 @@ class EstimatorSeq1D(Estimator1D):
         self._data = self.data[increment]
 
         kwargs = proc_kwargs_dict(kwargs, default={"plot_model": False})
-        fig, axs = super().plot_result(**kwargs)
+        fig, axs, objects = super().plot_result(**kwargs)
 
         self._results = results_cp
         self._data = data_cp
 
-        return fig, axs
+        return fig, axs, objects
 
     def get_params(
         self,
