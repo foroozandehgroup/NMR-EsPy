@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 06 Mar 2023 17:23:55 GMT
+# Last Edited: Tue 07 Mar 2023 12:12:08 GMT
 
 from __future__ import annotations
 import copy
@@ -844,10 +844,13 @@ class _Estimator1DProc(Estimator):
         p1 = (ndim - 1) * [0.] + [p1]
         pivot = (ndim - 1) * [0.] + [pivot]
 
+        spec = self.data
+        spec[0] *= 0.5
+
         self._data = sig.ift(
             sig.phase(
                 sig.ft(
-                    self._data,
+                    spec,
                     axes=[-1],
                 ),
                 p0=p0,

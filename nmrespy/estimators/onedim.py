@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 27 Feb 2023 19:45:19 GMT
+# Last Edited: Tue 07 Mar 2023 13:24:47 GMT
 
 from __future__ import annotations
 import copy
@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from nmrespy import ExpInfo, sig
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir, check_saveable_dir
+from nmrespy._misc import proc_kwargs_dict
 from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
@@ -314,8 +315,7 @@ class Estimator1D(_Estimator1DProc):
 
         if domain == "freq":
             x = self.get_shifts(unit=freq_unit)[0]
-            y[0] /= 2
-            y = sig.ft(y)
+            y = self.spectrum
             label, = self._axis_freq_labels(freq_unit)
         elif domain == "time":
             x, = self.get_timepoints()
@@ -408,9 +408,14 @@ class Estimator1D(_Estimator1DProc):
         model_shift: Optional[float] = None,
         label_peaks: bool = True,
         denote_regions: bool = False,
+        spectrum_line_kwargs: Optional[Dict] = None,
+        oscillator_line_kwargs: Optional[Dict] = None,
+        residual_line_kwargs: Optional[Dict] = None,
+        model_line_kwargs: Optional[Dict] = None,
+        label_kwargs: Optional[Dict] = None,
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
-        """Generate a figure of the estimation result.
+        r"""Generate a figure of the estimation result.
 
         Parameters
         ----------
@@ -508,11 +513,42 @@ class Estimator1D(_Estimator1DProc):
             If ``True``, and there are regions which share a boundary, a
             vertical line will be plotted to show the boundary.
 
+        spectrum_line_kwargs
+            Keyword arguments for the spectrum line. All keys should be valid
+            arguments for `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+
+        oscillator_line_kwargs
+            Keyword arguments for the oscillator lines. All keys should be valid
+            arguments for `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+            If ``"color"`` is included, it is ignored (colors are processed
+            based on the ``oscillator_colors`` argument.
+
+        residual_line_kwargs
+            Keyword arguments for the residual line (if included). All keys
+            should be valid arguments for `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+
+        model_line_kwargs
+            Keyword arguments for the model line (if included). All keys should
+            be valid arguments for `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+
+        label_kwargs
+            Keyword arguments for oscillator labels. All keys should be valid
+            arguments for
+            `matplotlib.text.Text
+            <https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text>`_
+            If ``"color"`` is included, it is ignored (colors are procecessed
+            based on the ``oscillator_colors`` argument.
+            ``"horizontalalignment"``, ``"ha"``, ``"verticalalignment"``, and
+            ``"va"`` are also ignored, as these are determined internally.
+
         kwargs
             Keyword arguments provided to `matplotlib.pyplot.figure
             <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.figure.html\
-            #matplotlib.pyplot.figure>`_\. Allowed arguments include
-            ``figsize``, ``facecolor``, ``edgecolor``, etc.
+            #matplotlib.pyplot.figure>`_\.
 
         Returns
         -------
@@ -523,6 +559,10 @@ class Estimator1D(_Estimator1DProc):
 
         axs
             A ``(1, N)`` NumPy array of the axes generated.
+
+        objects
+            Line and text objects created. There are made available in case you wish
+            to make any tweaks to them after generation of the figure.
         """
         sanity_check(
             self._indices_check(indices),
@@ -569,6 +609,30 @@ class Estimator1D(_Estimator1DProc):
             ("denote_regions", denote_regions, sfuncs.check_bool),
         )
 
+        spectrum_line_kwargs = proc_kwargs_dict(
+            spectrum_line_kwargs,
+            default={"color": "#000000"},
+        )
+        oscillator_line_kwargs = proc_kwargs_dict(
+            oscillator_line_kwargs,
+            to_pop=("color",)
+        )
+        if plot_residual:
+            residual_line_kwargs = proc_kwargs_dict(
+                residual_line_kwargs,
+                default={"color": "#808080"},
+            )
+        if plot_model:
+            model_line_kwargs = proc_kwargs_dict(
+                model_line_kwargs,
+                default={"color": "#808080"},
+            )
+        if label_peaks:
+            label_kwargs = proc_kwargs_dict(
+                label_kwargs,
+                to_pop=("ha", "horizontalalignment", "va", "verticalalignment", "color"),  # noqa: E501
+            )
+
         indices = self._process_indices(indices)
         merge_indices, merge_regions = self._plot_regions(indices, region_unit)
         n_regions = len(merge_regions)
@@ -601,178 +665,162 @@ class Estimator1D(_Estimator1DProc):
             region_unit,
         )
 
-        data = self._make_plot_data(
-            indices,
-            high_resolution_pts,
-            region_unit,
-            model_shift,
-        )
-
-        self._plot_data(
-            axs[0],
-            data,
-            merge_indices,
-            oscillator_colors,
-            label_peaks,
-            plot_model,
-            plot_residual,
-        )
-        self._set_ylim(axs[0], data, plot_model, plot_residual)
-
-        return fig, axs
-
-    def _make_plot_data(
-        self,
-        indices: Iterable[int],
-        high_resolution_pts: Optional[int],
-        region_unit: str,
-        model_shift: Optional[float],
-    ) -> Dict:
-        merge_indices, merge_regions = self._plot_regions(indices, region_unit)
-
+        # Configure high-resolutions points for oscillator and model plots
         if high_resolution_pts is None:
-            high_resolution_pts = self.default_pts[-1]
-
+            high_resolution_pts = self.data.size
         highres_expinfo = self.expinfo
         highres_expinfo.default_pts = (high_resolution_pts,)
 
+        # Get data which spans full spectral width.
+        # These will be sliced for each region.
+        full_spectrum = self.spectrum.real
         full_shifts_highres, = highres_expinfo.get_shifts(unit=region_unit)
         full_shifts, = self.get_shifts(unit=region_unit)
         full_model = self.make_fid_from_result(indices)
         full_model[0] *= 0.5
-        full_residual = self.spectrum.real - sig.ft(full_model).real
+        full_model = sig.ft(full_model).real
+        full_residual = full_spectrum - full_model
         full_model_highres = self.make_fid_from_result(indices, pts=high_resolution_pts)
         full_model_highres[0] *= 0.5
         full_model_highres = sig.ft(full_model_highres).real
 
-        data = {
-            "spectra": [],
-            "models": [],
-            "residuals": [],
-            "oscillators": [],
-            "shifts": [],
-            "shifts_highres": [],
-        }
-        # Get all the data
-        params = self.get_params(indices=indices)
-        for idx, region in zip(merge_indices, merge_regions):
-            slice_ = slice(
+        slices = [
+            slice(
                 *self.convert([region], f"{region_unit}->idx")[0]
-            )
-            highres_slice = slice(
+            ) for region in merge_regions
+        ]
+        highres_slices = [
+            slice(
                 *highres_expinfo.convert([region], f"{region_unit}->idx")[0]
-            )
+            ) for region in merge_regions
+        ]
 
-            data["shifts"].append(full_shifts[slice_])
-            data["shifts_highres"].append(full_shifts_highres[highres_slice])
-            data["spectra"].append(self.spectrum.real[slice_])
-            oscs = []
-            for p in self.get_params(indices=idx):
+        params = self.get_params(indices=indices)
+        label_ax_idxs = []
+        for idx in merge_indices:
+            vals = []
+            ps = self.get_params(indices=idx)
+            for i, p in enumerate(params):
+                if len(np.where((ps == p).all(axis=-1))[0]) == 1:
+                    vals.append(i)
+            label_ax_idxs.append(vals)
+
+        n_oscs = params.shape[0]
+
+        # Store line and text objects.
+        # Will be shifting these vertically later on
+        spectra = []
+        oscs = []
+
+        if label_peaks:
+            labels = []
+
+        if plot_model:
+            models = []
+
+        if plot_residual:
+            residuals = []
+
+        for ax, slce, highres_slice, ax_labels in zip(axs[0], slices, highres_slices, label_ax_idxs):  # noqa: E501
+            shifts = full_shifts[slce]
+            shifts_highres = full_shifts_highres[highres_slice]
+            spectrum = full_spectrum[slce]
+            spectra.append(ax.plot(shifts, spectrum, **spectrum_line_kwargs)[0])
+
+            if plot_residual:
+                residual = full_residual[slce]
+                residuals.append(ax.plot(shifts, residual, **residual_line_kwargs)[0])
+
+            if plot_model:
+                model = full_model[slce]
+                models.append(ax.plot(shifts, model, **model_line_kwargs)[0])
+
+            colorcycle = make_color_cycle(oscillator_colors, n_oscs)
+            for i, p in enumerate(params):
+                color = next(colorcycle)
                 p = np.expand_dims(p, axis=0)
                 osc = self.make_fid(p, pts=high_resolution_pts)
                 osc[0] *= 0.5
-                label = int(np.where((params == p).all(axis=-1))[0][0])
-                oscs.append((label, sig.ft(osc).real[highres_slice]))
-            data["oscillators"].append(oscs)
-            data["residuals"].append(full_residual[slice_])
-            data["models"].append(full_model_highres[highres_slice])
+                spec = sig.ft(osc).real[highres_slice]
+                oscs.append(ax.plot(shifts_highres, spec, color=color, **oscillator_line_kwargs)[0])  # noqa: E501
 
-        if model_shift is None:
-            model_shift = 0.1 * max([np.amax(spectrum) for spectrum in data["spectra"]])
-        data["models"] = [(model + model_shift) for model in data["models"]]
-
-        resid_span = self._get_data_span(data["residuals"])
-
-        rest_lines = (
-            [osc[1] for oscs in data["oscillators"] for osc in oscs] +
-            [model for model in data["models"]] +
-            [spectrum for spectrum in data["spectra"]]
-        )
-
-        rest_span = self._get_data_span(rest_lines)
-
-        t = ((resid_span[1] - resid_span[0]) + (rest_span[1] - rest_span[0])) / 0.91
-        rest_shift = resid_span[1] - rest_span[0] + (0.03 * t)
-        model_shift += rest_shift
-
-        for i, oscs in enumerate(data["oscillators"]):
-            data["oscillators"][i] = [
-                (label, osc + rest_shift)
-                for (label, osc) in oscs
-            ]
-        data["spectra"] = [(spectrum + rest_shift) for spectrum in data["spectra"]]
-        data["models"] = [(model + rest_shift) for model in data["models"]]
-
-        return data
-
-    @staticmethod
-    def _plot_data(
-        axs: Iterable[mpl.axes.Axes],
-        data: Dict,
-        merge_indices: Iterable[Iterable[int]],
-        oscillator_colors: Any,
-        label_peaks: bool,
-        plot_model: bool,
-        plot_residual: bool,
-    ) -> None:
-        if plot_residual:
-            for ax, shifts_, residual in zip(axs, data["shifts"], data["residuals"]):
-                ax.plot(shifts_, residual, color="#808080")
-
-        for ax, shifts_, spectrum in zip(axs, data["shifts"], data["spectra"]):
-            ax.plot(shifts_, spectrum, color="#000000")
-
-        if plot_model:
-            for ax, shifts_hr, model in zip(axs, data["shifts_highres"], data["models"]):  # noqa: E501
-                ax.plot(shifts_hr, model, color="#808080")
-
-        noscs = sum(len(oscs) for oscs in data["oscillators"])
-        colors = make_color_cycle(oscillator_colors, noscs)
-        for ax, shifts_hr, oscs, merge_idxs in zip(
-            axs[::-1],
-            data["shifts_highres"][::-1],
-            data["oscillators"][::-1],
-            merge_indices[::-1],
-        ):
-            for i, (label, osc) in enumerate(oscs):
-                color = next(colors)
-                ax.plot(shifts_hr, osc, color=color)
-                if label_peaks:
-                    label_idx = np.argmax(np.abs(osc))
-                    ax.annotate(
-                        str(label),
-                        xy=(shifts_hr[label_idx], osc[label_idx]),
-                        color=color,
+                if label_peaks and (i in ax_labels):
+                    label_idx = np.argmax(np.abs(spec))
+                    label_x = shifts_highres[label_idx]
+                    label_y = spec[label_idx]
+                    label_va, label_ha = (
+                        ("bottom", "left") if spec[label_idx] >= 0
+                        else ("top", "right")
+                    )
+                    labels.append(
+                        ax.text(
+                            label_x, label_y, str(i), color=color, va=label_va,
+                            ha=label_ha, **label_kwargs,
+                        )
                     )
 
-    @staticmethod
-    def _get_data_span(data: Iterable[np.ndarray]) -> Tuple[float, float]:
-        return (
-            min([np.amin(datum) for datum in data]),
-            max([np.amax(datum) for datum in data]),
-        )
+        # Vertical shifting of plot lines and labels
+        if plot_model and (model_shift is None):
+            model_shift = 0.1 * max(
+                [np.amax(spectrum.get_ydata()) for spectrum in spectra]
+            )
 
-    def _set_ylim(
-        self,
-        axs: Iterable[mpl.axes.Axes],
-        data: Dict,
-        plot_model: bool,
-        plot_residual: bool,
-    ) -> None:
-        all_lines = (
-            [osc[1] for oscs in data["oscillators"] for osc in oscs] +
-            [spectrum for spectrum in data["spectra"]]
-        )
+        residual_span = self._get_line_span(residuals)
+
+        lines_to_shift = oscs + spectra
         if plot_model:
-            all_lines += [model for model in data["models"]]
+            lines_to_shift.extend(models)
+
+        lines_to_shift_span = self._get_line_span(lines_to_shift)
+        top = (
+            (residual_span[1] - residual_span[0]) +
+            (lines_to_shift_span[1] - lines_to_shift_span[0])
+        ) / 0.91
+        line_shift = residual_span[1] - lines_to_shift_span[0] + (0.03 * top)
+
+        for line in lines_to_shift:
+            line.set_ydata(line.get_ydata() + line_shift)
+
+        if label_peaks:
+            for label in labels:
+                old_pos = label.get_position()
+                new_pos = (old_pos[0], old_pos[1] + line_shift)
+                label.set_position(new_pos)
+
+        if plot_model:
+            for model in models:
+                model.set_ydata(model.get_ydata() + model_shift)
+
+        # Set y-limit
+        all_lines = oscs + spectra
+        if plot_model:
+            all_lines.extend(models)
         if plot_residual:
-            all_lines += [residual for residual in data["residuals"]]
+            all_lines.extend(residuals)
+        all_lines_span = self._get_line_span(all_lines)
+        height = all_lines_span[1] - all_lines_span[0]
+        bottom = all_lines_span[0] - (0.03 * height)
+        top = all_lines_span[1] + (0.03 * height)
 
-        data_span = self._get_data_span(all_lines)
-        h = data_span[1] - data_span[0]
-        bottom = data_span[0] - (0.03 * h)
-        top = data_span[1] + (0.03 * h)
-
-        for ax in axs:
-            ax.set_yticks([])
+        for ax in axs[0]:
             ax.set_ylim(bottom, top)
+
+        objects = {
+            "spectrum": spectra,
+            "oscillators": oscs,
+        }
+        if plot_model:
+            objects["model"] = models
+        if plot_residual:
+            objects["residual"] = residuals
+        if label_peaks:
+            objects["labels"] = labels
+
+        return fig, axs, objects
+
+    @staticmethod
+    def _get_line_span(lines: Iterable[mpl.lines.Line2D]) -> Tuple[float, float]:
+        return (
+            min([np.amin(line.get_ydata()) for line in lines]),
+            max([np.amax(line.get_ydata()) for line in lines]),
+        )
