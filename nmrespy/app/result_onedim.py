@@ -1,7 +1,7 @@
 # result_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 21 Oct 2022 13:27:14 BST
+# Last Edited: Tue 07 Mar 2023 13:49:26 GMT
 
 from matplotlib import backends
 
@@ -22,7 +22,7 @@ class Result1D(Result1DType):
 
     def construct_gui_frames(self):
         super().construct_gui_frames()
-        self.button_frame = ResultButtonFrame(self)
+        self.button_frame = ResultButtonFrame1D(self)
         self.button_frame.grid(row=1, column=1, padx=(10, 0), sticky="se")
 
     def get_region(self, idx):
@@ -38,7 +38,7 @@ class Result1D(Result1DType):
 
         super().new_tab(idx, replace)
 
-        fig, ax = self.estimator.plot_result(
+        fig, ax, _ = self.estimator.plot_result(
             indices=[idx],
             axes_bottom=0.12,
             axes_left=0.02,
@@ -75,12 +75,21 @@ class Result1D(Result1DType):
         self.toolbars[idx].grid(row=1, column=0, padx=10, pady=5, sticky="w")
 
 
+class ResultButtonFrame1D(ResultButtonFrame):
+    def __init__(self, master):
+        super().__init__(master)
+
+    def save_options(self):
+        SaveFrame1D(self.master)
+
+
 class SaveFrame1D(SaveFrame):
     def __init__(self, master):
         super().__init__(master)
 
     def generate_figure(self, figsize, dpi):
         return self.ctrl.estimator.plot_result(
+            region_unit="ppm",
             figsize=figsize,
             dpi=dpi,
         )

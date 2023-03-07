@@ -1,7 +1,7 @@
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 01 Mar 2023 17:11:12 GMT
+# Last Edited: Mon 06 Mar 2023 19:18:17 GMT
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
@@ -9,6 +9,8 @@ from collections.abc import Callable
 import functools
 import re
 from typing import Any, Dict, Iterable, Optional
+
+import numpy as np
 
 from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._sanity import sanity_check, funcs as sfuncs
@@ -124,3 +126,7 @@ def proc_kwargs_dict(
             kwargs.setdefault(k, v)
 
     return kwargs
+
+
+def wrap_phases(phases: np.ndarray) -> np.ndarray:
+    return (phases + np.pi) % (2 * np.pi) - np.pi

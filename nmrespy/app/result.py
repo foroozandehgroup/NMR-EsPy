@@ -1,7 +1,7 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 21 Oct 2022 13:31:58 BST
+# Last Edited: Tue 07 Mar 2023 13:27:13 GMT
 
 import io
 from pathlib import Path
@@ -1259,7 +1259,7 @@ class SaveFrame(wd.MyToplevel):
                 self.fig_width["value"] / 2.54,
                 self.fig_height["value"] / 2.54,
             )
-            fig, _ = self.generate_figure(figsize, dpi)
+            fig = self.generate_figure(figsize, dpi)[0]
             fig.savefig(fig_path)
 
         # Result files
