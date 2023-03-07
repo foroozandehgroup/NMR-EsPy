@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Mar 2023 13:06:58 GMT
+# Last Edited: Tue 07 Mar 2023 16:49:13 GMT
 
 from __future__ import annotations
 import copy
@@ -566,24 +566,84 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         self._results.append(results)
 
+    @logger
+    def edit_result(
+        self,
+        index: int = -1,
+        add_oscs: Optional[np.ndarray] = None,
+        rm_oscs: Optional[Iterable[int]] = None,
+        merge_oscs: Optional[Iterable[Iterable[int]]] = None,
+        split_oscs: Optional[Dict[int, Optional[Dict]]] = None,
+        **estimate_kwargs,
+    ) -> None:
+        self._check_results_exist()
+        sanity_check(self._index_check(index))
+        index, = self._process_indices([index])
+
+        results_cp = copy.deepcopy(self._results)
+        self._results[index] = self._results[index][0]
+
+        max_osc_idx = self.get_results(indices=[index])[0].get_params()
+        sanity_check(
+            (
+                "add_oscs", add_oscs, sfuncs.check_parameter_array, (self.dim,), {},
+                True,
+            ),
+            (
+                "rm_oscs", rm_oscs, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": max_osc_idx}, True,
+            ),
+            (
+                "merge_oscs", merge_oscs, sfuncs.check_int_list_list,
+                (), {"min_value": 0, "max_value": max_osc_idx}, True,
+            ),
+            (
+                "split_oscs", split_oscs, sfuncs.check_split_oscs,
+                (1, max_osc_idx), {}, True,
+            ),
+        )
+
+        try:
+            super().edit_result(
+                index=index,
+                add_oscs=add_oscs,
+                rm_oscs=rm_oscs,
+                merge_oscs=merge_oscs,
+                split_oscs=split_oscs,
+                **estimate_kwargs,
+            )
+
+        except Exception as exc:
+            self._results = results_cp
+            raise exc
+
     def _fit(
         self,
         func: str,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
+        neglect_increments: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
         sanity_check(
             ("func", func, sfuncs.check_one_of, ("T1",)),
             self._indices_check(indices),
+            (
+                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": self.increments.size - 1}, True,
+            ),
         )
-        params = self.get_params(indices=indices)
-        n_oscs = params[0].shape[0]
+        indices = self._process_indices(indices)
+        n_oscs = self.get_params(indices=indices)[0].shape[0]
+        print(n_oscs)
         sanity_check(
             self._oscs_check(oscs, n_oscs),
         )
         oscs = self._proc_oscs(oscs, n_oscs)
 
-        integrals = self.integrals(indices, oscs)
+        increments, integrals = self._proc_neglect_increments(
+            indices, oscs, neglect_increments,
+        )
+
         norm = np.linalg.norm(integrals)
         integrals /= norm
 
@@ -595,7 +655,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         for integs in integrals:
             if func == "T1":
                 x0 = np.array([-integs[0], 1.])
-                args = (integs, self.increments)
+                args = (integs, increments)
 
             nlp_result = trust_ncg(
                 x0=x0,
@@ -614,6 +674,24 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             errors.append(errs / np.sqrt(len(self.increments)))
 
         return results, errors
+
+    def _proc_neglect_increments(
+        self,
+        indices: Iterable[int],
+        oscs: Iterable[int],
+        neglect_increments: Optional[Iterable[int]],
+    ) -> Tuple[np.ndarray, Iterable[np.ndarray]]:
+        if neglect_increments is None:
+            neglect_increments = []
+        incr_slice = [
+            i for i in range(self.increments.size)
+            if i not in neglect_increments
+        ]
+
+        integrals = [integs[incr_slice] for integs in self.integrals(indices, oscs)]
+        increments = self.increments[incr_slice]
+
+        return increments, integrals
 
     def integrals(
         self,
@@ -656,6 +734,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self,
         osc: int,
         index: int = -1,
+        neglect_increments: Optional[Iterable[int]] = None,
         fit_increments: int = 100,
         fit_line_kwargs: Dict = None,
         scatter_kwargs: Dict = None,
@@ -669,6 +748,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         index
             Index for the result of interest. By default (``-1``), the last acquired
             result is used.
+
+        neglect_increments
+            Increments of the dataset to neglect. Default, all increments are included
+            in the fit.
 
         fit_increments
             The number of points in the fit line.
@@ -701,6 +784,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         sanity_check(
             self._index_check(index),
             (
+                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": self.increments.size - 1}, True,
+            ),
+            (
                 "fit_increments", fit_increments, sfuncs.check_int, (),
                 {"min_value": len(self.increments)},
             ),
@@ -719,15 +806,18 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             default={"color": "k", "marker": "x"},
         )
 
-        params, errors = self.fit([index], [osc])
+        params, errors = self.fit([index], [osc], neglect_increments)
         params = params[0]
         errors = errors[0]
 
+        increments, integrals = self._proc_neglect_increments(
+            [index], [osc], neglect_increments,
+        )
+
         fig, ax = plt.subplots(ncols=1, nrows=1, **kwargs)
-        x = np.linspace(self.increments[0], self.increments[-1], fit_increments)
+        x = np.linspace(np.amin(increments), np.amax(increments), fit_increments)
         ax.plot(x, self.model(*params, x), **fit_line_kwargs)
-        integrals, = self.integrals([index], [osc])
-        ax.scatter(self.increments, integrals, **scatter_kwargs)
+        ax.scatter(increments, integrals, **scatter_kwargs)
         ax.set_xlabel(self.increment_label)
         ax.set_ylabel("$\\int$", rotation="horizontal")
 
@@ -760,6 +850,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
+        neglect_increments: Optional[Iterable[int]] = None,
         fit_increments: int = 100,
         xaxis_unit: str = "ppm",
         xaxis_ticks: Optional[Union[Iterable[int], Iterable[Iterable[int, Iterable[float]]]]] = None,  # noqa: E501
@@ -789,6 +880,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         oscs
             Oscillators to consider. By default (``None``) all oscillators are
             considered.
+
+        neglect_increments
+            Increments of the dataset to neglect. Default, all increments are included
+            in the fit.
 
         fit_increments
             The number of points in the fit lines.
@@ -873,6 +968,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         sanity_check(
             self._indices_check(indices),
             (
+                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": self.increments.size - 1}, True,
+            ),
+            (
                 "fit_increments", fit_increments, sfuncs.check_int, (),
                 {"min_value": len(self.increments)},
             ),
@@ -910,8 +1009,11 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         oscs = self._proc_oscs(oscs, n_oscs)
         params = [p[oscs] for p in params]
 
-        integrals = self.integrals(indices, oscs)
         fit, errors = self.fit(indices, oscs)
+
+        increments, integrals = self._proc_neglect_increments(
+            indices, oscs, neglect_increments,
+        )
 
         fig = plt.figure(**kwargs)
         ax = fig.add_subplot(projection="3d")
@@ -970,8 +1072,8 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         for x, params, integs in zip(xs, fit, integrals):
             color = next(colors)
-            x_scatter = np.full(self.increments.shape, x)
-            y_scatter = self.increments
+            x_scatter = np.full(increments.shape, x)
+            y_scatter = increments
             z_scatter = integs
             ax.scatter(
                 x_scatter,
@@ -983,7 +1085,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             )
 
             x_fit = np.full(fit_increments, x)
-            y_fit = np.linspace(self.increments[0], self.increments[-1], fit_increments)
+            y_fit = np.linspace(np.amin(increments), np.amax(increments), fit_increments)
             z_fit = self.model(*params, y_fit)
             ax.plot(
                 x_fit,
@@ -1017,7 +1119,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             ax.set_xticklabels(xaxis_ticklabels)
 
         # Configure y-axis
-        ax.set_ylim(self.increments[0], self.increments[-1])
+        ax.set_ylim(np.amin(increments), np.amax(increments))
         ax.set_ylabel(self.increment_label)
 
         # Configure z-axis
@@ -1818,6 +1920,7 @@ class EstimatorInvRec(EstimatorSeq1D):
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
+        neglect_increments: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
         r"""Fit estimation result for the given oscillators across increments in
         order to predict the longitudinal relaxtation time, :math:`T_1`.
@@ -1842,6 +1945,10 @@ class EstimatorInvRec(EstimatorSeq1D):
         index
             The result index. By default, the last result acquired is considered.
 
+        neglect_increments
+            Increments of the dataset to neglect. Default, all increments are included
+            in the fit.
+
         Returns
         -------
         Iterable[np.ndarray]
@@ -1849,7 +1956,7 @@ class EstimatorInvRec(EstimatorSeq1D):
             the first element corresponds to :math:`I_{\infty}`, and the second
             element corresponds to :math:`T_1`.
         """
-        result, errors = self._fit("T1", indices, oscs)
+        result, errors = self._fit("T1", indices, oscs, neglect_increments)
         return result, errors
 
     def model(
