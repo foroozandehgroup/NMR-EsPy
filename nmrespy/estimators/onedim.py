@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Mar 2023 13:24:47 GMT
+# Last Edited: Tue 07 Mar 2023 13:53:37 GMT
 
 from __future__ import annotations
 import copy
@@ -804,6 +804,7 @@ class Estimator1D(_Estimator1DProc):
 
         for ax in axs[0]:
             ax.set_ylim(bottom, top)
+            ax.set_yticks([])
 
         objects = {
             "spectrum": spectra,
