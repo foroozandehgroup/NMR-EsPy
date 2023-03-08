@@ -22,5 +22,6 @@ signals, including FT/IFT, apodisation, phasing, etc.
 
    estimator1d
    estimatorinvrec
+   estimatordosy
    estimator2dj
    sig

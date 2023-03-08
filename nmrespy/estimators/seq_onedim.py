@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Mar 2023 13:06:58 GMT
+# Last Edited: Wed 08 Mar 2023 15:22:28 GMT
 
 from __future__ import annotations
 import copy
@@ -9,14 +9,16 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
+from bruker_utils import parse_jcampdx
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.axis3d import Axis
 import numpy as np
 
 import nmrespy as ne
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir, check_existent_path
-from nmrespy._misc import proc_kwargs_dict, wrap_phases
+from nmrespy._misc import proc_kwargs_dict
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy.estimators import Result, logger
 from nmrespy.estimators.onedim import Estimator1D, _Estimator1DProc
@@ -34,9 +36,17 @@ if USE_COLORAMA:
     colorama.init()
 
 
+# gyromagnetic ratios for common nuclei, in MHz T-1
+GAMMAS = {
+    k: v / (2 * np.pi)
+    for k, v in zip(
+        ("1H", "13C", "15N", "19F"),
+        (2.6752218744e8, 6.728284e7, -2.71261804e7, 2.518148e8),
+    )
+}
+
 # Patch Axes3D to prevent annoying padding
 # https://stackoverflow.com/questions/16488182/removing-axes-margins-in-3d-plot
-from mpl_toolkits.mplot3d.axis3d import Axis
 if not hasattr(Axis, "_get_coord_info_old"):
     def _get_coord_info_new(self, renderer):
         mins, maxs, centers, deltas, tc, highs = self._get_coord_info_old(renderer)
@@ -53,17 +63,14 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self,
         data: np.ndarray,
         expinfo: ne.ExpInfo,
+        increments: Optional[np.ndarray],
         datapath: Optional[Path] = None,
-        increments: Optional[np.ndarray] = None,
     ) -> None:
         """
         Parameters
         ----------
         data
             The data associated with the binary file in `path`.
-
-        datapath
-            The path to the directory containing the NMR data.
 
         expinfo
             Experiment information.
@@ -74,8 +81,11 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
             * Delay times in an inversion recovery experiment.
             * Gradient strengths in a diffusion experiment.
+
+        datapath
+            The path to the directory containing the NMR data.
         """
-        super().__init__(data[0], expinfo, datapath)
+        super().__init__(data[0], expinfo, datapath=datapath)
         self._data = data
         sanity_check(
             (
@@ -96,6 +106,96 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
     @property
     def fit_units(self) -> Optional[str]:
         return getattr(self, "_fit_units", None)
+
+    @classmethod
+    def _new_bruker_pre(
+        cls,
+        directory: Union[str, Path],
+        increment_file: Optional[str],
+        convdta: bool,
+    ) -> Tuple[np.ndarray, ne.ExpInfo, np.ndarray, Path]:
+        sanity_check(
+            ("directory", directory, check_existent_dir),
+            ("convdta", convdta, sfuncs.check_bool),
+            ("increment_file", increment_file, sfuncs.check_str, (), {}, True),
+        )
+
+        directory = Path(directory).expanduser()
+        data, expinfo_2d = load_bruker(directory)
+
+        if data.ndim != 2:
+            raise ValueError(f"{RED}Data dimension should be 2.{END}")
+
+        float_list_files = cls._check_float_list_file(directory)
+
+        if not float_list_files:
+            raise ValueError(
+                f"{RED}Could not find a suitable delay file in directory: "
+                f"{directory}.{END}"
+            )
+
+        elif len(float_list_files) == 1:
+            name, floats = next(iter(float_list_files.items()))
+            if increment_file is None or name == increment_file:
+                increments = floats
+            else:
+                raise ValueError(
+                    f"{RED}Increment file ({increment_file}) either doesn't exist or "
+                    f"is of the incorrect format. Note that \"{name}\" is of the "
+                    f"correct format to be a delay file.{END}"
+                )
+
+        elif len(float_list_files) > 1:
+            if increment_file is None:
+                files = ", ".join(float_list_files.keys())
+                raise ValueError(
+                    f"{RED}Multiple files were found that are of the correct format "
+                    f"to be a delay file:\n{files}\nPlease specifiy the correct file "
+                    f"with the `gradient_file` argument{END}."
+                )
+            elif increment_file in float_list_files.keys():
+                increments = float_list_files[increment_file]
+            else:
+                raise ValueError(
+                    f"{RED}Increment file ({increment_file}) either doesn't exist, or "
+                    f"it does not correspond to a correctly formatted file.{END}"
+                )
+
+        if convdta:
+            grpdly = expinfo_2d.parameters["acqus"]["GRPDLY"]
+            data = ne.sig.convdta(data, grpdly)
+
+        expinfo = ne.ExpInfo(
+            dim=1,
+            sw=expinfo_2d.sw()[-1],
+            offset=expinfo_2d.offset()[-1],
+            sfo=expinfo_2d.sfo[-1],
+            nuclei=expinfo_2d.nuclei[-1],
+            default_pts=data.shape[-1],
+            parameters=expinfo_2d.parameters
+        )
+
+        return data, expinfo, increments, directory
+
+    @staticmethod
+    def _check_float_list_file(
+        directory: Path,
+    ) -> Optional[Dict[str, np.ndarray]]:
+        ignore = ["acqus", "acqu2s", "ser", "pulseprogram"]
+        files = [directory / fname for fname in os.listdir(directory)]
+        files = [f for f in files if f.is_file() and f.name not in ignore]
+
+        float_list_files = {}
+
+        for f in files:
+            try:
+                with open(f, "r") as fh:
+                    vals = np.array([float(x) for x in fh.readlines()])
+                float_list_files[f.name] = vals
+            except ValueError:
+                pass
+
+        return float_list_files if float_list_files else None
 
     def view_data(
         self,
@@ -566,46 +666,109 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         self._results.append(results)
 
+    @logger
+    def edit_result(
+        self,
+        index: int = -1,
+        add_oscs: Optional[np.ndarray] = None,
+        rm_oscs: Optional[Iterable[int]] = None,
+        merge_oscs: Optional[Iterable[Iterable[int]]] = None,
+        split_oscs: Optional[Dict[int, Optional[Dict]]] = None,
+        **estimate_kwargs,
+    ) -> None:
+        self._check_results_exist()
+        sanity_check(self._index_check(index))
+        index, = self._process_indices([index])
+
+        results_cp = copy.deepcopy(self._results)
+        self._results[index] = self._results[index][0]
+
+        max_osc_idx = self.get_results(indices=[index])[0].get_params()
+        sanity_check(
+            (
+                "add_oscs", add_oscs, sfuncs.check_parameter_array, (self.dim,), {},
+                True,
+            ),
+            (
+                "rm_oscs", rm_oscs, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": max_osc_idx}, True,
+            ),
+            (
+                "merge_oscs", merge_oscs, sfuncs.check_int_list_list,
+                (), {"min_value": 0, "max_value": max_osc_idx}, True,
+            ),
+            (
+                "split_oscs", split_oscs, sfuncs.check_split_oscs,
+                (1, max_osc_idx), {}, True,
+            ),
+        )
+
+        try:
+            super().edit_result(
+                index=index,
+                add_oscs=add_oscs,
+                rm_oscs=rm_oscs,
+                merge_oscs=merge_oscs,
+                split_oscs=split_oscs,
+                **estimate_kwargs,
+            )
+
+        except Exception as exc:
+            self._results = results_cp
+            raise exc
+
     def _fit(
         self,
         func: str,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
+        neglect_increments: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
         sanity_check(
-            ("func", func, sfuncs.check_one_of, ("T1",)),
+            ("func", func, sfuncs.check_one_of, ("T1", "D")),
             self._indices_check(indices),
+            (
+                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": self.increments.size - 1}, True,
+            ),
         )
-        params = self.get_params(indices=indices)
-        n_oscs = params[0].shape[0]
+        indices = self._process_indices(indices)
+        n_oscs = self.get_params(indices=indices)[0].shape[0]
         sanity_check(
             self._oscs_check(oscs, n_oscs),
         )
         oscs = self._proc_oscs(oscs, n_oscs)
 
-        integrals = self.integrals(indices, oscs)
+        increments, integrals = self._proc_neglect_increments(
+            indices, oscs, neglect_increments,
+        )
+
         norm = np.linalg.norm(integrals)
         integrals /= norm
 
         if func == "T1":
             function_factory = FunctionFactoryInvRec
+        elif func == "D":
+            function_factory = FunctionFactoryDOSY
 
         results = []
         errors = []
         for integs in integrals:
             if func == "T1":
                 x0 = np.array([-integs[0], 1.])
-                args = (integs, self.increments)
+                args = (integs, increments)
+            if func == "D":
+                x0 = np.array([integs[0], 1.e-9])
+                args = (integs, increments, self.c)
 
             nlp_result = trust_ncg(
                 x0=x0,
                 args=args,
                 function_factory=function_factory,
-                max_trust_radius=0.1,
-                output_mode=None,
+                # output_mode=None,
             )
 
-            if func == "T1":
+            if func in ("T1", "D"):
                 x = nlp_result.x
                 x[0] *= norm
                 errs = nlp_result.errors
@@ -614,6 +777,24 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             errors.append(errs / np.sqrt(len(self.increments)))
 
         return results, errors
+
+    def _proc_neglect_increments(
+        self,
+        indices: Iterable[int],
+        oscs: Iterable[int],
+        neglect_increments: Optional[Iterable[int]],
+    ) -> Tuple[np.ndarray, Iterable[np.ndarray]]:
+        if neglect_increments is None:
+            neglect_increments = []
+        incr_slice = [
+            i for i in range(self.increments.size)
+            if i not in neglect_increments
+        ]
+
+        integrals = [integs[incr_slice] for integs in self.integrals(indices, oscs)]
+        increments = self.increments[incr_slice]
+
+        return increments, integrals
 
     def integrals(
         self,
@@ -656,6 +837,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self,
         osc: int,
         index: int = -1,
+        neglect_increments: Optional[Iterable[int]] = None,
         fit_increments: int = 100,
         fit_line_kwargs: Dict = None,
         scatter_kwargs: Dict = None,
@@ -669,6 +851,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         index
             Index for the result of interest. By default (``-1``), the last acquired
             result is used.
+
+        neglect_increments
+            Increments of the dataset to neglect. Default, all increments are included
+            in the fit.
 
         fit_increments
             The number of points in the fit line.
@@ -701,6 +887,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         sanity_check(
             self._index_check(index),
             (
+                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": self.increments.size - 1}, True,
+            ),
+            (
                 "fit_increments", fit_increments, sfuncs.check_int, (),
                 {"min_value": len(self.increments)},
             ),
@@ -719,15 +909,18 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             default={"color": "k", "marker": "x"},
         )
 
-        params, errors = self.fit([index], [osc])
+        params, errors = self.fit([index], [osc], neglect_increments)
         params = params[0]
         errors = errors[0]
 
+        increments, integrals = self._proc_neglect_increments(
+            [index], [osc], neglect_increments,
+        )
+
         fig, ax = plt.subplots(ncols=1, nrows=1, **kwargs)
-        x = np.linspace(self.increments[0], self.increments[-1], fit_increments)
+        x = np.linspace(np.amin(increments), np.amax(increments), fit_increments)
         ax.plot(x, self.model(*params, x), **fit_line_kwargs)
-        integrals, = self.integrals([index], [osc])
-        ax.scatter(self.increments, integrals, **scatter_kwargs)
+        ax.scatter(increments, integrals, **scatter_kwargs)
         ax.set_xlabel(self.increment_label)
         ax.set_ylabel("$\\int$", rotation="horizontal")
 
@@ -760,6 +953,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
+        neglect_increments: Optional[Iterable[int]] = None,
         fit_increments: int = 100,
         xaxis_unit: str = "ppm",
         xaxis_ticks: Optional[Union[Iterable[int], Iterable[Iterable[int, Iterable[float]]]]] = None,  # noqa: E501
@@ -789,6 +983,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         oscs
             Oscillators to consider. By default (``None``) all oscillators are
             considered.
+
+        neglect_increments
+            Increments of the dataset to neglect. Default, all increments are included
+            in the fit.
 
         fit_increments
             The number of points in the fit lines.
@@ -873,6 +1071,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         sanity_check(
             self._indices_check(indices),
             (
+                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
+                {"min_value": 0, "max_value": self.increments.size - 1}, True,
+            ),
+            (
                 "fit_increments", fit_increments, sfuncs.check_int, (),
                 {"min_value": len(self.increments)},
             ),
@@ -910,8 +1112,11 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         oscs = self._proc_oscs(oscs, n_oscs)
         params = [p[oscs] for p in params]
 
-        integrals = self.integrals(indices, oscs)
         fit, errors = self.fit(indices, oscs)
+
+        increments, integrals = self._proc_neglect_increments(
+            indices, oscs, neglect_increments,
+        )
 
         fig = plt.figure(**kwargs)
         ax = fig.add_subplot(projection="3d")
@@ -970,8 +1175,8 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         for x, params, integs in zip(xs, fit, integrals):
             color = next(colors)
-            x_scatter = np.full(self.increments.shape, x)
-            y_scatter = self.increments
+            x_scatter = np.full(increments.shape, x)
+            y_scatter = increments
             z_scatter = integs
             ax.scatter(
                 x_scatter,
@@ -983,7 +1188,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             )
 
             x_fit = np.full(fit_increments, x)
-            y_fit = np.linspace(self.increments[0], self.increments[-1], fit_increments)
+            y_fit = np.linspace(np.amin(increments), np.amax(increments), fit_increments)
             z_fit = self.model(*params, y_fit)
             ax.plot(
                 x_fit,
@@ -1017,7 +1222,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             ax.set_xticklabels(xaxis_ticklabels)
 
         # Configure y-axis
-        ax.set_ylim(self.increments[0], self.increments[-1])
+        ax.set_ylim(np.amin(increments), np.amax(increments))
         ax.set_ylabel(self.increment_label)
 
         # Configure z-axis
@@ -1731,93 +1936,16 @@ class EstimatorInvRec(EstimatorSeq1D):
         delay_file: Optional[str] = None,
         convdta: bool = True,
     ) -> Estimator1D:
-        sanity_check(
-            ("directory", directory, check_existent_dir),
-            ("convdta", convdta, sfuncs.check_bool),
-            ("delay_file", delay_file, sfuncs.check_str, (), {}, True),
+        data, expinfo, delays, datapath = cls._new_bruker_pre(
+            directory, delay_file, convdta,
         )
-
-        directory = Path(directory).expanduser()
-        data, expinfo_2d = load_bruker(directory)
-
-        if data.ndim != 2:
-            raise ValueError(f"{RED}Data dimension should be 2.{END}")
-
-        float_list_files = cls._check_float_list_file(directory)
-
-        if not float_list_files:
-            raise ValueError(
-                f"{RED}Could not find a suitable delay file in directory: "
-                f"{directory}.{END}"
-            )
-
-        elif len(float_list_files) == 1:
-            name, floats = next(iter(float_list_files.items()))
-            if delay_file is None or name == delay_file:
-                delays = floats
-            else:
-                raise ValueError(
-                    f"{RED}`delay_file` ({delay_file}) either doesn't exist or is "
-                    f"of the incorrect format. Note that \"{name}\" is of the "
-                    f"correct format to be a delay file.{END}"
-                )
-
-        elif len(float_list_files) > 1:
-            if delay_file is None:
-                files = ", ".join(float_list_files.keys())
-                raise ValueError(
-                    f"{RED}Multiple files were found that are of the correct format "
-                    f"to be a delay file:\n{files}\nPlease specifiy the correct file "
-                    f"with the `delay_file` argument{END}."
-                )
-            elif delay_file in float_list_files.keys():
-                delays = float_list_files[delay_file]
-            else:
-                raise ValueError(
-                    f"{RED}`delay_file` ({delay_file}) either doesn't exist, or "
-                    f"it does not correspond to a correctly formatted file.{END}"
-                )
-
-        if convdta:
-            grpdly = expinfo_2d.parameters["acqus"]["GRPDLY"]
-            data = ne.sig.convdta(data, grpdly)
-
-        expinfo = ne.ExpInfo(
-            dim=1,
-            sw=expinfo_2d.sw()[-1],
-            offset=expinfo_2d.offset()[-1],
-            sfo=expinfo_2d.sfo[-1],
-            nuclei=expinfo_2d.nuclei[-1],
-            default_pts=data.shape[-1],
-            parameters=expinfo_2d.parameters
-        )
-
-        return cls(data, expinfo, delays, datapath=directory)
-
-    @staticmethod
-    def _check_float_list_file(
-        directory: Path,
-    ) -> Optional[Dict[str, np.ndarray]]:
-        ignore = ["acqus", "acqu2s", "ser", "pulseprogram"]
-        files = [directory / fname for fname in os.listdir(directory)]
-        files = [f for f in files if f.is_file() and f.name not in ignore]
-
-        float_list_files = {}
-
-        for f in files:
-            try:
-                with open(f, "r") as fh:
-                    vals = np.array([float(x) for x in fh.readlines()])
-                float_list_files[f.name] = vals
-            except ValueError:
-                pass
-
-        return float_list_files if float_list_files else None
+        return cls(data, expinfo, delays, datapath)
 
     def fit(
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
+        neglect_increments: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
         r"""Fit estimation result for the given oscillators across increments in
         order to predict the longitudinal relaxtation time, :math:`T_1`.
@@ -1842,6 +1970,10 @@ class EstimatorInvRec(EstimatorSeq1D):
         index
             The result index. By default, the last result acquired is considered.
 
+        neglect_increments
+            Increments of the dataset to neglect. Default, all increments are included
+            in the fit.
+
         Returns
         -------
         Iterable[np.ndarray]
@@ -1849,7 +1981,7 @@ class EstimatorInvRec(EstimatorSeq1D):
             the first element corresponds to :math:`I_{\infty}`, and the second
             element corresponds to :math:`T_1`.
         """
-        result, errors = self._fit("T1", indices, oscs)
+        result, errors = self._fit("T1", indices, oscs, neglect_increments)
         return result, errors
 
     def model(
@@ -1946,3 +2078,283 @@ class EstimatorInvRec(EstimatorSeq1D):
 class FunctionFactoryInvRec(FunctionFactory):
     def __init__(self, theta: np.ndarray, *args) -> None:
         super().__init__(theta, EstimatorInvRec._obj_grad_hess, *args)
+
+
+class EstimatorDOSY(EstimatorSeq1D):
+    """Estimation class for the consideration of datasets acquired by diffusion
+    NMR (i.e. DOSY), for the purposed of determining translational diffusion
+    coefficients."""
+
+    _increment_label = "$g$ (Gcm$^{-1}$)"
+    # Rendered in math mode
+    _fit_labels = ["I_{0}", "D"]
+    # Rendered outside of math mode
+    _fit_units = ["", "m$^2$s$^{-1}$"]
+
+    def __init__(
+        self,
+        data: np.ndarray,
+        expinfo: ne.ExpInfo,
+        gradients: np.ndarray,
+        gradient_length: float,
+        diffusion_delay: float,
+        shape_factor: float = 1.,
+        gamma: Optional[float] = None,
+        datapath: Optional[Path] = None,
+    ) -> None:
+        r"""
+        Parameters
+        ----------
+        data
+            The data associated with the binary file in `path`.
+
+        expinfo
+            Experiment information.
+
+        gradients
+            Gradients used in the experiment, in G cm⁻¹.
+
+        gradient_length
+            The length of diffusion-encoding gradients (:math:`\delta`), in
+            seconds
+
+        diffusion_delay
+            The length of the diffusion delay (:math:`\Delta`), in seconds.
+
+        shape_factor
+            The shape factor of the pulse (:math:`\sigma`).
+
+        gamma
+            The gyromagnetic ratio of the nucleus, in 10⁶ s⁻¹ T⁻¹. If ``None``,
+            an attempt will be made to extract this, based on ``expinfo.nuclei[0]``.
+            **If** ``expinfo.nuclei[0]`` is ``None``, or a a string other than
+            ``"1H"``, ``"13C"``, ``"15N"``, ``"19F"``, you will have to provide
+            ``gamma`` manually.
+
+        datapath
+            The path to the directory containing the NMR data.
+        """
+        super().__init__(data, expinfo, gradients, datapath=datapath)
+        self.increments *= 1.e-2  # G cm⁻¹ -> T m⁻¹
+
+        sanity_check(
+            (
+                "gradient_length", gradient_length, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            (
+                "diffusion_delay", diffusion_delay, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            (
+                "shape_factor", shape_factor, sfuncs.check_float, (),
+                {"greater_than_zero": True, "max_value": 1.},
+            ),
+        )
+        if gamma is None:
+            nuc, = self.nuclei
+            sanity_check(
+                (
+                    "Trying to extract gamma based on self.nuclei[0]",
+                    nuc, sfuncs.check_one_of, [x for x in GAMMAS.keys()],
+                ),
+            )
+            self.gamma = GAMMAS[nuc]
+
+        else:
+            sanity_check(("gamma", gamma, sfuncs.check_float))
+            self.gamma = gamma
+
+        self.gradient_length = gradient_length
+        self.diffusion_delay = diffusion_delay
+        self.shape_factor = shape_factor
+
+    @classmethod
+    def new_bruker(
+        cls,
+        directory: Union[str, Path],
+        increment_file: Optional[str] = None,
+        gradient_file: str = "gpnam1",
+        convdta: bool = True,
+    ) -> EstimatorDOSY:
+        data, expinfo, gradients, datapath = cls._new_bruker_pre(
+            directory, increment_file, convdta,
+        )
+        acqus = expinfo.parameters["acqus"]
+        gradient_length = float(acqus["P"][30]) * 1.e-6  # μs -> s
+        diffusion_delay = float(acqus["D"][20])
+
+        sanity_check(
+            ("gradient_file", datapath / gradient_file, check_existent_path),
+        )
+        # TODO Handle exceptions
+        params = parse_jcampdx(datapath / gradient_file)
+        shape_factor = float(params["SHAPE_INTEGFAC"])
+
+        return cls(
+            data,
+            expinfo,
+            gradients,
+            gradient_length,
+            diffusion_delay,
+            shape_factor=shape_factor,
+            datapath=datapath,
+        )
+
+    @property
+    def c(self) -> float:
+        r"""Proportionality constant in Stejskal-Tanner, in units m⁻² s.
+
+        .. math::
+
+            c = \gamma^2 \sigma^2 \delta^2 \left(\Delta - \frac{\delta}{3}\right)
+        """
+        return (
+            (
+                self.gamma *
+                self.gradient_length *
+                self.shape_factor
+            ) ** 2 *
+            (self.diffusion_delay - (self.gradient_length / 3))
+        )
+
+    def fit(
+        self,
+        indices: Optional[Iterable[int]] = None,
+        oscs: Optional[Iterable[int]] = None,
+        neglect_increments: Optional[Iterable[int]] = None,
+    ) -> Iterable[np.ndarray]:
+        r"""Fit estimation result for the given oscillators across increments in
+        order to predict the translational diffusion coefficient, :math:`D`.
+
+        For the oscillators specified, the integrals of the oscilators' peaks are
+        determined at each increment, and the following function is fit:
+
+        .. math::
+
+            I \left(I_{0}, D, G\right) =
+            I_{0} \exp\left(-c D G^2\right).
+
+        where :math:`I` is the peak integral when the gradient is :math:`G`, and
+        :math:`I_{0} = \lim_{G \rightarrow 0} I`.
+
+        Parameters
+        ----------
+        oscs
+            The indices of the oscillators to considier. If ``None``, all oscillators
+            are consdiered.
+
+        index
+            The result index. By default, the last result acquired is considered.
+
+        neglect_increments
+            Increments of the dataset to neglect. Default, all increments are included
+            in the fit.
+
+        Returns
+        -------
+        Iterable[np.ndarray]
+            Iterable (list) of numpy arrays of shape ``(2,)``. For each array,
+            the first element corresponds to :math:`I_{0}`, and the second
+            element corresponds to :math:`D`.
+        """
+        result, errors = self._fit("D", indices, oscs, neglect_increments)
+        return result, errors
+
+    def model(
+        self,
+        I0: float,
+        D: float,
+        gradients: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        r"""Return the function
+
+        .. math::
+
+            \boldsymbol{I}\left(I_{0}, D, \boldsymbol{G} \right) =
+                I_0 \exp\left(
+                    - c D \boldsymbol{G}^2
+                \right)
+
+        Parameters
+        ----------
+        I0
+            :math:`I_0`.
+
+        D
+            :math:`D`.
+
+        gradients
+            The gradients to consider (:math:`\boldsymbol{G}`). If ``None``,
+            ``self.increments`` will be used.
+        """
+        sanity_check(
+            ("I0", I0, sfuncs.check_float),
+            ("D", D, sfuncs.check_float),
+            ("gradients", gradients, sfuncs.check_ndarray, (), {"dim": 1}, True),
+        )
+
+        if gradients is None:
+            gradients = self.increments
+
+        return I0 * np.exp(-self.c * D * (gradients ** 2))
+
+    @staticmethod
+    def _obj_grad_hess(
+        theta: np.ndarray,
+        *args: Tuple[np.ndarray, np.ndarray],
+    ) -> Tuple[float, np.ndarray, np.ndarray]:
+        r"""Objective, gradient and Hessian for fitting inversion recovery data.
+        The model to be fit is given by
+
+        .. math::
+
+            I = I_0 \exp\left(-c D G^2\right).
+
+        Parameters
+        ----------
+        theta
+            Parameters of the model: :math:`I_0` and :math:`D`.
+
+        args
+            Comprises two items:
+
+            * integrals across each increment.
+            * gradients (:math:`G`).
+            * c (:math:`c`).
+        """
+        # TODO Figure out constant term in the exponential (c)
+        # At the moment, the second parameter is actually cD rather than the desired D
+        I0, D = theta
+        integrals, gradients, c = args
+
+        cG_sq = c * (gradients ** 2)
+        cDG_sq = D * cG_sq
+        exp_minus_cDG_sq = np.exp(-cDG_sq)
+        y_minus_x = integrals - I0 * exp_minus_cDG_sq
+        n = gradients.size
+
+        # Objective
+        obj = np.sum(y_minus_x.T ** 2)
+
+        # Grad
+        d1 = np.zeros((n, 2))
+        d1[:, 0] = exp_minus_cDG_sq
+        d1[:, 1] = -I0 * cG_sq * exp_minus_cDG_sq
+        grad = -2 * y_minus_x.T @ d1
+
+        # Hessian
+        d2 = np.zeros((n, 2, 2))
+        off_diag = -cG_sq * exp_minus_cDG_sq
+        d2[:, 0, 1] = off_diag
+        d2[:, 1, 0] = off_diag
+        d2[:, 1, 1] = (cG_sq ** 2) * exp_minus_cDG_sq
+
+        hess = -2 * (np.einsum("i,ijk->jk", y_minus_x, d2) - d1.T @ d1)
+
+        return obj, grad, hess
+
+
+class FunctionFactoryDOSY(FunctionFactory):
+    def __init__(self, theta: np.ndarray, *args) -> None:
+        super().__init__(theta, EstimatorDOSY._obj_grad_hess, *args)
