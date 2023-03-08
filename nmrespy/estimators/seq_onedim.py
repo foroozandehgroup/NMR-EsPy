@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 08 Mar 2023 15:22:28 GMT
+# Last Edited: Wed 08 Mar 2023 15:25:06 GMT
 
 from __future__ import annotations
 import copy
