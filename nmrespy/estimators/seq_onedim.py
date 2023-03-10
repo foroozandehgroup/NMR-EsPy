@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 10 Mar 2023 11:07:40 GMT
+# Last Edited: Fri 10 Mar 2023 18:43:57 GMT
 
 from __future__ import annotations
 import copy
@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
-from bruker_utils import parse_jcampdx
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.axis3d import Axis
@@ -17,7 +16,7 @@ import numpy as np
 
 import nmrespy as ne
 from nmrespy._colors import RED, END, USE_COLORAMA
-from nmrespy._files import check_existent_dir, check_existent_path
+from nmrespy._files import check_existent_dir
 from nmrespy._misc import proc_kwargs_dict
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy.estimators import Result, logger
@@ -26,7 +25,6 @@ from nmrespy.freqfilter import Filter
 from nmrespy.load import load_bruker
 from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import nonlinear_programming
-from nmrespy.nlp._funcs import FunctionFactory
 from nmrespy.nlp.optimisers import trust_ncg
 from nmrespy.plot import make_color_cycle
 
@@ -35,15 +33,6 @@ if USE_COLORAMA:
     import colorama
     colorama.init()
 
-
-# gyromagnetic ratios for common nuclei, in MHz T-1
-GAMMAS = {
-    k: v / (2 * np.pi)
-    for k, v in zip(
-        ("1H", "13C", "15N", "19F"),
-        (2.6752218744e8, 6.728284e7, -2.71261804e7, 2.518148e8),
-    )
-}
 
 # Patch Axes3D to prevent annoying padding
 # https://stackoverflow.com/questions/16488182/removing-axes-margins-in-3d-plot
@@ -719,13 +708,11 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
     def _fit(
         self,
-        func: str,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
         neglect_increments: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
         sanity_check(
-            ("func", func, sfuncs.check_one_of, ("T1", "D")),
             self._indices_check(indices),
             (
                 "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
@@ -743,34 +730,18 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             indices, oscs, neglect_increments,
         )
 
-        norm = np.linalg.norm(integrals)
-        integrals /= norm
-
-        if func == "T1":
-            function_factory = FunctionFactoryInvRec
-        elif func == "D":
-            function_factory = FunctionFactoryDOSY
-
         results = []
         errors = []
         for integs in integrals:
-            if func == "T1":
-                x0 = np.array([np.amin(integs), 1.])
-                args = (integs, increments)
-            if func == "D":
-                # I0, cD
-                idx2, idx1 = np.argpartition(integs, -2)[-2:]
-                I1, I2 = integs[idx1], integs[idx2]
-                g1, g2 = increments[idx1], increments[idx2]
-                I0_init = I1 - (g1 * ((I2 - I1) / (g2 - g1)))
-                cD_init = -(1 / (g1 ** 2)) * np.log(I1 / I0_init)
-                args = (integs, increments)
-                x0 = np.array([I0_init, cD_init])
+            norm = np.linalg.norm(integs)
+            integs /= norm
+            args = (integs, increments)
+            x0 = self.get_x0(*args)
 
             nlp_result = trust_ncg(
                 x0=x0,
                 args=args,
-                function_factory=function_factory,
+                function_factory=self.function_factory,
                 output_mode=None,
             )
 
@@ -778,10 +749,6 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             x[0] *= norm
             errs = nlp_result.errors
             errs[0] *= norm
-
-            if func == "D":
-                x[1] /= self.c
-                errs[1] /= self.c
 
             results.append(x)
             errors.append(errs / np.sqrt(len(self.increments)))
@@ -936,7 +903,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         text = "\n".join(
             [
-                f"$p_{{{i}}} = {para:.4g} \\pm {err:.4g}$U{i}"
+                f"$p_{{{i}}}$ $= {para:.4g} \\pm {err:.4g}$U{i}"
                 for i, (para, err) in enumerate(zip(params, errors), start=1)
             ]
         )
@@ -945,7 +912,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
                 zip(self.fit_labels, self.fit_units),
                 start=1,
             ):
-                text = text.replace(f"p_{{{i}}}", flab)
+                text = text.replace(f"$p_{{{i}}}$", flab)
                 text = text.replace(f"U{i}", f" {ulab}" if ulab != "" else "")
         else:
             i = 0
@@ -1617,16 +1584,93 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
     def plot_dosy(
         self,
-        d_range: Tuple[float, float],
-        d_pts: int,
+        D_range: Tuple[float, float],
+        D_pts: int = 256,
         indices: Optional[Iterable[int]] = None,
         region_separation: float = 0.02,
         oscillator_colors: Any = None,
+        contour_base: Optional[float] = None,
+        contour_factor: Optional[float] = 1.2,
+        contour_nlevels: Optional[int] = 10,
         xaxis_unit: str = "hz",
         xaxis_ticks: Optional[Iterable[float]] = None,
-    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes, Dict]:
+        spec_line_kwargs: Optional[Dict] = None,
+        osc_line_kwargs: Optional[Dict] = None,
+        contour_kwargs: Optional[Dict] = None,
+    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
+        sanity_check(
+            (
+                "D_range", D_range, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+            ("D_pts", D_pts, sfuncs.check_int, (), {"min_value": 1}),
+            self._indices_check(indices),
+            self._funit_check(xaxis_unit, "xaxis_unit"),
+            (
+                "oscillator_colors", oscillator_colors, sfuncs.check_oscillator_colors,
+                (), {}, True,
+            ),
+            (
+                "contour_base", contour_base, sfuncs.check_float, (),
+                {"min_value": 0.}, True,
+            ),
+            (
+                "contour_factor", contour_factor, sfuncs.check_float, (),
+                {"min_value": 1.}, True,
+            ),
+            (
+                "contour_nlevels", contour_nlevels, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            ("xaxis_unit", xaxis_unit, sfuncs.check_one_of, ("hz", "ppm")),
+        )
+
+        if all(
+            [
+                x is not None
+                for x in (contour_base, contour_nlevels, contour_factor)
+            ]
+        ):
+            contour_levels = [
+                contour_base * contour_factor ** i for i in range(contour_nlevels)
+            ]
+        else:
+            contour_levels = None
+
+        spec_line_kwargs = proc_kwargs_dict(
+            spec_line_kwargs,
+            default={"linewidth": 1.2, "color": "k"},
+        )
+        osc_line_kwargs = proc_kwargs_dict(
+            osc_line_kwargs,
+            default={"linewidth": 0.9},
+            to_pop=("color"),
+        )
+        contour_kwargs = proc_kwargs_dict(
+            contour_kwargs,
+            default={"linewidths": 0.5},
+            to_pop=("colors", "levels", "cmap", "levels"),
+        )
+
         indices = self._process_indices(indices)
         merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
+
+        if (n_regions := len(merge_regions)) > 1:
+            max_rs = 1 / (n_regions - 1)
+            sanity_check(
+                (
+                    "region_separation", region_separation, sfuncs.check_float,
+                    (), {"min_value": 0., "max_value": max_rs},
+                ),
+            )
+
+        sanity_check(
+            (
+                "xaxis_ticks", xaxis_ticks, sfuncs.check_xaxis_ticks,
+                (merge_regions,), {}, True,
+            ),
+        )
+
         merge_region_spans = self._get_3d_xaxis_spans(
             merge_regions,
             region_separation,
@@ -1639,13 +1683,13 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             merge_region_spans,
         )
 
-        y = np.linspace(d_range[0], d_range[1], d_pts)
+        y = np.linspace(D_range[0], D_range[1], D_pts)
 
         zss = []
         peakss = []
         for mi in merge_indices:
             thetas = self.get_params(indices=mi)[0]
-            fits, errors = self.fit(indices=mi, neglect_increments=[0])
+            fits, errors = self.fit(indices=mi)
             Ds = [x[1] for x in fits]
             D_errs = [x[1] for x in errors]
 
@@ -1655,6 +1699,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
                 fid = self.make_fid(np.expand_dims(theta, axis=0))
                 fid[0] *= 0.5
                 spec = ne.sig.ft(fid).real
+                spec *= -1
                 peaks.append(spec)
                 D_gaussian = (
                     1 / (D_err * np.sqrt(2 * np.pi)) *
@@ -1671,10 +1716,13 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         fid = self.data[0]
         fid[0] *= 0.5
-        spectrum = ne.sig.ft(fid).real
+        spectrum = -1 * ne.sig.ft(fid).real
 
         for (zs, peaks, region, span) in zip(
-            reversed(zss), reversed(peakss), reversed(merge_regions), reversed(merge_region_spans),
+            reversed(zss),
+            reversed(peakss),
+            reversed(merge_regions),
+            reversed(merge_region_spans),
         ):
             slice_ = slice(
                 *self.convert([region], f"{xaxis_unit}->idx")[0]
@@ -1683,19 +1731,28 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             xx, yy = np.meshgrid(x, y, indexing="ij")
             zs_slice = [z[slice_] for z in zs]
             spec = spectrum[slice_]
-            peaks = [peak[slice_] for peak in peaks]
+            axs[0].plot(x, spec, **spec_line_kwargs)
 
+            peaks = [peak[slice_] for peak in peaks]
             for peak, z_slice in zip(peaks, zs_slice):
                 color = next(colorcycle)
-                axs[0].plot(x, peak, color=color)
-                axs[1].contour(xx, yy, z_slice, colors=color)
-            axs[0].plot(x, spec, color="k")
+                axs[0].plot(x, peak, color=color, **osc_line_kwargs)
+                axs[1].contour(
+                    xx,
+                    yy,
+                    z_slice,
+                    colors=color,
+                    levels=contour_levels,
+                    **contour_kwargs,
+                )
+
 
         axs[0].set_xticks([])
+        axs[0].set_yticks([])
         axs[1].set_xticks(xaxis_ticks)
         axs[1].set_xticklabels(xaxis_ticklabels)
-        axs[0].set_xlim(reversed(axs[0].get_xlim()))
         axs[1].set_xlim(reversed(axs[1].get_xlim()))
+        axs[0].set_xlim(axs[1].get_xlim())
         axs[1].set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
         axs[1].set_ylabel(f"{self.fit_labels[-1]} ({self.fit_units[-1]})")
 
@@ -1740,844 +1797,3 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         elif isinstance(oscs, int):
             oscs = [oscs]
         return oscs
-
-
-class EstimatorInvRec(EstimatorSeq1D):
-    """Estimation class for the consideration of datasets acquired by an inversion
-    recovery experiment, for the purpose of determining longitudinal relaxation
-    times (:math:`T_1`)."""
-
-    _increment_label = "$\\tau$ (s)"
-    # Rendered in math mode
-    _fit_labels = ["I_{\\infty}", "T_1"]
-    # Rendered outside of math mode
-    _fit_units = ["", "s"]
-
-    def __init__(
-        self,
-        data: np.ndarray,
-        expinfo: ne.ExpInfo,
-        delays: np.ndarray,
-        datapath: Optional[Path] = None,
-    ) -> None:
-        """
-        Parameters
-        ----------
-        data
-            The data associated with the binary file in `path`.
-
-        expinfo
-            Experiment information.
-
-        delays
-            Delays used in the inversion recovery experiment.
-
-        datapath
-            The path to the directory containing the NMR data.
-        """
-        super().__init__(data, expinfo, datapath, increments=delays)
-
-    @classmethod
-    def new_from_parameters(
-        cls,
-        params: np.ndarray,
-        t1s: Union[Iterable[float], float],
-        delays: np.ndarray,
-        pts: int,
-        sw: float,
-        offset: float,
-        sfo: float = 500.,
-        nucleus: str = "1H",
-        snr: Optional[float] = 20.,
-    ) -> EstimatorInvRec:
-        """Generate an estimator instance with sythetic data created from an
-        array of oscillator parameters.
-
-        Parameters
-        ----------
-        params
-            Parameter array with the following structure:
-
-              .. code:: python
-
-                 params = numpy.array([
-                    [a_1, φ_1, f_1, η_1],
-                    [a_2, φ_2, f_2, η_2],
-                    ...,
-                    [a_m, φ_m, f_m, η_m],
-                 ])
-
-        t1s
-            The longitudinal relaxation times associated with each oscillator in the
-            parameter array. Should be a list of floats with ``len(t1s) ==
-            params.shape[0]``.
-
-        increments
-           List of inversion recovery delays to generate the data from.
-
-        pts
-            The number of points the signal comprises.
-
-        sw
-            The sweep width of the signal (Hz).
-
-        offset
-            The transmitter offset (Hz).
-
-        sfo
-            The transmitter frequency (MHz).
-
-        nucleus
-            The identity of the nucleus. Should be of the form ``"<mass><sym>"``
-            where ``<mass>`` is the atomic mass and ``<sym>`` is the element symbol.
-            Examples: ``"1H"``, ``"13C"``, ``"195Pt"``
-
-        snr
-            The signal-to-noise ratio (dB). If ``None`` then no noise will be added
-            to the FID.
-        """
-        sanity_check(
-            ("params", params, sfuncs.check_parameter_array, (1,)),
-            ("delays", delays, sfuncs.check_ndarray, (), {"dim": 1}, True),
-            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
-            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("offset", offset, sfuncs.check_float, (), {}, True),
-            ("nucleus", nucleus, sfuncs.check_nucleus),
-            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}, True),
-            ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
-        )
-        noscs = params.shape[0]
-        sanity_check(
-            (
-                "t1s", t1s, sfuncs.check_float_list, (),
-                {"length": noscs, "must_be_positive": True},
-            ),
-        )
-
-        expinfo = ne.ExpInfo(
-            dim=1,
-            sw=sw,
-            offset=offset,
-            sfo=sfo,
-            nuclei=nucleus,
-            default_pts=pts,
-        )
-
-        a0s = params[:, 0]
-        t1s = np.array(t1s)
-        data = np.zeros((delays.size, pts), dtype="complex")
-        for i, tau in enumerate(delays):
-            print(i)
-            amps = a0s * (1 - 2 * np.exp(-tau / t1s))
-            p = copy.deepcopy(params)
-            p[:, 0] = amps
-            data[i] = expinfo.make_fid(p, snr=snr)
-            print(data[i])
-
-        return cls(data, expinfo, delays)
-
-    @classmethod
-    def new_spinach(
-        cls,
-        shifts: Iterable[float],
-        couplings: Optional[Iterable[Tuple(int, int, float)]],
-        n_delays: int,
-        max_delay: float,
-        t1s: Union[Iterable[float], float],
-        t2s: Union[Iterable[float], float],
-        pts: int,
-        sw: float,
-        offset: float = 0.,
-        sfo: float = 500.,
-        nucleus: str = "1H",
-        snr: Optional[float] = 20.,
-    ) -> EstimatorInvRec:
-        r"""Create a new instance from an inversion-recovery Spinach simulation.
-
-        A data is acquired with linear increments of delay:
-
-        .. math::
-
-            \boldsymbol{\tau} =
-                \left[
-                    0,
-                    \frac{\tau_{\text{max}}}{N_{\text{delays}} - 1},
-                    \frac{2 \tau_{\text{max}}}{N_{\text{delays}} - 1},
-                    \cdots,
-                    \tau_{\text{max}}
-                \right]
-
-        with :math:`\tau_{\text{max}}` being ``max_delay`` and
-        :math:`N_{\text{delays}}` being ``n_delays``.
-
-
-        See :ref:`SPINACH_INSTALL` for requirments to use this method.
-
-        Parameters
-        ----------
-        shifts
-            A list of tuple of chemical shift values for each spin.
-
-        couplings
-            The scalar couplings present in the spin system. Given ``shifts`` is of
-            length ``n``, couplings should be an iterable with entries of the form
-            ``(i1, i2, coupling)``, where ``1 <= i1, i2 <= n`` are the indices of
-            the two spins involved in the coupling, and ``coupling`` is the value
-            of the scalar coupling in Hz. ``None`` will set all spins to be
-            uncoupled.
-
-        t1s
-            The :math:`T_1` times for each spin. Should be either a list of floats
-            with the same length as ``shifts``, or a float. If a float, all spins will
-            be assigned the same :math:`T_1`. Note that :math:`T_1 = 1 / R_1`.
-
-        t2s
-            The :math:`T_2` times for each spin. See ``t1s`` for the required form.
-            Note that :math:`T_2 = 1 / R_2`.
-
-        n_delays
-            The number of delays.
-
-        max_delay
-            The largest delay, in seconds.
-
-        pts
-            The number of points the signal comprises.
-
-        sw
-            The sweep width of the signal (Hz).
-
-        offset
-            The transmitter offset (Hz).
-
-        sfo
-            The transmitter frequency (MHz).
-
-        nucleus
-            The identity of the nucleus. Should be of the form ``"<mass><sym>"``
-            where ``<mass>`` is the atomic mass and ``<sym>`` is the element symbol.
-            Examples:
-
-            * ``"1H"``
-            * ``"13C"``
-            * ``"195Pt"``
-
-        snr
-            The signal-to-noise ratio of the resulting signal, in decibels. ``None``
-            produces a noiseless signal.
-        """
-        sanity_check(
-            ("shifts", shifts, sfuncs.check_float_list),
-            ("n_delays", n_delays, sfuncs.check_int, (), {"min_value": 1}),
-            ("max_delay", max_delay, sfuncs.check_float, (), {"greater_than_zero": True}),  # noqa: E501
-            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
-            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("offset", offset, sfuncs.check_float),
-            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
-            ("nucleus", nucleus, sfuncs.check_nucleus),
-            ("snr", snr, sfuncs.check_float),
-        )
-
-        nspins = len(shifts)
-        if isinstance(t1s, float):
-            t1s = nspins * [t1s]
-        if isinstance(t2s, float):
-            t2s = nspins * [t2s]
-
-        sanity_check(
-            (
-                "couplings", couplings, sfuncs.check_spinach_couplings, (nspins,),
-                {}, True,
-            ),
-            (
-                "t1s", t1s, sfuncs.check_float_list, (),
-                {"length": nspins, "must_be_positive": True},
-            ),
-            (
-                "t2s", t2s, sfuncs.check_float_list, (),
-                {"length": nspins, "must_be_positive": True},
-            ),
-        )
-
-        if couplings is None:
-            couplings = []
-
-        r1s = [1 / t1 for t1 in t1s]
-        r2s = [1 / t2 for t2 in t2s]
-
-        fid = cls._run_spinach(
-            "invrec_sim", shifts, couplings, float(n_delays), float(max_delay), r1s,
-            r2s, pts, sw, offset, sfo, nucleus, to_double=[4, 5],
-        ).reshape((pts, n_delays)).T
-
-        if snr is not None:
-            fid = ne.sig.add_noise(fid, snr)
-
-        expinfo = ne.ExpInfo(
-            dim=1,
-            sw=sw,
-            offset=offset,
-            sfo=sfo,
-            nuclei=nucleus,
-            default_pts=pts,
-        )
-
-        return cls(fid, expinfo, np.linspace(0, max_delay, n_delays))
-
-    @classmethod
-    def new_bruker(
-        cls,
-        directory: Union[str, Path],
-        delay_file: Optional[str] = None,
-        convdta: bool = True,
-    ) -> Estimator1D:
-        data, expinfo, delays, datapath = cls._new_bruker_pre(
-            directory, delay_file, convdta,
-        )
-        return cls(data, expinfo, delays, datapath)
-
-    def fit(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        oscs: Optional[Iterable[int]] = None,
-        neglect_increments: Optional[Iterable[int]] = None,
-    ) -> Iterable[np.ndarray]:
-        r"""Fit estimation result for the given oscillators across increments in
-        order to predict the longitudinal relaxtation time, :math:`T_1`.
-
-        For the oscillators specified, the integrals of the oscilators' peaks are
-        determined at each increment, and the following function is fit:
-
-        .. math::
-
-            I \left(I_{\infty}, T_1, \tau\right) =
-            I_{\infty} \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
-
-        where :math:`I` is the peak integral when the delay is :math:`\tau`, and
-        :math:`I_{\infty} = \lim_{\tau \rightarrow \infty} I`.
-
-        Parameters
-        ----------
-        oscs
-            The indices of the oscillators to considier. If ``None``, all oscillators
-            are consdiered.
-
-        index
-            The result index. By default, the last result acquired is considered.
-
-        neglect_increments
-            Increments of the dataset to neglect. Default, all increments are included
-            in the fit.
-
-        Returns
-        -------
-        Iterable[np.ndarray]
-            Iterable (list) of numpy arrays of shape ``(2,)``. For each array,
-            the first element corresponds to :math:`I_{\infty}`, and the second
-            element corresponds to :math:`T_1`.
-        """
-        result, errors = self._fit("T1", indices, oscs, neglect_increments)
-        return result, errors
-
-    def model(
-        self,
-        Iinfty: float,
-        T1: float,
-        delays: Optional[np.ndarray] = None,
-    ) -> np.ndarray:
-        r"""Return the function
-
-        .. math::
-
-            \boldsymbol{I}\left(I_{\infty}, T_1, \boldsymbol{\tau} \right) =
-                I_{\infty} \left[
-                    1 - 2 \exp\left(- \frac{\boldsymbol{\tau}}{T_1} \right)
-                \right]
-
-        Parameters
-        ----------
-        Iinfty
-            :math:`I_{\infty}`.
-
-        T1
-            :math:`T_1`.
-
-        delays
-            The delays to consider (:math:`\boldsymbol{\tau}`). If ``None``,
-            ``self.increments`` will be used.
-        """
-        sanity_check(
-            ("Iinfty", Iinfty, sfuncs.check_float),
-            ("T1", T1, sfuncs.check_float),
-            ("delays", delays, sfuncs.check_ndarray, (), {"dim": 1}, True),
-        )
-
-        if delays is None:
-            delays = self.increments
-        return Iinfty * (1 - 2 * np.exp(-delays / T1))
-
-    @staticmethod
-    def _obj_grad_hess(
-        theta: np.ndarray,
-        *args: Tuple[np.ndarray, np.ndarray],
-    ) -> Tuple[float, np.ndarray, np.ndarray]:
-        r"""Objective, gradient and Hessian for fitting inversion recovery data.
-        The model to be fit is given by
-
-        .. math::
-
-            I = I_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
-
-        Parameters
-        ----------
-        theta
-            Parameters of the model: :math:`I_0` and :math:`T_1`.
-
-        args
-            Comprises two items:
-
-            * integrals across each increment.
-            * delays (:math:`\tau`).
-        """
-        I0, T1 = theta
-        integrals, taus = args
-
-        t_over_T1 = taus / T1
-        t_over_T1_sq = taus / (T1 ** 2)
-        t_over_T1_cb = taus / (T1 ** 3)
-        exp_t_over_T1 = np.exp(-t_over_T1)
-        y_minus_x = integrals - I0 * (1 - 2 * exp_t_over_T1)
-        n = taus.size
-
-        # Objective
-        obj = np.sum(y_minus_x.T ** 2)
-
-        # Grad
-        d1 = np.zeros((n, 2))
-        d1[:, 0] = 1 - 2 * exp_t_over_T1
-        d1[:, 1] = -2 * I0 * t_over_T1_sq * exp_t_over_T1
-        grad = -2 * y_minus_x.T @ d1
-
-        # Hessian
-        d2 = np.zeros((n, 2, 2))
-        off_diag = -2 * t_over_T1_sq * exp_t_over_T1
-        d2[:, 0, 1] = off_diag
-        d2[:, 1, 0] = off_diag
-        d2[:, 1, 1] = 2 * I0 * t_over_T1_cb * exp_t_over_T1 * (2 - t_over_T1)
-
-        hess = -2 * (np.einsum("i,ijk->jk", y_minus_x, d2) - d1.T @ d1)
-
-        return obj, grad, hess
-
-
-class FunctionFactoryInvRec(FunctionFactory):
-    def __init__(self, theta: np.ndarray, *args) -> None:
-        super().__init__(theta, EstimatorInvRec._obj_grad_hess, *args)
-
-
-class EstimatorDOSY(EstimatorSeq1D):
-    """Estimation class for the consideration of datasets acquired by diffusion
-    NMR (i.e. DOSY), for the purposed of determining translational diffusion
-    coefficients."""
-
-    _increment_label = "$g$ (Gcm$^{-1}$)"
-    # Rendered in math mode
-    _fit_labels = ["I_{0}", "D"]
-    # Rendered outside of math mode
-    _fit_units = ["", "m$^2$s$^{-1}$"]
-
-    def __init__(
-        self,
-        data: np.ndarray,
-        expinfo: ne.ExpInfo,
-        gradients: np.ndarray,
-        gradient_length: float,
-        diffusion_delay: float,
-        shape_factor: float = 1.,
-        gamma: Optional[float] = None,
-        datapath: Optional[Path] = None,
-    ) -> None:
-        r"""
-        Parameters
-        ----------
-        data
-            The data associated with the binary file in `path`.
-
-        expinfo
-            Experiment information.
-
-        gradients
-            Gradients used in the experiment, in G cm⁻¹.
-
-        gradient_length
-            The length of diffusion-encoding gradients (:math:`\delta`), in
-            seconds
-
-        diffusion_delay
-            The length of the diffusion delay (:math:`\Delta`), in seconds.
-
-        shape_factor
-            The shape factor of the pulse (:math:`\sigma`).
-
-        gamma
-            The gyromagnetic ratio of the nucleus, in 10⁶ s⁻¹ T⁻¹. If ``None``,
-            an attempt will be made to extract this, based on ``expinfo.nuclei[0]``.
-            **If** ``expinfo.nuclei[0]`` is ``None``, or a a string other than
-            ``"1H"``, ``"13C"``, ``"15N"``, ``"19F"``, you will have to provide
-            ``gamma`` manually.
-
-        datapath
-            The path to the directory containing the NMR data.
-        """
-        super().__init__(data, expinfo, gradients, datapath=datapath)
-
-        sanity_check(
-            (
-                "gradient_length", gradient_length, sfuncs.check_float, (),
-                {"greater_than_zero": True},
-            ),
-            (
-                "diffusion_delay", diffusion_delay, sfuncs.check_float, (),
-                {"greater_than_zero": True},
-            ),
-            (
-                "shape_factor", shape_factor, sfuncs.check_float, (),
-                {"greater_than_zero": True, "max_value": 1.},
-            ),
-        )
-        if gamma is None:
-            nuc, = self.nuclei
-            sanity_check(
-                (
-                    "Trying to extract gamma based on self.nuclei[0]",
-                    nuc, sfuncs.check_one_of, [x for x in GAMMAS.keys()],
-                ),
-            )
-            self.gamma = GAMMAS[nuc]
-
-        else:
-            sanity_check(("gamma", gamma, sfuncs.check_float))
-            self.gamma = gamma
-
-        self.gradient_length = gradient_length
-        self.diffusion_delay = diffusion_delay
-        self.shape_factor = shape_factor
-
-    @classmethod
-    def _new_bruker_pre(
-        cls,
-        directory: Union[str, Path],
-        increment_file: Optional[str] = None,
-        gradient_file: str = "gpnam1",
-        convdta: bool = True,
-    ) -> Tuple[
-        np.ndarray,
-        ne.ExpInfo,
-        np.ndarray,
-        float,
-        float,
-        float,
-        Path,
-    ]:
-        data, expinfo, gradients, datapath = super()._new_bruker_pre(
-            directory, increment_file, convdta,
-        )
-        acqus = expinfo.parameters["acqus"]
-        gradient_length = float(acqus["P"][30]) * 1.e-6  # μs -> s
-        diffusion_delay = float(acqus["D"][20])
-
-        sanity_check(
-            ("gradient_file", datapath / gradient_file, check_existent_path),
-        )
-        # TODO Handle exceptions
-        params = parse_jcampdx(datapath / gradient_file)
-        shape_factor = float(params["SHAPE_INTEGFAC"])
-
-        return (
-            data,
-            expinfo,
-            gradients,
-            gradient_length,
-            diffusion_delay,
-            shape_factor,
-            datapath,
-        )
-
-    @classmethod
-    def new_bruker(
-        cls,
-        directory: Union[str, Path],
-        increment_file: Optional[str] = None,
-        gradient_file: str = "gpnam1",
-        convdta: bool = True,
-    ) -> EstimatorDOSY:
-        (
-            data,
-            expinfo,
-            gradients,
-            gradient_length,
-            diffusion_delay,
-            shape_factor,
-            datapath,
-        ) = cls._new_bruker_pre(
-            directory, increment_file, gradient_file, convdta,
-        )
-
-        return cls(
-            data,
-            expinfo,
-            gradients,
-            gradient_length,
-            diffusion_delay,
-            shape_factor,
-            datapath=datapath,
-        )
-
-    @property
-    def c(self) -> float:
-        r"""Proportionality constant in Stejskal-Tanner, in units 10² m⁻² s.
-
-        .. math::
-
-            c = \gamma^2 \sigma^2 \delta^2 \left(\Delta - \frac{\delta}{3}\right)
-        """
-        return 1.e-4 * (
-            (
-                self.gamma *
-                self.gradient_length *
-                self.shape_factor
-            ) ** 2 *
-            (self.diffusion_delay - (self.gradient_length / 3))
-        )
-
-    def fit(
-        self,
-        indices: Optional[Iterable[int]] = None,
-        oscs: Optional[Iterable[int]] = None,
-        neglect_increments: Optional[Iterable[int]] = None,
-    ) -> Iterable[np.ndarray]:
-        r"""Fit estimation result for the given oscillators across increments in
-        order to predict the translational diffusion coefficient, :math:`D`.
-
-        For the oscillators specified, the integrals of the oscilators' peaks are
-        determined at each increment, and the following function is fit:
-
-        .. math::
-
-            I \left(I_{0}, D, G\right) =
-            I_{0} \exp\left(-c D G^2\right).
-
-        where :math:`I` is the peak integral when the gradient is :math:`G`, and
-        :math:`I_{0} = \lim_{G \rightarrow 0} I`.
-
-        Parameters
-        ----------
-        oscs
-            The indices of the oscillators to considier. If ``None``, all oscillators
-            are consdiered.
-
-        index
-            The result index. By default, the last result acquired is considered.
-
-        neglect_increments
-            Increments of the dataset to neglect. Default, all increments are included
-            in the fit.
-
-        Returns
-        -------
-        Iterable[np.ndarray]
-            Iterable (list) of numpy arrays of shape ``(2,)``. For each array,
-            the first element corresponds to :math:`I_{0}`, and the second
-            element corresponds to :math:`D`.
-        """
-        result, errors = self._fit("D", indices, oscs, neglect_increments)
-        return result, errors
-
-    def model(
-        self,
-        I0: float,
-        D: float,
-        gradients: Optional[np.ndarray] = None,
-    ) -> np.ndarray:
-        r"""Return the function
-
-        .. math::
-
-            \boldsymbol{I}\left(I_{0}, D, \boldsymbol{G} \right) =
-                I_0 \exp\left(
-                    - c D \boldsymbol{G}^2
-                \right)
-
-        Parameters
-        ----------
-        I0
-            :math:`I_0`.
-
-        D
-            :math:`D`.
-
-        gradients
-            The gradients to consider (:math:`\boldsymbol{G}`). If ``None``,
-            ``self.increments`` will be used.
-        """
-        sanity_check(
-            ("I0", I0, sfuncs.check_float),
-            ("D", D, sfuncs.check_float),
-            ("gradients", gradients, sfuncs.check_ndarray, (), {"dim": 1}, True),
-        )
-
-        if gradients is None:
-            gradients = self.increments
-
-        return I0 * np.exp(-self.c * D * (gradients ** 2))
-
-    @staticmethod
-    def _obj_grad_hess(
-        theta: np.ndarray,
-        *args: Tuple[np.ndarray, np.ndarray],
-    ) -> Tuple[float, np.ndarray, np.ndarray]:
-        r"""Objective, gradient and Hessian for fitting inversion recovery data.
-        The model to be fit is given by
-
-        .. math::
-
-            I = I_0 \exp\left(-c D G^2\right).
-
-        Parameters
-        ----------
-        theta
-            Parameters of the model: :math:`I_0` and :math:`D`.
-
-        args
-            Comprises two items:
-
-            * integrals across each increment.
-            * gradients (:math:`G`).
-            * c (:math:`c`).
-        """
-        I0, cD = theta
-        integrals, gradients = args
-
-        G_sq = gradients ** 2
-        cDG_sq = cD * G_sq
-        exp_minus_cDG_sq = np.exp(-cDG_sq)
-        y_minus_x = integrals - I0 * exp_minus_cDG_sq
-        n = gradients.size
-
-        # Objective
-        obj = np.sum(y_minus_x.T ** 2)
-
-        # Grad
-        d1 = np.zeros((n, 2))
-        d1[:, 0] = exp_minus_cDG_sq
-        d1[:, 1] = -I0 * G_sq * exp_minus_cDG_sq
-        grad = -2 * y_minus_x.T @ d1
-
-        # Hessian
-        d2 = np.zeros((n, 2, 2))
-        off_diag = -G_sq * exp_minus_cDG_sq
-        d2[:, 0, 1] = off_diag
-        d2[:, 1, 0] = off_diag
-        d2[:, 1, 1] = (G_sq ** 2) * exp_minus_cDG_sq
-
-        hess = -2 * (np.einsum("i,ijk->jk", y_minus_x, d2) - d1.T @ d1)
-
-        return obj, grad, hess
-
-
-class EstimatorOneshotDOSY(EstimatorDOSY):
-
-    def __init__(
-        self,
-        data: np.ndarray,
-        expinfo: ne.ExpInfo,
-        gradients: np.ndarray,
-        gradient_length: float,
-        diffusion_delay: float,
-        shape_factor: float,
-        alpha: float,
-        tau: float,
-        gamma: Optional[float] = None,
-        datapath: Optional[Path] = None,
-    ) -> None:
-        super().__init__(
-            data,
-            expinfo,
-            gradients,
-            gradient_length,
-            diffusion_delay,
-            shape_factor,
-            gamma,
-            datapath=datapath,
-        )
-        sanity_check(
-            ("alpha", alpha, sfuncs.check_float),
-            ("tau", tau, sfuncs.check_float),
-        )
-        self.alpha = alpha
-        self.tau = tau
-
-    @classmethod
-    def new_bruker(
-        cls,
-        directory: Union[str, Path],
-        increment_file: Optional[str] = None,
-        gradient_file: str = "gpnam1",
-        convdta: bool = True,
-    ) -> EstimatorDOSY:
-        (
-            data,
-            expinfo,
-            gradients,
-            gradient_length,
-            diffusion_delay,
-            shape_factor,
-            datapath,
-        ) = cls._new_bruker_pre(
-            directory, increment_file, gradient_file, convdta,
-        )
-        gradient_length *= 2.
-        acqus = expinfo.parameters["acqus"]
-        alpha = float(acqus["CNST"][14])
-        tau = float(acqus["CNST"][17])
-
-        return cls(
-            data,
-            expinfo,
-            gradients,
-            gradient_length,
-            diffusion_delay,
-            shape_factor,
-            alpha,
-            tau,
-            datapath=datapath,
-        )
-
-    @property
-    def c(self) -> float:
-        r"""Proportionality constant in Stejskal-Tanner, in units 10⁻⁴ m⁻² s
-        .. math::
-
-            c = \gamma^2 \sigma^2 \delta^2 \left(
-                \Delta +
-                \frac{\delta \left(\alpha^2 - 2\right)}{6} +
-                \frac{\tau \left(\alpha^2 - 1\right)}{2}
-            \right)
-        """
-        return 1.e-4 * (
-            (
-                self.gamma *
-                self.gradient_length *
-                self.shape_factor
-            ) ** 2 *
-            (
-                self.diffusion_delay +
-                ((self.gradient_length * (self.alpha ** 2 - 2)) / 6) +
-                ((self.tau * (self.alpha ** 2 - 1)) / 2)
-            )
-        )
-
-
-class FunctionFactoryDOSY(FunctionFactory):
-    def __init__(self, theta: np.ndarray, *args) -> None:
-        super().__init__(theta, EstimatorDOSY._obj_grad_hess, *args)
