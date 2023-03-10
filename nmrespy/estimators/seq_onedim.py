@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 08 Mar 2023 15:25:06 GMT
+# Last Edited: Fri 10 Mar 2023 11:07:40 GMT
 
 from __future__ import annotations
 import copy
@@ -755,24 +755,34 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         errors = []
         for integs in integrals:
             if func == "T1":
-                x0 = np.array([-integs[0], 1.])
+                x0 = np.array([np.amin(integs), 1.])
                 args = (integs, increments)
             if func == "D":
-                x0 = np.array([integs[0], 1.e-9])
-                args = (integs, increments, self.c)
+                # I0, cD
+                idx2, idx1 = np.argpartition(integs, -2)[-2:]
+                I1, I2 = integs[idx1], integs[idx2]
+                g1, g2 = increments[idx1], increments[idx2]
+                I0_init = I1 - (g1 * ((I2 - I1) / (g2 - g1)))
+                cD_init = -(1 / (g1 ** 2)) * np.log(I1 / I0_init)
+                args = (integs, increments)
+                x0 = np.array([I0_init, cD_init])
 
             nlp_result = trust_ncg(
                 x0=x0,
                 args=args,
                 function_factory=function_factory,
-                # output_mode=None,
+                output_mode=None,
             )
 
-            if func in ("T1", "D"):
-                x = nlp_result.x
-                x[0] *= norm
-                errs = nlp_result.errors
-                errs[0] *= norm
+            x = nlp_result.x
+            x[0] *= norm
+            errs = nlp_result.errors
+            errs[0] *= norm
+
+            if func == "D":
+                x[1] /= self.c
+                errs[1] /= self.c
+
             results.append(x)
             errors.append(errs / np.sqrt(len(self.increments)))
 
@@ -1188,7 +1198,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             )
 
             x_fit = np.full(fit_increments, x)
-            y_fit = np.linspace(np.amin(increments), np.amax(increments), fit_increments)
+            y_fit = np.linspace(np.amin(increments), np.amax(increments), fit_increments)  # noqa: E501
             z_fit = self.model(*params, y_fit)
             ax.plot(
                 x_fit,
@@ -1347,7 +1357,6 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         )
 
         indices = self._process_indices(indices)
-
         merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
 
         if (n_regions := len(merge_regions)) > 1:
@@ -1605,6 +1614,92 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self._data = data_cp
 
         return fig, axs, objects
+
+    def plot_dosy(
+        self,
+        d_range: Tuple[float, float],
+        d_pts: int,
+        indices: Optional[Iterable[int]] = None,
+        region_separation: float = 0.02,
+        oscillator_colors: Any = None,
+        xaxis_unit: str = "hz",
+        xaxis_ticks: Optional[Iterable[float]] = None,
+    ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes, Dict]:
+        indices = self._process_indices(indices)
+        merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
+        merge_region_spans = self._get_3d_xaxis_spans(
+            merge_regions,
+            region_separation,
+        )
+        xaxis_ticks, xaxis_ticklabels = self._get_3d_xticks_and_labels(
+            xaxis_ticks,
+            indices,
+            xaxis_unit,
+            merge_regions,
+            merge_region_spans,
+        )
+
+        y = np.linspace(d_range[0], d_range[1], d_pts)
+
+        zss = []
+        peakss = []
+        for mi in merge_indices:
+            thetas = self.get_params(indices=mi)[0]
+            fits, errors = self.fit(indices=mi, neglect_increments=[0])
+            Ds = [x[1] for x in fits]
+            D_errs = [x[1] for x in errors]
+
+            zs = []
+            peaks = []
+            for theta, D, D_err in zip(thetas, Ds, D_errs):
+                fid = self.make_fid(np.expand_dims(theta, axis=0))
+                fid[0] *= 0.5
+                spec = ne.sig.ft(fid).real
+                peaks.append(spec)
+                D_gaussian = (
+                    1 / (D_err * np.sqrt(2 * np.pi)) *
+                    np.exp((-0.5 * (y - D) ** 2) / (D_err ** 2))
+                )
+                D_gaussian /= np.amax(D_gaussian)
+                zs.append(np.outer(spec, D_gaussian))
+
+            zss.append(zs)
+            peakss.append(peaks)
+
+        fig, axs = plt.subplots(nrows=2, ncols=1)
+        colorcycle = make_color_cycle(oscillator_colors, sum([len(zs) for zs in zss]))
+
+        fid = self.data[0]
+        fid[0] *= 0.5
+        spectrum = ne.sig.ft(fid).real
+
+        for (zs, peaks, region, span) in zip(
+            reversed(zss), reversed(peakss), reversed(merge_regions), reversed(merge_region_spans),
+        ):
+            slice_ = slice(
+                *self.convert([region], f"{xaxis_unit}->idx")[0]
+            )
+            x = np.linspace(span[0], span[1], slice_.stop - slice_.start)
+            xx, yy = np.meshgrid(x, y, indexing="ij")
+            zs_slice = [z[slice_] for z in zs]
+            spec = spectrum[slice_]
+            peaks = [peak[slice_] for peak in peaks]
+
+            for peak, z_slice in zip(peaks, zs_slice):
+                color = next(colorcycle)
+                axs[0].plot(x, peak, color=color)
+                axs[1].contour(xx, yy, z_slice, colors=color)
+            axs[0].plot(x, spec, color="k")
+
+        axs[0].set_xticks([])
+        axs[1].set_xticks(xaxis_ticks)
+        axs[1].set_xticklabels(xaxis_ticklabels)
+        axs[0].set_xlim(reversed(axs[0].get_xlim()))
+        axs[1].set_xlim(reversed(axs[1].get_xlim()))
+        axs[1].set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
+        axs[1].set_ylabel(f"{self.fit_labels[-1]} ({self.fit_units[-1]})")
+
+        return fig, axs
 
     def get_params(
         self,
@@ -2135,7 +2230,6 @@ class EstimatorDOSY(EstimatorSeq1D):
             The path to the directory containing the NMR data.
         """
         super().__init__(data, expinfo, gradients, datapath=datapath)
-        self.increments *= 1.e-2  # G cm⁻¹ -> T m⁻¹
 
         sanity_check(
             (
@@ -2170,14 +2264,22 @@ class EstimatorDOSY(EstimatorSeq1D):
         self.shape_factor = shape_factor
 
     @classmethod
-    def new_bruker(
+    def _new_bruker_pre(
         cls,
         directory: Union[str, Path],
         increment_file: Optional[str] = None,
         gradient_file: str = "gpnam1",
         convdta: bool = True,
-    ) -> EstimatorDOSY:
-        data, expinfo, gradients, datapath = cls._new_bruker_pre(
+    ) -> Tuple[
+        np.ndarray,
+        ne.ExpInfo,
+        np.ndarray,
+        float,
+        float,
+        float,
+        Path,
+    ]:
+        data, expinfo, gradients, datapath = super()._new_bruker_pre(
             directory, increment_file, convdta,
         )
         acqus = expinfo.parameters["acqus"]
@@ -2191,25 +2293,55 @@ class EstimatorDOSY(EstimatorSeq1D):
         params = parse_jcampdx(datapath / gradient_file)
         shape_factor = float(params["SHAPE_INTEGFAC"])
 
+        return (
+            data,
+            expinfo,
+            gradients,
+            gradient_length,
+            diffusion_delay,
+            shape_factor,
+            datapath,
+        )
+
+    @classmethod
+    def new_bruker(
+        cls,
+        directory: Union[str, Path],
+        increment_file: Optional[str] = None,
+        gradient_file: str = "gpnam1",
+        convdta: bool = True,
+    ) -> EstimatorDOSY:
+        (
+            data,
+            expinfo,
+            gradients,
+            gradient_length,
+            diffusion_delay,
+            shape_factor,
+            datapath,
+        ) = cls._new_bruker_pre(
+            directory, increment_file, gradient_file, convdta,
+        )
+
         return cls(
             data,
             expinfo,
             gradients,
             gradient_length,
             diffusion_delay,
-            shape_factor=shape_factor,
+            shape_factor,
             datapath=datapath,
         )
 
     @property
     def c(self) -> float:
-        r"""Proportionality constant in Stejskal-Tanner, in units m⁻² s.
+        r"""Proportionality constant in Stejskal-Tanner, in units 10² m⁻² s.
 
         .. math::
 
             c = \gamma^2 \sigma^2 \delta^2 \left(\Delta - \frac{\delta}{3}\right)
         """
-        return (
+        return 1.e-4 * (
             (
                 self.gamma *
                 self.gradient_length *
@@ -2323,13 +2455,11 @@ class EstimatorDOSY(EstimatorSeq1D):
             * gradients (:math:`G`).
             * c (:math:`c`).
         """
-        # TODO Figure out constant term in the exponential (c)
-        # At the moment, the second parameter is actually cD rather than the desired D
-        I0, D = theta
-        integrals, gradients, c = args
+        I0, cD = theta
+        integrals, gradients = args
 
-        cG_sq = c * (gradients ** 2)
-        cDG_sq = D * cG_sq
+        G_sq = gradients ** 2
+        cDG_sq = cD * G_sq
         exp_minus_cDG_sq = np.exp(-cDG_sq)
         y_minus_x = integrals - I0 * exp_minus_cDG_sq
         n = gradients.size
@@ -2340,19 +2470,112 @@ class EstimatorDOSY(EstimatorSeq1D):
         # Grad
         d1 = np.zeros((n, 2))
         d1[:, 0] = exp_minus_cDG_sq
-        d1[:, 1] = -I0 * cG_sq * exp_minus_cDG_sq
+        d1[:, 1] = -I0 * G_sq * exp_minus_cDG_sq
         grad = -2 * y_minus_x.T @ d1
 
         # Hessian
         d2 = np.zeros((n, 2, 2))
-        off_diag = -cG_sq * exp_minus_cDG_sq
+        off_diag = -G_sq * exp_minus_cDG_sq
         d2[:, 0, 1] = off_diag
         d2[:, 1, 0] = off_diag
-        d2[:, 1, 1] = (cG_sq ** 2) * exp_minus_cDG_sq
+        d2[:, 1, 1] = (G_sq ** 2) * exp_minus_cDG_sq
 
         hess = -2 * (np.einsum("i,ijk->jk", y_minus_x, d2) - d1.T @ d1)
 
         return obj, grad, hess
+
+
+class EstimatorOneshotDOSY(EstimatorDOSY):
+
+    def __init__(
+        self,
+        data: np.ndarray,
+        expinfo: ne.ExpInfo,
+        gradients: np.ndarray,
+        gradient_length: float,
+        diffusion_delay: float,
+        shape_factor: float,
+        alpha: float,
+        tau: float,
+        gamma: Optional[float] = None,
+        datapath: Optional[Path] = None,
+    ) -> None:
+        super().__init__(
+            data,
+            expinfo,
+            gradients,
+            gradient_length,
+            diffusion_delay,
+            shape_factor,
+            gamma,
+            datapath=datapath,
+        )
+        sanity_check(
+            ("alpha", alpha, sfuncs.check_float),
+            ("tau", tau, sfuncs.check_float),
+        )
+        self.alpha = alpha
+        self.tau = tau
+
+    @classmethod
+    def new_bruker(
+        cls,
+        directory: Union[str, Path],
+        increment_file: Optional[str] = None,
+        gradient_file: str = "gpnam1",
+        convdta: bool = True,
+    ) -> EstimatorDOSY:
+        (
+            data,
+            expinfo,
+            gradients,
+            gradient_length,
+            diffusion_delay,
+            shape_factor,
+            datapath,
+        ) = cls._new_bruker_pre(
+            directory, increment_file, gradient_file, convdta,
+        )
+        gradient_length *= 2.
+        acqus = expinfo.parameters["acqus"]
+        alpha = float(acqus["CNST"][14])
+        tau = float(acqus["CNST"][17])
+
+        return cls(
+            data,
+            expinfo,
+            gradients,
+            gradient_length,
+            diffusion_delay,
+            shape_factor,
+            alpha,
+            tau,
+            datapath=datapath,
+        )
+
+    @property
+    def c(self) -> float:
+        r"""Proportionality constant in Stejskal-Tanner, in units 10⁻⁴ m⁻² s
+        .. math::
+
+            c = \gamma^2 \sigma^2 \delta^2 \left(
+                \Delta +
+                \frac{\delta \left(\alpha^2 - 2\right)}{6} +
+                \frac{\tau \left(\alpha^2 - 1\right)}{2}
+            \right)
+        """
+        return 1.e-4 * (
+            (
+                self.gamma *
+                self.gradient_length *
+                self.shape_factor
+            ) ** 2 *
+            (
+                self.diffusion_delay +
+                ((self.gradient_length * (self.alpha ** 2 - 2)) / 6) +
+                ((self.tau * (self.alpha ** 2 - 1)) / 2)
+            )
+        )
 
 
 class FunctionFactoryDOSY(FunctionFactory):
