@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 20 Jan 2023 12:46:46 GMT
+# Last Edited: Tue 14 Mar 2023 13:54:59 GMT
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters.
 
@@ -102,7 +102,6 @@ class Filter(ExpInfo):
             ("sg_power", sg_power, sfuncs.check_float, (), {"greater_than_one": True}),
             ("fid", fid, sfuncs.check_ndarray, (expinfo.dim,)),
         )
-
         self._fid = fid
         self._sg_power = sg_power
 

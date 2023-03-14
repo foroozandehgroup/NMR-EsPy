@@ -20,6 +20,7 @@ signals, including FT/IFT, apodisation, phasing, etc.
 .. toctree::
    :maxdepth: 1
 
+   common_args
    estimator1d
    estimatorinvrec
    estimatordosy
