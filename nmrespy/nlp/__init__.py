@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 21 Feb 2023 17:29:42 GMT
+# Last Edited: Tue 14 Mar 2023 13:58:40 GMT
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -45,7 +45,7 @@ def nonlinear_programming(
     negative_amps: str = "remove",
     output_mode: Optional[int] = 10,
     save_trajectory: bool = False,
-    tolerance: float = 1.0e-8,
+    epsilon: float = 1.0e-8,
     eta: float = 0.15,
     initial_trust_radius: float = 1.0,
     max_trust_radius: float = 4.0,
@@ -183,9 +183,9 @@ def nonlinear_programming(
         If ``True``, a list of parameters at each iteration will be saved, and
         accessible via the ``trajectory`` attribute.
 
-    tolerance
+    epsilon
         Sets the convergence criterion. Convergence will occur when
-        :math:`\lVert \boldsymbol{g}_k \rVert_2 < \text{tolerance}`.
+        :math:`\lVert \boldsymbol{g}_k \rVert_2 < epsilon`.
 
     eta
         Criterion for accepting an update. An update will be accepted if the ratio
@@ -226,7 +226,7 @@ def nonlinear_programming(
         ("output_mode", output_mode, sfuncs.check_int, (), {"min_value": 0}, True),
         ("save_trajectory", save_trajectory, sfuncs.check_bool),
         (
-            "tolerance", tolerance, sfuncs.check_float, (),
+            "epsilon", epsilon, sfuncs.check_float, (),
             {"min_value": np.finfo(float).eps},
         ),
         (
@@ -312,7 +312,7 @@ def nonlinear_programming(
             eta=eta,
             initial_trust_radius=initial_trust_radius,
             max_trust_radius=max_trust_radius,
-            tolerance=tolerance,
+            epsilon=epsilon,
             output_mode=output_mode,
             max_iterations=max_iterations,
             save_trajectory=save_trajectory,

@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 01 Mar 2023 11:30:26 GMT
+# Last Edited: Tue 14 Mar 2023 13:55:18 GMT
 
 from pathlib import Path
 import re
@@ -659,7 +659,6 @@ def check_xticks(obj: Any, regions: Iterable[Tuple[float, float]]) -> Optional[s
                 f"{msg}The first element of each entry should be an int between (and "
                 f"including) 0 and {n_regions - 1}."
             )
-        print([isfloat(x) for x in elem[1]])
         if not (isiter(elem[1]) and all([isfloat(x) for x in elem[1]])):
             return (
                 f"{msg}The second element of each entry should be a list or tuple of "

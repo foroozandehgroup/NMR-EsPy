@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Mar 2023 12:12:08 GMT
+# Last Edited: Tue 14 Mar 2023 14:55:44 GMT
 
 from __future__ import annotations
 import copy
@@ -393,9 +393,7 @@ class Estimator(ne.ExpInfo):
         Parameters
         ----------
         indices
-            The indices of results to return. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be returned.
+            see :ref:`INDICES`
         """
         self._check_results_exist()
         sanity_check(
@@ -416,10 +414,7 @@ class Estimator(ne.ExpInfo):
         Parameters
         ----------
         indices
-            The indices of results to extract parameters from. Index ``0``
-            corresponds to the first result obtained using the estimator, ``1``
-            corresponds to the next, etc.  If ``None``, all results will be
-            used.
+            see :ref:`INDICES`
 
         merge
             * If ``True``, a single array of all parameters will be returned.
@@ -465,9 +460,7 @@ class Estimator(ne.ExpInfo):
         Parameters
         ----------
         indices
-            The indices of results to extract errors from. Index ``0`` corresponds to
-            the first result obtained using the estimator, ``1`` corresponds to
-            the next, etc.  If ``None``, all results will be used.
+            see :ref:`INDICES`
 
         merge
             * If ``True``, a single array of all parameters will be returned.
@@ -566,11 +559,7 @@ class Estimator(ne.ExpInfo):
         Parameters
         ----------
         index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. You can also use ``-1`` for the most recent result,
-            ``-2`` for the second most recent, etc. By default, the most
-            recently obtained result will be edited.
+            See :ref:`INDEX`.
 
         add_oscs
             The parameters of new oscillators to be added. Should be of shape
@@ -980,6 +969,7 @@ class _Estimator1DProc(Estimator):
         initial_trust_radius: float = 1.0,
         max_trust_radius: float = 4.0,
         _log: bool = True,
+        **optimiser_kwargs,
     ):
         r"""Estimate a specified region of the signal.
 
@@ -1206,38 +1196,21 @@ class _Estimator1DProc(Estimator):
             ),
         )
 
-        if region is None:
-            region_unit = "hz"
-            region = self._full_region
-            noise_region = None
-            mpm_signal = nlp_signal = self._data
-            mpm_expinfo = nlp_expinfo = self.expinfo
-
-        else:
-            region = self._process_region(region)
-            noise_region = self._process_region(noise_region)
-            filter_ = Filter(
-                self.data,
-                self.expinfo,
-                region,
-                noise_region,
-                region_unit=region_unit,
-                twodim_dtype=None if self.dim == 1 else "hyper",
-            )
-
-            region = filter_.get_region()
-            noise_region = filter_.get_noise_region()
-            mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
-            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
-
-        mpm_trim = self._get_trim("mpm", mpm_trim, mpm_signal.shape[-1])
-        nlp_trim = self._get_trim("nlp", nlp_trim, nlp_signal.shape[-1])
+        (
+            region,
+            noise_region,
+            mpm_signal,
+            mpm_expinfo,
+            nlp_signal,
+            nlp_expinfo,
+        ) = self._filter_signal(
+            region, noise_region, region_unit, mpm_trim, nlp_trim, cut_ratio,
+        )
 
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
         else:
             oscillators = initial_guess if isinstance(initial_guess, int) else 0
-
             x0 = MatrixPencil(
                 mpm_expinfo,
                 mpm_signal[..., :mpm_trim],
@@ -1263,32 +1236,75 @@ class _Estimator1DProc(Estimator):
             elif hessian == "gauss-newton":
                 max_iterations = self.default_max_iterations_gn_hessian
 
-        result = nonlinear_programming(
+        optimiser_kwargs = {
+            "phase_variance": phase_variance,
+            "hessian": hessian,
+            "mode": mode,
+            "amp_thold": amp_thold,
+            "max_iterations": max_iterations,
+            "negative_amps": negative_amps,
+            "output_mode": output_mode,
+            "save_trajectory": save_trajectory,
+            "epsilon": epsilon,
+            "eta": eta,
+            "initial_trust_radius": initial_trust_radius,
+            "max_trust_radius": max_trust_radius,
+        }
+
+        self._run_optimisation(
             nlp_expinfo,
-            nlp_signal[..., :nlp_trim],
+            nlp_signal,
             x0,
-            phase_variance=phase_variance,
-            hessian=hessian,
-            mode=mode,
-            amp_thold=amp_thold,
-            max_iterations=max_iterations,
-            negative_amps=negative_amps,
-            output_mode=output_mode,
-            save_trajectory=save_trajectory,
-            tolerance=epsilon,
-            eta=eta,
-            initial_trust_radius=initial_trust_radius,
-            max_trust_radius=max_trust_radius,
+            region,
+            noise_region,
+            **optimiser_kwargs,
         )
 
-        self._results.append(
-            Result(
-                result.x,
-                result.errors,
+    def _filter_signal(
+        self,
+        region: Optional[Tuple[float, float]],
+        noise_region: Optional[Tuple[float, float]],
+        region_unit: str,
+        mpm_trim: Optional[int],
+        nlp_trim: Optional[int],
+        cut_ratio: Optional[float],
+    ) -> None:
+        # This method is uused by `Estimator1D` and `Estimator2DJ`.
+        # It is overwritten by `EstimatorSeq1D`.
+        if region is None:
+            region_unit = "hz"
+            region = self._full_region
+            noise_region = None
+            mpm_signal = nlp_signal = self.data
+            mpm_expinfo = nlp_expinfo = self.expinfo
+
+        else:
+            region = self._process_region(region)
+            noise_region = self._process_region(noise_region)
+            filter_ = Filter(
+                self.data,
+                self.expinfo,
                 region,
                 noise_region,
-                self.sfo,
+                region_unit=region_unit,
+                twodim_dtype=None if self.dim == 1 else "hyper",
             )
+
+            region = filter_.get_region()
+            noise_region = filter_.get_noise_region()
+            mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
+            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
+
+        mpm_trim = self._get_trim("mpm", mpm_trim, mpm_signal.shape[-1])
+        nlp_trim = self._get_trim("nlp", nlp_trim, nlp_signal.shape[-1])
+
+        return (
+            region,
+            noise_region,
+            mpm_signal[:mpm_trim],
+            mpm_expinfo,
+            nlp_signal[:nlp_trim],
+            nlp_expinfo,
         )
 
     def _get_trim(self, type_: str, trim: Optional[float], size: float):
@@ -1306,6 +1322,34 @@ class _Estimator1DProc(Estimator):
             trim = min(trim, size)
 
         return trim
+
+    def _run_optimisation(
+        self,
+        nlp_expinfo,
+        nlp_signal,
+        x0,
+        region,
+        noise_region,
+        **optimiser_kwargs,
+    ) -> None:
+        # This is called by `Estimator1D` and `Estimator2DJ`.
+        # It is overwritten by `EstimatorSeq1D`.
+        result = nonlinear_programming(
+            nlp_expinfo,
+            nlp_signal,
+            x0,
+            **optimiser_kwargs,
+        )
+
+        self._results.append(
+            Result(
+                result.x,
+                result.errors,
+                region,
+                noise_region,
+                self.sfo,
+            )
+        )
 
     def predict_regions(
         self,
@@ -1572,9 +1616,7 @@ class _Estimator1DProc(Estimator):
             Path to save the result file to.
 
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            see :ref:`INDICES`
 
         fmt
             Must be one of ``"txt"`` or ``"pdf"``. If you wish to generate a PDF, you

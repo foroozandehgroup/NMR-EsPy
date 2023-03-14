@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 06 Mar 2023 17:08:19 GMT
+# Last Edited: Tue 14 Mar 2023 12:25:06 GMT
 
 from __future__ import annotations
 import copy
@@ -336,9 +336,7 @@ class Estimator2DJ(_Estimator1DProc):
         Parameters
         ----------
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            See :ref:`INDICES`.
 
         pts
             The number of points to construct the signal from. If ``None``,
@@ -385,9 +383,7 @@ class Estimator2DJ(_Estimator1DProc):
         Parameters
         ----------
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            See :ref:`INDICES`.
 
         pts
             The number of points to construct the signal from. If ``None``,
@@ -422,9 +418,7 @@ class Estimator2DJ(_Estimator1DProc):
         Parameters
         ----------
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            See :ref:`INDICES`.
 
         thold
             Frequency threshold for multiplet prediction. All oscillators that make
@@ -568,9 +562,7 @@ class Estimator2DJ(_Estimator1DProc):
         Parameters
         ----------
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            See :ref:`INDICES`.
 
         pts
             The number of points to construct the signal from. If ``None``,
@@ -701,9 +693,7 @@ class Estimator2DJ(_Estimator1DProc):
             ``None``, experiments will be numbered ``1``, ``2``, etc.
 
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            See :ref:`INDICES`.
 
         pts
             The number of points to construct the mutliplets from.
@@ -798,9 +788,7 @@ class Estimator2DJ(_Estimator1DProc):
             used.
 
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            See :ref:`INDICES`.
 
         pts
             The number of points to construct the dataset from.
@@ -873,9 +861,7 @@ class Estimator2DJ(_Estimator1DProc):
         Parameters
         ----------
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            See :ref:`INDICES`.
 
         multiplet_thold
             Frequency threshold for multiplet prediction. All oscillators that make
@@ -947,31 +933,7 @@ class Estimator2DJ(_Estimator1DProc):
             If ``True``, applies sine-bell apodisation to the 2DJ spectrum.
 
         multiplet_colors
-            Describes how to color multiplets. The following is a complete list
-            of options:
-
-            * If a `valid matplotlib colour
-              <https://matplotlib.org/stable/tutorials/colors/colors.html>`_ is
-              given, all multiplets will be given this color.
-            * If a string corresponding to a `matplotlib colormap
-              <https://matplotlib.org/stable/tutorials/colors/colormaps.html>`_
-              is given, the multiplets will be consecutively shaded by linear
-              increments of this colormap.
-            * If an iterable object containing valid matplotlib colors is
-              given, these colors will be cycled.
-              For example, if ``oscillator_colors = ['r', 'g', 'b']``:
-
-              + Multiplets 0, 3, 6, ... would be :red:`red (#FF0000)`
-              + Multiplets 1, 4, 7, ... would be :green:`green (#008000)`
-              + Multiplets 2, 5, 8, ... would be :blue:`blue (#0000FF)`
-
-            * If ``None``, the default colouring method will be applied, which
-              involves cycling through the following colors:
-
-              + :oscblue:`#1063E0`
-              + :oscorange:`#EB9310`
-              + :oscgreen:`#2BB539`
-              + :oscred:`#D4200C`
+            Describes how to color multiplets. See :ref:`COLOR_CYCLE` for options.
 
         multiplet_lw
             Line width of multiplet spectra
@@ -1416,11 +1378,7 @@ class Estimator2DJ(_Estimator1DProc):
         Parameters
         ----------
         index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. You can also use ``-1`` for the most recent result,
-            ``-2`` for the second most recent, etc. By default, the most
-            recently obtained result will be edited.
+            See :ref:`INDEX`.
 
         add_oscs
             The parameters of new oscillators to be added. Should be of shape

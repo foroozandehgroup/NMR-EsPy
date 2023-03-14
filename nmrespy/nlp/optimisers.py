@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 02 Mar 2023 14:59:07 GMT
+# Last Edited: Tue 14 Mar 2023 15:07:58 GMT
 
 from dataclasses import dataclass
 import math
@@ -69,7 +69,7 @@ def trust_ncg(
     eta: float = 0.15,
     initial_trust_radius: Optional[float] = None,
     max_trust_radius: float = 4.0,
-    tolerance: float = 1.e-8,
+    epsilon: float = 1.e-8,
     output_mode: Optional[int] = 5,
     max_iterations: int = 100,
     save_trajectory: bool = False,
@@ -107,9 +107,9 @@ def trust_ncg(
         The largest permitted radius for the trust region. If ``None``, this will be
         ``16 * initial_trust_radius``.
 
-    tolerance
+    epsilon
         Sets the convergence criterion. Convergence will occur when
-        :math:`\lVert \boldsymbol{g}_k \rVert_2 < \text{tolerance}`.
+        :math:`\lVert \boldsymbol{g}_k \rVert_2 < \epsilon.
 
     output_mode
         Should be an integer greater than or equal to ``0`` or ``None``. If ``None``,
@@ -166,7 +166,7 @@ def trust_ncg(
     while True:
         # Solve the subproblem using the Steihaug CG algorithm
         # Required accuracy of the computed solution
-        epsilon = min(0.5, math.sqrt(m.gradient_norm)) * m.gradient_norm
+        epsi = min(0.5, math.sqrt(m.gradient_norm)) * m.gradient_norm
 
         z = np.zeros_like(x)
         r = m.gradient
@@ -200,7 +200,7 @@ def trust_ncg(
             r_next = r + alpha * Bd
             r_next_sq = r_next.T @ r_next
 
-            if math.sqrt(r_next_sq) < epsilon:
+            if math.sqrt(r_next_sq) < epsi:
                 hits_boundary = False
                 p = z_next
                 break
@@ -251,7 +251,7 @@ def trust_ncg(
                 break
 
         # Check for convergence
-        if m.gradient_norm < tolerance:
+        if m.gradient_norm < epsilon:
             result_message = result_messages["success"]
             break
 
