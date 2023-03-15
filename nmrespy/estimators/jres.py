@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 12:25:06 GMT
+# Last Edited: Wed 15 Mar 2023 15:45:45 GMT
 
 from __future__ import annotations
 import copy
@@ -908,10 +908,7 @@ class Estimator2DJ(_Estimator1DProc):
             only slightly larger than ``0.``.
 
         xaxis_ticks
-            Specifies custom x-axis ticks for each region, overwriting the default
-            ticks. Should be of the form: ``[(i, (a, b, ...)), (j, (c, d, ...)), ...]``
-            where ``i`` and ``j`` are ints indicating the region under consideration,
-            and ``a``-``d`` are floats indicating the tick values.
+            See :ref:`XAXIS_TICKS`.
 
         contour_base
             The lowest level for the contour levels in the 2DJ spectrum plot.

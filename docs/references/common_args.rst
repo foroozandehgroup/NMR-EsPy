@@ -65,3 +65,13 @@ The following is a complete list of options:
   + :oscorange:`#EB9310`
   + :oscgreen:`#2BB539`
   + :oscred:`#D4200C`
+
+.. _XAXIS_TICKS:
+
+xaxis_ticks
+-----------
+
+Specifies custom x-axis ticks for each region, overwriting the default
+ticks. Should be of the form: ``[(i, (a, b, ...)), (j, (c, d, ...)), ...]``
+where ``i`` and ``j`` are ints indicating the region under consideration,
+and ``a``-``d`` are floats indicating the tick values.
