@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 14:55:44 GMT
+# Last Edited: Tue 14 Mar 2023 16:59:37 GMT
 
 from __future__ import annotations
 import copy
@@ -834,7 +834,7 @@ class _Estimator1DProc(Estimator):
         pivot = (ndim - 1) * [0.] + [pivot]
 
         spec = self.data
-        spec[0] *= 0.5
+        spec[..., 0] *= 0.5
 
         self._data = sig.ift(
             sig.phase(
@@ -1207,13 +1207,20 @@ class _Estimator1DProc(Estimator):
             region, noise_region, region_unit, mpm_trim, nlp_trim, cut_ratio,
         )
 
+        # Unless the estimator is `EstimatorInvRec`, these do nothing.
+        # Otherwise, it makes the data peaks positive for both the MPM signal and
+        # the first increment of the NLP data.
+        mpm_signal = self._proc_mpm_signal(mpm_signal)
+        nlp_signal = self._proc_nlp_signal(nlp_signal)
+
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
         else:
             oscillators = initial_guess if isinstance(initial_guess, int) else 0
+
             x0 = MatrixPencil(
                 mpm_expinfo,
-                mpm_signal[..., :mpm_trim],
+                mpm_signal,
                 oscillators=oscillators,
                 fprint=isinstance(output_mode, int),
             ).get_params()
@@ -1322,6 +1329,24 @@ class _Estimator1DProc(Estimator):
             trim = min(trim, size)
 
         return trim
+
+    @staticmethod
+    def _proc_mpm_signal(mpm_signal: np.ndarray) -> np.ndarray:
+        """Used for tweaking MPM signal before estimation if required.
+
+        For EstimatorInvRec, the spectrum is multiplied by -1 to make the signal
+        positive.
+        """
+        return mpm_signal
+
+    @staticmethod
+    def _proc_nlp_signal(nlp_signal: np.ndarray) -> np.ndarray:
+        """Used for tweaking NLP signal before estimation if required.
+
+        For EstimatorInvRec, the first increment of the spectrum is multiplied by
+        -1 to make the signal positive.
+        """
+        return nlp_signal
 
     def _run_optimisation(
         self,
