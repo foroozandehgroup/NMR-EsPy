@@ -44,4 +44,4 @@ See `<https://doi.org/10.1002/cmr.a.21223>`_ for details.
    :members: big_delta_prime
 
 .. autoclass:: nmrespy.EstimatorDiffusionOneshot
-   :members: big_delta_prime
+   :members: new_from_parameters, big_delta_prime

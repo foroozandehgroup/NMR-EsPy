@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 17:13:06 GMT
+# Last Edited: Wed 15 Mar 2023 17:12:25 GMT
 
 from __future__ import annotations
 import copy
@@ -513,20 +513,16 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
-        """Get the integrals associated with specified oscillators for a given result.
+        """Get the integrals associated with specified oscillators.
 
         Parameters
         ----------
+        indices
+            See :ref:`INDICES`.
+
         oscs
             Oscillators to get integrals for. By default (``None``) all oscillators
             are considered.
-
-        index
-            The index of the result to edit. Index ``0`` corresponds to the
-            first result obtained using the estimator, ``1`` corresponds to the
-            next, etc. You can also use ``-1`` for the most recent result,
-            ``-2`` for the second most recent, etc. By default, the most
-            recently obtained result will be considered.
         """
         sanity_check(
             self._indices_check(indices),
@@ -547,7 +543,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
     def plot_fit_single_oscillator(
         self,
-        osc: int,
+        osc: int = 0,
         index: int = -1,
         neglect_increments: Optional[Iterable[int]] = None,
         fit_increments: int = 100,
@@ -557,12 +553,13 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
     ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
         """Plot the fit across increments for a particular oscillator.
 
+        Parameters
+        ----------
         osc
             Index for the oscillator of interest.
 
         index
-            Index for the result of interest. By default (``-1``), the last acquired
-            result is used.
+            See :ref:`INDEX`. By default (``-1``), the last acquired result is used.
 
         neglect_increments
             Increments of the dataset to neglect. Default, all increments are included
@@ -596,6 +593,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         ax
             The axes assigned to the figure.
         """
+        self._check_results_exist()
         sanity_check(
             self._index_check(index),
             (
@@ -688,17 +686,15 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         Parameters
         ----------
         indices
-            The indices of results to return. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            By default (``None``), all results are considered.
+            See :ref:`INDICES`.
 
         oscs
             Oscillators to consider. By default (``None``) all oscillators are
             considered.
 
         neglect_increments
-            Increments of the dataset to neglect. Default, all increments are included
-            in the fit.
+            Increments of the dataset to neglect. By default, all increments
+            are included in the fit.
 
         fit_increments
             The number of points in the fit lines.
@@ -713,12 +709,9 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         xaxis_ticks
             Specifies custom x-axis ticks for each region, overwriting the default
-            ticks. Keeping this ``None`` (default) will use default ticks. Otherwise:
+            ticks. Keeping this ``None`` (default) will use default ticks.
 
-            * If ``xaxis_unit`` if one of ``"hz"`` or ``"ppm"``, this should be
-              of the form: ``[(i, (a, b, ...)), (j, (c, d, ...)), ...]``
-              where ``i`` and ``j`` are ints indicating the region under consideration,
-              and ``a``-``d`` are floats indicating the tick values.
+            * If ``xaxis_unit`` is ``"hz"`` or ``"ppm"``, see :ref:`XAXIS_TICKS`.
             * If ``xaxis_unit`` is ``osc_idx``, this should be a list of ints,
               all of which correspond to a valid oscillator index.
 
@@ -731,8 +724,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             fit.
 
         colors
-            Colors to give to the fits. Behaves in the same way as
-            ``oscillator_colors`` in :py:meth:`~nmrespy.Estimator1D.plot_result`.
+            Colors to give to the fits. See :ref:`COLOR_CYCLE`.
 
         elev
             Elevation angle for the plot view.
@@ -956,8 +948,8 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         oscillator_colors: Any = None,
         elev: float = 45.,
         azim: float = 45.,
-        spec_line_kwargs: Optional[Dict] = None,
-        osc_line_kwargs: Optional[Dict] = None,
+        spectrum_line_kwargs: Optional[Dict] = None,
+        oscillator_line_kwargs: Optional[Dict] = None,
         **kwargs,
     ):
         """Generate a figure of the estimation result.
@@ -968,49 +960,20 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         Parameters
         ----------
         indices
-            The indices of results to include. Index ``0`` corresponds to the first
-            result obtained using the estimator, ``1`` corresponds to the next, etc.
-            If ``None``, all results will be included.
+            See :ref:`INDICES`.
 
         xaxis_unit
             The unit to express chemical shifts in. Should be ``"hz"`` or ``"ppm"``.
 
         xaxis_ticks
-            Specifies custom x-axis ticks for each region, overwriting the default
-            ticks. Should be of the form: ``[(i, (a, b, ...)), (j, (c, d, ...)), ...]``
-            where ``i`` and ``j`` are ints indicating the region under consideration,
-            and ``a``-``d`` are floats indicating the tick values.
+            See :ref:`XAXIS_TICKS`.
 
         region_separation
             The extent by which adjacent regions are separated in the figure,
             in axes coordinates.
 
         oscillator_colors
-            Describes how to color individual oscillators. The following
-            is a complete list of options:
-
-            * If a `valid matplotlib colour
-              <https://matplotlib.org/stable/tutorials/colors/colors.html>`_ is
-              given, all oscillators will be given this color.
-            * If a string corresponding to a `matplotlib colormap
-              <https://matplotlib.org/stable/tutorials/colors/colormaps.html>`_
-              is given, the oscillators will be consecutively shaded by linear
-              increments of this colormap.
-            * If an iterable object containing valid matplotlib colors is
-              given, these colors will be cycled.
-              For example, if ``oscillator_colors = ['r', 'g', 'b']``:
-
-              + Oscillators 0, 3, 6, ... would be :red:`red (#FF0000)`
-              + Oscillators 1, 4, 7, ... would be :green:`green (#008000)`
-              + Oscillators 2, 5, 8, ... would be :blue:`blue (#0000FF)`
-
-            * If ``None``, the default colouring method will be applied, which
-              involves cycling through the following colors:
-
-              + :oscblue:`#1063E0`
-              + :oscorange:`#EB9310`
-              + :oscgreen:`#2BB539`
-              + :oscred:`#D4200C`
+            Describes how to color individual oscillators. See :ref:`COLOR_CYCLE`.
 
         elev
             Elevation angle for the plot view.
@@ -1018,13 +981,13 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         azim
             Azimuthal angle for the plot view.
 
-        spec_line_kwargs
+        spectrum_line_kwargs
             Keyword arguments for the spectrum lines. All keys should be valid
             arguments for
             `matplotlib.axes.Axes.plot
             <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
 
-        osc_line_kwargs
+        oscillator_line_kwargs
             Keyword arguments for the oscillator lines. All keys should be valid
             arguments for
             `matplotlib.axes.Axes.plot
@@ -1048,12 +1011,12 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             ("azim", azim, sfuncs.check_float),
         )
 
-        spec_line_kwargs = proc_kwargs_dict(
-            spec_line_kwargs,
+        spectrum_line_kwargs = proc_kwargs_dict(
+            spectrum_line_kwargs,
             default={"linewidth": 0.8, "color": "k"},
         )
-        osc_line_kwargs = proc_kwargs_dict(
-            osc_line_kwargs,
+        oscillator_line_kwargs = proc_kwargs_dict(
+            oscillator_line_kwargs,
             default={"linewidth": 0.5},
             to_pop=("color"),
         )
@@ -1119,13 +1082,13 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
                 x = np.linspace(span[0], span[1], slice_.stop - slice_.start)
                 y = np.full(x.shape, incr)
                 spec = spectrum[slice_]
-                ax.plot(x, y, spec, **spec_line_kwargs)
+                ax.plot(x, y, spec, **spectrum_line_kwargs)
                 for osc_params in p:
                     osc_params = np.expand_dims(osc_params, axis=0)
                     osc = self.make_fid(osc_params)
                     osc[0] *= 0.5
                     osc_spec = ne.sig.ft(osc).real[slice_]
-                    ax.plot(x, y, osc_spec, color=next(cc), **osc_line_kwargs)
+                    ax.plot(x, y, osc_spec, color=next(cc), **oscillator_line_kwargs)
 
         ax.set_xticks(xaxis_ticks)
         ax.set_xticklabels(xaxis_ticklabels)
@@ -1280,7 +1243,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         """Generate a figure of the estimation result for a particular increment.
 
         The figure created is of the same form as those generated by
-        :py:meth:`~nmrespy.Estimator1D.plot_result`.
+        :py:meth:`nmrespy.Estimator1D.plot_result`.
 
         Parameters
         ----------
@@ -1320,7 +1283,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
     def plot_oscs_vs_fits(
         self,
         y_range: Tuple[float, float],
-        y_pts: int = 256,
+        y_pts: int = 128,
         indices: Optional[Iterable[int]] = None,
         region_separation: float = 0.02,
         oscillator_colors: Any = None,
@@ -1329,10 +1292,113 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         contour_nlevels: Optional[int] = 10,
         xaxis_unit: str = "hz",
         xaxis_ticks: Optional[Iterable[float]] = None,
-        spec_line_kwargs: Optional[Dict] = None,
-        osc_line_kwargs: Optional[Dict] = None,
+        gridspec_kwargs: Optional[Dict] = None,
+        spectrum_line_kwargs: Optional[Dict] = None,
+        oscillator_line_kwargs: Optional[Dict] = None,
         contour_kwargs: Optional[Dict] = None,
+        **kwargs,
     ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
+        """Generate a plot which maps oscillator locations to fit values.
+
+        These plots effectively resemble DOSY spectra, in which chemical shift is
+        along the x-axis, and the quantity of interest (:math:`D`, :math:`T_1`,
+        :math:`T_2`, etc) is along the y-axis.
+
+        Parameters
+        ----------
+        y_range
+            Limits of the y-axis.
+
+        y_pts
+            The number of increments along the y-axis. **Be careful with this value.
+            See the "Notes" section below**.
+
+        indices
+            See :ref:`INDICES`.
+
+        region_separation
+            The extent by which adjacent regions are separated in the figure,
+            in axis coordinates.
+
+        oscillator_colors
+            Describes how to color individual oscillators. See :ref:`COLOR_CYCLE`
+            for details.
+
+        contour_base
+            The lowest level for the contour levels.
+
+        contour_factor
+            The geometric scaling factor for adjacent contours.
+
+        contour_nlevels
+            The number of contour levels.
+
+        xaxis_unit
+            Should be one of ``"hz"`` or ``"ppm"``.
+
+        xaxis_ticks
+            See :ref:`XAXIS_TICKS`.
+
+        gridspec_kwargs
+            Keyword arguments given to
+            `matplotlib.pyplot.subplots
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.subplots.html>`_
+            through the argument ``gridspec_kw``. All keys should be valid argumnets
+            for `matplotlib.gridspec.GridSpec
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.gridspec.GridSpec.html>`_.
+            If ``"hspace"`` is included, it is ignored (it is forced to be set
+            to ``0``).
+
+        spectrum_line_kwargs
+            Keyword arguments for the spectrum line. All keys should be valid
+            arguments for `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+
+        oscillator_line_kwargs
+            Keyword arguments for the oscillator lines. All keys should be valid
+            arguments for `matplotlib.axes.Axes.plot
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html>`_.
+            If ``"color"`` is included, it is ignored (colors are processed
+            based on the ``oscillator_colors`` argument.
+
+        contour_kwargs
+            Keyword arguments for the contour plot. All keys should be valid
+            arguments for `matplotlib.pyplot.contour
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.contour.html>`_.
+            All of the following are ignored: ``"colors"``, ``"cmap"``, ``"levels"``.
+
+        kwargs
+            All extra kwargs are given to
+            `matplotlib.pyplot.figure
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.figure.html>`_.
+
+        Returns
+        -------
+        fig
+            Figure
+
+        axs
+            Axes objects, of length 2.
+
+        Notes
+        -----
+        You may find there are scenarios when the following warning appears:
+
+        .. code:: plain
+
+            RuntimeWarning: invalid value encountered in divide
+            gaussian /= np.amax(gaussian)
+
+        This can occur when you have fits with low errors and ``y_range`` is very wide.
+        You will not see certain peaks appear in the plot in these circumstances.
+        You essentially have two options to resolve this:
+
+        1. (Advised) create mutliple plots with different values of ``y_range``,
+           which are narrower.
+        2. (**Not advised: possibility of exceeding memory capacity!**) increase
+           ``y_pts``. This is a very memory-intensive method, so be warned that
+           increasing ``y_pts`` can be dangerous.
+        """
         sanity_check(
             (
                 "y_range", y_range, sfuncs.check_float_list, (),
@@ -1372,19 +1438,27 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         else:
             contour_levels = None
 
-        spec_line_kwargs = proc_kwargs_dict(
-            spec_line_kwargs,
+        gridspec_kwargs = proc_kwargs_dict(
+            gridspec_kwargs,
+            to_pop=("hspace",)
+        )
+        gridspec_kwargs = proc_kwargs_dict(
+            gridspec_kwargs,
+            default={"hspace": 0.},
+        )
+        spectrum_line_kwargs = proc_kwargs_dict(
+            spectrum_line_kwargs,
             default={"linewidth": 1.2, "color": "k"},
         )
-        osc_line_kwargs = proc_kwargs_dict(
-            osc_line_kwargs,
+        oscillator_line_kwargs = proc_kwargs_dict(
+            oscillator_line_kwargs,
             default={"linewidth": 0.9},
-            to_pop=("color"),
+            to_pop=("color",),
         )
         contour_kwargs = proc_kwargs_dict(
             contour_kwargs,
             default={"linewidths": 0.5},
-            to_pop=("colors", "levels", "cmap", "levels"),
+            to_pop=("colors", "cmap", "levels"),
         )
 
         indices = self._process_indices(indices)
@@ -1448,7 +1522,12 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             zss.append(zs)
             peakss.append(peaks)
 
-        fig, axs = plt.subplots(nrows=2, ncols=1)
+        fig, axs = plt.subplots(
+            nrows=2,
+            ncols=1,
+            gridspec_kw=gridspec_kwargs,
+            **kwargs,
+        )
         colorcycle = make_color_cycle(oscillator_colors, sum([len(zs) for zs in zss]))
 
         fid = self.data[0]
@@ -1470,12 +1549,12 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             xx, yy = np.meshgrid(x, y, indexing="ij")
             zs_slice = [z[slice_] if z is not None else None for z in zs]
             spec = spectrum[slice_]
-            axs[0].plot(x, spec, **spec_line_kwargs)
+            axs[0].plot(x, spec, **spectrum_line_kwargs)
 
             peaks = [peak[slice_] for peak in peaks]
             for peak, z_slice in zip(peaks, zs_slice):
                 color = next(colorcycle)
-                axs[0].plot(x, peak, color=color, **osc_line_kwargs)
+                axs[0].plot(x, peak, color=color, **oscillator_line_kwargs)
                 if z_slice is not None:
                     axs[1].contour(
                         xx,
@@ -1488,13 +1567,43 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             del zs[-1]
 
         axs[0].set_xticks([])
-        # axs[0].set_yticks([])
+        axs[0].set_yticks([])
         axs[1].set_xticks(xaxis_ticks)
         axs[1].set_xticklabels(xaxis_ticklabels)
-        axs[1].set_xlim(reversed(axs[1].get_xlim()))
-        axs[0].set_xlim(axs[1].get_xlim())
+        axs[0].set_xlim(1, 0)
+        axs[1].set_xlim(1, 0)
         axs[1].set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
         axs[1].set_ylabel(f"{self.fit_labels[-1]} ({self.fit_units[-1]})")
+
+        # Configure spines
+        spine_lw = axs[0].spines["top"].get_lw()
+        spine_color = axs[0].spines["top"].get_edgecolor()
+        break_kwargs = {
+            "marker": [(-1, -3), (1, 3)],
+            "markersize": 6,
+            "linestyle": "none",
+            "color": spine_color,
+            "mec": spine_color,
+            "mew": 1,
+            "clip_on": False,
+        }
+        for ax in axs:
+            ax.spines["top"].set_visible(False)
+            ax.spines["bottom"].set_visible(False)
+            for i, mrs in enumerate(reversed(merge_region_spans)):
+                if i != 0:
+                    ax.plot([1 - mrs[1], 1 - mrs[1]], [0, 1], transform=ax.transAxes, **break_kwargs)
+                if i != n_regions - 1:
+                    ax.plot([1 - mrs[0], 1 - mrs[0]], [0, 1], transform=ax.transAxes, **break_kwargs)
+                for y in ([0, 0], [1, 1]):
+                    ax.plot(
+                        [1 - mrs[0], 1 - mrs[1]],
+                        y,
+                        color=spine_color,
+                        lw=spine_lw,
+                        transform=ax.transAxes,
+                        clip_on=False,
+                    )
 
         return fig, axs
 

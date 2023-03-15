@@ -1,9 +1,10 @@
 # diffusion.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 10:48:37 GMT
+# Last Edited: Wed 15 Mar 2023 12:20:25 GMT
 
 from __future__ import annotations
+import copy
 from pathlib import Path
 import re
 from typing import Iterable, Optional, Tuple, Union
@@ -173,9 +174,8 @@ class _EstimatorDiffusion(EstimatorSeq1D):
         self.kappa = kappa
         self.shape_function = shape_function
 
-    @classmethod
+    @staticmethod
     def _new_bruker_pre(
-        cls,
         directory: Union[str, Path],
         increment_file: Optional[str] = None,
         gradient_file: str = "gpnam1",
@@ -219,6 +219,156 @@ class _EstimatorDiffusion(EstimatorSeq1D):
             shape_function,
             datapath,
         )
+
+    @classmethod
+    def new_from_parameters(
+        cls,
+        params: np.ndarray,
+        diffusion_constants: Union[float, np.ndarray],
+        gradients: np.ndarray,
+        pts: int,
+        sw: float,
+        offset: float,
+        big_delta: float = 1.,
+        small_delta: float = 0.001,
+        shape_function: Optional[np.ndarray] = None,
+        sigma: float = 1.,
+        lambda_: float = 0.5,
+        kappa: float = 0.3333333,
+        sfo: float = 500.,
+        nucleus: str = "1H",
+        snr: Optional[float] = 20.,
+    ) -> _EstimatorDiffusion:
+        """Generate an estimator instance with synthetic data created from a
+        specification of oscillator parameters, gradient stengthsm and diffusion
+        constants associated with each oscillator.
+
+        Parameters
+        ----------
+        params
+            Parameter array with the following structure:
+
+              .. code:: python
+
+                 params = numpy.array([
+                    [a_1, φ_1, f_1, η_1],
+                    [a_2, φ_2, f_2, η_2],
+                    ...,
+                    [a_m, φ_m, f_m, η_m],
+                 ])
+
+        diffusion_constants
+            Specifies the diffusion constant associated with each oscillator.
+            Should be the same length as ``params.shape[0]``.
+
+        gradients
+            Array of gradient strengths used for diffusion-encoding, in G cm⁻¹.
+
+        pts
+            The number of points the signal comprises.
+
+        sw
+            The sweep width of the signal (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        sfo
+            The transmitter frequency (MHz).
+
+        nucleus
+            The identity of the nucleus. Should be one of ``"1H"``, ``"13C"``,
+            ``"15N"``, ``"19F"``.
+
+        snr
+            The signal-to-noise ratio (dB). If ``None`` then no noise will be added
+            to the FID.
+
+        other
+            For other arguments, see :py:class:`EstimatorDiffusionMonopolar`.
+
+        Notes
+        -----
+        The default arguments for ``sigma``, ``lambda_`` and ``kappa`` correspond to
+        the assumption that rectangular gradient pulses are used. Any gradient
+        shape can be accommodated by specifying ``shape_funtion``.
+        """
+        sanity_check(
+            ("params", params, sfuncs.check_parameter_array, (1,)),
+            ("gradients", gradients, sfuncs.check_ndarray, (), {"dim": 1}),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
+            ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("offset", offset, sfuncs.check_float, (), {}, True),
+            ("nucleus", nucleus, sfuncs.check_nucleus),
+            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            ("nucleus", nucleus, sfuncs.check_one_of, ("1H", "13C", "15N", "19F")),
+            ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            (
+                "small_delta", small_delta, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            (
+                "big_delta", big_delta, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            (
+                "shape_function", shape_function, sfuncs.check_ndarray, (),
+                {"dim": 1}, True,
+            ),
+        )
+        sanity_check(
+            (
+                "diffusion_constants", diffusion_constants, sfuncs.check_ndarray,
+                (), {"dim": 1, "shape": [(0, params.shape[0])]},
+            ),
+        )
+
+        if shape_function is None:
+            sanity_check(
+                (
+                    "sigma", sigma, sfuncs.check_float, (),
+                    {"greater_than_zero": True, "max_value": 1.},
+                ),
+                (
+                    "lambda_", lambda_, sfuncs.check_float, (),
+                    {"greater_than_zero": True, "max_value": 1.},
+                ),
+                (
+                    "kappa", kappa, sfuncs.check_float, (),
+                    {"greater_than_zero": True, "max_value": 1.},
+                ),
+            )
+        else:
+            sigma, lambda_, kappa = cls._process_shape_function(shape_function)
+
+        expinfo = ne.ExpInfo(
+            dim=1,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            nuclei=nucleus,
+            default_pts=pts,
+        )
+        data = np.zeros((gradients.size, pts), dtype="complex128")
+
+        self = cls(
+            data=data,
+            expinfo=expinfo,
+            gradients=gradients,
+            small_delta=small_delta,
+            big_delta=big_delta,
+            sigma=sigma,
+            lambda_=lambda_,
+            kappa=kappa,
+        )
+
+        factors = np.exp(-self.c * np.outer(gradients ** 2, diffusion_constants))
+        for i, factor in enumerate(factors):
+            p = copy.deepcopy(params)
+            p[:, 0] *= factor
+            data[i] += self.make_fid(p, snr=snr)
+
+        return self
 
     @staticmethod
     def _process_shape_function(
@@ -471,8 +621,8 @@ class EstimatorDiffusionOneshot(_EstimatorDiffusion):
     .. note::
 
         This class has equivalent behaviour to
-        :py:class:`EstimatorDiffusionMonopolar`, except for it's init method, and
-        :py:meth:`big_delta_prime`.
+        :py:class:`EstimatorDiffusionMonopolar`, except for it's init method,
+        :py:meth:`new_from_parameters`, and :py:meth:`big_delta_prime`.
     """
 
     def __init__(
@@ -615,6 +765,113 @@ class EstimatorDiffusionOneshot(_EstimatorDiffusion):
             alpha=alpha,
             tau=tau,
             datapath=datapath,
+        )
+
+    @classmethod
+    def new_from_parameters(
+        cls,
+        params: np.ndarray,
+        diffusion_constants: Union[float, np.ndarray],
+        gradients: np.ndarray,
+        pts: int,
+        sw: float,
+        offset: float,
+        sfo: float = 500.,
+        nucleus: str = "1H",
+        snr: Optional[float] = 20.,
+        big_delta: float = 0.1,
+        small_delta: float = 0.001,
+        tau: float = 0.001,
+        alpha: float = 0.2,
+        shape_function: Optional[np.ndarray] = None,
+        sigma: float = 1.,
+        lambda_: float = 0.5,
+        kappa: float = 0.3333333,
+    ) -> EstimatorDiffusionOneshot:
+        """Generate an estimator instance with synthetic data created from a
+        specification of oscillator parameters, gradient stengthsm and diffusion
+        constants associated with each oscillator.
+
+        Parameters
+        ----------
+        params
+            Parameter array with the following structure:
+
+              .. code:: python
+
+                 params = numpy.array([
+                    [a_1, φ_1, f_1, η_1],
+                    [a_2, φ_2, f_2, η_2],
+                    ...,
+                    [a_m, φ_m, f_m, η_m],
+                 ])
+
+        diffusion_constants
+            Specifies the diffusion constant associated with each oscillator.
+            Should be the same length as ``params.shape[0]``.
+
+        gradients
+            Array of gradient strengths used for diffusion-encoding, in G cm⁻¹.
+
+        pts
+            The number of points the signal comprises.
+
+        sw
+            The sweep width of the signal (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        sfo
+            The transmitter frequency (MHz).
+
+        nucleus
+            The identity of the nucleus. Should be one of ``"1H"``, ``"13C"``,
+            ``"15N"``, ``"19F"``.
+
+        snr
+            The signal-to-noise ratio (dB). If ``None`` then no noise will be added
+            to the FID.
+
+        other
+            For other arguments, see :py:class:`EstimatorDiffusionOneshot`.
+
+        Notes
+        -----
+        The default arguments for ``sigma``, ``lambda_`` and ``kappa`` correspond to
+        the assumption that rectangular gradient pulses are used. Any gradient
+        shape can be accommodated by specifying ``shape_funtion``.
+        """
+        monopolar_class = EstimatorDiffusionMonopolar.new_from_parameters(
+            params=params,
+            diffusion_constants=diffusion_constants,
+            gradients=gradients,
+            pts=pts,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            nucleus=nucleus,
+            snr=snr,
+            big_delta=big_delta,
+            small_delta=small_delta,
+            shape_function=shape_function,
+            sigma=sigma,
+            lambda_=lambda_,
+            kappa=kappa,
+        )
+
+        return cls(
+            data=monopolar_class.data,
+            expinfo=monopolar_class.expinfo,
+            gradients=monopolar_class.increments,
+            small_delta=monopolar_class.small_delta,
+            big_delta=monopolar_class.big_delta,
+            alpha=alpha,
+            tau=tau,
+            sigma=monopolar_class.sigma,
+            lambda_=monopolar_class.lambda_,
+            kappa=monopolar_class.kappa,
+            gamma=monopolar_class.gamma,
         )
 
     @property
