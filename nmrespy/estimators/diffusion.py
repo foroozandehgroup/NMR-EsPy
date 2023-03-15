@@ -1,7 +1,7 @@
 # diffusion.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 10 Mar 2023 18:30:01 GMT
+# Last Edited: Tue 14 Mar 2023 10:48:37 GMT
 
 from __future__ import annotations
 from pathlib import Path
@@ -32,9 +32,9 @@ class FunctionFactoryDiffusion(FunctionFactory):
         super().__init__(theta, _EstimatorDiffusion._obj_grad_hess, *args)
 
 
+# TODO: ABC
 class _EstimatorDiffusion(EstimatorSeq1D):
-    """Estimation class for the consideration of datasets acquired by monopolar
-    diffusion NMR."""
+    """Estimation class for the consideration of datasets acquired by diffusion NMR."""
 
     _increment_label = "$g$ (Gcm$^{-1}$)"
     _fit_labels = ["$I_{0}$", "$D$"]
@@ -82,13 +82,30 @@ class _EstimatorDiffusion(EstimatorSeq1D):
         sigma
             The shape factor of the diffusion-encoding gradient.
 
+            .. math::
+
+                \sigma = \int_0^1 s(\epsilon) \mathrm{d} \epsilon
+
+            where :math:`s` is the shape function of the diffusion-encoding gradient,
+            and :math:`\epsilon` is the level of gradient progress.
+
         lambda_
-            .. todo::
-                Describe
+
+            .. math::
+
+                \lambda = \frac{1}{\sigma}
+                    \int_0^1 \left(
+                    \int_0^{\epsilon^{\prime}} s(\epsilon^{\prime}) \mathrm{d} \epsilon
+                    \right) \mathrm{d} \epsilon
 
         kappa
-            .. todo::
-                Describe
+
+            .. math::
+
+                \kappa = \frac{1}{\sigma^2}
+                    \int_0^1 \left(
+                    \int_0^{\epsilon^{\prime}} s(\epsilon^{\prime}) \mathrm{d} \epsilon
+                    \right)^2 \mathrm{d} \epsilon
 
         gamma
             The gyromagnetic ratio of the nucleus, in 10⁶ s⁻¹ T⁻¹. If ``None``,
@@ -412,6 +429,9 @@ class _EstimatorDiffusion(EstimatorSeq1D):
 
 
 class EstimatorDiffusionMonopolar(_EstimatorDiffusion):
+    """Estimator for the consideration of diffusion NMR data acquired by an
+    experiment with monopolar gradients.
+    """
 
     @property
     def big_delta_prime(self) -> float:
@@ -419,9 +439,24 @@ class EstimatorDiffusionMonopolar(_EstimatorDiffusion):
 
 
 class EstimatorDiffusionBipolar(_EstimatorDiffusion):
+    """Estimator for the consideration of diffusion NMR data acquired by an
+    experiment with bipolar gradients.
+
+    .. note::
+
+        This class has equivalent behaviour to
+        :py:class:`EstimatorDiffusionMonopolar`, except for :py:meth:`big_delta_prime`.
+    """
 
     @property
     def big_delta_prime(self) -> float:
+        r"""
+        .. math::
+
+            \Delta^{\prime} =
+                \Delta + \frac{\delta \left(2 \kappa - 2 \lambda - 1\right)}{4} -
+                \frac{1}{2}
+        """
         return (
             self.big_delta +
             (self.small_delta * (2 * self.kappa - 2 * self.lambda_ - 1) / 4) -
@@ -430,6 +465,15 @@ class EstimatorDiffusionBipolar(_EstimatorDiffusion):
 
 
 class EstimatorDiffusionOneshot(_EstimatorDiffusion):
+    """Estimator for the consideration of diffusion NMR data acquired by the "one-shot"
+    experiment (`<10.1002/mrc.1107>`_).
+
+    .. note::
+
+        This class has equivalent behaviour to
+        :py:class:`EstimatorDiffusionMonopolar`, except for it's init method, and
+        :py:meth:`big_delta_prime`.
+    """
 
     def __init__(
         self,
@@ -447,6 +491,76 @@ class EstimatorDiffusionOneshot(_EstimatorDiffusion):
         gamma: Optional[float] = None,
         datapath: Optional[Path] = None,
     ) -> None:
+        r"""
+        Parameters
+        ----------
+        data
+            The data associated with the estimator.
+
+        expinfo
+            Experiment information.
+
+        gradients
+            Gradients used in the experiment, in G cm⁻¹.
+
+        small_delta
+            The length of diffusion-encoding gradients (:math:`\delta`), in
+            seconds
+
+        big_delta
+            The length of the diffusion delay (:math:`\Delta`), in seconds.
+
+        alpha
+            Unbalancing factor of bipolar gradient pairs
+
+        tau
+            Delay between the midpoints of the gradient pulses within a given
+            diffusion-encoding period.
+
+        shape_function
+            An array of points denoting the profile of the diffusion-encoding gradient.
+            If ``None``, the values supplied to ``sigma``, ``lambda_`` and ``kappa``
+            will be used in the Stejskal-Tanner equation.
+
+        sigma
+            The shape factor of the diffusion-encoding gradient.
+
+            .. math::
+
+                \sigma = \int_0^1 s(\epsilon) \mathrm{d} \epsilon
+
+            where :math:`s` is the shape function of the diffusion-encoding gradient,
+            and :math:`\epsilon` is the level of gradient progress.
+
+        lambda_
+
+            .. math::
+
+                \lambda = \frac{1}{\sigma}
+                    \int_0^1 \left(
+                    \int_0^{\epsilon^{\prime}} s(\epsilon^{\prime}) \mathrm{d} \epsilon
+                    \right) \mathrm{d} \epsilon
+
+        kappa
+
+            .. math::
+
+                \kappa = \frac{1}{\sigma^2}
+                    \int_0^1 \left(
+                    \int_0^{\epsilon^{\prime}} s(\epsilon^{\prime}) \mathrm{d} \epsilon
+                    \right)^2 \mathrm{d} \epsilon
+
+        gamma
+            The gyromagnetic ratio of the nucleus, in 10⁶ s⁻¹ T⁻¹. If ``None``,
+            an attempt will be made to extract this, based on ``expinfo.nuclei[0]``.
+            **If** ``expinfo.nuclei[0]`` is ``None``, or a a string other than
+            ``"1H"``, ``"13C"``, ``"15N"``, ``"19F"``, you will have to provide
+            ``gamma`` manually.
+
+        datapath
+            The path to the directory containing the NMR data.
+        """
+
         super().__init__(
             data,
             expinfo,
@@ -505,6 +619,15 @@ class EstimatorDiffusionOneshot(_EstimatorDiffusion):
 
     @property
     def big_delta_prime(self) -> float:
+        r"""
+        .. math::
+
+            \Delta^{\prime} =
+                \Delta +
+                \frac{\delta \left(\kappa - \lambda\right)\left(\alpha^2 + 1\right)}
+                {2} +
+                \frac{\left(\delta + 2 \tau\right) \left(\alpha^2 - 1\right)}{4}
+        """
         return (
             self.big_delta +
             ((self.small_delta * (self.kappa - self.lambda_) * (self.alpha ** 2 + 1)) / 2) +  # noqa: E501

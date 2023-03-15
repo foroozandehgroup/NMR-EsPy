@@ -1,7 +1,7 @@
 # invrec.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 10 Mar 2023 18:27:03 GMT
+# Last Edited: Tue 14 Mar 2023 16:13:13 GMT
 
 from __future__ import annotations
 import copy
@@ -312,6 +312,22 @@ class EstimatorInvRec(EstimatorSeq1D):
             directory, delay_file, convdta,
         )
         return cls(data, expinfo, delays, datapath)
+
+    @staticmethod
+    def _proc_mpm_signal(mpm_signal: np.ndarray) -> np.ndarray:
+        mpm_signal[0] *= 0.5
+        return ne.sig.ift(-1 * ne.sig.ft(mpm_signal))
+
+    @staticmethod
+    def _proc_nlp_signal(nlp_signal: np.ndarray) -> np.ndarray:
+        nlp_signal[0][0] *= 0.5
+        nlp_signal[0] = ne.sig.ift(-1 * ne.sig.ft(nlp_signal[0]))
+        return nlp_signal
+
+    @staticmethod
+    def _proc_first_result(result: np.ndarray) -> np.ndarray:
+        result[:, 0] *= -1
+        return result
 
     def get_x0(
         self,

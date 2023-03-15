@@ -23,6 +23,6 @@ signals, including FT/IFT, apodisation, phasing, etc.
    common_args
    estimator1d
    estimatorinvrec
-   estimatordosy
+   estimatordiffusion
    estimator2dj
    sig
