@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 15 Mar 2023 15:45:45 GMT
+# Last Edited: Fri 24 Mar 2023 11:02:33 GMT
 
 from __future__ import annotations
 import copy
@@ -19,6 +19,9 @@ from matplotlib.backends.backend_tkagg import (
 
 from nmrespy import ExpInfo, sig
 from nmrespy.app.custom_widgets import MyEntry
+from nmrespy.load import load_bruker
+from nmrespy.estimators import logger
+from nmrespy.estimators._proc_onedim import _Estimator1DProc
 from nmrespy.plot import make_color_cycle
 from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir, check_saveable_dir
@@ -26,8 +29,6 @@ from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
 )
-from nmrespy.estimators import logger, _Estimator1DProc
-from nmrespy.load import load_bruker
 
 
 if USE_COLORAMA:

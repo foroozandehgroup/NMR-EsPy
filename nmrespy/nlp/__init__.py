@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 13:58:40 GMT
+# Last Edited: Fri 24 Mar 2023 15:55:37 GMT
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -49,6 +49,7 @@ def nonlinear_programming(
     eta: float = 0.15,
     initial_trust_radius: float = 1.0,
     max_trust_radius: float = 4.0,
+    check_neg_amps_every: int = 10,
 ):
     r"""
     Parameters
@@ -200,6 +201,10 @@ def nonlinear_programming(
 
     max_trust_radius
         The largest permitted radius for the trust region.
+
+    check_neg_amps_every
+        For every iteration that is a multiple of this, negative amplitudes
+        will be checked for and dealt with if found.
     """
     sanity_check(
         ("expinfo", expinfo, sfuncs.check_expinfo),
@@ -251,6 +256,10 @@ def nonlinear_programming(
         (
             "max_trust_radius", max_trust_radius, sfuncs.check_float, (),
             {"min_value": initial_trust_radius},
+        ),
+        (
+            "check_neg_amps_every", check_neg_amps_every, sfuncs.check_int, (),
+            {"min_value": 1, "max_value": max_iterations},
         ),
     )
 
@@ -317,6 +326,7 @@ def nonlinear_programming(
             max_iterations=max_iterations,
             save_trajectory=save_trajectory,
             monitor_negative_amps=negative_amps == "remove",
+            check_neg_amps_every=check_neg_amps_every,
         )
 
         active = result.x
@@ -346,7 +356,7 @@ def nonlinear_programming(
                 # Remove negative oscillators
                 if negative_amps == "remove":
                     if output_mode is not None:
-                        print(f"These oscillators will be removed")
+                        print("These oscillators will be removed")
 
                     rerun = True
                     active = np.delete(
@@ -366,7 +376,7 @@ def nonlinear_programming(
                     if output_mode is not None:
                         print(
                             "These oscillators will have their amplitudes "
-                            f"multiplied by -1, and phases shifted by 180°"
+                            "multiplied by -1, and phases shifted by 180°"
                         )
                     amp_slice = _get_slice(m, [0], osc_idx=negative_idx)
                     active[amp_slice] *= -1
