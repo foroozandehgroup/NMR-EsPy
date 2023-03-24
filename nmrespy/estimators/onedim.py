@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 13:32:21 GMT
+# Last Edited: Fri 24 Mar 2023 10:32:43 GMT
 
 from __future__ import annotations
 import copy
@@ -12,7 +12,10 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from nmrespy import ExpInfo, sig
+import nmrespy as ne
+from nmrespy.load import load_bruker
+from nmrespy.plot import make_color_cycle
+
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir, check_saveable_dir
 from nmrespy._misc import proc_kwargs_dict
@@ -20,11 +23,9 @@ from nmrespy._sanity import (
     sanity_check,
     funcs as sfuncs,
 )
-from nmrespy.freqfilter import Filter
-from nmrespy.load import load_bruker
-from nmrespy.plot import make_color_cycle
 
-from . import logger, _Estimator1DProc
+from nmrespy.estimators import logger
+from nmrespy.estimators._proc_onedim import _Estimator1DProc
 
 
 if USE_COLORAMA:
@@ -99,11 +100,11 @@ class Estimator1D(_Estimator1DProc):
 
         if directory.parent.name == "pdata":
             slice_ = slice(0, data.shape[0] // 2)
-            data = (2 * sig.ift(data))[slice_]
+            data = (2 * ne.sig.ift(data))[slice_]
 
         elif convdta:
             grpdly = expinfo.parameters["acqus"]["GRPDLY"]
-            data = sig.convdta(data, grpdly)
+            data = ne.sig.convdta(data, grpdly)
 
         return cls(data, expinfo, directory)
 
@@ -189,9 +190,9 @@ class Estimator1D(_Estimator1DProc):
         fid = cls._run_spinach(
             "onedim_sim", shifts, couplings, pts, sw, offset, sfo, nucleus,
         )
-        fid = sig.exp_apodisation(sig.add_noise(fid, snr), lb)
+        fid = ne.sig.exp_apodisation(ne.sig.add_noise(fid, snr), lb)
 
-        expinfo = ExpInfo(
+        expinfo = ne.ExpInfo(
             dim=1,
             sw=sw,
             offset=offset,
@@ -261,7 +262,7 @@ class Estimator1D(_Estimator1DProc):
             ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
 
-        expinfo = ExpInfo(
+        expinfo = ne.ExpInfo(
             dim=1,
             sw=sw,
             offset=offset,
@@ -282,7 +283,7 @@ class Estimator1D(_Estimator1DProc):
         """
         data = copy.deepcopy(self.data)
         data[0] *= 0.5
-        return sig.ft(data)
+        return ne.sig.ft(data)
 
     def view_data(
         self,
@@ -384,7 +385,7 @@ class Estimator1D(_Estimator1DProc):
             ("force_overwrite", force_overwrite, sfuncs.check_bool),
         )
         fid = self.make_fid_from_result(indices=indices, pts=pts)
-        # calls ExpInfo.write_to_bruker()
+        # calls ne.ExpInfo.write_to_bruker()
         super().write_to_bruker(fid, path, expno, 1, force_overwrite)
 
     @logger
@@ -652,11 +653,11 @@ class Estimator1D(_Estimator1DProc):
         full_shifts, = self.get_shifts(unit=region_unit)
         full_model = self.make_fid_from_result(indices)
         full_model[0] *= 0.5
-        full_model = sig.ft(full_model).real
+        full_model = ne.sig.ft(full_model).real
         full_residual = full_spectrum - full_model
         full_model_highres = self.make_fid_from_result(indices, pts=high_resolution_pts)
         full_model_highres[0] *= 0.5
-        full_model_highres = sig.ft(full_model_highres).real
+        full_model_highres = ne.sig.ft(full_model_highres).real
 
         slices = [
             slice(
@@ -715,7 +716,7 @@ class Estimator1D(_Estimator1DProc):
                 p = np.expand_dims(p, axis=0)
                 osc = self.make_fid(p, pts=high_resolution_pts)
                 osc[0] *= 0.5
-                spec = sig.ft(osc).real[highres_slice]
+                spec = ne.sig.ft(osc).real[highres_slice]
                 oscs.append(ax.plot(shifts_highres, spec, color=color, **oscillator_line_kwargs)[0])  # noqa: E501
 
                 if label_peaks and (i in ax_labels):

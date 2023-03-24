@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 15:07:58 GMT
+# Last Edited: Fri 24 Mar 2023 15:57:09 GMT
 
 from dataclasses import dataclass
 import math
@@ -74,7 +74,7 @@ def trust_ncg(
     max_iterations: int = 100,
     save_trajectory: bool = False,
     monitor_negative_amps: bool = False,
-    check_neg_amps_every: int = 50,
+    check_neg_amps_every: int = 10,
 ) -> NLPResult:
     r"""Newton Conjugate Gradient Trust-Region Algorithm.
 
@@ -129,6 +129,10 @@ def trust_ncg(
     monitor_negative_amps
         If ``True``, checks for negative amplitudes after each iteration, and
         terminates the optimiser if there are any.
+
+    check_neg_amps_every
+        For every iteration that is a multiple of this, negative amplitudes
+        will be checked for and dealt with if found.
 
     Returns
     -------
