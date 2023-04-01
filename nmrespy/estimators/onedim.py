@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Mar 2023 10:32:43 GMT
+# Last Edited: Thu 30 Mar 2023 16:32:30 BST
 
 from __future__ import annotations
 import copy
@@ -176,12 +176,12 @@ class Estimator1D(_Estimator1DProc):
             ("offset", offset, sfuncs.check_float),
             ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("nucleus", nucleus, sfuncs.check_nucleus),
-            ("snr", snr, sfuncs.check_float),
+            ("snr", snr, sfuncs.check_float, (), {}, True),
             ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True})
         )
         nspins = len(shifts)
         sanity_check(
-            ("couplings", couplings, sfuncs.check_spinach_couplings, (nspins,)),
+            ("couplings", couplings, sfuncs.check_spinach_couplings, (nspins,), {}, True),  # noqa: E501
         )
 
         if couplings is None:
@@ -190,7 +190,10 @@ class Estimator1D(_Estimator1DProc):
         fid = cls._run_spinach(
             "onedim_sim", shifts, couplings, pts, sw, offset, sfo, nucleus,
         )
-        fid = ne.sig.exp_apodisation(ne.sig.add_noise(fid, snr), lb)
+        if snr is not None:
+            fid = ne.sig.add_noise(fid, snr)
+
+        fid = ne.sig.exp_apodisation(fid, lb)
 
         expinfo = ne.ExpInfo(
             dim=1,

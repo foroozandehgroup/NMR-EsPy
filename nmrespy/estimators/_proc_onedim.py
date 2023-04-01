@@ -1,7 +1,7 @@
 # _proc_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 29 Mar 2023 15:18:43 BST
+# Last Edited: Thu 30 Mar 2023 11:40:19 BST
 
 import copy
 from pathlib import Path
@@ -19,6 +19,7 @@ from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import nonlinear_programming
 from nmrespy.write import ResultWriter
 from nmrespy._colors import GRE, END, USE_COLORAMA
+from nmrespy._misc import boxed_text
 from nmrespy._files import check_saveable_path
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 
@@ -447,6 +448,11 @@ class _Estimator1DProc(Estimator):
             ),
         )
 
+        if output_mode != 0:
+            unit = region_unit.replace("h", "H")
+            txt = f"ESTIMATING REGION: {region[0]} - {region[1]} {unit}"
+            print(boxed_text(txt, GRE))
+
         (
             region,
             noise_region,
@@ -473,7 +479,7 @@ class _Estimator1DProc(Estimator):
                 mpm_expinfo,
                 mpm_signal,
                 oscillators=oscillators,
-                fprint=isinstance(output_mode, int),
+                output_mode=isinstance(output_mode, int),
             ).get_params()
 
             if x0 is None:

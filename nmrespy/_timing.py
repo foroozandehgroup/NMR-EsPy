@@ -1,7 +1,7 @@
 # _timing.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 07 Oct 2021 12:12:06 BST
+# Last Edited: Thu 30 Mar 2023 11:45:36 BST
 
 """Support for timing routines."""
 
@@ -15,8 +15,6 @@ def timer(f):
     @functools.wraps(f)
     def timed(*args, **kwargs):
         start = time.time()
-        if not args[0].fprint:
-            return f(*args, **kwargs)
         result = f(*args, **kwargs)
         run_time = convert(time.time() - start)
         print(f"Time elapsed: {run_time}")

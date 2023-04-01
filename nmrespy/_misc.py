@@ -1,7 +1,7 @@
 # _misc.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 06 Mar 2023 19:18:17 GMT
+# Last Edited: Thu 30 Mar 2023 11:49:03 BST
 
 """Various miscellaneous functions/classes for internal nmrespy use."""
 
@@ -12,7 +12,7 @@ from typing import Any, Dict, Iterable, Optional
 
 import numpy as np
 
-from nmrespy._colors import RED, GRE, END, USE_COLORAMA
+from nmrespy._colors import RED, ORA, GRE, END, USE_COLORAMA
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 
 if USE_COLORAMA:
@@ -49,35 +49,33 @@ def get_yes_no(prompt: str) -> bool:
             print(f"{RED}Invalid input. Please enter [y] or [n]:{END}")
 
 
+def boxed_text(text: str, color: Optional[str] = None) -> str:
+    if color is None:
+        start_color = ""
+        end_color = ""
+    else:
+        start_color = color
+        end_color = END
+
+    return (
+        f"{start_color}┌{len(text) * '─'}┐\n"
+        f"│{text}│\n"
+        f"└{len(text) * '─'}┘{end_color}"
+    )
+
+
 def start_end_wrapper(start_text: str, end_text: str) -> Callable:
     """Print a message prior to and after a method call."""
 
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         def inner(*args, **kwargs) -> Any:
-
-            inst = args[0]
-            if inst.fprint is False:
-                return f(*args, **kwargs)
-
-            print(
-                f"{GRE}{len(start_text) * '='}\n"
-                f"{start_text}\n"
-                f"{len(start_text) * '='}{END}"
-            )
-
+            print(boxed_text(start_text, ORA))
             result = f(*args, **kwargs)
-
-            print(
-                f"{GRE}{len(end_text) * '='}\n"
-                f"{end_text}\n"
-                f"{len(end_text) * '='}{END}"
-            )
+            print(boxed_text(end_text, GRE))
 
             return result
-
         return inner
-
     return decorator
 
 
