@@ -1,11 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 30 Mar 2023 11:41:44 BST
-
-# Simon Hulse
-# simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 14:32:18 BST
+# Last Edited: Thu 06 Apr 2023 15:59:59 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
 
@@ -320,10 +316,12 @@ class MatrixPencil(ResultFetcher):
 
         # convert Xe to sparse matrix
         sparse_Xe = sparse.csr_matrix(Xe)
-        U, *_ = splinalg.svds(sparse_Xe, k=self.oscillators)
 
+        # --- SVD of Xe ---
         if self.output_mode:
             print("--> Performing Singular Value Decomposition...")
+
+        U, *_ = splinalg.svds(sparse_Xe, k=self.oscillators)
 
         # --- Permutation matrix ---
         if self.output_mode:
@@ -363,7 +361,7 @@ class MatrixPencil(ResultFetcher):
         Usp = P @ Us
         U1p = Usp[: Usp.shape[0] - K, :]  # last K rows deleted
         U2p = Usp[K:, :]  # first K rows deleted
-        eig_z = np.diag(nlinalg.solve(vec_y, nlinalg.pinv(U1p)) @ U2p @ vec_y)
+        eig_z = np.diag(nlinalg.inv(vec_y) @ nlinalg.pinv(U1p) @ U2p @ vec_y)
         poles = np.hstack((eig_y, eig_z)).reshape((2, self.oscillators))
 
         # --- Complex Amplitudes ---
