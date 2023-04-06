@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Mar 2023 15:55:37 GMT
+# Last Edited: Thu 30 Mar 2023 11:44:36 BST
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -21,15 +21,20 @@ import numpy.linalg as nlinalg
 
 from nmrespy import ExpInfo
 from nmrespy._colors import ORA, END, USE_COLORAMA
-from . import _funcs as funcs, optimisers
+from nmrespy._misc import start_end_wrapper
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 from nmrespy._result_fetcher import ResultFetcher
+from nmrespy._timing import timer
+
+from . import _funcs as funcs, optimisers
 
 if USE_COLORAMA:
     import colorama
     colorama.init()
 
 
+@timer
+@start_end_wrapper("OPTIMISATION STARTED", "OPTIMISATION COMPLETE")
 def nonlinear_programming(
     expinfo: ExpInfo,
     data: np.ndarray,

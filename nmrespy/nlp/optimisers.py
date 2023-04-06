@@ -1,7 +1,7 @@
 # optimisers.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Mar 2023 15:57:09 GMT
+# Last Edited: Thu 30 Mar 2023 11:22:14 BST
 
 from dataclasses import dataclass
 import math
@@ -11,7 +11,9 @@ from typing import Any, Iterable, Optional, Union
 import numpy as np
 import scipy as sp
 
-from ._funcs import FunctionFactory
+from nmrespy.nlp._funcs import FunctionFactory
+from nmrespy._misc import start_end_wrapper
+from nmrespy._timing import timer
 
 
 result_messages = {
@@ -62,6 +64,8 @@ def print_entry(k: int, m: FunctionFactory, trust_radius: float) -> None:
     print(msg)
 
 
+@timer
+@start_end_wrapper("TRUST NCG ALGORITHM STARTED", "TRUST NCG ALGORITHM COMPLETE")
 def trust_ncg(
     x0: Union[np.ndarray, NLPResult],
     function_factory: FunctionFactory,

@@ -1,7 +1,7 @@
 # _proc_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Mar 2023 15:54:27 GMT
+# Last Edited: Thu 30 Mar 2023 11:40:19 BST
 
 import copy
 from pathlib import Path
@@ -19,6 +19,7 @@ from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import nonlinear_programming
 from nmrespy.write import ResultWriter
 from nmrespy._colors import GRE, END, USE_COLORAMA
+from nmrespy._misc import boxed_text
 from nmrespy._files import check_saveable_path
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 
@@ -447,10 +448,16 @@ class _Estimator1DProc(Estimator):
             ),
         )
 
+        if output_mode != 0:
+            unit = region_unit.replace("h", "H")
+            txt = f"ESTIMATING REGION: {region[0]} - {region[1]} {unit}"
+            print(boxed_text(txt, GRE))
+
         (
             region,
             noise_region,
-            expinfo,
+            mpm_expinfo,
+            nlp_expinfo,
             mpm_signal,
             nlp_signal,
         ) = self._filter_signal(
@@ -469,10 +476,10 @@ class _Estimator1DProc(Estimator):
             oscillators = initial_guess if isinstance(initial_guess, int) else 0
 
             x0 = MatrixPencil(
-                expinfo,
+                mpm_expinfo,
                 mpm_signal,
                 oscillators=oscillators,
-                fprint=isinstance(output_mode, int),
+                output_mode=isinstance(output_mode, int),
             ).get_params()
 
             if x0 is None:
@@ -510,7 +517,7 @@ class _Estimator1DProc(Estimator):
         }
 
         self._run_optimisation(
-            expinfo,
+            nlp_expinfo,
             nlp_signal,
             x0,
             region,
@@ -533,8 +540,8 @@ class _Estimator1DProc(Estimator):
             region_unit = "hz"
             region = self._full_region
             noise_region = None
-            signal = self.data
-            expinfo = self.expinfo
+            mpm_signal = nlp_signal = self.data
+            mpm_expinfo = nlp_expinfo = self.expinfo
 
         else:
             region = self._process_region(region)
@@ -550,17 +557,19 @@ class _Estimator1DProc(Estimator):
 
             region = filter_.get_region()
             noise_region = filter_.get_noise_region()
-            signal, expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
+            mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
+            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
 
-        mpm_trim = self._get_trim("mpm", mpm_trim, signal.shape[-1])
-        nlp_trim = self._get_trim("nlp", nlp_trim, signal.shape[-1])
+        mpm_trim = self._get_trim("mpm", mpm_trim, mpm_signal.shape[-1])
+        nlp_trim = self._get_trim("nlp", nlp_trim, nlp_signal.shape[-1])
 
         return (
             region,
             noise_region,
-            expinfo,
-            signal[..., :mpm_trim],  # mpm
-            signal[..., :nlp_trim],  # nlp
+            mpm_expinfo,
+            nlp_expinfo,
+            mpm_signal[..., :mpm_trim],
+            nlp_signal[..., :nlp_trim],
         )
 
     def _get_trim(self, type_: str, trim: Optional[float], size: float):
