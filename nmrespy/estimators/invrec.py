@@ -1,7 +1,7 @@
 # invrec.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 16:13:13 GMT
+# Last Edited: Tue 09 May 2023 18:33:53 BST
 
 from __future__ import annotations
 import copy
@@ -26,7 +26,7 @@ class EstimatorInvRec(EstimatorSeq1D):
     times (:math:`T_1`)."""
 
     _increment_label = "$\\tau$ (s)"
-    _fit_labels = ["$I_{\\infty}$", "$T_1$"]
+    _fit_labels = ["$a_{\\infty}$", "$T_1$"]
     _fit_units = ["", "s"]
     function_factory = FunctionFactoryInvRec
 
@@ -331,11 +331,11 @@ class EstimatorInvRec(EstimatorSeq1D):
 
     def get_x0(
         self,
-        integrals: np.ndarray,
+        amplitudes: np.ndarray,
         increments: np.ndarray,
     ) -> np.ndarray:
         # TODO: Could probably improve...
-        return np.array([-np.amin(integrals), 1.])
+        return np.array([-np.amin(amplitudes), 1.])
 
     def fit(
         self,
@@ -346,16 +346,15 @@ class EstimatorInvRec(EstimatorSeq1D):
         r"""Fit estimation result for the given oscillators across increments in
         order to predict the longitudinal relaxtation time, :math:`T_1`.
 
-        For the oscillators specified, the integrals of the oscilators' peaks are
-        determined at each increment, and the following function is fit:
+        For the oscillators specified, the following function is fit:
 
         .. math::
 
-            I \left(I_{\infty}, T_1, \tau\right) =
-            I_{\infty} \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
+            a \left(a_{\infty}, T_1, \tau\right) =
+            a_{\infty} \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
 
-        where :math:`I` is the peak integral when the delay is :math:`\tau`, and
-        :math:`I_{\infty} = \lim_{\tau \rightarrow \infty} I`.
+        where :math:`a` is the oscillator amplitude when the delay is :math:`\tau`, and
+        :math:`a_{\infty} = \lim_{\tau \rightarrow \infty} a`.
 
         Parameters
         ----------
@@ -382,7 +381,7 @@ class EstimatorInvRec(EstimatorSeq1D):
 
     def model(
         self,
-        Iinfty: float,
+        a_infty: float,
         T1: float,
         delays: Optional[np.ndarray] = None,
     ) -> np.ndarray:
@@ -390,14 +389,14 @@ class EstimatorInvRec(EstimatorSeq1D):
 
         .. math::
 
-            \boldsymbol{I}\left(I_{\infty}, T_1, \boldsymbol{\tau} \right) =
-                I_{\infty} \left[
+            \boldsymbol{a}\left(a_{\infty}, T_1, \boldsymbol{\tau} \right) =
+                a_{\infty} \left[
                     1 - 2 \exp\left(- \frac{\boldsymbol{\tau}}{T_1} \right)
                 \right]
 
         Parameters
         ----------
-        Iinfty
+        a_infty
             :math:`I_{\infty}`.
 
         T1
@@ -408,14 +407,14 @@ class EstimatorInvRec(EstimatorSeq1D):
             ``self.increments`` will be used.
         """
         sanity_check(
-            ("Iinfty", Iinfty, sfuncs.check_float),
+            ("a_infty", a_infty, sfuncs.check_float),
             ("T1", T1, sfuncs.check_float),
             ("delays", delays, sfuncs.check_ndarray, (), {"dim": 1}, True),
         )
 
         if delays is None:
             delays = self.increments
-        return Iinfty * (1 - 2 * np.exp(-delays / T1))
+        return a_infty * (1 - 2 * np.exp(-delays / T1))
 
     @staticmethod
     def _obj_grad_hess(
@@ -427,12 +426,12 @@ class EstimatorInvRec(EstimatorSeq1D):
 
         .. math::
 
-            I = I_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
+            a = a_0 \left[ 1 - 2 \exp\left( \frac{\tau}{T_1} \right) \right].
 
         Parameters
         ----------
         theta
-            Parameters of the model: :math:`I_0` and :math:`T_1`.
+            Parameters of the model: :math:`a_0` and :math:`T_1`.
 
         args
             Comprises two items:
@@ -440,14 +439,14 @@ class EstimatorInvRec(EstimatorSeq1D):
             * integrals across each increment.
             * delays (:math:`\tau`).
         """
-        I0, T1 = theta
-        integrals, taus = args
+        a0, T1 = theta
+        amplitudes, taus = args
 
         t_over_T1 = taus / T1
         t_over_T1_sq = taus / (T1 ** 2)
         t_over_T1_cb = taus / (T1 ** 3)
         exp_t_over_T1 = np.exp(-t_over_T1)
-        y_minus_x = integrals - I0 * (1 - 2 * exp_t_over_T1)
+        y_minus_x = amplitudes - a0 * (1 - 2 * exp_t_over_T1)
         n = taus.size
 
         # Objective
@@ -456,7 +455,7 @@ class EstimatorInvRec(EstimatorSeq1D):
         # Grad
         d1 = np.zeros((n, 2))
         d1[:, 0] = 1 - 2 * exp_t_over_T1
-        d1[:, 1] = -2 * I0 * t_over_T1_sq * exp_t_over_T1
+        d1[:, 1] = -2 * a0 * t_over_T1_sq * exp_t_over_T1
         grad = -2 * y_minus_x.T @ d1
 
         # Hessian
@@ -464,7 +463,7 @@ class EstimatorInvRec(EstimatorSeq1D):
         off_diag = -2 * t_over_T1_sq * exp_t_over_T1
         d2[:, 0, 1] = off_diag
         d2[:, 1, 0] = off_diag
-        d2[:, 1, 1] = 2 * I0 * t_over_T1_cb * exp_t_over_T1 * (2 - t_over_T1)
+        d2[:, 1, 1] = 2 * a0 * t_over_T1_cb * exp_t_over_T1 * (2 - t_over_T1)
 
         hess = -2 * (np.einsum("i,ijk->jk", y_minus_x, d2) - d1.T @ d1)
 

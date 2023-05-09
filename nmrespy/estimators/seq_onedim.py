@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 15 Mar 2023 17:12:25 GMT
+# Last Edited: Tue 09 May 2023 20:42:24 BST
 
 from __future__ import annotations
 import copy
@@ -460,17 +460,17 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             self._oscs_check(oscs, n_oscs),
         )
         oscs = self._proc_oscs(oscs, n_oscs)
-
-        increments, integrals = self._proc_neglect_increments(
+        increments, amplitudes = self._proc_neglect_increments(
             indices, oscs, neglect_increments,
         )
 
         results = []
         errors = []
-        for integs in integrals:
-            norm = np.linalg.norm(integs)
-            integs /= norm
-            args = (integs, increments)
+        for amps in amplitudes:
+            norm = np.linalg.norm(amps)
+            amps /= norm
+            args = (amps, increments)
+            # get_x0 is defined within child classes.
             x0 = self.get_x0(*args)
 
             nlp_result = trust_ncg(
@@ -486,7 +486,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             errs[0] *= norm
 
             results.append(x)
-            errors.append(errs / np.sqrt(len(self.increments)))
+            errors.append(errs / np.sqrt(len(self.increments) - 1))
 
         return results, errors
 
@@ -503,17 +503,17 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             if i not in neglect_increments
         ]
 
-        integrals = [integs[incr_slice] for integs in self.integrals(indices, oscs)]
+        amplitudes = [amps[incr_slice] for amps in self.amplitudes(indices, oscs)]
         increments = self.increments[incr_slice]
 
-        return increments, integrals
+        return increments, amplitudes
 
-    def integrals(
+    def amplitudes(
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
-        """Get the integrals associated with specified oscillators.
+        """Get the amplitudes associated with specified oscillators.
 
         Parameters
         ----------
@@ -521,7 +521,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             See :ref:`INDICES`.
 
         oscs
-            Oscillators to get integrals for. By default (``None``) all oscillators
+            Oscillators to get amplitudes for. By default (``None``) all oscillators
             are considered.
         """
         sanity_check(
@@ -535,11 +535,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         oscs = self._proc_oscs(oscs, n_oscs)
         params = [p[oscs] for p in params]
 
-        params = np.array(params).transpose(1, 0, 2)
-        return [
-            np.array(self.oscillator_integrals(osc, absolute=False)).real
-            for osc in np.array(params)
-        ]
+        return np.array(params).transpose(2, 1, 0)[0]
 
     def plot_fit_single_oscillator(
         self,
@@ -623,16 +619,16 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         params = params[0]
         errors = errors[0]
 
-        increments, integrals = self._proc_neglect_increments(
+        increments, amplitudes = self._proc_neglect_increments(
             [index], [osc], neglect_increments,
         )
 
         fig, ax = plt.subplots(ncols=1, nrows=1, **kwargs)
         x = np.linspace(np.amin(increments), np.amax(increments), fit_increments)
         ax.plot(x, self.model(*params, x), **fit_line_kwargs)
-        ax.scatter(increments, integrals, **scatter_kwargs)
+        ax.scatter(increments, amplitudes, **scatter_kwargs)
         ax.set_xlabel(self.increment_label)
-        ax.set_ylabel("$\\int$", rotation="horizontal")
+        ax.set_ylabel("$a$")
 
         text = "\n".join(
             [
@@ -681,7 +677,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         """Create a 3D figure showing fits for multiple oscillators.
 
         The x-, y-, and z-axes comprise chemical shifts/oscillator indices,
-        increment values, and integral values, respectively.
+        increment values, and amplitudes, respectively.
 
         Parameters
         ----------
@@ -818,7 +814,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         fit, errors = self.fit(indices, oscs)
 
-        increments, integrals = self._proc_neglect_increments(
+        increments, amplitudes = self._proc_neglect_increments(
             indices, oscs, neglect_increments,
         )
 
@@ -877,11 +873,11 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
             xlabel, = self._axis_freq_labels(xaxis_unit)
 
-        for x, params, integs in zip(xs, fit, integrals):
+        for x, params, amps in zip(xs, fit, amplitudes):
             color = next(colors)
             x_scatter = np.full(increments.shape, x)
             y_scatter = increments
-            z_scatter = integs
+            z_scatter = amps
             ax.scatter(
                 x_scatter,
                 y_scatter,
@@ -930,7 +926,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         ax.set_ylabel(self.increment_label)
 
         # Configure z-axis
-        ax.set_zlabel("$\\int$")
+        ax.set_zlabel("$a$")
 
         if xaxis_unit != "osc_idx":
             self._set_3d_axes_xspine_and_lims(ax, merge_region_spans)
@@ -967,7 +963,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         xaxis_ticks
             See :ref:`XAXIS_TICKS`.
-
+i
         region_separation
             The extent by which adjacent regions are separated in the figure,
             in axes coordinates.
@@ -1284,6 +1280,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self,
         y_range: Tuple[float, float],
         y_pts: int = 128,
+        scale: float = 1.,
         indices: Optional[Iterable[int]] = None,
         region_separation: float = 0.02,
         oscillator_colors: Any = None,
@@ -1312,6 +1309,12 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         y_pts
             The number of increments along the y-axis. **Be careful with this value.
             See the "Notes" section below**.
+
+        scale
+            ``scale`` afects the linewidth of the Gaussian distribution plotted
+            along the y-axis for each oscillator. The standard deviation of the
+            Guassian is given by ``scale * error`` where ``error`` is the error
+            associated with the parameter. See Notes below for more information.
 
         indices
             See :ref:`INDICES`.
@@ -1389,15 +1392,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             RuntimeWarning: invalid value encountered in divide
             gaussian /= np.amax(gaussian)
 
-        This can occur when you have fits with low errors and ``y_range`` is very wide.
+        This can occur when you have fits with low errors.
         You will not see certain peaks appear in the plot in these circumstances.
-        You essentially have two options to resolve this:
-
-        1. (Advised) create mutliple plots with different values of ``y_range``,
-           which are narrower.
-        2. (**Not advised: possibility of exceeding memory capacity!**) increase
-           ``y_pts``. This is a very memory-intensive method, so be warned that
-           increasing ``y_pts`` can be dangerous.
+        To resolve this, you are advised to increase the value of ``scale``, in order
+        to increase the linewidth of the distribution plotted along the y-axis.
         """
         sanity_check(
             (
@@ -1405,6 +1403,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
                 {"length": 2, "must_be_positive": True},
             ),
             ("y_pts", y_pts, sfuncs.check_int, (), {"min_value": 1}),
+            ("scale", scale, sfuncs.check_float, (), {"greater_than_zero": True}),
             self._indices_check(indices),
             self._funit_check(xaxis_unit, "xaxis_unit"),
             (
@@ -1513,7 +1512,8 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
                 peaks.append(spec)
 
                 if y_range[0] <= fit <= y_range[1]:
-                    gaussian = np.exp((-0.5 * (y - fit) ** 2) / (error ** 2))
+                    sigma = scale * error
+                    gaussian = np.exp((-0.5 * (y - fit) ** 2) / (sigma ** 2))
                     gaussian /= np.amax(gaussian)
                     zs.append(np.outer(spec, gaussian))
                 else:

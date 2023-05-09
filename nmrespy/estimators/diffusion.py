@@ -1,7 +1,7 @@
 # diffusion.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 15 Mar 2023 12:20:25 GMT
+# Last Edited: Tue 09 May 2023 18:30:15 BST
 
 from __future__ import annotations
 import copy
@@ -38,7 +38,7 @@ class _EstimatorDiffusion(EstimatorSeq1D):
     """Estimation class for the consideration of datasets acquired by diffusion NMR."""
 
     _increment_label = "$g$ (Gcm$^{-1}$)"
-    _fit_labels = ["$I_{0}$", "$D$"]
+    _fit_labels = ["$a_{0}$", "$D$"]
     _fit_units = ["", "m$^2$s$^{-1}$"]
     function_factory = FunctionFactoryDiffusion
 
@@ -428,15 +428,15 @@ class _EstimatorDiffusion(EstimatorSeq1D):
 
     def get_x0(
         self,
-        integrals: np.ndarray,
+        amplitudes: np.ndarray,
         increments: np.ndarray,
     ) -> np.ndarray:
-        idx2, idx1 = np.argpartition(integrals, -2)[-2:]
-        I1, I2 = integrals[idx1], integrals[idx2]
+        idx2, idx1 = np.argpartition(amplitudes, -2)[-2:]
+        a1, a2 = amplitudes[idx1], amplitudes[idx2]
         g1, g2 = increments[idx1], increments[idx2]
-        I0_init = I1 - (g1 * ((I2 - I1) / (g2 - g1)))
-        cD_init = -(1 / (g1 ** 2)) * np.log(I1 / I0_init)
-        return np.array([I0_init, cD_init])
+        a0_init = a1 - (g1 * ((a2 - a1) / (g2 - g1)))
+        cD_init = -(1 / (g1 ** 2)) * np.log(a1 / a0_init)
+        return np.array([a0_init, cD_init])
 
     def fit(
         self,
@@ -447,16 +447,15 @@ class _EstimatorDiffusion(EstimatorSeq1D):
         r"""Fit estimation result for the given oscillators across increments in
         order to predict the translational diffusion coefficient, :math:`D`.
 
-        For the oscillators specified, the integrals of the oscilators' peaks are
-        determined at each increment, and the following function is fit:
+        For the oscillators specified, the following function is fit:
 
         .. math::
 
-            I \left(I_{0}, D, g\right) =
-            I_{0} \exp\left(-c D g^2\right).
+            a \left(a_{0}, D \vert g\right) =
+            a_{0} \exp\left(-c D g^2\right).
 
-        where :math:`I` is the peak integral when the gradient is :math:`G`, and
-        :math:`I_{0} = \lim_{G \rightarrow 0} I`.
+        where :math:`a` is the oscillator amplitude when the gradient is
+        :math:`g`, and :math:`a_{0} = \lim_{g \rightarrow 0} a`.
 
         Parameters
         ----------
@@ -488,7 +487,7 @@ class _EstimatorDiffusion(EstimatorSeq1D):
 
     def model(
         self,
-        I0: float,
+        a0: float,
         D: float,
         gradients: Optional[np.ndarray] = None,
     ) -> np.ndarray:
@@ -496,25 +495,25 @@ class _EstimatorDiffusion(EstimatorSeq1D):
 
         .. math::
 
-            \boldsymbol{I}\left(I_{0}, D, \boldsymbol{G} \right) =
-                I_0 \exp\left(
-                    - c D \boldsymbol{G}^2
+            \boldsymbol{a}\left(a_{0}, D, \boldsymbol{g} \right) =
+                a_0 \exp\left(
+                    - c D \boldsymbol{a}^2
                 \right)
 
         Parameters
         ----------
-        I0
-            :math:`I_0`.
+        a0
+            :math:`a_0`.
 
         D
             :math:`D`.
 
         gradients
-            The gradients to consider (:math:`\boldsymbol{G}`). If ``None``,
+            The gradients to consider (:math:`\boldsymbol{g}`). If ``None``,
             ``self.increments`` will be used.
         """
         sanity_check(
-            ("I0", I0, sfuncs.check_float),
+            ("a0", a0, sfuncs.check_float),
             ("D", D, sfuncs.check_float),
             ("gradients", gradients, sfuncs.check_ndarray, (), {"dim": 1}, True),
         )
@@ -522,7 +521,7 @@ class _EstimatorDiffusion(EstimatorSeq1D):
         if gradients is None:
             gradients = self.increments
 
-        return I0 * np.exp(-self.c * D * (gradients ** 2))
+        return a0 * np.exp(-self.c * D * (gradients ** 2))
 
     @staticmethod
     def _obj_grad_hess(
@@ -534,27 +533,27 @@ class _EstimatorDiffusion(EstimatorSeq1D):
 
         .. math::
 
-            I = I_0 \exp\left(-c D G^2\right).
+            a = a_0 \exp\left(-c D g^2\right).
 
         Parameters
         ----------
         theta
-            Parameters of the model: :math:`I_0` and :math:`D`.
+            Parameters of the model: :math:`a_0` and :math:`D`.
 
         args
             Comprises two items:
 
-            * integrals across each increment.
-            * gradients (:math:`G`).
+            * Amplitudes across each increment.
+            * Gradients (:math:`g`).
             * c (:math:`c`).
         """
-        I0, cD = theta
-        integrals, gradients = args
+        a0, cD = theta
+        amplitudes, gradients = args
 
         G_sq = gradients ** 2
         cDG_sq = cD * G_sq
         exp_minus_cDG_sq = np.exp(-cDG_sq)
-        y_minus_x = integrals - I0 * exp_minus_cDG_sq
+        y_minus_x = amplitudes - a0 * exp_minus_cDG_sq
         n = gradients.size
 
         # Objective
