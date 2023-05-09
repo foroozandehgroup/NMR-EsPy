@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 30 Mar 2023 11:44:36 BST
+# Last Edited: Fri 05 May 2023 11:14:39 BST
 
 """Nonlinear programming for generating parameter estiamtes.
 
@@ -461,7 +461,7 @@ def nonlinear_programming(
     if save_trajectory:
         proc_trajectories = []
         for i, (trajs, passive) in enumerate(trajectory):
-            m = trajs[0].size // p
+            m = trajs[0].size // len(active_idx)
             for traj in trajs:
                 if not passive_idx:
                     traj_proc = traj

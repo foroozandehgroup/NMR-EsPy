@@ -1,7 +1,7 @@
 # _proc_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 30 Mar 2023 11:40:19 BST
+# Last Edited: Fri 05 May 2023 11:18:51 BST
 
 import copy
 from pathlib import Path
@@ -449,8 +449,11 @@ class _Estimator1DProc(Estimator):
         )
 
         if output_mode != 0:
-            unit = region_unit.replace("h", "H")
-            txt = f"ESTIMATING REGION: {region[0]} - {region[1]} {unit}"
+            if region is None:
+                txt = f"ESTIMATING ENTIRE SIGNAL"
+            else:
+                unit = region_unit.replace("h", "H")
+                txt = f"ESTIMATING REGION: {region[0]} - {region[1]} {unit}"
             print(boxed_text(txt, GRE))
 
         (
@@ -631,6 +634,7 @@ class _Estimator1DProc(Estimator):
                 region,
                 noise_region,
                 self.sfo,
+                result.trajectory,
             )
         )
 
