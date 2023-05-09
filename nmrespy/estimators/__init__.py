@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Mar 2023 10:36:25 GMT
+# Last Edited: Fri 05 May 2023 11:17:45 BST
 
 from __future__ import annotations
 import datetime
@@ -786,11 +786,13 @@ class Result(ResultFetcher):
         region: Iterable[Tuple[float, float]],
         noise_region: Iterable[Tuple[float, float]],
         sfo: Iterable[float],
+        trajectory: Optional[Iterable[np.ndarray]] = None,
     ) -> None:
         self.params = params
         self.errors = errors
         self.region = region
         self.noise_region = noise_region
+        self.trajectory = trajectory
         super().__init__(sfo)
 
     def get_region(self, unit: str = "hz"):
