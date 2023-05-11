@@ -1,7 +1,7 @@
 # invrec.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 09 May 2023 18:33:53 BST
+# Last Edited: Wed 10 May 2023 00:19:07 BST
 
 from __future__ import annotations
 import copy
@@ -315,12 +315,10 @@ class EstimatorInvRec(EstimatorSeq1D):
 
     @staticmethod
     def _proc_mpm_signal(mpm_signal: np.ndarray) -> np.ndarray:
-        mpm_signal[0] *= 0.5
         return ne.sig.ift(-1 * ne.sig.ft(mpm_signal))
 
     @staticmethod
     def _proc_nlp_signal(nlp_signal: np.ndarray) -> np.ndarray:
-        nlp_signal[0][0] *= 0.5
         nlp_signal[0] = ne.sig.ift(-1 * ne.sig.ft(nlp_signal[0]))
         return nlp_signal
 

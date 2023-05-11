@@ -1,12 +1,14 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 09 May 2023 20:42:24 BST
+# Last Edited: Thu 11 May 2023 22:55:15 BST
 
 from __future__ import annotations
 import copy
+import io
 import os
 from pathlib import Path
+import sys
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import matplotlib as mpl
@@ -322,10 +324,10 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         return (
             region,
             noise_region,
-            mpm_signal[:mpm_trim],
             mpm_expinfo,
-            nlp_signal[:, :nlp_trim],
             nlp_expinfo,
+            mpm_signal[:mpm_trim],
+            nlp_signal[:, :nlp_trim],
         )
 
     def _run_optimisation(
@@ -364,6 +366,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         optimiser_kwargs["mode"] = "a"
         optimiser_kwargs["negative_amps"] = "ignore"
+
         for signal in nlp_signal[1:]:
             result = nonlinear_programming(
                 nlp_expinfo,
@@ -473,12 +476,19 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             # get_x0 is defined within child classes.
             x0 = self.get_x0(*args)
 
+            # Suppress output from trust_ncg function
+            old_stdout = sys.stdout
+            sys.stdout = devnull = io.StringIO(str(os.devnull))
+
             nlp_result = trust_ncg(
                 x0=x0,
                 args=args,
                 function_factory=self.function_factory,
                 output_mode=None,
             )
+
+            # Switch output back on
+            sys.stdout = old_stdout
 
             x = nlp_result.x
             x[0] *= norm
@@ -1059,7 +1069,7 @@ i
         params = self.get_params(indices)
 
         fig = plt.figure(**kwargs)
-        ax = fig.add_subplot(projection="3d")
+        ax = fig.add_subplot(projection="3d", computed_zorder=False)
 
         colorcycle = make_color_cycle(oscillator_colors, params[0].shape[0])
         for i, (spectrum, p, incr) in enumerate(
@@ -1091,7 +1101,7 @@ i
         ax.set_xlim(reversed(ax.get_xlim()))
         ax.set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
         ax.set_ylabel(self.increment_label)
-        ax.set_zticks([])
+        # ax.set_zticks([])
         # azim at 270 provies a face-on view of the spectra.
         ax.view_init(elev=elev, azim=270. + azim)
 
@@ -1224,7 +1234,7 @@ i
         spine_y = 2 * [self.increments[0]]
         spine_z = 2 * [curr_zlim[0]]
         for span in merge_region_spans:
-            ax.plot(span, spine_y, spine_z, **xspine_kwargs)
+            ax.plot(span, spine_y, spine_z, **xspine_kwargs, zorder=10000)
 
         ax.set_xlim(1, 0)
         ax.set_ylim(self.increments[0], self.increments[-1])
@@ -1289,6 +1299,7 @@ i
         contour_nlevels: Optional[int] = 10,
         xaxis_unit: str = "hz",
         xaxis_ticks: Optional[Iterable[float]] = None,
+        label_peaks: bool = True,
         gridspec_kwargs: Optional[Dict] = None,
         spectrum_line_kwargs: Optional[Dict] = None,
         oscillator_line_kwargs: Optional[Dict] = None,
@@ -1342,6 +1353,9 @@ i
         xaxis_ticks
             See :ref:`XAXIS_TICKS`.
 
+        label_peaks
+            If ``True``, peaks are labelled with their oscillator index.
+
         gridspec_kwargs
             Keyword arguments given to
             `matplotlib.pyplot.subplots
@@ -1387,7 +1401,7 @@ i
         -----
         You may find there are scenarios when the following warning appears:
 
-        .. code:: plain
+        .. code::
 
             RuntimeWarning: invalid value encountered in divide
             gaussian /= np.amax(gaussian)
@@ -1423,6 +1437,7 @@ i
                 {"min_value": 1}, True,
             ),
             ("xaxis_unit", xaxis_unit, sfuncs.check_one_of, ("hz", "ppm")),
+            ("label_peaks", label_peaks, sfuncs.check_bool),
         )
 
         if all(
@@ -1536,6 +1551,8 @@ i
         if type(self).__name__ == "EstimatorInvRec":
             spectrum *= -1
 
+        if label_peaks:
+            peak_idx = 0
         for i, (zs, peaks, region, span) in enumerate(zip(
             reversed(zss),
             reversed(peakss),
@@ -1564,6 +1581,16 @@ i
                         levels=contour_levels,
                         **contour_kwargs,
                     )
+
+                if label_peaks:
+                    x_argmax = np.argmax(peak)
+                    x_label = x[x_argmax]
+                    axs[0].text(x_label, peak[x_argmax], str(peak_idx), color=color)
+                    if z_slice is not None:
+                        y_argmax = np.argmax(z_slice[x_argmax])
+                        axs[1].text(x_label, y[y_argmax], str(peak_idx), color=color)
+                    peak_idx += 1
+
             del zs[-1]
 
         axs[0].set_xticks([])

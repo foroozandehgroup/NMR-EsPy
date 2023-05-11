@@ -1,7 +1,7 @@
 # diffusion.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 09 May 2023 18:30:15 BST
+# Last Edited: Thu 11 May 2023 22:18:13 BST
 
 from __future__ import annotations
 import copy
@@ -28,19 +28,19 @@ GAMMAS = {
 }
 
 
-class FunctionFactoryDiffusion(FunctionFactory):
+class FunctionFactoryDiff(FunctionFactory):
     def __init__(self, theta: np.ndarray, *args) -> None:
-        super().__init__(theta, _EstimatorDiffusion._obj_grad_hess, *args)
+        super().__init__(theta, _EstimatorDiff._obj_grad_hess, *args)
 
 
 # TODO: ABC
-class _EstimatorDiffusion(EstimatorSeq1D):
+class _EstimatorDiff(EstimatorSeq1D):
     """Estimation class for the consideration of datasets acquired by diffusion NMR."""
 
     _increment_label = "$g$ (Gcm$^{-1}$)"
     _fit_labels = ["$a_{0}$", "$D$"]
     _fit_units = ["", "m$^2$s$^{-1}$"]
-    function_factory = FunctionFactoryDiffusion
+    function_factory = FunctionFactoryDiff
 
     def __init__(
         self,
@@ -238,7 +238,7 @@ class _EstimatorDiffusion(EstimatorSeq1D):
         sfo: float = 500.,
         nucleus: str = "1H",
         snr: Optional[float] = 20.,
-    ) -> _EstimatorDiffusion:
+    ) -> _EstimatorDiff:
         """Generate an estimator instance with synthetic data created from a
         specification of oscillator parameters, gradient stengthsm and diffusion
         constants associated with each oscillator.
@@ -285,7 +285,7 @@ class _EstimatorDiffusion(EstimatorSeq1D):
             to the FID.
 
         other
-            For other arguments, see :py:class:`EstimatorDiffusionMonopolar`.
+            For other arguments, see :py:class:`EstimatorDiffMono`.
 
         Notes
         -----
@@ -389,7 +389,7 @@ class _EstimatorDiffusion(EstimatorSeq1D):
         increment_file: Optional[str] = None,
         gradient_file: str = "gpnam1",
         convdta: bool = True,
-    ) -> _EstimatorDiffusion:
+    ) -> _EstimatorDiff:
         (
             data,
             expinfo,
@@ -577,7 +577,7 @@ class _EstimatorDiffusion(EstimatorSeq1D):
         return obj, grad, hess
 
 
-class EstimatorDiffusionMonopolar(_EstimatorDiffusion):
+class EstimatorDiffMono(_EstimatorDiff):
     """Estimator for the consideration of diffusion NMR data acquired by an
     experiment with monopolar gradients.
     """
@@ -587,15 +587,271 @@ class EstimatorDiffusionMonopolar(_EstimatorDiffusion):
         return self.big_delta + 2 * (self.kappa - self.lambda_) * self.small_delta
 
 
-class EstimatorDiffusionBipolar(_EstimatorDiffusion):
+class EstimatorDiffBi(_EstimatorDiff):
     """Estimator for the consideration of diffusion NMR data acquired by an
     experiment with bipolar gradients.
 
-    .. note::
+     .. note::
 
         This class has equivalent behaviour to
-        :py:class:`EstimatorDiffusionMonopolar`, except for :py:meth:`big_delta_prime`.
+        :py:class:`EstimatorDiffMono`, except for it's init method,
+        :py:meth:`new_from_parameters`, and :py:meth:`big_delta_prime`.
     """
+
+    def __init__(
+        self,
+        data: np.ndarray,
+        expinfo: ne.ExpInfo,
+        gradients: np.ndarray,
+        small_delta: float,
+        big_delta: float,
+        tau: float,
+        shape_function: Optional[np.ndarray] = None,
+        sigma: float = 1.,
+        lambda_: float = 0.5,
+        kappa: float = 0.33333333,
+        gamma: Optional[float] = None,
+        datapath: Optional[Path] = None,
+    ) -> None:
+        r"""
+        Parameters
+        ----------
+        data
+            The data associated with the estimator.
+
+        expinfo
+            Experiment information.
+
+        gradients
+            Gradients used in the experiment, in G cm⁻¹.
+
+        small_delta
+            The length of diffusion-encoding gradients (:math:`\delta`), in
+            seconds
+
+        big_delta
+            The length of the diffusion delay (:math:`\Delta`), in seconds.
+
+        tau
+            Delay between the midpoints of the gradient pulses within a given
+            diffusion-encoding period.
+
+        shape_function
+            An array of points denoting the profile of the diffusion-encoding gradient.
+            If ``None``, the values supplied to ``sigma``, ``lambda_`` and ``kappa``
+            will be used in the Stejskal-Tanner equation.
+
+        sigma
+            The shape factor of the diffusion-encoding gradient.
+
+            .. math::
+
+                \sigma = \int_0^1 s(\epsilon) \mathrm{d} \epsilon
+
+            where :math:`s` is the shape function of the diffusion-encoding gradient,
+            and :math:`\epsilon` is the level of gradient progress.
+
+        lambda_
+
+            .. math::
+
+                \lambda = \frac{1}{\sigma}
+                    \int_0^1 \left(
+                    \int_0^{\epsilon^{\prime}} s(\epsilon^{\prime}) \mathrm{d} \epsilon
+                    \right) \mathrm{d} \epsilon
+
+        kappa
+
+            .. math::
+
+                \kappa = \frac{1}{\sigma^2}
+                    \int_0^1 \left(
+                    \int_0^{\epsilon^{\prime}} s(\epsilon^{\prime}) \mathrm{d} \epsilon
+                    \right)^2 \mathrm{d} \epsilon
+
+        gamma
+            The gyromagnetic ratio of the nucleus, in 10⁶ s⁻¹ T⁻¹. If ``None``,
+            an attempt will be made to extract this, based on ``expinfo.nuclei[0]``.
+            **If** ``expinfo.nuclei[0]`` is ``None``, or a a string other than
+            ``"1H"``, ``"13C"``, ``"15N"``, ``"19F"``, you will have to provide
+            ``gamma`` manually.
+
+        datapath
+            The path to the directory containing the NMR data.
+        """
+        super().__init__(
+            data,
+            expinfo,
+            gradients,
+            small_delta,
+            big_delta,
+            shape_function,
+            sigma,
+            lambda_,
+            kappa,
+            gamma,
+            datapath=datapath,
+        )
+        sanity_check(
+            ("tau", tau, sfuncs.check_float),
+        )
+        self.tau = tau
+
+    @classmethod
+    def new_bruker(
+        cls,
+        directory: Union[str, Path],
+        increment_file: Optional[str] = None,
+        gradient_file: str = "gpnam1",
+        convdta: bool = True,
+    ) -> EstimatorDiffOneshot:
+        (
+            data,
+            expinfo,
+            gradients,
+            small_delta,
+            big_delta,
+            shape_function,
+            datapath,
+        ) = cls._new_bruker_pre(
+            directory, increment_file, gradient_file, convdta,
+        )
+        small_delta *= 2.
+        acqus = expinfo.parameters["acqus"]
+        tau = float(acqus["CNST"][17])
+
+        return cls(
+            data,
+            expinfo,
+            gradients,
+            small_delta,
+            big_delta,
+            shape_function=shape_function,
+            tau=tau,
+            datapath=datapath,
+        )
+
+    @classmethod
+    def new_from_parameters(
+        cls,
+        params: np.ndarray,
+        diffusion_constants: Union[float, np.ndarray],
+        gradients: np.ndarray,
+        pts: int,
+        sw: float,
+        offset: float,
+        sfo: float = 500.,
+        nucleus: str = "1H",
+        snr: Optional[float] = 20.,
+        big_delta: float = 0.1,
+        small_delta: float = 0.001,
+        tau: float = 0.001,
+        shape_function: Optional[np.ndarray] = None,
+        sigma: float = 1.,
+        lambda_: float = 0.5,
+        kappa: float = 0.3333333,
+    ) -> EstimatorDiffOneshot:
+        """Generate an estimator instance with synthetic data created from a
+        specification of oscillator parameters, gradient stengthsm and diffusion
+        constants associated with each oscillator.
+
+        Parameters
+        ----------
+        params
+            Parameter array with the following structure:
+
+              .. code:: python
+
+                 params = numpy.array([
+                    [a_1, φ_1, f_1, η_1],
+                    [a_2, φ_2, f_2, η_2],
+                    ...,
+                    [a_m, φ_m, f_m, η_m],
+                 ])
+
+        diffusion_constants
+            Specifies the diffusion constant associated with each oscillator.
+            Should be the same length as ``params.shape[0]``.
+
+        gradients
+            Array of gradient strengths used for diffusion-encoding, in G cm⁻¹.
+
+        pts
+            The number of points the signal comprises.
+
+        sw
+            The sweep width of the signal (Hz).
+
+        offset
+            The transmitter offset (Hz).
+
+        sfo
+            The transmitter frequency (MHz).
+
+        nucleus
+            The identity of the nucleus. Should be one of ``"1H"``, ``"13C"``,
+            ``"15N"``, ``"19F"``.
+
+        snr
+            The signal-to-noise ratio (dB). If ``None`` then no noise will be added
+            to the FID.
+
+        other
+            For other arguments, see :py:class:`EstimatorDiffOneshot`.
+
+        Notes
+        -----
+        The default arguments for ``sigma``, ``lambda_`` and ``kappa`` correspond to
+        the assumption that rectangular gradient pulses are used. Any gradient
+        shape can be accommodated by specifying ``shape_funtion``.
+        """
+        monopolar_class = EstimatorDiffMono.new_from_parameters(
+            params=params,
+            diffusion_constants=diffusion_constants,
+            gradients=gradients,
+            pts=pts,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            nucleus=nucleus,
+            snr=snr,
+            big_delta=big_delta,
+            small_delta=small_delta,
+            shape_function=shape_function,
+            sigma=sigma,
+            lambda_=lambda_,
+            kappa=kappa,
+        )
+
+        return cls(
+            data=monopolar_class.data,
+            expinfo=monopolar_class.expinfo,
+            gradients=monopolar_class.increments,
+            small_delta=monopolar_class.small_delta,
+            big_delta=monopolar_class.big_delta,
+            tau=tau,
+            sigma=monopolar_class.sigma,
+            lambda_=monopolar_class.lambda_,
+            kappa=monopolar_class.kappa,
+            gamma=monopolar_class.gamma,
+        )
+
+    @property
+    def big_delta_prime(self) -> float:
+        r"""
+        .. math::
+
+            \Delta^{\prime} =
+                \Delta +
+                \frac{\delta \left(\kappa - \lambda\right)\left(\alpha^2 + 1\right)}
+                {2} +
+                \frac{\left(\delta + 2 \tau\right) \left(\alpha^2 - 1\right)}{4}
+        """
+        return (
+            self.big_delta +
+            ((self.small_delta * (self.kappa - self.lambda_) * (self.alpha ** 2 + 1)) / 2) +  # noqa: E501
+            (((self.small_delta + 2 * self.tau) * (self.alpha ** 2 - 1)) / 4)
+        )
 
     @property
     def big_delta_prime(self) -> float:
@@ -609,18 +865,18 @@ class EstimatorDiffusionBipolar(_EstimatorDiffusion):
         return (
             self.big_delta +
             (self.small_delta * (2 * self.kappa - 2 * self.lambda_ - 1) / 4) -
-            0.5
+            0.5 * self.tau
         )
 
 
-class EstimatorDiffusionOneshot(_EstimatorDiffusion):
+class EstimatorDiffOneshot(_EstimatorDiff):
     """Estimator for the consideration of diffusion NMR data acquired by the "one-shot"
     experiment (`<10.1002/mrc.1107>`_).
 
     .. note::
 
         This class has equivalent behaviour to
-        :py:class:`EstimatorDiffusionMonopolar`, except for it's init method,
+        :py:class:`EstimatorDiffMono`, except for it's init method,
         :py:meth:`new_from_parameters`, and :py:meth:`big_delta_prime`.
     """
 
@@ -737,7 +993,7 @@ class EstimatorDiffusionOneshot(_EstimatorDiffusion):
         increment_file: Optional[str] = None,
         gradient_file: str = "gpnam1",
         convdta: bool = True,
-    ) -> EstimatorDiffusionOneshot:
+    ) -> EstimatorDiffOneshot:
         (
             data,
             expinfo,
@@ -786,7 +1042,7 @@ class EstimatorDiffusionOneshot(_EstimatorDiffusion):
         sigma: float = 1.,
         lambda_: float = 0.5,
         kappa: float = 0.3333333,
-    ) -> EstimatorDiffusionOneshot:
+    ) -> EstimatorDiffOneshot:
         """Generate an estimator instance with synthetic data created from a
         specification of oscillator parameters, gradient stengthsm and diffusion
         constants associated with each oscillator.
@@ -833,7 +1089,7 @@ class EstimatorDiffusionOneshot(_EstimatorDiffusion):
             to the FID.
 
         other
-            For other arguments, see :py:class:`EstimatorDiffusionOneshot`.
+            For other arguments, see :py:class:`EstimatorDiffOneshot`.
 
         Notes
         -----
@@ -841,7 +1097,7 @@ class EstimatorDiffusionOneshot(_EstimatorDiffusion):
         the assumption that rectangular gradient pulses are used. Any gradient
         shape can be accommodated by specifying ``shape_funtion``.
         """
-        monopolar_class = EstimatorDiffusionMonopolar.new_from_parameters(
+        monopolar_class = EstimatorDiffMono.new_from_parameters(
             params=params,
             diffusion_constants=diffusion_constants,
             gradients=gradients,

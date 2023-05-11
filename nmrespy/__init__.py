@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 10 Mar 2023 17:29:38 GMT
+# Last Edited: Thu 11 May 2023 22:19:02 BST
 
 """NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
 
@@ -20,8 +20,8 @@ from nmrespy.estimators import Estimator
 from nmrespy.estimators.onedim import Estimator1D
 from nmrespy.estimators.invrec import EstimatorInvRec
 from nmrespy.estimators.diffusion import (
-    EstimatorDiffusionMonopolar,
-    EstimatorDiffusionBipolar,
-    EstimatorDiffusionOneshot,
+    EstimatorDiffMono,
+    EstimatorDiffBi,
+    EstimatorDiffOneshot,
 )
 from nmrespy.estimators.jres import Estimator2DJ
