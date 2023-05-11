@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 14 Mar 2023 13:55:18 GMT
+# Last Edited: Fri 12 May 2023 00:33:11 BST
 
 from pathlib import Path
 import re
@@ -252,6 +252,7 @@ def check_ndarray(
     if not isinstance(obj, np.ndarray):
         return "Should be a numpy array."
     if dim is not None and obj.ndim != dim:
+        print(dim)
         return f"Should be a {dim}-dimensional array."
     if shape is not None:
         for (axis, size) in shape:
