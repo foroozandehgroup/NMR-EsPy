@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 20 Jan 2023 12:19:41 GMT
+# Last Edited: Fri 12 May 2023 00:35:10 BST
 
 """A module for manipulating and processing NMR signals."""
 
@@ -41,9 +41,9 @@ def make_virtual_echo(
         If the data is 2D, this parameter specifies the way to process the data.
         Allowed options are:
 
-        * ``"hyper"``: The data is hypercomplex.
+        * ``"hyper"``: The data is hypercomplex. Virtual echo is constructed
+            along the second axis.
         * ``"amp"``: The data comprises an amplitude-modulated pair.
-        * ``"phase"``: The data comprises a phase-modulated pair.
 
     References
     ----------
@@ -58,78 +58,71 @@ def make_virtual_echo(
         )
     elif data.ndim == 3:
         sanity_check(
-            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase"))
+            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp",)),
+            ("data", data, sfuncs.check_ndarray, (), {"shape": [(0, 2)]}),
         )
 
     if data.ndim == 1:
         pts = data.size
-        ve = np.zeros((2 * pts - 1), dtype="complex")
-        ve[0] = np.real(data[0])
-        ve[1:pts] = data[1:]
-        ve[pts:] = data[1:][::-1].conj()
+        tmp1, tmp2 = [np.zeros((2 * data.size,), dtype="complex") for _ in range(2)]
+        tmp1[: pts] = data
+        tmp2[pts :] = data[::-1].conj()
+        tmp2 = np.roll(tmp2, 1, axis=0)
+        ve = tmp1 + tmp2
+        ve[0] /= 2.
         return ve
 
     if twodim_dtype == "hyper":
         pts = data.shape
-        ve = np.zeros((pts[0], 2 * pts[1] - 1), dtype="complex")
-        ve[:, 0] = np.real(data[:, 0])
-        ve[:, 1 : pts[1]] = data[:, 1:]
-        ve[:, pts[1]:] = data[:, 1:][:, ::-1].conj()
+        tmp1, tmp2 = [np.zeros((pts[0], 2 * pts[1]), dtype="complex") for _ in range(2)]
+        tmp1[:, : pts[1]] = data
+        tmp2[:, pts[1] :] = data[::-1].conj()
+        tmp2 = np.roll(tmp2, 1, axis=1)
+        ve = tmp1 + tmp2
+        ve[:, 0] /= 2
         return ve
 
     if twodim_dtype == "amp":
-        # TODO NEEDS FIXING
         cos = data[0]
         sin = data[1]
 
-    elif twodim_dtype == "phase":
-        cos = 0.5 * (data[0] + data[1])
-        sin = -1j * 0.5 * (data[0] - data[1])
+        # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
+        # where: Re(cos) -> R₁R₂, Im(cos) -> R₁I₂, Re(sin) -> I₁R₂, Im(sin) -> I₁I₂
+        r1r2 = np.real(cos)
+        r1i2 = np.imag(cos)
+        i1r2 = np.real(sin)
+        i1i2 = np.imag(sin)
 
-    # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
-    # where: Re(cos) -> R₁R₂, Im(cos) -> R₁I₂, Re(sin) -> I₁R₂, Im(sin) -> I₁I₂
-    r1r2 = np.real(cos)
-    r1i2 = np.imag(cos)
-    i1r2 = np.real(sin)
-    i1i2 = np.imag(sin)
+        # S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)
+        pp = r1r2 - i1i2 + 1j * (r1i2 + i1r2)
+        # S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)
+        pm = r1r2 + i1i2 + 1j * (i1r2 - r1i2)
+        # S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)
+        mp = r1r2 + i1i2 + 1j * (r1i2 - i1r2)
+        # S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)
+        mm = r1r2 - i1i2 - 1j * (r1i2 + i1r2)
 
-    # S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)
-    pp = r1r2 - i1i2 + 1j * (r1i2 + i1r2)
-    # S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)
-    pm = r1r2 + i1i2 + 1j * (i1r2 - r1i2)
-    # S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)
-    mp = r1r2 + i1i2 + 1j * (r1i2 - i1r2)
-    # S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)
-    mm = r1r2 - i1i2 - 1j * (r1i2 + i1r2)
+        pts = cos.shape
 
-    pts = data.shape[:2]
+        ve_pts = tuple(2 * x for x in pts)
+        tmp1, tmp2, tmp3, tmp4 = [np.zeros(ve_pts, dtype="complex") for _ in range(4)]
+        tmp1[: pts[0], : pts[1]] = pp
 
-    tmp1 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-    tmp1[: pts[0], : pts[1]] = pp
-    tmp1[0] /= 2
-    tmp1[:, 0] /= 2
+        tmp2[: pts[0], pts[1] :] = pm[:, ::-1]
+        tmp2 = np.roll(tmp2, 1, axis=1)
 
-    tmp2 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-    tmp2[: pts[0], pts[1] - 1 :] = pm[:, ::-1]
-    tmp2[0] /= 2
-    tmp2[:, -1] /= 2
-    tmp2 = np.roll(tmp2, 1, axis=1)
+        tmp3[pts[0] :, : pts[1]] = mp[::-1]
+        tmp3 = np.roll(tmp3, 1, axis=0)
 
-    tmp3 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-    tmp3[pts[0] - 1 :, : pts[1]] = mp[::-1]
-    tmp3[-1] /= 2
-    tmp3[:, 0] /= 2
-    tmp3 = np.roll(tmp3, 1, axis=0)
+        tmp4[pts[0] :, pts[1] :] = mm[::-1, ::-1]
+        tmp4 = np.roll(tmp4, 1, axis=(0, 1))
 
-    tmp4 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-    tmp4[pts[0] - 1 :, pts[1] - 1 :] = mm[::-1, ::-1]
-    tmp4[-1] /= 2
-    tmp4[:, -1] /= 2
-    tmp4 = np.roll(tmp4, 1, axis=(0, 1))
+        ve = tmp1 + tmp2 + tmp3 + tmp4
+        ve[0, :] /= 2.
+        ve[:, 0] /= 2.
+        ve /= 2
 
-    ve = tmp1 + tmp2 + tmp3 + tmp4
-
-    return ve
+        return ve
 
 
 def zf(data: np.ndarray) -> np.ndarray:

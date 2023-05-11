@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 06 Apr 2023 15:59:59 BST
+# Last Edited: Tue 09 May 2023 17:28:12 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
 
@@ -224,8 +224,10 @@ class MatrixPencil(ResultFetcher):
         V1 = Vm[:-1, :]  # Remove last column
         V2 = Vm[1:, :]  # Remove first column
 
-        # Determine first M signal poles (others should be 0)
-        poles = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][: self.oscillators]
+        # Determine M signal poles
+        V1inv = nlinalg.pinv(V1)
+        V1invV2 = V1inv @ V2
+        poles, _ = nlinalg.eig(V1invV2)
 
         # Compute complex amplitudes
         if self.output_mode:
