@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 12 May 2023 00:35:10 BST
+# Last Edited: Fri 12 May 2023 14:09:09 BST
 
 """A module for manipulating and processing NMR signals."""
 
@@ -44,6 +44,7 @@ def make_virtual_echo(
         * ``"hyper"``: The data is hypercomplex. Virtual echo is constructed
             along the second axis.
         * ``"amp"``: The data comprises an amplitude-modulated pair.
+        * ``"phase"``: The data comprises a phase-modulated pair.
 
     References
     ----------
@@ -58,7 +59,7 @@ def make_virtual_echo(
         )
     elif data.ndim == 3:
         sanity_check(
-            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp",)),
+            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase")),
             ("data", data, sfuncs.check_ndarray, (), {"shape": [(0, 2)]}),
         )
 
@@ -82,9 +83,13 @@ def make_virtual_echo(
         ve[:, 0] /= 2
         return ve
 
-    if twodim_dtype == "amp":
-        cos = data[0]
-        sin = data[1]
+    if twodim_dtype in ("amp", "phase"):
+        if twodim_dtype == "amp":
+            cos = data[0]
+            sin = data[1]
+        elif twodim_dtype == "phase":
+            cos = (data[0] + data[1]) / 2.
+            sin = (data[0] - data[1]) / 2.j
 
         # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
         # where: Re(cos) -> R₁R₂, Im(cos) -> R₁I₂, Re(sin) -> I₁R₂, Im(sin) -> I₁I₂
