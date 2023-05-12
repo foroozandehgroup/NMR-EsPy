@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 24 Mar 2023 11:02:33 GMT
+# Last Edited: Fri 12 May 2023 15:57:40 BST
 
 from __future__ import annotations
 import copy
@@ -118,7 +118,7 @@ class Estimator2DJ(_Estimator1DProc):
         pts: Tuple[int, int],
         sw: Tuple[float, float],
         offset: float,
-        sfo: float = 500.,
+        field: float = 11.74,
         nucleus: str = "1H",
         snr: Optional[float] = 20.,
         lb: Optional[Tuple[float, float]] = (6.91, 6.91),
@@ -147,8 +147,8 @@ class Estimator2DJ(_Estimator1DProc):
         offset
             The transmitter offset (Hz).
 
-        sfo
-            The transmitter frequency (MHz).
+        field
+            The magnetic field strength (T).
 
         nucleus
             The identity of the nucleus targeted in the pulse sequence.
@@ -171,7 +171,7 @@ class Estimator2DJ(_Estimator1DProc):
                 {"length": 2, "must_be_positive": 0.},
             ),
             ("offset", offset, sfuncs.check_float),
-            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": 0.}),
+            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("nucleus", nucleus, sfuncs.check_nucleus),
             ("snr", snr, sfuncs.check_float),
             (
@@ -187,11 +187,11 @@ class Estimator2DJ(_Estimator1DProc):
         if couplings is None:
             couplings = []
 
-        fid = cls._run_spinach(
-            "jres_sim", shifts, couplings, pts, sw, offset, sfo, nucleus,
+        fid, sfo = cls._run_spinach(
+            "jres_sim", shifts, couplings, pts, sw, offset, field, nucleus,
             to_int=[2], to_double=[3, 4],
-        ).reshape(pts)
-
+        )
+        fid = np.array(fid)
         fid = sig.phase(fid, (0., np.pi / 2), (0., 0.))
 
         # Apply exponential damping

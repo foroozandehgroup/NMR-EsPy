@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 30 Mar 2023 16:32:30 BST
+# Last Edited: Fri 12 May 2023 15:46:52 BST
 
 from __future__ import annotations
 import copy
@@ -116,7 +116,7 @@ class Estimator1D(_Estimator1DProc):
         pts: int,
         sw: float,
         offset: float = 0.,
-        sfo: float = 500.,
+        field: float = 11.74,
         nucleus: str = "1H",
         snr: Optional[float] = 20.,
         lb: float = 6.91,
@@ -148,7 +148,7 @@ class Estimator1D(_Estimator1DProc):
             The transmitter offset (Hz).
 
         sfo
-            The transmitter frequency (MHz).
+            The magnetic field strength (T).
 
         nucleus
             The identity of the nucleus. Should be of the form ``"<mass><sym>"``
@@ -174,7 +174,7 @@ class Estimator1D(_Estimator1DProc):
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
             ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float),
-            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("nucleus", nucleus, sfuncs.check_nucleus),
             ("snr", snr, sfuncs.check_float, (), {}, True),
             ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True})
@@ -187,9 +187,11 @@ class Estimator1D(_Estimator1DProc):
         if couplings is None:
             couplings = []
 
-        fid = cls._run_spinach(
-            "onedim_sim", shifts, couplings, pts, sw, offset, sfo, nucleus,
+        fid, sfo = cls._run_spinach(
+            "onedim_sim", shifts, couplings, pts, sw, offset, field, nucleus,
         )
+        fid = np.array(fid).flatten()
+
         if snr is not None:
             fid = ne.sig.add_noise(fid, snr)
 
