@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 12 May 2023 00:33:48 BST
+# Last Edited: Fri 12 May 2023 15:06:38 BST
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters.
 
@@ -111,12 +111,12 @@ class Filter(ExpInfo):
 
         elif expinfo.dim == 2:
             sanity_check(
-                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("hyper", "amp")),
+                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("hyper", "amp", "phase")),  # noqa: E501
             )
             if twodim_dtype == "hyper":
                 sanity_check(("fid", fid, sfuncs.check_ndarray, (), {"dim": 2}))
                 shape = fid.shape
-            elif twodim_dtype == "amp":
+            elif twodim_dtype in ("amp", "phase"):
                 sanity_check(("fid", fid, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(0, 2)]}))  # noqa: E501
                 shape = fid.shape[1:]
 

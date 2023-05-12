@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 05 May 2023 11:17:45 BST
+# Last Edited: Fri 12 May 2023 12:04:47 BST
 
 from __future__ import annotations
 import datetime
@@ -78,13 +78,18 @@ class Estimator(ne.ExpInfo):
         if hasattr(expinfo, "parameters"):
             self._bruker_params = expinfo.parameters
 
+        # Deal with 2D amp- and phase modulated pairs
+        shape = (
+            self._data.shape if self._data.ndim == expinfo.dim
+            else self._data.shape[1:]
+        )
         super().__init__(
             dim=expinfo.dim,
             sw=expinfo.sw(),
             offset=expinfo.offset(),
             sfo=expinfo.sfo,
             nuclei=expinfo.nuclei,
-            default_pts=data.shape,
+            default_pts=shape,
             fn_mode=expinfo.fn_mode,
         )
 
@@ -159,11 +164,9 @@ class Estimator(ne.ExpInfo):
                     args[i] = matlab.double([args[i]])
                 for i in to_int:
                     args[i] = matlab.int32([args[i]])
-                fid = np.array(
-                    eng.__getattr__(func).__call__(
-                        *args, stdout=devnull, stderr=devnull,
-                    )
-                ).flatten()
+                fid, sfo = eng.__getattr__(func).__call__(
+                    *args, nargout=2, stdout=devnull, stderr=devnull,
+                )
             except matlab.engine.MatlabExecutionError:
                 raise ValueError(
                     f"{RED}Something went wrong in trying to run Spinach.\n"
@@ -172,7 +175,7 @@ class Estimator(ne.ExpInfo):
                     f"for more details on the error raised.{END}"
                 )
 
-        return fid
+        return fid, sfo
 
     @property
     def bruker_params(self) -> Optional[dict]:
