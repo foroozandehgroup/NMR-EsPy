@@ -1,7 +1,7 @@
 # invrec.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 10 May 2023 00:19:07 BST
+# Last Edited: Fri 12 May 2023 16:24:51 BST
 
 from __future__ import annotations
 import copy
@@ -165,9 +165,10 @@ class EstimatorInvRec(EstimatorSeq1D):
         pts: int,
         sw: float,
         offset: float = 0.,
-        sfo: float = 500.,
+        field: float = 11.74,
         nucleus: str = "1H",
         snr: Optional[float] = 20.,
+        lb: Optional[float] = None,
     ) -> EstimatorInvRec:
         r"""Create a new instance from an inversion-recovery Spinach simulation.
 
@@ -227,8 +228,8 @@ class EstimatorInvRec(EstimatorSeq1D):
         offset
             The transmitter offset (Hz).
 
-        sfo
-            The transmitter frequency (MHz).
+        field
+            The magnetic field strnegth (T).
 
         nucleus
             The identity of the nucleus. Should be of the form ``"<mass><sym>"``
@@ -242,6 +243,13 @@ class EstimatorInvRec(EstimatorSeq1D):
         snr
             The signal-to-noise ratio of the resulting signal, in decibels. ``None``
             produces a noiseless signal.
+
+        lb
+            (Extra) line broadening (exponential damping) to apply to the
+            direct dimension of the signal.  The first point will be unaffected
+            by damping, and the final point will be multiplied by
+            ``np.exp(-lb)``. The default results in the final point being
+            decreased in value by a factor of roughly 1000.
         """
         sanity_check(
             ("shifts", shifts, sfuncs.check_float_list),
@@ -250,9 +258,10 @@ class EstimatorInvRec(EstimatorSeq1D):
             ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
             ("sw", sw, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("offset", offset, sfuncs.check_float),
-            ("sfo", sfo, sfuncs.check_float, (), {"greater_than_zero": True}),
+            ("field", field, sfuncs.check_float, (), {"greater_than_zero": True}),
             ("nucleus", nucleus, sfuncs.check_nucleus),
             ("snr", snr, sfuncs.check_float),
+            ("lb", lb, sfuncs.check_float, (), {"greater_than_zero": True}, True),
         )
 
         nspins = len(shifts)
@@ -282,13 +291,18 @@ class EstimatorInvRec(EstimatorSeq1D):
         r1s = [1 / t1 for t1 in t1s]
         r2s = [1 / t2 for t2 in t2s]
 
-        fid = cls._run_spinach(
+        fid, sfo = cls._run_spinach(
             "invrec_sim", shifts, couplings, float(n_delays), float(max_delay), r1s,
-            r2s, pts, sw, offset, sfo, nucleus, to_double=[4, 5],
-        ).reshape((pts, n_delays)).T
+            r2s, pts, sw, offset, field, nucleus, to_double=[4, 5],
+        )
+        real = np.array(fid._real).reshape(fid.size, order='F')
+        imag = np.array(fid._imag).reshape(fid.size, order='F')
+        fid = (real + 1j * imag).T
 
         if snr is not None:
             fid = ne.sig.add_noise(fid, snr)
+        if lb is not None:
+            fid = ne.sig.exp_apodisation(fid, lb, axes=[1])
 
         expinfo = ne.ExpInfo(
             dim=1,
@@ -296,7 +310,7 @@ class EstimatorInvRec(EstimatorSeq1D):
             offset=offset,
             sfo=sfo,
             nuclei=nucleus,
-            default_pts=pts,
+            default_pts=fid.shape[1],
         )
 
         return cls(fid, expinfo, np.linspace(0, max_delay, n_delays))

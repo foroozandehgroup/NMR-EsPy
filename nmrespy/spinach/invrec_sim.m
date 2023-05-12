@@ -1,5 +1,5 @@
-function fid = invrec_sim(shifts, couplings, n_delays, max_delay, t1s, t2s, pts, sw, offset, sfo, nucleus)
-    field = get_field(sfo, nucleus, offset);
+function [fid, sfo] = invrec_sim(shifts, couplings, n_delays, max_delay, t1s, t2s, pts, sw, offset, field, nucleus)
+    sfo = get_sfo(field, nucleus, offset);
     sys.magnet = field;
     nspins = length(shifts);
     isotopes = cell(nspins, 1);
@@ -40,4 +40,5 @@ function fid = invrec_sim(shifts, couplings, n_delays, max_delay, t1s, t2s, pts,
     disp(parameters.max_delay);
     % Simulation
     fid = liquid(spin_system, @inv_rec, parameters, 'nmr');
+    disp(size(fid));
 end
