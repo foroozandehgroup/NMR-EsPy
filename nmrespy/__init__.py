@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 17 Jan 2023 15:16:37 GMT
+# Last Edited: Fri 12 May 2023 17:40:57 BST
 
 """NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
 
@@ -17,5 +17,6 @@ TOPSPINPATHS = [
 
 from nmrespy.expinfo import ExpInfo
 from nmrespy.estimators import Estimator
+from nmrespy.estimators.twodim import Estimator2D
 from nmrespy.estimators.onedim import Estimator1D
 from nmrespy.estimators.jres import Estimator2DJ
