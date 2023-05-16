@@ -1,7 +1,7 @@
 # _proc_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 12:28:05 BST
+# Last Edited: Tue 16 May 2023 16:44:19 BST
 
 import copy
 from pathlib import Path
@@ -403,6 +403,8 @@ class _Estimator1DProc(Estimator):
         indices: Iterable[int],
         region_unit: str,
     ) -> Tuple[Iterable[Iterable[int]], Iterable[Tuple[float, float]]]:
+        for result in self.get_results():
+            print(result.get_region(unit=region_unit))
         regions = sorted(
             [
                 (i, result.get_region(unit=region_unit)[-1])
