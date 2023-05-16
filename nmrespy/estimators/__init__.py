@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 13:01:53 BST
+# Last Edited: Tue 16 May 2023 16:46:19 BST
 
 from __future__ import annotations
 import copy
@@ -828,17 +828,12 @@ class Estimator(ne.ExpInfo):
             mpm_signal,
             nlp_signal,
         ) = self._filter_signal(
-            region, noise_region, region_unit, cut_ratio,
+            region, noise_region, region_unit, mpm_trim, nlp_trim, cut_ratio,
         )
 
-        mpm_slice = self._get_slice("mpm", mpm_trim, mpm_signal.shape)
-        mpm_signal = mpm_signal[mpm_slice]
-        nlp_slice = self._get_slice("nlp", nlp_trim, nlp_signal.shape)
-        nlp_signal = nlp_signal[nlp_slice]
-
         # Unless the estimator is `EstimatorInvRec`, these do nothing.
-        # Otherwise, it makes the data peaks positive for both the MPM signal and
-        # the first increment of the NLP data.
+        # For `EstimatorInvRec`, the mpm signal and first increment of the
+        # nlp signal are multiplied by -1 in the Fourier domain.
         mpm_signal = self._proc_mpm_signal(mpm_signal)
         nlp_signal = self._proc_nlp_signal(nlp_signal)
 
@@ -902,8 +897,10 @@ class Estimator(ne.ExpInfo):
         region: Optional[Iterable[Tuple[float, float]]],
         noise_region: Optional[Iterable[Tuple[float, float]]],
         region_unit: str,
+        mpm_trim: Optional[Iterable[int]],
+        nlp_trim: Optional[Iterable[int]],
         cut_ratio: Optional[float],
-    ) -> None:
+    ):
         # This method is uused by `Estimator1D` and `Estimator2DJ`.
         # It is overwritten by `EstimatorSeq1D`.
         if region is None:
@@ -927,6 +924,11 @@ class Estimator(ne.ExpInfo):
             noise_region = filter_.get_noise_region()
             mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
             nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
+
+        mpm_slice = self._get_slice("mpm", mpm_trim, mpm_signal.shape)
+        mpm_signal = mpm_signal[mpm_slice]
+        nlp_slice = self._get_slice("nlp", nlp_trim, nlp_signal.shape)
+        nlp_signal = nlp_signal[nlp_slice]
 
         return (
             region,

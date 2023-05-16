@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 12:35:15 BST
+# Last Edited: Tue 16 May 2023 16:16:48 BST
 
 from __future__ import annotations
 import copy
