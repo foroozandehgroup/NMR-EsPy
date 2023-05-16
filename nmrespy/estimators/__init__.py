@@ -1,9 +1,10 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 12 May 2023 12:04:47 BST
+# Last Edited: Tue 16 May 2023 13:01:53 BST
 
 from __future__ import annotations
+import copy
 import datetime
 import functools
 import io
@@ -14,7 +15,10 @@ from typing import Any, Dict, Iterable, Optional, Tuple, Union
 import numpy as np
 
 import nmrespy as ne
-from nmrespy._colors import RED, END, USE_COLORAMA
+from nmrespy.freqfilter import Filter
+from nmrespy.mpm import MatrixPencil
+from nmrespy.nlp import nonlinear_programming
+from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._files import (
     cd,
     check_saveable_path,
@@ -54,6 +58,16 @@ def logger(f: callable):
 
 class Estimator(ne.ExpInfo):
     """Base estimation class."""
+
+    # Each child of Estimator should have the following class attributes:
+    # dim
+    # twodim_dtype
+    # proc_dims
+    # ft_dims
+    # default_mpm_trim
+    # default_nlp_trim
+    # default_max_iterations_exact_hessian
+    # default_max_iterations_gn_hessian
 
     def __init__(
         self,
@@ -203,9 +217,47 @@ class Estimator(ne.ExpInfo):
         )
 
     @property
+    def expinfo_direct(self) -> ne.ExpInfo:
+        """Generate a 1D :py:meth:`~nmrespy.ExpInfo` object with parameters
+        related to the direct dimension.
+        """
+        return ne.ExpInfo(
+            dim=1,
+            sw=self.sw()[-1],
+            offset=self.offset()[-1],
+            sfo=self.sfo[-1],
+            nuclei=self.nuclei[-1],
+            default_pts=self.default_pts[-1],
+        )
+
+    # DATA RETREVAL METHODS
+    @property
     def data(self) -> np.ndarray:
         """Return the data associated with the estimator."""
         return self._data
+
+    @property
+    def spectrum(self) -> np.ndarray:
+        """Return the spectrum associated with the estimator."""
+        data = copy.deepcopy(self.data)
+        slice_ = tuple([slice(0, 1, None) for _ in range(self.dim)])
+        data[slice_] *= 0.5
+        return ne.sig.ft(data, axes=self.ft_dims)
+
+    @property
+    def data_direct(self) -> np.ndarray:
+        """Generate a 1D FID of the first signal in the direct dimension."""
+        slice_ = [slice(0, 1, None) for _ in range(self.dim - 1)]
+        slice_ += [slice(None, None, None)]
+        slice_ = tuple(slice_)
+        return self.data[slice_].flatten()
+
+    @property
+    def spectrum_direct(self) -> np.ndarray:
+        """Generate a 1D spectrum of the first signal in the direct dimension."""
+        data_direct = self.data_direct
+        data_direct[0] *= 0.5
+        return ne.sig.ft(data_direct)
 
     def get_log(self) -> str:
         """Get the log for the estimator instance."""
@@ -244,6 +296,7 @@ class Estimator(ne.ExpInfo):
         path = configure_path(path, "log")
         save_file(self.get_log(), path, fprint=fprint)
 
+    # LOADING/SAVING ESTIMATORS
     @logger
     def to_pickle(
         self,
@@ -334,6 +387,602 @@ class Estimator(ne.ExpInfo):
                 f" {__class__.__module__}.{__class__.__qualname__}."
                 f" What was loaded didn't satisfy this!{END}"
             )
+
+    # PRE-PROCESSING METHODS
+    def exp_apodisation(self, k: Iterable[float]):
+        """Apply an exponential window function to the direct dimnsion of the data.
+
+        Parameters
+        ----------
+        k
+            Line-broadening factor for each dimension.
+        """
+        sanity_check(
+            (
+                "k", k, sfuncs.check_float_list, (),
+                {"length": len(self.proc_dims), "len_one_can_be_listless": True}
+            )
+        )
+        if isinstance(k, int):
+            k = [k]
+
+        self._data = ne.sig.exp_apodisation(self._data, k, axes=self.proc_dims)
+
+    def phase_data(self, p0: float = 0., p1: float = 0., pivot: int = 0) -> None:
+        """Apply a first-order phase correction in the direct dimension.
+
+        Parameters
+        ----------
+        p0
+            Zero-order phase correction, in radians.
+
+        p1
+            First-order phase correction, in radians.
+
+        pivot
+            Index of the pivot. ``0`` corresponds to the leftmost point in the
+            spectrum.
+
+        See also
+        --------
+        :py:meth:`manual_phase_data`
+        """
+        if len(self.proc_dims) > 1:
+            raise NotImplementedError(
+                f"{RED}Not implemented for this data type yet.{END}"
+            )
+
+        # TODO: Enable 2D dataset phase correction
+        sanity_check(
+            ("p0", p0, sfuncs.check_float),
+            ("p1", p1, sfuncs.check_float),
+            (
+                "pivot", pivot, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": self.data.shape[self.proc_dims[0]] - 1},
+            ),
+        )
+
+        p0s = [0. for _ in range(self.dim)]
+        p1s = [0. for _ in range(self.dim)]
+        pivots = [0. for _ in range(self.dim)]
+
+        p0s[self.proc_dims[0]] = p0
+        p1s[self.proc_dims[0]] = p1
+        pivots[self.proc_dims[0]] = pivot
+
+        spec = copy.deepcopy(self.data)
+        spec[self._first_point_slice] *= 0.5
+        spec = ne.sig.ft(spec, axes=self.proc_dims)
+
+        self._data = ne.sig.ift(
+            ne.sig.phase(spec, p0=p0s, p1=p1s, pivot=pivots),
+            axes=self.proc_dims,
+        )
+
+    def manual_phase_data(
+        self,
+        max_p1: float = 10 * np.pi,
+    ) -> Tuple[float, float]:
+        """Manually phase the data using a Graphical User Interface.
+
+        Parameters
+        ----------
+        max_p1
+            The largest permitted first order correction (rad). Set this to a larger
+            value than the default (10π) if you anticipate having to apply a
+            very large first order correction.
+
+        Returns
+        -------
+        p0
+            Zero order phase (rad)
+
+        p1
+            First prder phase (rad)
+
+        See also
+        --------
+        :py:meth:`phase_data`
+        """
+        if len(self.proc_dims) > 1:
+            raise NotImplementedError(
+                f"{RED}Not implemented for this data type yet.{END}"
+            )
+
+        sanity_check(
+            ("max_p1", max_p1, sfuncs.check_float, (), {"greater_than_zero": True}),
+        )
+        if self.data.ndim == 1:
+            spectrum = self.spectrum
+        else:
+            spectrum = self.spectrum_direct
+
+        p0, p1 = ne.sig.manual_phase_data(spectrum, max_p1=[max_p1])
+        p0, p1 = p0[0], p1[0]
+        self.phase_data(p0=p0, p1=p1)
+        return p0, p1
+
+    def baseline_correction(self, min_length: int = 50) -> None:
+        """Apply baseline correction to the estimator's data.
+
+        The algorithm applied is desribed in [#]_. This uses an implementation
+        provided by `pybaselines
+        <https://pybaselines.readthedocs.io/en/latest/api/pybaselines/api/index.html#pybaselines.api.Baseline.fabc>`_.
+
+        Parameters
+        ----------
+        min_length
+            *From the pybaseline docs:* Any region of consecutive baseline
+            points less than ``min_length`` is considered to be a false
+            positive and all points in the region are converted to peak points.
+            A higher ``min_length`` ensures less points are falsely assigned as
+            baseline points.
+
+        References
+        ----------
+        .. [#] Cobas, J., et al. A new general-purpose fully automatic
+           baseline-correction procedure for 1D and 2D NMR data. Journal of
+           Magnetic Resonance, 2006, 183(1), 145-151.
+        """
+        if len(self.proc_dims) > 1:
+            raise NotImplementedError(
+                f"{RED}Not implemented for this data type yet.{END}"
+            )
+
+        # TODO: Change for case when proc_dims > 1
+        shape = self.data.shape
+        # Fix
+        sanity_check(
+            (
+                "min_length", min_length, sfuncs.check_int, (),
+                {"min_value": 1, "max_value": shape[self.proc_dims[0]]},
+            ),
+        )
+
+        new_data = np.zeros(shape, dtype="complex128")
+
+        if self.data.ndim == 1:
+            data = np.expand_dims(self.data, axis=0)
+            new_data = np.expand_dims(new_data, axis=0)
+        else:
+            data = self.data
+
+        for i, fid in enumerate(data):
+            spectrum = ne.sig.ft(ne.sig.make_virtual_echo(fid)).real
+            spectrum, _ = ne.sig.baseline_correction(spectrum, min_length=min_length)
+            # Fix
+            new_data[i] = ne.sig.ift(spectrum)[:shape[self.proc_dims[0]]]
+
+        self._data = new_data[0] if self.data.ndim == 1 else new_data
+
+    @logger
+    def estimate(
+        self,
+        region: Optional[Iterable[Tuple[float, float]]] = None,
+        noise_region: Optional[Iterable[Tuple[float, float]]] = None,
+        region_unit: str = "hz",
+        initial_guess: Optional[Union[np.ndarray, int]] = None,
+        mode: str = "apfd",
+        amp_thold: Optional[float] = None,
+        phase_variance: bool = True,
+        cut_ratio: Optional[float] = 1.1,
+        mpm_trim: Optional[Iterable[int]] = None,
+        nlp_trim: Optional[Iterable[int]] = None,
+        hessian: str = "gauss-newton",
+        max_iterations: Optional[int] = None,
+        negative_amps: str = "remove",
+        output_mode: Optional[int] = 10,
+        save_trajectory: bool = False,
+        epsilon: float = 1.e-8,
+        eta: float = 0.15,
+        initial_trust_radius: float = 1.0,
+        max_trust_radius: float = 4.0,
+        check_neg_amps_every: int = 10,
+        _log: bool = True,
+        **optimiser_kwargs,
+    ):
+        r"""Estimate a specified region of the signal.
+
+        The basic steps that this method carries out are:
+
+        * (Optional, but highly advised) Generate a frequency-filtered "sub-FID"
+          corresponding to a specified region of interest.
+        * (Optional) Generate an initial guess using the Minimum Description
+          Length (MDL) [#]_ and Matrix Pencil Method (MPM) [#]_ [#]_ [#]_ [#]_
+        * Apply numerical optimisation to determine a final estimate of the signal
+          parameters. The optimisation routine employed is the Trust Newton Conjugate
+          Gradient (NCG) algorithm ([#]_ , Algorithm 7.2).
+
+        Parameters
+        ----------
+        region
+            The frequency range of interest. Should be of the form ``[left, right]``
+            where ``left`` and ``right`` are the left and right bounds of the region
+            of interest in Hz or ppm (see ``region_unit``). If ``None``, the
+            full signal will be considered, though for sufficently large and
+            complex signals it is probable that poor and slow performance will
+            be realised.
+
+        noise_region
+            If ``region`` is not ``None``, this must be of the form ``[left, right]``
+            too. This should specify a frequency range where no noticeable signals
+            reside, i.e. only noise exists.
+
+        region_unit
+            One of ``"hz"`` or ``"ppm"`` Specifies the units that ``region``
+            and ``noise_region`` have been given as.
+
+        initial_guess
+            * If ``None``, an initial guess will be generated using the MPM
+              with the MDL being used to estimate the number of oscillators
+              present.
+            * If an int, the MPM will be used to compute the initial guess with
+              the value given being the number of oscillators.
+            * If a NumPy array, this array will be used as the initial guess.
+
+        hessian
+            Specifies how to construct the Hessian matrix.
+
+            * If ``"exact"``, the exact Hessian will be used.
+            * If ``"gauss-newton"``, the Hessian will be approximated as is
+              done with the Gauss-Newton method. See the *"Derivation from
+              Newton's method"* section of `this article
+              <https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm>`_.
+
+        mode
+            A string containing a subset of the characters ``"a"`` (amplitudes),
+            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
+            Specifies which types of parameters should be considered for optimisation.
+            In most scenarios, you are likely to want the default value, ``"apfd"``.
+
+        amp_thold
+            A value that imposes a threshold for deleting oscillators of
+            negligible ampltiude.
+
+            * If ``None``, does nothing.
+            * If a float, oscillators with amplitudes satisfying :math:`a_m <
+              a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2` will be
+              removed from the parameter array, where :math:`\lVert
+              \boldsymbol{a} \rVert_2` is the Euclidian norm of the vector of
+              all the oscillator amplitudes. It is advised to set ``amp_thold``
+              at least a couple of orders of magnitude below 1.
+
+        phase_variance
+            Whether or not to include the variance of oscillator phases in the cost
+            function. This should be set to ``True`` in cases where the signal being
+            considered is derived from well-phased data.
+
+        mpm_trim
+            Specifies the maximal size allowed for the filtered signal when
+            undergoing the Matrix Pencil. If ``None``, no trimming is applied
+            to the signal. If an int, and the filtered signal has a size
+            greater than ``mpm_trim``, this signal will be set as
+            ``signal[:mpm_trim]``.
+
+        nlp_trim
+            Specifies the maximal size allowed for the filtered signal when undergoing
+            nonlinear programming. By default (``None``), no trimming is applied to
+            the signal. If an int, and the filtered signal has a size greater than
+            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.
+
+        max_iterations
+            A value specifiying the number of iterations the routine may run
+            through before it is terminated. If ``None``, a default number
+            of maximum iterations is set, based on the the data dimension and
+            the value of ``hessian``.
+
+        negative_amps
+            Indicates how to treat oscillators which have gained negative
+            amplitudes during the optimisation.
+
+            * ``"remove"`` will result in such oscillators being purged from
+              the parameter estimate. The optimisation routine will the be
+              re-run recursively until no oscillators have a negative
+              amplitude.
+            * ``"flip_phase"`` will retain oscillators with negative
+              amplitudes, but the the amplitudes will be multiplied by -1,
+              and a π radians phase shift will be applied.
+            * ``"ignore"`` will do nothing (negative amplitude oscillators will remain).
+
+        output_mode
+            Dictates what information is sent to stdout.
+
+            * If ``None``, nothing will be sent.
+            * If ``0``, only a message on the outcome of the optimisation will
+              be sent.
+            * If a positive int ``k``, information on the cost function,
+              gradient norm, and trust region radius is sent every kth
+              iteration.
+
+        save_trajectory
+            If ``True``, a list of parameters at each iteration will be saved, and
+            accessible via the ``trajectory`` attribute.
+
+            .. warning:: Not implemented yet!
+
+        epsilon
+            Sets the convergence criterion. Convergence will occur when
+            :math:`\lVert \boldsymbol{g}_k \rVert_2 < \epsilon`.
+
+        eta
+            Criterion for accepting an update. An update will be accepted if
+            the ratio of the actual reduction and the predicted reduction is
+            greater than ``eta``:
+
+            .. math ::
+
+                \rho_k = \frac{f(x_k) - f(x_k - p_k)}{m_k(0) - m_k(p_k)} > \eta
+
+        initial_trust_radius
+            The initial value of the radius of the trust region.
+
+        max_trust_radius
+            The largest permitted radius for the trust region.
+
+        check_neg_amps_every
+            For every iteration that is a multiple of this, negative amplitudes
+            will be checked for and dealt with if found.
+
+        _log
+            Ignore this!
+
+        References
+        ----------
+        .. [#] Yingbo Hua and Tapan K Sarkar. “Matrix pencil method for estimating
+           parameters of exponentially damped/undamped sinusoids in noise”. In:
+           IEEE Trans. Acoust., Speech, Signal Process. 38.5 (1990), pp. 814–824.
+
+        .. [#] Yung-Ya Lin et al. “A novel detection–estimation scheme for noisy
+           NMR signals: applications to delayed acquisition data”. In: J. Magn.
+           Reson. 128.1 (1997), pp. 30–41.
+
+        .. [#] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
+           enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
+           International Conference on Acoustics, Speech, and Signal Processing.
+           IEEE. 1991, pp. 3073–3076.
+
+        .. [#] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
+           using modified matrix pencil method”. In: IEEE Trans. Signal Process.
+           55.2 (2007), pp. 718–724.
+
+        .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
+           criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
+           33 (2) (1985) 387–392.
+
+        .. [#] Jorge Nocedal and Stephen J. Wright. Numerical optimization. 2nd
+               ed. Springer series in operations research. New York: Springer,
+               2006.
+        """
+        sanity_check(
+            (
+                "region_unit", region_unit, sfuncs.check_frequency_unit,
+                (self.hz_ppm_valid,),
+            ),
+            (
+                "initial_guess", initial_guess, sfuncs.check_initial_guess,
+                (self.dim,), {}, True,
+            ),
+            ("hessian", hessian, sfuncs.check_one_of, ("gauss-newton", "exact")),
+            ("phase_variance", phase_variance, sfuncs.check_bool),
+            ("mode", mode, sfuncs.check_optimiser_mode),
+            (
+                "amp_thold", amp_thold, sfuncs.check_float, (),
+                {"greater_than_zero": True}, True,
+            ),
+            (
+                "mpm_trim", mpm_trim, sfuncs.check_int_list, (),
+                {"min_value": 1, "len_one_can_be_listless": True}, True,
+            ),
+            (
+                "nlp_trim", nlp_trim, sfuncs.check_int_list, (),
+                {"min_value": 1, "len_one_can_be_listless": True}, True,
+            ),
+            (
+                "cut_ratio", cut_ratio, sfuncs.check_float, (),
+                {"min_value": 1.}, True,
+            ),
+            (
+                "max_iterations", max_iterations, sfuncs.check_int, (),
+                {"min_value": 1}, True,
+            ),
+            (
+                "negative_amps", negative_amps, sfuncs.check_one_of,
+                ("remove", "flip_phase", "ignore"),
+            ),
+            ("output_mode", output_mode, sfuncs.check_int, (), {"min_value": 0}, True),
+            ("save_trajectory", save_trajectory, sfuncs.check_bool),
+            (
+                "epsilon", epsilon, sfuncs.check_float, (),
+                {"min_value": np.finfo(float).eps},
+            ),
+            ("eta", eta, sfuncs.check_float, (), {"min_value": 0.0, "max_value": 1.0}),
+            (
+                "initial_trust_radius", initial_trust_radius, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+        )
+        sanity_check(
+            self._region_check(region, region_unit, "region"),
+            self._region_check(noise_region, region_unit, "noise_region"),
+            (
+                "max_trust_radius", max_trust_radius, sfuncs.check_float, (),
+                {"min_value": initial_trust_radius},
+            ),
+            (
+                "check_neg_amps_every", check_neg_amps_every, sfuncs.check_int, (),
+                {"min_value": 1, "max_value": max_iterations},
+            ),
+        )
+
+        region = self._process_region(region)
+        noise_region = self._process_region(noise_region)
+
+        if output_mode != 0:
+            print(self._estimate_banner(region, region_unit))
+
+        (
+            region,
+            noise_region,
+            mpm_expinfo,
+            nlp_expinfo,
+            mpm_signal,
+            nlp_signal,
+        ) = self._filter_signal(
+            region, noise_region, region_unit, cut_ratio,
+        )
+
+        mpm_slice = self._get_slice("mpm", mpm_trim, mpm_signal.shape)
+        mpm_signal = mpm_signal[mpm_slice]
+        nlp_slice = self._get_slice("nlp", nlp_trim, nlp_signal.shape)
+        nlp_signal = nlp_signal[nlp_slice]
+
+        # Unless the estimator is `EstimatorInvRec`, these do nothing.
+        # Otherwise, it makes the data peaks positive for both the MPM signal and
+        # the first increment of the NLP data.
+        mpm_signal = self._proc_mpm_signal(mpm_signal)
+        nlp_signal = self._proc_nlp_signal(nlp_signal)
+
+        if isinstance(initial_guess, np.ndarray):
+            x0 = initial_guess
+        else:
+            oscillators = initial_guess if isinstance(initial_guess, int) else 0
+
+            x0 = MatrixPencil(
+                mpm_expinfo,
+                mpm_signal,
+                oscillators=oscillators,
+                output_mode=isinstance(output_mode, int),
+            ).get_params()
+
+            if x0 is None:
+                self._results.append(
+                    Result(
+                        np.array([[]]),
+                        np.array([[]]),
+                        self._reduce_region(region),
+                        self._reduce_region(noise_region),
+                        self.sfo,
+                    )
+                )
+                return
+
+        if max_iterations is None:
+            if hessian == "exact":
+                max_iterations = self.default_max_iterations_exact_hessian
+            elif hessian == "gauss-newton":
+                max_iterations = self.default_max_iterations_gn_hessian
+
+        optimiser_kwargs = {
+            "phase_variance": phase_variance,
+            "hessian": hessian,
+            "mode": mode,
+            "amp_thold": amp_thold,
+            "max_iterations": max_iterations,
+            "negative_amps": negative_amps,
+            "output_mode": output_mode,
+            "save_trajectory": save_trajectory,
+            "epsilon": epsilon,
+            "eta": eta,
+            "initial_trust_radius": initial_trust_radius,
+            "max_trust_radius": max_trust_radius,
+            "check_neg_amps_every": check_neg_amps_every,
+        }
+
+        self._run_optimisation(
+            nlp_expinfo,
+            nlp_signal,
+            x0,
+            region,
+            noise_region,
+            **optimiser_kwargs,
+        )
+
+    def _filter_signal(
+        self,
+        region: Optional[Iterable[Tuple[float, float]]],
+        noise_region: Optional[Iterable[Tuple[float, float]]],
+        region_unit: str,
+        cut_ratio: Optional[float],
+    ) -> None:
+        # This method is uused by `Estimator1D` and `Estimator2DJ`.
+        # It is overwritten by `EstimatorSeq1D`.
+        if region is None:
+            region_unit = "hz"
+            region = self._full_region
+            noise_region = None
+            mpm_signal = nlp_signal = self.data
+            mpm_expinfo = nlp_expinfo = self.expinfo
+
+        else:
+            filter_ = Filter(
+                self.data,
+                self.expinfo,
+                region,
+                noise_region,
+                region_unit=region_unit,
+                twodim_dtype=self.twodim_dtype,
+            )
+
+            region = filter_.get_region()
+            noise_region = filter_.get_noise_region()
+            mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
+            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
+
+        return (
+            region,
+            noise_region,
+            mpm_expinfo,
+            nlp_expinfo,
+            mpm_signal,
+            nlp_signal,
+        )
+
+    @staticmethod
+    def _proc_mpm_signal(mpm_signal: np.ndarray) -> np.ndarray:
+        """Used for tweaking MPM signal before estimation if required.
+
+        For EstimatorInvRec, the spectrum is multiplied by -1 to make the signal
+        positive.
+        """
+        return mpm_signal
+
+    @staticmethod
+    def _proc_nlp_signal(nlp_signal: np.ndarray) -> np.ndarray:
+        """Used for tweaking NLP signal before estimation if required.
+
+        For EstimatorInvRec, the first increment of the spectrum is multiplied by
+        -1 to make the signal positive.
+        """
+        return nlp_signal
+
+    def _run_optimisation(
+        self,
+        nlp_expinfo,
+        nlp_signal,
+        x0,
+        region,
+        noise_region,
+        **optimiser_kwargs,
+    ) -> None:
+        # This is called by `Estimator1D` and `Estimator2DJ`, `Estimator2D`.
+        # It is overwritten by `EstimatorSeq1D`.
+        result = nonlinear_programming(
+            nlp_expinfo,
+            nlp_signal,
+            x0,
+            **optimiser_kwargs,
+        )
+
+        self._results.append(
+            Result(
+                result.x,
+                result.errors,
+                region,
+                noise_region,
+                self.sfo,
+                result.trajectory,
+            )
+        )
 
     def make_fid_from_result(
         self,
@@ -759,11 +1408,129 @@ class Estimator(ne.ExpInfo):
         del self._results[index]
         self._results.insert(index, self._results.pop(-1))
 
+    def _get_slice(
+        self,
+        purpose: str,
+        trim: Optional[Iterable[int]],
+        shape: Iterable[int],
+    ) -> Iterable[int]:
+        default = iter(
+            self.default_mpm_trim if purpose == "mpm"
+            else self.default_nlp_trim
+        )
+
+        if trim is None:
+            trim = copy.deepcopy(default)
+
+        if len(self.proc_dims) == 1 and isinstance(trim, int):
+            trim = [trim]
+
+        trim_iter = iter(trim)
+        shape_iter = iter(shape)
+        slice_ = []
+        for i in range(self.dim):
+            shape_dim = next(shape_iter)
+            if i not in self.proc_dims:
+                slice_.append(slice(None, None, None))
+            else:
+                trim_dim = next(trim_iter)
+                default_dim = next(default)
+                if trim_dim is None:
+                    if default_dim is None:
+                        slice_.append(slice(0, shape_dim))
+                    else:
+                        slice_.append(slice(0, min(default_dim, shape_dim)))
+                else:
+                    slice_.append(slice(0, min(trim_dim, shape_dim)))
+
+        return tuple(slice_)
+
+    @property
+    def _full_region(self) -> Iterable[Tuple[float, float]]:
+        return self.convert(
+            self._process_region(
+                [
+                    (0, self.data.shape[i] - 1)
+                    for i in self.proc_dims
+                ],
+            ),
+            "idx->hz",
+        )
+
     def _process_indices(self, indices: Optional[Iterable[int]]) -> Iterable[int]:
         nres = len(self._results)
         if indices is None:
             return list(range(nres))
         return [idx % nres for idx in indices]
+
+    def _reduce_region(
+        self,
+        region: Optional[Iterable[Tuple[float, float]]],
+    ) -> Iterable[Tuple[int, int]]:
+        return tuple(
+            [
+                r[i] for i, r in enumerate(region)
+                if i in self.proc_dims
+            ]
+        )
+
+    def _process_region(
+        self,
+        region: Optional[Iterable[Tuple[float, float]]],
+    ) -> Iterable[Optional[Tuple[float, float]]]:
+        if region is None:
+            return None
+
+        if len(self.proc_dims) == 1 and len(region) == 2:
+            region = [region]
+        region_iter = iter(region)
+        return tuple(
+            [
+                tuple(next(region_iter)) if i in self.proc_dims
+                else None
+                for i in range(self.dim)
+            ]
+        )
+
+    def _region_check(self, region: Any, region_unit: str, name: str):
+        sws = self.sw(region_unit)
+        offsets = self.offset(region_unit)
+        return (
+            name, region, sfuncs.check_region,
+            (
+                [sws[i] for i in self.proc_dims],
+                [offsets[i] for i in self.proc_dims],
+            ),
+            {}, True,
+        )
+
+    def _estimate_banner(
+        self,
+        region: Optional[Iterable[Tuple[float, float]]],
+        region_unit: str,
+    ) -> str:
+        if region is None:
+            txt = "ESTIMATING ENTIRE SIGNAL"
+        else:
+            txt = "ESTIMATING REGION: "
+            unit = region_unit.replace("h", "H")
+            print(region)
+            dim_strs = [
+                f"{r[0]} - {r[1]} {unit} (F{i + 1})"
+                for i, r in enumerate(region)
+                if i in self.proc_dims
+            ]
+            txt += ", ".join(dim_strs)
+
+        return ne._misc.boxed_text(txt, GRE)
+
+    @property
+    def _first_point_slice(self) -> Iterable[slice]:
+        return tuple([
+            slice(0, 1, None) if i in self.proc_dims
+            else slice(None, None, None)
+            for i in range(self.dim)
+        ])
 
     # Commonly used sanity checks
     def _index_check(self, x: Any):
