@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 11 May 2023 22:55:15 BST
+# Last Edited: Tue 16 May 2023 16:46:41 BST
 
 from __future__ import annotations
 import copy
@@ -25,7 +25,6 @@ from nmrespy.estimators import Result, logger
 from nmrespy.estimators.onedim import Estimator1D, _Estimator1DProc
 from nmrespy.freqfilter import Filter
 from nmrespy.load import load_bruker
-from nmrespy.mpm import MatrixPencil
 from nmrespy.nlp import nonlinear_programming
 from nmrespy.nlp.optimisers import trust_ncg
 from nmrespy.plot import make_color_cycle
@@ -48,7 +47,16 @@ if not hasattr(Axis, "_get_coord_info_old"):
     Axis._get_coord_info = _get_coord_info_new
 
 
-class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
+class EstimatorSeq1D(_Estimator1DProc):
+
+    dim = 2
+    twodim_dtype = "hyper"
+    proc_dims = [1]
+    ft_dims = [1]
+    default_mpm_trim = [4096]
+    default_nlp_trim = [None]
+    default_max_iterations_exact_hessian = 100
+    default_max_iterations_gn_hessian = 200
 
     def __init__(
         self,
@@ -85,6 +93,22 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             ),
         )
         self.increments = increments
+
+    # TODO: More useful!
+    def __str__(self):
+        return self.__class__
+
+    @property
+    def expinfo(self) -> ne.ExpInfo:
+        # This contains a dummy first dimension
+        return ne.ExpInfo(
+            dim=2,
+            sw=(1., self.sw()[0]),
+            offset=(0., self.offset()[0]),
+            sfo=(None, self.sfo[0]),
+            nuclei=(None, self.nuclei[0]),
+            default_pts=self.data.shape,
+        )
 
     @property
     def increment_label(self) -> str:
@@ -276,58 +300,41 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         mpm_trim: Optional[int],
         nlp_trim: Optional[int],
         cut_ratio: Optional[float],
-    ) -> None:
-        if region is None:
-            region_unit = "hz"
-            region = self._full_region
-            noise_region = None
-            mpm_signal = self.data[0]
-            nlp_signal = self.data
-            mpm_expinfo = nlp_expinfo = self.expinfo
-
-        else:
-            region = self._process_region(region)
-            noise_region = self._process_region(noise_region)
-            initial_filter = Filter(
-                self.data[0],
-                self.expinfo,
-                region,
-                noise_region,
-                region_unit=region_unit,
-            )
-
-            mpm_signal, mpm_expinfo = initial_filter.get_filtered_fid(cut_ratio=cut_ratio)  # noqa: E501
-            initial_signal, nlp_expinfo = initial_filter.get_filtered_fid(cut_ratio=None)  # noqa: E501
-            nlp_signal = np.zeros(
-                (self.data.shape[0], initial_signal.size),
-                dtype="complex128",
-            )
-            nlp_signal[0] = initial_signal
-
-            for i, fid in enumerate(self.data[1:], start=1):
-                filter_ = Filter(
-                    fid,
-                    self.expinfo,
-                    region,
-                    noise_region,
-                    region_unit=region_unit,
-                )
-
-                nlp_signal[i] = filter_.get_filtered_fid(cut_ratio=None)[0]
-
-            region = initial_filter.get_region()
-            noise_region = initial_filter.get_noise_region()
-
-        mpm_trim = self._get_trim("mpm", mpm_trim, mpm_signal.size)
-        nlp_trim = self._get_trim("nlp", nlp_trim, nlp_signal.shape[-1])
+    ):
+        (
+            region,
+            noise_region,
+            mpm_expinfo,
+            nlp_expinfo,
+            mpm_signal,
+            nlp_signal,
+        ) = super()._filter_signal(
+            region,
+            noise_region,
+            region_unit,
+            mpm_trim,
+            nlp_trim,
+            cut_ratio,
+        )
+        mpm_expinfo = ne.ExpInfo(
+            dim=1,
+            sw=mpm_expinfo.sw()[1],
+            offset=mpm_expinfo.offset()[1],
+        )
+        nlp_expinfo = ne.ExpInfo(
+            dim=1,
+            sw=nlp_expinfo.sw()[1],
+            offset=nlp_expinfo.offset()[1],
+        )
+        mpm_signal = mpm_signal[0]
 
         return (
             region,
             noise_region,
             mpm_expinfo,
             nlp_expinfo,
-            mpm_signal[:mpm_trim],
-            nlp_signal[:, :nlp_trim],
+            mpm_signal,
+            nlp_signal,
         )
 
     def _run_optimisation(
@@ -356,8 +363,8 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             Result(
                 initial_x,
                 initial_result.errors,
-                region,
-                noise_region,
+                (region[-1],),
+                (noise_region[-1],),
                 self.sfo,
             )
         ]
@@ -393,56 +400,57 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
     def _proc_first_result(result: np.ndarray) -> np.ndarray:
         return result
 
-    @logger
-    def edit_result(
-        self,
-        index: int = -1,
-        add_oscs: Optional[np.ndarray] = None,
-        rm_oscs: Optional[Iterable[int]] = None,
-        merge_oscs: Optional[Iterable[Iterable[int]]] = None,
-        split_oscs: Optional[Dict[int, Optional[Dict]]] = None,
-        **estimate_kwargs,
-    ) -> None:
-        self._check_results_exist()
-        sanity_check(self._index_check(index))
-        index, = self._process_indices([index])
+    # TODO: This needs fixing
+    # @logger
+    # def edit_result(
+    #     self,
+    #     index: int = -1,
+    #     add_oscs: Optional[np.ndarray] = None,
+    #     rm_oscs: Optional[Iterable[int]] = None,
+    #     merge_oscs: Optional[Iterable[Iterable[int]]] = None,
+    #     split_oscs: Optional[Dict[int, Optional[Dict]]] = None,
+    #     **estimate_kwargs,
+    # ) -> None:
+    #     self._check_results_exist()
+    #     sanity_check(self._index_check(index))
+    #     index, = self._process_indices([index])
 
-        results_cp = copy.deepcopy(self._results)
-        self._results[index] = self._results[index][0]
+    #     results_cp = copy.deepcopy(self._results)
+    #     self._results[index] = self._results[index][0]
 
-        max_osc_idx = self.get_results(indices=[index])[0].get_params()
-        sanity_check(
-            (
-                "add_oscs", add_oscs, sfuncs.check_parameter_array, (self.dim,), {},
-                True,
-            ),
-            (
-                "rm_oscs", rm_oscs, sfuncs.check_int_list, (),
-                {"min_value": 0, "max_value": max_osc_idx}, True,
-            ),
-            (
-                "merge_oscs", merge_oscs, sfuncs.check_int_list_list,
-                (), {"min_value": 0, "max_value": max_osc_idx}, True,
-            ),
-            (
-                "split_oscs", split_oscs, sfuncs.check_split_oscs,
-                (1, max_osc_idx), {}, True,
-            ),
-        )
+    #     max_osc_idx = self.get_results(indices=[index])[0].get_params()
+    #     sanity_check(
+    #         (
+    #             "add_oscs", add_oscs, sfuncs.check_parameter_array, (self.dim,), {},
+    #             True,
+    #         ),
+    #         (
+    #             "rm_oscs", rm_oscs, sfuncs.check_int_list, (),
+    #             {"min_value": 0, "max_value": max_osc_idx}, True,
+    #         ),
+    #         (
+    #             "merge_oscs", merge_oscs, sfuncs.check_int_list_list,
+    #             (), {"min_value": 0, "max_value": max_osc_idx}, True,
+    #         ),
+    #         (
+    #             "split_oscs", split_oscs, sfuncs.check_split_oscs,
+    #             (1, max_osc_idx), {}, True,
+    #         ),
+    #     )
 
-        try:
-            super().edit_result(
-                index=index,
-                add_oscs=add_oscs,
-                rm_oscs=rm_oscs,
-                merge_oscs=merge_oscs,
-                split_oscs=split_oscs,
-                **estimate_kwargs,
-            )
+    #     try:
+    #         super().edit_result(
+    #             index=index,
+    #             add_oscs=add_oscs,
+    #             rm_oscs=rm_oscs,
+    #             merge_oscs=merge_oscs,
+    #             split_oscs=split_oscs,
+    #             **estimate_kwargs,
+    #         )
 
-        except Exception as exc:
-            self._results = results_cp
-            raise exc
+    #     except Exception as exc:
+    #         self._results = results_cp
+    #         raise exc
 
     def _fit(
         self,
@@ -477,8 +485,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             x0 = self.get_x0(*args)
 
             # Suppress output from trust_ncg function
-            old_stdout = sys.stdout
-            sys.stdout = devnull = io.StringIO(str(os.devnull))
+            sys.stdout = io.StringIO(str(os.devnull))
 
             nlp_result = trust_ncg(
                 x0=x0,
@@ -488,7 +495,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             )
 
             # Switch output back on
-            sys.stdout = old_stdout
+            sys.stdout = sys.__stdout__
 
             x = nlp_result.x
             x[0] *= norm
@@ -1072,6 +1079,7 @@ i
         ax = fig.add_subplot(projection="3d", computed_zorder=False)
 
         colorcycle = make_color_cycle(oscillator_colors, params[0].shape[0])
+        expinfo_direct = self.expinfo_direct
         for i, (spectrum, p, incr) in enumerate(
             zip(
                 reversed(spectra), reversed(params), reversed(self.increments)
@@ -1091,7 +1099,7 @@ i
                 ax.plot(x, y, spec, **spectrum_line_kwargs)
                 for osc_params in p:
                     osc_params = np.expand_dims(osc_params, axis=0)
-                    osc = self.make_fid(osc_params)
+                    osc = expinfo_direct.make_fid(osc_params)
                     osc[0] *= 0.5
                     osc_spec = ne.sig.ft(osc).real[slice_]
                     ax.plot(x, y, osc_spec, color=next(cc), **oscillator_line_kwargs)
@@ -1137,7 +1145,7 @@ i
         # Get the default xticks from `Estimator1D.plot_result`.
         # Filter any away that are outside the region
         default_xaxis_ticks = []
-        _, _axs, _ = self.plot_result_increment(indices=indices, region_unit=xaxis_unit)
+        _, _axs, = self.plot_result_increment(indices=indices, xaxis_unit=xaxis_unit)
         for i, (_ax, region) in enumerate(zip(_axs[0], merge_regions)):
             mn, mx = min(region), max(region)
             default_xaxis_ticks.append(
@@ -1270,21 +1278,12 @@ i
             ),
         )
 
-        # Temporarily fudge the `_results`, and `_data` attributes so
-        # `Estimator1D.plot_result` will work
-        results_cp = copy.deepcopy(self._results)
-        data_cp = copy.deepcopy(self.data)
-
-        self._results = [r[increment] for r in results_cp]
-        self._data = self.data[increment]
-
         kwargs = proc_kwargs_dict(kwargs, default={"plot_model": False})
-        fig, axs, objects = super().plot_result(**kwargs)
+        estimator_1d = Estimator1D(self.data[increment], self.expinfo_direct)
+        estimator_1d._results = [r[increment] for r in self._results]
+        fig, axs = estimator_1d.plot_result(**kwargs)
 
-        self._results = results_cp
-        self._data = data_cp
-
-        return fig, axs, objects
+        return fig, axs
 
     def plot_oscs_vs_fits(
         self,
@@ -1510,6 +1509,7 @@ i
 
         zss = []
         peakss = []
+        expinfo_direct = self.expinfo_direct
         for mi in merge_indices:
             thetas = self.get_params(indices=mi)[0]
             fits, errors = self.fit(indices=mi)
@@ -1519,7 +1519,7 @@ i
             zs = []
             peaks = []
             for theta, fit, error in zip(thetas, fits, errors):
-                fid = self.make_fid(np.expand_dims(theta, axis=0))
+                fid = expinfo_direct.make_fid(np.expand_dims(theta, axis=0))
                 fid[0] *= 0.5
                 spec = ne.sig.ft(fid).real
                 if type(self).__name__ == "EstimatorInvRec":
@@ -1673,3 +1673,11 @@ i
         elif isinstance(oscs, int):
             oscs = [oscs]
         return oscs
+
+    def _region_check(self, region: Any, region_unit: str, name: str):
+        # Hack to overwite the `Estimator` method.
+        sw = self.sw(region_unit)
+        offset = self.offset(region_unit)
+        return (
+            name, region, sfuncs.check_region, (sw, offset), {}, True,
+        )
