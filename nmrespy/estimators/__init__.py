@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 21:31:01 BST
+# Last Edited: Wed 17 May 2023 19:10:56 BST
 
 from __future__ import annotations
 import copy
@@ -403,12 +403,11 @@ class Estimator(ne.ExpInfo):
                 {"length": len(self.proc_dims), "len_one_can_be_listless": True}
             )
         )
-        if isinstance(k, int):
+        if isinstance(k, float):
             k = [k]
 
         for i, lb in zip(self.proc_dims, k):
-            self._data[0] = ne.sig.exp_apodisation(self._data[0], lb, axes=[i])
-            self._data[1] = ne.sig.exp_apodisation(self._data[1], lb, axes=[i])
+            self._data = ne.sig.exp_apodisation(self._data, lb, axes=[i])
 
     def phase_data(self, p0: float = 0., p1: float = 0., pivot: int = 0) -> None:
         """Apply a first-order phase correction in the direct dimension.
@@ -828,12 +827,6 @@ class Estimator(ne.ExpInfo):
             region, noise_region, region_unit, mpm_trim, nlp_trim, cut_ratio,
         )
 
-        # Unless the estimator is `EstimatorInvRec`, these do nothing.
-        # For `EstimatorInvRec`, the mpm signal and first increment of the
-        # nlp signal are multiplied by -1 in the Fourier domain.
-        mpm_signal = self._proc_mpm_signal(mpm_signal)
-        nlp_signal = self._proc_nlp_signal(nlp_signal)
-
         if isinstance(initial_guess, np.ndarray):
             x0 = initial_guess
         else:
@@ -922,7 +915,7 @@ class Estimator(ne.ExpInfo):
             region = filter_.get_region()
             noise_region = filter_.get_noise_region()
             mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
-            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
+            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
 
         mpm_slice = self._get_slice("mpm", mpm_trim, mpm_signal.shape)
         mpm_signal = mpm_signal[mpm_slice]
@@ -937,24 +930,6 @@ class Estimator(ne.ExpInfo):
             mpm_signal,
             nlp_signal,
         )
-
-    @staticmethod
-    def _proc_mpm_signal(mpm_signal: np.ndarray) -> np.ndarray:
-        """Used for tweaking MPM signal before estimation if required.
-
-        For EstimatorInvRec, the spectrum is multiplied by -1 to make the signal
-        positive.
-        """
-        return mpm_signal
-
-    @staticmethod
-    def _proc_nlp_signal(nlp_signal: np.ndarray) -> np.ndarray:
-        """Used for tweaking NLP signal before estimation if required.
-
-        For EstimatorInvRec, the first increment of the spectrum is multiplied by
-        -1 to make the signal positive.
-        """
-        return nlp_signal
 
     def _run_optimisation(
         self,
