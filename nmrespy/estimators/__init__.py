@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 16:46:19 BST
+# Last Edited: Tue 16 May 2023 21:31:01 BST
 
 from __future__ import annotations
 import copy
@@ -406,7 +406,9 @@ class Estimator(ne.ExpInfo):
         if isinstance(k, int):
             k = [k]
 
-        self._data = ne.sig.exp_apodisation(self._data, k, axes=self.proc_dims)
+        for i, lb in zip(self.proc_dims, k):
+            self._data[0] = ne.sig.exp_apodisation(self._data[0], lb, axes=[i])
+            self._data[1] = ne.sig.exp_apodisation(self._data[1], lb, axes=[i])
 
     def phase_data(self, p0: float = 0., p1: float = 0., pivot: int = 0) -> None:
         """Apply a first-order phase correction in the direct dimension.
@@ -760,7 +762,7 @@ class Estimator(ne.ExpInfo):
             ),
             (
                 "initial_guess", initial_guess, sfuncs.check_initial_guess,
-                (self.dim,), {}, True,
+                (len(self.ft_dims),), {}, True,
             ),
             ("hessian", hessian, sfuncs.check_one_of, ("gauss-newton", "exact")),
             ("phase_variance", phase_variance, sfuncs.check_bool),
@@ -821,12 +823,7 @@ class Estimator(ne.ExpInfo):
             print(self._estimate_banner(region, region_unit))
 
         (
-            region,
-            noise_region,
-            mpm_expinfo,
-            nlp_expinfo,
-            mpm_signal,
-            nlp_signal,
+            region, noise_region, mpm_expinfo, nlp_expinfo, mpm_signal, nlp_signal,
         ) = self._filter_signal(
             region, noise_region, region_unit, mpm_trim, nlp_trim, cut_ratio,
         )
@@ -920,10 +917,12 @@ class Estimator(ne.ExpInfo):
                 twodim_dtype=self.twodim_dtype,
             )
 
+            spec, expinfo = filter_.get_filtered_spectrum(cut_ratio=cut_ratio)
+
             region = filter_.get_region()
             noise_region = filter_.get_noise_region()
             mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
-            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
+            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
 
         mpm_slice = self._get_slice("mpm", mpm_trim, mpm_signal.shape)
         mpm_signal = mpm_signal[mpm_slice]
