@@ -1,7 +1,7 @@
 # twodim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sat 13 May 2023 19:40:01 BST
+# Last Edited: Tue 16 May 2023 18:29:06 BST
 
 from __future__ import annotations
 from pathlib import Path
@@ -33,8 +33,13 @@ if USE_COLORAMA:
 class Estimator2D(Estimator):
     """Estimator class for 2D data comprising a pair of States signals."""
 
-    default_mpm_trim = (64, 64)
-    default_nlp_trim = (128, 128)
+    dim = 2
+    proc_dims = [0, 1]
+    # twodim_dtype is dictated by the type of data brought in
+    # Can be "amp" or "phase" (see __init__)
+    ft_dims = [0, 1]
+    default_mpm_trim = (64, 128)
+    default_nlp_trim = (128, 1024)
     default_max_iterations_exact_hessian = 40
     default_max_iterations_gn_hessian = 100
 
@@ -42,12 +47,12 @@ class Estimator2D(Estimator):
         self,
         data: np.ndarray,
         expinfo: ne.ExpInfo,
-        modulation: str,
+        twodim_dtype: str,
         datapath: Optional[Path] = None,
     ) -> None:
         super().__init__(data, expinfo, datapath)
-        sanity_check(("modulation", modulation, sfuncs.check_one_of, ("amp", "phase")))
-        self.modulation = modulation
+        sanity_check(("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase")))  # noqa: E501
+        self.twodim_dtype = twodim_dtype
 
     @classmethod
     def new_bruker(
@@ -68,7 +73,6 @@ class Estimator2D(Estimator):
             raise ValueError(f"{RED}Data dimension should be 2.{END}")
         data_proc = np.zeros(data_shape, dtype="complex128")
 
-        print(data)
         data_proc[0] = data[:, :pts_2]
         data_proc[1] = data[:, pts_2:]
 
@@ -184,360 +188,60 @@ class Estimator2D(Estimator):
 
         return cls(fid, expinfo, "phase")
 
+    @classmethod
+    def new_from_parameters(
+        cls,
+        params: np.ndarray,
+        pts: Tuple[int, int],
+        sw: Tuple[float, float],
+        offset: Tuple[float, float],
+        sfo: Tuple[Optional[float], Optional[float]] = (125., 500.),
+        nucleus: str = ("13C", "1H"),
+        snr: Optional[float] = 20.,
+        twodim_dtype: str = "amp",
+    ) -> None:
+        sanity_check(
+            ("params", params, sfuncs.check_parameter_array, (2,)),
+            ("pts", pts, sfuncs.check_int_list, (), {"length": 2, "min_value": 1}),
+            (
+                "sw", sw, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+            (
+                "offset", offset, sfuncs.check_float_list, (),
+                {"length": 2}, True,
+            ),
+            ("nucleus", nucleus, sfuncs.check_nucleus_list, (), {"length": 2}),
+            (
+                "sfo", sfo, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True}, True,
+            ),
+            ("snr", snr, sfuncs.check_float, (), {"greater_than_zero": True}, True),
+            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase")),
+        )
+
+        expinfo = ne.ExpInfo(
+            2,
+            sw=sw,
+            offset=offset,
+            sfo=sfo,
+            nuclei=nucleus,
+            default_pts=pts,
+        )
+
+        data = expinfo.make_fid(params, snr=snr, indirect_modulation=twodim_dtype)
+        return cls(data, expinfo, twodim_dtype)
+
     @property
     def spectrum(self) -> np.ndarray:
-        if self.modulation == "amp":
+        if self.twodim_dtype == "amp":
             return ne.sig.proc_amp_modulated(self.data).real
-        elif self.modulation == "phase":
+        elif self.twodim_dtype == "phase":
             return ne.sig.proc_phase_modulated(self.data)[0]
 
-    @logger
-    def estimate(
-        self,
-        region: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None,
-        noise_region: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None,
-        region_unit: str = "hz",
-        initial_guess: Optional[Union[np.ndarray, int]] = None,
-        mode: str = "apfd",
-        amp_thold: Optional[float] = None,
-        phase_variance: bool = True,
-        cut_ratio: Optional[float] = 1.1,
-        mpm_trim: Optional[Tuple[int, int]] = None,
-        nlp_trim: Optional[Tuple[int, int]] = None,
-        hessian: str = "gauss-newton",
-        max_iterations: Optional[int] = None,
-        negative_amps: str = "remove",
-        output_mode: Optional[int] = 10,
-        save_trajectory: bool = False,
-        epsilon: float = 1.0e-8,
-        eta: float = 0.15,
-        initial_trust_radius: float = 1.0,
-        max_trust_radius: float = 4.0,
-        check_neg_amps_every: int = 10,
-        _log: bool = True,
-    ) -> None:
-        r"""Estimate a specified region of the signal.
-
-        The basic steps that this method carries out are:
-
-        * (Optional, but highly advised) Generate a frequency-filtered "sub-FID"
-          corresponding to a specified region of interest.
-        * (Optional) Generate an initial guess using the Minimum Description
-          Length (MDL) [#]_ and Matrix Pencil Method (MPM) [#]_ [#]_ [#]_ [#]_
-        * Apply numerical optimisation to determine a final estimate of the signal
-          parameters. The optimisation routine employed is the Trust Newton Conjugate
-          Gradient (NCG) algorithm ([#]_ , Algorithm 7.2).
-
-        Parameters
-        ----------
-        region
-            The frequency range of interest in each dimension.
-            Should be of the form ``[[left_f1, right_f1], [left_f2, right_f2]]``
-            where ``left_f<n>`` and ``right_f<n>`` are the left and right
-            bounds of the region of interest for dimension ``<n>``, in Hz or ppm
-            (see ``region_unit``). If ``None``, the full signal will be
-            considered, though for sufficently large and complex signals it is
-            probable that poor and slow performance will be realised.
-
-        noise_region
-            If ``region`` is not ``None``, this must be of the form
-            ``[[left_f1, right_f1], [left_f2, right_f2]]``
-            too. This should specify a region where no noticeable signals
-            reside, i.e. only noise exists.
-
-        region_unit
-            One of ``"hz"`` or ``"ppm"`` Specifies the units that ``region``
-            and ``noise_region`` have been given as.
-
-        initial_guess
-            * If ``None``, an initial guess will be generated using the MMEMPM
-              with the MDL applied on the first direct-dimension FID being used
-              to estimate the number of oscillators present.
-            * If an int, the MMEMPM will be used to compute the initial guess with
-              the value given being the number of oscillators.
-            * If a NumPy array, this array will be used as the initial guess.
-
-        hessian
-            Specifies how to construct the Hessian matrix.
-
-            * If ``"exact"``, the exact Hessian will be used.
-            * If ``"gauss-newton"``, the Hessian will be approximated as is
-              done with the Gauss-Newton method. See the *"Derivation from
-              Newton's method"* section of `this article
-              <https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm>`_.
-
-        mode
-            A string containing a subset of the characters ``"a"`` (amplitudes),
-            ``"p"`` (phases), ``"f"`` (frequencies), and ``"d"`` (damping factors).
-            Specifies which types of parameters should be considered for optimisation.
-            In most scenarios, you are likely to want the default value, ``"apfd"``.
-
-        amp_thold
-            A value that imposes a threshold for deleting oscillators of
-            negligible ampltiude.
-
-            * If ``None``, does nothing.
-            * If a float, oscillators with amplitudes satisfying :math:`a_m <
-              a_{\mathrm{thold}} \lVert \boldsymbol{a} \rVert_2` will be
-              removed from the parameter array, where :math:`\lVert
-              \boldsymbol{a} \rVert_2` is the Euclidian norm of the vector of
-              all the oscillator amplitudes. It is advised to set ``amp_thold``
-              at least a couple of orders of magnitude below 1.
-
-        phase_variance
-            Whether or not to include the variance of oscillator phases in the cost
-            function. This should be set to ``True`` in cases where the signal being
-            considered is derived from well-phased data.
-
-        mpm_trim
-            Specifies the maximal size allowed for the filtered signal when
-            undergoing the Matrix Pencil. If ``None``, no trimming is applied
-            to the signal. If an int, and the filtered signal has a size
-            greater than ``mpm_trim``, this signal will be set as
-            ``signal[:mpm_trim[0], :mpm_trim[1]]``.
-
-        nlp_trim
-            Specifies the maximal size allowed for the filtered signal when undergoing
-            nonlinear programming. By default (``None``), no trimming is applied to
-            the signal. If an int, and the filtered signal has a size greater than
-            ``nlp_trim``, this signal will be set as
-            ``signal[:nlp_trim[0], :nlp_trim[1]]``.
-
-        max_iterations
-            A value specifiying the number of iterations the routine may run
-            through before it is terminated. If ``None``, a default number
-            of maximum iterations is set, based on the value of ``hessian``.
-
-        negative_amps
-            Indicates how to treat oscillators which have gained negative
-            amplitudes during the optimisation.
-
-            * ``"remove"`` will result in such oscillators being purged from
-              the parameter estimate. The optimisation routine will the be
-              re-run recursively until no oscillators have a negative
-              amplitude.
-            * ``"flip_phase"`` will retain oscillators with negative
-              amplitudes, but the the amplitudes will be multiplied by -1,
-              and a π radians phase shift will be applied.
-            * ``"ignore"`` will do nothing (negative amplitude oscillators will remain).
-
-        output_mode
-            Dictates what information is sent to stdout.
-
-            * If ``None``, nothing will be sent.
-            * If ``0``, only a message on the outcome of the optimisation will
-              be sent.
-            * If a positive int ``k``, information on the cost function,
-              gradient norm, and trust region radius is sent every kth
-              iteration.
-
-        save_trajectory
-            If ``True``, a list of parameters at each iteration will be saved, and
-            accessible via the ``trajectory`` attribute.
-
-            .. warning:: Not implemented yet!
-
-        epsilon
-            Sets the convergence criterion. Convergence will occur when
-            :math:`\lVert \boldsymbol{g}_k \rVert_2 < \epsilon`.
-
-        eta
-            Criterion for accepting an update. An update will be accepted if
-            the ratio of the actual reduction and the predicted reduction is
-            greater than ``eta``:
-
-            .. math ::
-
-                \rho_k = \frac{f(x_k) - f(x_k - p_k)}{m_k(0) - m_k(p_k)} > \eta
-
-        initial_trust_radius
-            The initial value of the radius of the trust region.
-
-        max_trust_radius
-            The largest permitted radius for the trust region.
-
-        check_neg_amps_every
-            For every iteration that is a multiple of this, negative amplitudes
-            will be checked for and dealt with if found.
-
-        _log
-            Ignore this!
-
-        References
-        ----------
-        .. [#] Yingbo Hua. “Estimating two-dimensional frequencies by matrix
-           enhancement and matrix pencil”. In: [Proceedings] ICASSP 91: 1991
-           International Conference on Acoustics, Speech, and Signal Processing.
-           IEEE. 1991, pp. 3073–3076.
-
-        .. [#] Fang-Jiong Chen et al. “Estimation of two-dimensional frequencies
-           using modified matrix pencil method”. In: IEEE Trans. Signal Process.
-           55.2 (2007), pp. 718–724.
-
-        .. [#] M. Wax, T. Kailath, Detection of signals by information theoretic
-           criteria, IEEE Transactions on Acoustics, Speech, and Signal Processing
-           33 (2) (1985) 387–392.
-
-        .. [#] Jorge Nocedal and Stephen J. Wright. Numerical optimization. 2nd
-               ed. Springer series in operations research. New York: Springer,
-               2006.
-        """
-        sanity_check(
-            (
-                "region_unit", region_unit, sfuncs.check_frequency_unit,
-                (self.hz_ppm_valid,),
-            ),
-            (
-                "initial_guess", initial_guess, sfuncs.check_initial_guess,
-                (self.dim,), {}, True,
-            ),
-            ("hessian", hessian, sfuncs.check_one_of, ("gauss-newton", "exact")),
-            ("phase_variance", phase_variance, sfuncs.check_bool),
-            ("mode", mode, sfuncs.check_optimiser_mode),
-            (
-                "amp_thold", amp_thold, sfuncs.check_float, (),
-                {"greater_than_zero": True}, True,
-            ),
-            (
-                "mpm_trim", mpm_trim, sfuncs.check_int_list, (),
-                {"length": 2, "min_value": 1}, True,
-            ),
-            (
-                "nlp_trim", nlp_trim, sfuncs.check_int_list, (),
-                {"length": 2, "min_value": 1}, True,
-            ),
-            (
-                "cut_ratio", cut_ratio, sfuncs.check_float, (),
-                {"min_value": 1.}, True,
-            ),
-            (
-                "max_iterations", max_iterations, sfuncs.check_int, (),
-                {"min_value": 1}, True,
-            ),
-            (
-                "negative_amps", negative_amps, sfuncs.check_one_of,
-                ("remove", "flip_phase", "ignore"),
-            ),
-            ("output_mode", output_mode, sfuncs.check_int, (), {"min_value": 0}, True),
-            ("save_trajectory", save_trajectory, sfuncs.check_bool),
-            (
-                "epsilon", epsilon, sfuncs.check_float, (),
-                {"min_value": np.finfo(float).eps},
-            ),
-            ("eta", eta, sfuncs.check_float, (), {"min_value": 0.0, "max_value": 1.0}),
-            (
-                "initial_trust_radius", initial_trust_radius, sfuncs.check_float, (),
-                {"greater_than_zero": True},
-            ),
-        )
-        sanity_check(
-            (
-                "region", region, sfuncs.check_region,
-                (self.sw(unit=region_unit), self.offset(unit=region_unit)), {}, True,
-            ),
-            (
-                "noise_region", noise_region, sfuncs.check_region,
-                (self.sw(unit=region_unit), self.offset(unit=region_unit)), {}, True,
-            ),
-            (
-                "max_trust_radius", max_trust_radius, sfuncs.check_float, (),
-                {"min_value": initial_trust_radius},
-            ),
-            (
-                "check_neg_amps_every", check_neg_amps_every, sfuncs.check_int, (),
-                {"min_value": 1, "max_value": max_iterations},
-            ),
-        )
-
-        if output_mode != 0:
-            if region is None:
-                txt = "ESTIMATING ENTIRE SIGNAL"
-            else:
-                unit = region_unit.replace("h", "H")
-                txt = (
-                    f"ESTIMATING REGION: "
-                    f"{region[0][0]} - {region[0][1]} {unit} (F1) "
-                    f"{region[1][0]} - {region[1][1]} {unit} (F2)"
-                )
-            print(boxed_text(txt, GRE))
-
-        (
-            region,
-            noise_region,
-            mpm_expinfo,
-            nlp_expinfo,
-            mpm_signal,
-            nlp_signal,
-        ) = self._filter_signal(
-            region, noise_region, region_unit, mpm_trim, nlp_trim, cut_ratio,
-        )
-
-        if isinstance(initial_guess, np.ndarray):
-            x0 = initial_guess
-        else:
-            oscillators = initial_guess if isinstance(initial_guess, int) else 0
-            x0 = ne.mpm.MatrixPencil(
-                mpm_expinfo,
-                mpm_signal,
-                oscillators=oscillators,
-                output_mode=isinstance(output_mode, int),
-            ).get_params()
-
-            if x0 is None:
-                self._results.append(
-                    Result(
-                        np.array([[]]),
-                        np.array([[]]),
-                        region,
-                        noise_region,
-                        self.sfo,
-                    )
-                )
-                return
-
-        if max_iterations is None:
-            if hessian == "exact":
-                max_iterations = self.default_max_iterations_exact_hessian
-            elif hessian == "gauss-newton":
-                max_iterations = self.default_max_iterations_gn_hessian
-
-        optimiser_kwargs = {
-            "phase_variance": phase_variance,
-            "hessian": hessian,
-            "mode": mode,
-            "amp_thold": amp_thold,
-            "max_iterations": max_iterations,
-            "negative_amps": negative_amps,
-            "output_mode": output_mode,
-            "save_trajectory": save_trajectory,
-            "epsilon": epsilon,
-            "eta": eta,
-            "initial_trust_radius": initial_trust_radius,
-            "max_trust_radius": max_trust_radius,
-            "check_neg_amps_every": check_neg_amps_every,
-        }
-
-        result = ne.nlp.nonlinear_programming(
-            nlp_expinfo,
-            nlp_signal,
-            x0,
-            **optimiser_kwargs,
-        )
-
-        self._results.append(
-            Result(
-                result.x,
-                result.errors,
-                region,
-                noise_region,
-                self.sfo,
-                result.trajectory,
-            )
-        )
-
     def get_data_1d(self, dim: int = 1) -> np.ndarray:
-        if self.modulation == "amp":
-            data_2d = self.data[0] + 1j * self.self.data[1]
+        if self.twodim_dtype == "amp":
+            data_2d = self.data[0] + 1j * self.data[1]
         else:
             data_2d = self.data[0]
 
@@ -712,7 +416,6 @@ class Estimator2D(Estimator):
 
         return fig, ax
 
-
     def plot_result_1d(
         self,
         dim: int = 1,
@@ -734,74 +437,5 @@ class Estimator2D(Estimator):
             ("dim", dim, sfuncs.check_one_of, (0, 1)),
         )
         estimator_1d = self.get_estimator_1d(dim)
-        fig, axs, _ = estimator_1d.plot_result(**kwargs)
+        fig, axs = estimator_1d.plot_result(**kwargs)
         return fig, axs
-
-    def _filter_signal(
-        self,
-        region: Optional[Tuple[Tuple[float, float], Tuple[float, float]]],
-        noise_region: Optional[Tuple[Tuple[float, float], Tuple[float, float]]],
-        region_unit: str,
-        mpm_trim: Optional[Tuple[int, int]],
-        nlp_trim: Optional[Tuple[int, int]],
-        cut_ratio: Optional[float],
-    ) -> None:
-        # This method is uused by `Estimator1D` and `Estimator2DJ`.
-        # It is overwritten by `EstimatorSeq1D`.
-        if region is None:
-            region_unit = "hz"
-            region = self._full_region
-            noise_region = None
-            mpm_signal = nlp_signal = self.data
-            mpm_expinfo = nlp_expinfo = self.expinfo
-
-        else:
-            filter_ = ne.freqfilter.Filter(
-                self.data,
-                self.expinfo,
-                region,
-                noise_region,
-                region_unit=region_unit,
-                twodim_dtype=self.modulation,
-            )
-
-            region = filter_.get_region()
-            noise_region = filter_.get_noise_region()
-            mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
-            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
-
-        mpm_trim = self._get_trim("mpm", mpm_trim, mpm_signal.shape)
-        nlp_trim = self._get_trim("nlp", nlp_trim, nlp_signal.shape)
-
-        return (
-            region,
-            noise_region,
-            mpm_expinfo,
-            nlp_expinfo,
-            mpm_signal[:mpm_trim[0], :mpm_trim[1]],
-            nlp_signal[:nlp_trim[0], :nlp_trim[1]],
-        )
-
-    @property
-    def _full_region(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-        return tuple(
-            self.convert(
-                [(0, x - 1) for x in self.data.shape[1:]],
-                "idx->hz",
-            )
-        )
-
-    def _get_trim(
-        self,
-        type_: str,
-        trim: Optional[Tuple[int, int]],
-        shape: Tuple[float, float],
-    ) -> Tuple[int, int]:
-        default = (
-            self.default_mpm_trim if type_ == "mpm" else
-            self.default_nlp_trim
-        )
-        if trim is None:
-            return [min(def_, s) for def_, s in zip(default, shape)]
-        else:
-            return [min(t, s) for t, s in zip(trim, shape)]
