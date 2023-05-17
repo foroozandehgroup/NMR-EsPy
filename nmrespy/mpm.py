@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 09 May 2023 17:28:12 BST
+# Last Edited: Wed 17 May 2023 12:16:50 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
 
@@ -12,6 +12,7 @@ MWE
 """
 
 import copy
+import itertools
 from typing import Iterable, Union
 
 import numpy as np
@@ -360,10 +361,24 @@ class MatrixPencil(ResultFetcher):
         U1 = Us[: Us.shape[0] - L, :]  # last L rows deleted
         U2 = Us[L:, :]  # first L rows deleted
         eig_y, vec_y = nlinalg.eig(nlinalg.pinv(U1) @ U2)
+
         Usp = P @ Us
         U1p = Usp[: Usp.shape[0] - K, :]  # last K rows deleted
         U2p = Usp[K:, :]  # first K rows deleted
-        eig_z = np.diag(nlinalg.inv(vec_y) @ nlinalg.pinv(U1p) @ U2p @ vec_y)
+        Z = nlinalg.inv(vec_y) @ nlinalg.pinv(U1p) @ U2p @ vec_y
+        eig_z = np.diag(Z).copy()
+
+        # Get y frequencies in order to determine proximities
+        fy = (self.sw[0] / (2 * np.pi)) * np.imag(np.log(eig_y)) + self.offset[0]
+        groupings = self._find_similar_frequencies(fy)
+        for grouping in groupings:
+            n = len(grouping)
+            if n != 1:
+                A_slice = tuple(zip(*itertools.product(grouping, repeat=2)))
+                A = Z[A_slice].reshape(n, n)
+                eig_A, _ = nlinalg.eig(A)
+                eig_z[grouping] = eig_A
+
         poles = np.hstack((eig_y, eig_z)).reshape((2, self.oscillators))
 
         # --- Complex Amplitudes ---
@@ -463,3 +478,23 @@ class MatrixPencil(ResultFetcher):
             print("\tNone found")
 
         return ud_params, M
+
+    def _find_similar_frequencies(self, fys: np.ndarray) -> Iterable[Iterable[int]]:
+        threshold = self.sw[0] / self.data.shape[0]
+        groupings = {}
+        for idx, fy in enumerate(fys):
+            assigned = False
+            for freq, indices in groupings.items():
+                n = len(indices)
+                if np.abs(fy - freq) < threshold:
+                    indices.append(idx)
+                    indices = sorted(indices)
+                    # Get new mean freq of the group
+                    new_freq = (n * freq + fy) / (n + 1)
+                    groupings[new_freq] = groupings.pop(freq)
+                    assigned = True
+                    break
+            if not assigned:
+                groupings[fy] = [idx]
+
+        return [indices for indices in groupings.values()]
