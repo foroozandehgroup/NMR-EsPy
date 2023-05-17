@@ -1,7 +1,7 @@
 # diffusion.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 11 May 2023 22:18:13 BST
+# Last Edited: Tue 16 May 2023 22:17:19 BST
 
 from __future__ import annotations
 import copy
@@ -189,7 +189,7 @@ class _EstimatorDiff(EstimatorSeq1D):
         np.ndarray,
         Path,
     ]:
-        data, expinfo, gradients, datapath = super()._new_bruker_pre(
+        data, expinfo, gradients, datapath = EstimatorSeq1D._new_bruker_pre(
             directory, increment_file, convdta,
         )
         acqus = expinfo.parameters["acqus"]
@@ -562,7 +562,7 @@ class _EstimatorDiff(EstimatorSeq1D):
         # Grad
         d1 = np.zeros((n, 2))
         d1[:, 0] = exp_minus_cDG_sq
-        d1[:, 1] = -I0 * G_sq * exp_minus_cDG_sq
+        d1[:, 1] = -a0 * G_sq * exp_minus_cDG_sq
         grad = -2 * y_minus_x.T @ d1
 
         # Hessian

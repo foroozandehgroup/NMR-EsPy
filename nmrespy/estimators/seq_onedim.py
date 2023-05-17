@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 16:46:41 BST
+# Last Edited: Tue 16 May 2023 22:13:47 BST
 
 from __future__ import annotations
 import copy
@@ -47,7 +47,7 @@ if not hasattr(Axis, "_get_coord_info_old"):
     Axis._get_coord_info = _get_coord_info_new
 
 
-class EstimatorSeq1D(_Estimator1DProc):
+class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
     dim = 2
     twodim_dtype = "hyper"
@@ -285,12 +285,8 @@ class EstimatorSeq1D(_Estimator1DProc):
                 {"min_value": 0, "max_value": self.increments - 1},
             ),
         )
-        data_cp = copy.deepcopy(self.data)
-        self._data = self.data[increment]
-
-        super().view_data(domain=domain, components=components, freq_unit=freq_unit)
-
-        self._data = data_cp
+        estimator_1d = ne.Estimator1D(self.data[increment], self.expinfo_direct)
+        estimator_1d.view_data(domain=domain, components=components, freq_unit=freq_unit)
 
     def _filter_signal(
         self,
