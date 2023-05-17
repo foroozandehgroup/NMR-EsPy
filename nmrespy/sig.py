@@ -1,7 +1,7 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 12 May 2023 14:09:09 BST
+# Last Edited: Wed 17 May 2023 14:16:17 BST
 
 """A module for manipulating and processing NMR signals."""
 
@@ -77,7 +77,7 @@ def make_virtual_echo(
         pts = data.shape
         tmp1, tmp2 = [np.zeros((pts[0], 2 * pts[1]), dtype="complex") for _ in range(2)]
         tmp1[:, : pts[1]] = data
-        tmp2[:, pts[1] :] = data[::-1].conj()
+        tmp2[:, pts[1] :] = data[:, ::-1].conj()
         tmp2 = np.roll(tmp2, 1, axis=1)
         ve = tmp1 + tmp2
         ve[:, 0] /= 2
