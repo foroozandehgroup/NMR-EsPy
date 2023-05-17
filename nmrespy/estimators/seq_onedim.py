@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 17 May 2023 18:16:14 BST
+# Last Edited: Wed 17 May 2023 19:22:31 BST
 
 from __future__ import annotations
 import copy
@@ -21,11 +21,9 @@ from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir
 from nmrespy._misc import proc_kwargs_dict
 from nmrespy._sanity import sanity_check, funcs as sfuncs
-from nmrespy.estimators import Result, logger
-from nmrespy.estimators.onedim import Estimator1D, _Estimator1DProc
-from nmrespy.freqfilter import Filter
+from nmrespy.estimators import logger
+from nmrespy.estimators.onedim import Estimator1D
 from nmrespy.load import load_bruker
-from nmrespy.nlp import nonlinear_programming
 from nmrespy.nlp.optimisers import trust_ncg
 from nmrespy.plot import make_color_cycle
 
@@ -203,6 +201,26 @@ class EstimatorSeq1D(Estimator1D):
 
         return float_list_files if float_list_files else None
 
+    def exp_apodisation(self, k: float) -> None:
+        for estimator in self._estimators:
+            estimator.exp_apodisation(k)
+
+    def phase_data(self, p0: float = 0., p1: float = 0., pivot: int = 0.) -> None:
+        for estimator in self._estimators:
+            estimator.phase_data(p0, p1, pivot)
+
+    def manual_phase_data(
+        self,
+        max_p1: float = 10 * np.pi,
+    ) -> Tuple[float, float]:
+        p0, p1 = self._estimators[0].manual_phase_data(max_p1)
+        for estimator in self._estimators[1:]:
+            estimator.phase_data(p0=p0, p1=p1)
+
+    def baseline_correction(self, min_length: int = 50) -> None:
+        for estimator in self._estimators:
+            estimator.baseline_correction(min_length)
+
     def view_data(
         self,
         domain: str = "freq",
@@ -288,7 +306,11 @@ class EstimatorSeq1D(Estimator1D):
         if type(self).__name__ == "EstimatorInvRec":
             self._estimators[0]._data = old_data0
             x0[:, 0] *= -1
+            self._estimators[0]._results[-1].params = x0
 
+        self._optimise_amps(x0, **kwargs)
+
+    def _optimise_amps(self, x0: np.ndarray, **kwargs) -> None:
         kwargs["mode"] = "a"
         kwargs["negative_amps"] = "ignore"
         for estimator in self._estimators[1:]:
@@ -300,61 +322,22 @@ class EstimatorSeq1D(Estimator1D):
             x0 = estimator.get_params(indices=[-1])
             sys.stdout = sys.__stdout__
 
-    @staticmethod
-    def _proc_first_result(result: np.ndarray) -> np.ndarray:
-        return result
+    def edit_result(self, index=-1, **kwargs) -> None:
+        kwargs["negative_amps"] = "ignore"
+        sanity_check(self._index_check(index))
+        index, = self._process_indices([index])
+        self._estimators[0].edit_result(index=index, **kwargs)
 
-    # TODO: This needs fixing
-    # @logger
-    # def edit_result(
-    #     self,
-    #     index: int = -1,
-    #     add_oscs: Optional[np.ndarray] = None,
-    #     rm_oscs: Optional[Iterable[int]] = None,
-    #     merge_oscs: Optional[Iterable[Iterable[int]]] = None,
-    #     split_oscs: Optional[Dict[int, Optional[Dict]]] = None,
-    #     **estimate_kwargs,
-    # ) -> None:
-    #     self._check_results_exist()
-    #     sanity_check(self._index_check(index))
-    #     index, = self._process_indices([index])
-
-    #     results_cp = copy.deepcopy(self._results)
-    #     self._results[index] = self._results[index][0]
-
-    #     max_osc_idx = self.get_results(indices=[index])[0].get_params()
-    #     sanity_check(
-    #         (
-    #             "add_oscs", add_oscs, sfuncs.check_parameter_array, (self.dim,), {},
-    #             True,
-    #         ),
-    #         (
-    #             "rm_oscs", rm_oscs, sfuncs.check_int_list, (),
-    #             {"min_value": 0, "max_value": max_osc_idx}, True,
-    #         ),
-    #         (
-    #             "merge_oscs", merge_oscs, sfuncs.check_int_list_list,
-    #             (), {"min_value": 0, "max_value": max_osc_idx}, True,
-    #         ),
-    #         (
-    #             "split_oscs", split_oscs, sfuncs.check_split_oscs,
-    #             (1, max_osc_idx), {}, True,
-    #         ),
-    #     )
-
-    #     try:
-    #         super().edit_result(
-    #             index=index,
-    #             add_oscs=add_oscs,
-    #             rm_oscs=rm_oscs,
-    #             merge_oscs=merge_oscs,
-    #             split_oscs=split_oscs,
-    #             **estimate_kwargs,
-    #         )
-
-    #     except Exception as exc:
-    #         self._results = results_cp
-    #         raise exc
+        result = self._estimators[0]._results[index]
+        x0 = result.params
+        region = result.region
+        noise_region = result.noise_region
+        kwargs["region"] = region
+        kwargs["noise_region"] = noise_region
+        self._optimise_amps(x0, **kwargs)
+        for estimator in self._estimators[1:]:
+            del estimator._results[index]
+            estimator._results.insert(index, estimator._results.pop(-1))
 
     def _fit(
         self,
