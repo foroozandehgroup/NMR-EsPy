@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 22:13:47 BST
+# Last Edited: Wed 17 May 2023 18:16:14 BST
 
 from __future__ import annotations
 import copy
@@ -47,16 +47,7 @@ if not hasattr(Axis, "_get_coord_info_old"):
     Axis._get_coord_info = _get_coord_info_new
 
 
-class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
-
-    dim = 2
-    twodim_dtype = "hyper"
-    proc_dims = [1]
-    ft_dims = [1]
-    default_mpm_trim = [4096]
-    default_nlp_trim = [None]
-    default_max_iterations_exact_hessian = 100
-    default_max_iterations_gn_hessian = 200
+class EstimatorSeq1D(Estimator1D):
 
     def __init__(
         self,
@@ -75,7 +66,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             Experiment information.
 
         increments
-            The values of increments used to acquire the 1D signals. Examples would
+            The values of increments used to acquire the FIDs. Examples would
             include:
 
             * Delay times in an inversion recovery experiment.
@@ -84,14 +75,14 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         datapath
             The path to the directory containing the NMR data.
         """
-        super().__init__(data[0], expinfo, datapath=datapath)
-        self._data = data
         sanity_check(
             (
                 "increments", increments, sfuncs.check_ndarray, (),
                 {"dim": 1, "shape": [(0, data.shape[0])]}, True,
             ),
         )
+        super().__init__(data[0], expinfo, datapath=datapath)
+        self._estimators = [ne.Estimator1D(fid, expinfo) for fid in data]
         self.increments = increments
 
     # TODO: More useful!
@@ -99,16 +90,16 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         return self.__class__
 
     @property
-    def expinfo(self) -> ne.ExpInfo:
-        # This contains a dummy first dimension
-        return ne.ExpInfo(
-            dim=2,
-            sw=(1., self.sw()[0]),
-            offset=(0., self.offset()[0]),
-            sfo=(None, self.sfo[0]),
-            nuclei=(None, self.nuclei[0]),
-            default_pts=self.data.shape,
-        )
+    def data(self) -> np.ndarray:
+        data = np.zeros((self.n_increments, self.default_pts[0]), dtype="complex")
+        for i, estimator in enumerate(self._estimators):
+            data[i] = estimator.data
+
+        return data
+
+    @property
+    def n_increments(self) -> int:
+        return len(self.increments)
 
     @property
     def increment_label(self) -> str:
@@ -220,32 +211,26 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
     ) -> None:
         fig = plt.figure()
         ax = fig.add_subplot(projection="3d")
+        zs = self.data
 
         if domain == "freq":
             x, = self.get_shifts(unit=freq_unit)
-            zs = copy.deepcopy(self.data)
+            xlabel, = self._axis_freq_labels(freq_unit)
             zs[:, 0] *= 0.5
             zs = ne.sig.ft(zs, axes=-1)
 
         elif domain == "time":
             x, = self.get_timepoints()
-            z = self.data
+            xlabel = "$t$ (s)"
 
         ys = self.increments
 
-        if components in ("real", "both"):
-            for (y, z) in zip(ys, zs):
-                y_arr = np.full(z.shape, y)
+        for (y, z) in zip(ys, zs):
+            y_arr = np.full(z.shape, y)
+            if components in ("real", "both"):
                 ax.plot(x, y_arr, z.real, color="k")
-        if components in ("imag", "both"):
-            for (y, z) in zip(ys, zs):
-                y_arr = np.full(z.shape, y)
+            if components in ("imag", "both"):
                 ax.plot(x, y_arr, z.imag, color="#808080")
-
-        if domain == "freq":
-            xlabel, = self._axis_freq_labels(freq_unit)
-        elif domain == "time":
-            xlabel = "$t$ (s)"
 
         ax.set_xlim(x[0], x[-1])
         ax.set_xlabel(xlabel)
@@ -285,112 +270,35 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
                 {"min_value": 0, "max_value": self.increments - 1},
             ),
         )
-        estimator_1d = ne.Estimator1D(self.data[increment], self.expinfo_direct)
-        estimator_1d.view_data(domain=domain, components=components, freq_unit=freq_unit)
-
-    def _filter_signal(
-        self,
-        region: Optional[Tuple[float, float]],
-        noise_region: Optional[Tuple[float, float]],
-        region_unit: str,
-        mpm_trim: Optional[int],
-        nlp_trim: Optional[int],
-        cut_ratio: Optional[float],
-    ):
-        (
-            region,
-            noise_region,
-            mpm_expinfo,
-            nlp_expinfo,
-            mpm_signal,
-            nlp_signal,
-        ) = super()._filter_signal(
-            region,
-            noise_region,
-            region_unit,
-            mpm_trim,
-            nlp_trim,
-            cut_ratio,
-        )
-        mpm_expinfo = ne.ExpInfo(
-            dim=1,
-            sw=mpm_expinfo.sw()[1],
-            offset=mpm_expinfo.offset()[1],
-        )
-        nlp_expinfo = ne.ExpInfo(
-            dim=1,
-            sw=nlp_expinfo.sw()[1],
-            offset=nlp_expinfo.offset()[1],
-        )
-        mpm_signal = mpm_signal[0]
-
-        return (
-            region,
-            noise_region,
-            mpm_expinfo,
-            nlp_expinfo,
-            mpm_signal,
-            nlp_signal,
+        self._estimators[increment].view_data(
+            domain=domain,
+            components=components,
+            freq_unit=freq_unit,
         )
 
-    def _run_optimisation(
-        self,
-        nlp_expinfo,
-        nlp_signal,
-        x0,
-        region,
-        noise_region,
-        **optimiser_kwargs,
-    ) -> None:
-        initial_result = nonlinear_programming(
-            nlp_expinfo,
-            nlp_signal[0],
-            x0,
-            **optimiser_kwargs,
-        )
+    def estimate(self, **kwargs) -> None:
+        if type(self).__name__ == "EstimatorInvRec":
+            old_data0 = self._estimators[0].data
+            new_data0 = ne.sig.ift(-1 * ne.sig.ft(old_data0))
+            self._estimators[0]._data = new_data0
 
-        initial_x = initial_result.x
+        self._estimators[0].estimate(**kwargs)
+        x0 = self._estimators[0].get_params(indices=[-1])
 
-        # With `EstimatorInvRec`, ampltiudes are multipled by -1 as the signal was
-        # made positive for estimation.
-        initial_x = self._proc_first_result(initial_x)
+        if type(self).__name__ == "EstimatorInvRec":
+            self._estimators[0]._data = old_data0
+            x0[:, 0] *= -1
 
-        results = [
-            Result(
-                initial_x,
-                initial_result.errors,
-                (region[-1],),
-                (noise_region[-1],),
-                self.sfo,
+        kwargs["mode"] = "a"
+        kwargs["negative_amps"] = "ignore"
+        for estimator in self._estimators[1:]:
+            sys.stdout = io.StringIO(str(os.devnull))
+            estimator.estimate(
+                initial_guess=x0,
+                **kwargs,
             )
-        ]
-
-        x0 = initial_x
-
-        optimiser_kwargs["mode"] = "a"
-        optimiser_kwargs["negative_amps"] = "ignore"
-
-        for signal in nlp_signal[1:]:
-            result = nonlinear_programming(
-                nlp_expinfo,
-                signal,
-                x0,
-                **optimiser_kwargs,
-            )
-
-            results.append(
-                Result(
-                    result.x,
-                    result.errors,
-                    region,
-                    noise_region,
-                    self.sfo,
-                )
-            )
-
-            x0 = result.x
-
-        self._results.append(results)
+            x0 = estimator.get_params(indices=[-1])
+            sys.stdout = sys.__stdout__
 
     @staticmethod
     def _proc_first_result(result: np.ndarray) -> np.ndarray:
@@ -452,31 +360,20 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
-        neglect_increments: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
-        sanity_check(
-            self._indices_check(indices),
-            (
-                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
-                {"min_value": 0, "max_value": self.increments.size - 1}, True,
-            ),
-        )
+        sanity_check(self._indices_check(indices))
         indices = self._process_indices(indices)
+
         n_oscs = self.get_params(indices=indices)[0].shape[0]
-        sanity_check(
-            self._oscs_check(oscs, n_oscs),
-        )
-        oscs = self._proc_oscs(oscs, n_oscs)
-        increments, amplitudes = self._proc_neglect_increments(
-            indices, oscs, neglect_increments,
-        )
+        sanity_check(self._oscs_check(oscs, n_oscs))
+        oscs = self._process_oscs(oscs, n_oscs)
 
         results = []
         errors = []
-        for amps in amplitudes:
+        for amps in self.amplitudes(indices, oscs):
             norm = np.linalg.norm(amps)
             amps /= norm
-            args = (amps, increments)
+            args = (amps, self.increments)
             # get_x0 is defined within child classes.
             x0 = self.get_x0(*args)
 
@@ -503,24 +400,6 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         return results, errors
 
-    def _proc_neglect_increments(
-        self,
-        indices: Iterable[int],
-        oscs: Iterable[int],
-        neglect_increments: Optional[Iterable[int]],
-    ) -> Tuple[np.ndarray, Iterable[np.ndarray]]:
-        if neglect_increments is None:
-            neglect_increments = []
-        incr_slice = [
-            i for i in range(self.increments.size)
-            if i not in neglect_increments
-        ]
-
-        amplitudes = [amps[incr_slice] for amps in self.amplitudes(indices, oscs)]
-        increments = self.increments[incr_slice]
-
-        return increments, amplitudes
-
     def amplitudes(
         self,
         indices: Optional[Iterable[int]] = None,
@@ -545,16 +424,14 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         sanity_check(
             self._oscs_check(oscs, n_oscs),
         )
-        oscs = self._proc_oscs(oscs, n_oscs)
-        params = [p[oscs] for p in params]
-
-        return np.array(params).transpose(2, 1, 0)[0]
+        oscs = self._process_oscs(oscs, n_oscs)
+        amps = np.array([p[oscs, 0] for p in params]).T
+        return amps
 
     def plot_fit_single_oscillator(
         self,
         osc: int = 0,
         index: int = -1,
-        neglect_increments: Optional[Iterable[int]] = None,
         fit_increments: int = 100,
         fit_line_kwargs: Dict = None,
         scatter_kwargs: Dict = None,
@@ -569,10 +446,6 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         index
             See :ref:`INDEX`. By default (``-1``), the last acquired result is used.
-
-        neglect_increments
-            Increments of the dataset to neglect. Default, all increments are included
-            in the fit.
 
         fit_increments
             The number of points in the fit line.
@@ -606,17 +479,16 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         sanity_check(
             self._index_check(index),
             (
-                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
-                {"min_value": 0, "max_value": self.increments.size - 1}, True,
-            ),
-            (
                 "fit_increments", fit_increments, sfuncs.check_int, (),
                 {"min_value": len(self.increments)},
             ),
         )
         n_oscs = self.get_params(indices=[index])[0].shape[0]
         sanity_check(
-            ("osc", osc, sfuncs.check_int, (), {"min_value": 0, "max_value": n_oscs - 1}),  # noqa: E501
+            (
+                "osc", osc, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": n_oscs - 1},
+            ),
         )
 
         fit_line_kwargs = proc_kwargs_dict(
@@ -628,18 +500,19 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             default={"color": "k", "marker": "x"},
         )
 
-        params, errors = self.fit([index], [osc], neglect_increments)
+        amplitudes = self.amplitudes([index], [osc])
+        params, errors = self.fit([index], [osc])
         params = params[0]
         errors = errors[0]
 
-        increments, amplitudes = self._proc_neglect_increments(
-            [index], [osc], neglect_increments,
-        )
-
         fig, ax = plt.subplots(ncols=1, nrows=1, **kwargs)
-        x = np.linspace(np.amin(increments), np.amax(increments), fit_increments)
+        x = np.linspace(
+            np.amin(self.increments),
+            np.amax(self.increments),
+            fit_increments,
+        )
         ax.plot(x, self.model(*params, x), **fit_line_kwargs)
-        ax.scatter(increments, amplitudes, **scatter_kwargs)
+        ax.scatter(self.increments, amplitudes, **scatter_kwargs)
         ax.set_xlabel(self.increment_label)
         ax.set_ylabel("$a$")
 
@@ -672,7 +545,6 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
-        neglect_increments: Optional[Iterable[int]] = None,
         fit_increments: int = 100,
         xaxis_unit: str = "ppm",
         xaxis_ticks: Optional[Union[Iterable[int], Iterable[Iterable[int, Iterable[float]]]]] = None,  # noqa: E501
@@ -700,10 +572,6 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         oscs
             Oscillators to consider. By default (``None``) all oscillators are
             considered.
-
-        neglect_increments
-            Increments of the dataset to neglect. By default, all increments
-            are included in the fit.
 
         fit_increments
             The number of points in the fit lines.
@@ -784,10 +652,6 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         sanity_check(
             self._indices_check(indices),
             (
-                "neglect_increments", neglect_increments, sfuncs.check_int_list, (),
-                {"min_value": 0, "max_value": self.increments.size - 1}, True,
-            ),
-            (
                 "fit_increments", fit_increments, sfuncs.check_int, (),
                 {"min_value": len(self.increments)},
             ),
@@ -818,23 +682,20 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
         indices = self._process_indices(indices)
         params = self.get_params(
             indices=indices,
-            funit="ppm" if xaxis_unit == "ppm" else "hz",
+            funit="hz" if xaxis_unit != "ppm" else "ppm",
         )
         n_oscs = params[0].shape[0]
         sanity_check(self._oscs_check(oscs, n_oscs))
-        oscs = self._proc_oscs(oscs, n_oscs)
+        oscs = self._process_oscs(oscs, n_oscs)
         params = [p[oscs] for p in params]
 
+        amplitudes = self.amplitudes(indices, oscs)
         fit, errors = self.fit(indices, oscs)
-
-        increments, amplitudes = self._proc_neglect_increments(
-            indices, oscs, neglect_increments,
-        )
 
         fig = plt.figure(**kwargs)
         ax = fig.add_subplot(projection="3d")
 
-        colors = make_color_cycle(colors, len(oscs))
+        colors = make_color_cycle(colors, n_oscs)
         zorder = n_oscs
 
         if xaxis_unit == "osc_idx":
@@ -886,10 +747,11 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
             xlabel, = self._axis_freq_labels(xaxis_unit)
 
+        y_min, y_max = np.amin(self.increments), np.amax(self.increments)
         for x, params, amps in zip(xs, fit, amplitudes):
             color = next(colors)
-            x_scatter = np.full(increments.shape, x)
-            y_scatter = increments
+            x_scatter = np.full(self.n_increments, x)
+            y_scatter = self.increments
             z_scatter = amps
             ax.scatter(
                 x_scatter,
@@ -901,16 +763,9 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             )
 
             x_fit = np.full(fit_increments, x)
-            y_fit = np.linspace(np.amin(increments), np.amax(increments), fit_increments)  # noqa: E501
+            y_fit = np.linspace(y_min, y_max, fit_increments)
             z_fit = self.model(*params, y_fit)
-            ax.plot(
-                x_fit,
-                y_fit,
-                z_fit,
-                color=color,
-                zorder=zorder,
-                **fit_line_kwargs,
-            )
+            ax.plot(x_fit, y_fit, z_fit, color=color, zorder=zorder, **fit_line_kwargs)
 
             ax.text(
                 x_fit[-1],
@@ -935,7 +790,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
             ax.set_xticklabels(xaxis_ticklabels)
 
         # Configure y-axis
-        ax.set_ylim(np.amin(increments), np.amax(increments))
+        ax.set_ylim(y_min, y_max)
         ax.set_ylabel(self.increment_label)
 
         # Configure z-axis
@@ -976,7 +831,7 @@ class EstimatorSeq1D(Estimator1D, _Estimator1DProc):
 
         xaxis_ticks
             See :ref:`XAXIS_TICKS`.
-i
+
         region_separation
             The extent by which adjacent regions are separated in the figure,
             in axes coordinates.
@@ -1119,14 +974,9 @@ i
         indices: Iterable[int],
         xaxis_unit: str,
     ) -> Iterable[Tuple[float, float]]:
-        if isinstance(self._results[0], list):
-            # Temporarily change `self._results` so `Estimator1D._plot_regions` works
-            results_cp = copy.deepcopy(self._results)
-            self._results = [res[0] for res in self._results]
-            merge_indices, merge_regions = super()._plot_regions(indices, xaxis_unit)
-            self._results = results_cp
-        else:
-            merge_indices, merge_regions = super()._plot_regions(indices, xaxis_unit)
+        merge_indices, merge_regions = (
+            self._estimators[0]._plot_regions(indices, xaxis_unit)
+        )
 
         return merge_indices, merge_regions
 
@@ -1141,7 +991,11 @@ i
         # Get the default xticks from `Estimator1D.plot_result`.
         # Filter any away that are outside the region
         default_xaxis_ticks = []
-        _, _axs, = self.plot_result_increment(indices=indices, xaxis_unit=xaxis_unit)
+        _, _axs, = (
+            self._estimators[0].plot_result(
+                indices=indices, xaxis_unit=xaxis_unit,
+            )
+        )
         for i, (_ax, region) in enumerate(zip(_axs[0], merge_regions)):
             mn, mx = min(region), max(region)
             default_xaxis_ticks.append(
@@ -1270,18 +1124,16 @@ i
         sanity_check(
             (
                 "increment", increment, sfuncs.check_int, (),
-                {"min_value": 0, "max_value": len(self.increments) - 1},
+                {"min_value": 0, "max_value": self.n_increments - 1},
             ),
         )
 
         kwargs = proc_kwargs_dict(kwargs, default={"plot_model": False})
-        estimator_1d = Estimator1D(self.data[increment], self.expinfo_direct)
-        estimator_1d._results = [r[increment] for r in self._results]
-        fig, axs = estimator_1d.plot_result(**kwargs)
+        fig, axs = self._estimators[increment].plot_result(**kwargs)
 
         return fig, axs
 
-    def plot_oscs_vs_fits(
+    def plot_dosy(
         self,
         y_range: Tuple[float, float],
         y_pts: int = 128,
@@ -1299,6 +1151,7 @@ i
         spectrum_line_kwargs: Optional[Dict] = None,
         oscillator_line_kwargs: Optional[Dict] = None,
         contour_kwargs: Optional[Dict] = None,
+        label_kwargs: Optional[Dict] = None,
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, mpl.axes.Axes]:
         """Generate a plot which maps oscillator locations to fit values.
@@ -1378,6 +1231,12 @@ i
             arguments for `matplotlib.pyplot.contour
             <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.contour.html>`_.
             All of the following are ignored: ``"colors"``, ``"cmap"``, ``"levels"``.
+
+        label_kwargs
+            Keyword arguments for osciilator labels (only relevent if
+            ``label_peaks`` is ``True``). All keys should be valid
+            arguments for `matplotlib.pyplot.text
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.text.html>`_.
 
         kwargs
             All extra kwargs are given to
@@ -1469,6 +1328,11 @@ i
             default={"linewidths": 0.5},
             to_pop=("colors", "cmap", "levels"),
         )
+        label_kwargs = proc_kwargs_dict(
+            label_kwargs,
+            default={"fontsize": 7},
+            to_pop=("color",),
+        )
 
         indices = self._process_indices(indices)
         merge_indices, merge_regions = self._plot_regions(indices, xaxis_unit)
@@ -1505,7 +1369,6 @@ i
 
         zss = []
         peakss = []
-        expinfo_direct = self.expinfo_direct
         for mi in merge_indices:
             thetas = self.get_params(indices=mi)[0]
             fits, errors = self.fit(indices=mi)
@@ -1515,7 +1378,7 @@ i
             zs = []
             peaks = []
             for theta, fit, error in zip(thetas, fits, errors):
-                fid = expinfo_direct.make_fid(np.expand_dims(theta, axis=0))
+                fid = self.make_fid(np.expand_dims(theta, axis=0))
                 fid[0] *= 0.5
                 spec = ne.sig.ft(fid).real
                 if type(self).__name__ == "EstimatorInvRec":
@@ -1581,10 +1444,23 @@ i
                 if label_peaks:
                     x_argmax = np.argmax(peak)
                     x_label = x[x_argmax]
-                    axs[0].text(x_label, peak[x_argmax], str(peak_idx), color=color)
+                    axs[0].text(
+                        x_label,
+                        peak[x_argmax],
+                        str(peak_idx),
+                        color=color,
+                        **label_kwargs,
+                    )
                     if z_slice is not None:
                         y_argmax = np.argmax(z_slice[x_argmax])
-                        axs[1].text(x_label, y[y_argmax], str(peak_idx), color=color)
+                        axs[1].text(
+                            x_label,
+                            y[y_argmax],
+                            str(peak_idx),
+                            color=color,
+                            **label_kwargs,
+                        )
+
                     peak_idx += 1
 
             del zs[-1]
@@ -1637,17 +1513,14 @@ i
         funit: str = "hz",
         sort_by: str = "f-1",
     ) -> Optional[Union[Iterable[np.ndarray], np.ndarray]]:
-        if isinstance(self._results[0], list):
-            results_cp = copy.deepcopy(self._results)
-            params = []
-            for i, _ in enumerate(self.increments):
-                self._results = [res[i] for res in results_cp]
-                params.append(super().get_params(indices, merge, funit, sort_by))
-                self._results = results_cp
-        else:
-            params = super().get_params(indices, merge, funit, sort_by)
+        params = []
+        for estimator in self._estimators:
+            params.append(estimator.get_params(indices, merge, funit, sort_by))
 
         return params
+
+    def _check_results_exist(self) -> None:
+        self._estimators[0]._check_results_exist()
 
     def _oscs_check(self, x: Any, n_oscs: int):
         return (
@@ -1659,7 +1532,10 @@ i
             }, True,
         )
 
-    def _proc_oscs(
+    def _process_indices(self, indices: Optional[Iterable[int]]) -> Iterable[int]:
+        return self._estimators[0]._process_indices(indices)
+
+    def _process_oscs(
         self,
         oscs: Optional[Union[int, Iterable[int]]],
         n_oscs: int,
@@ -1670,10 +1546,8 @@ i
             oscs = [oscs]
         return oscs
 
-    def _region_check(self, region: Any, region_unit: str, name: str):
-        # Hack to overwite the `Estimator` method.
-        sw = self.sw(region_unit)
-        offset = self.offset(region_unit)
-        return (
-            name, region, sfuncs.check_region, (sw, offset), {}, True,
-        )
+    def _indices_check(self, x: Any):
+        return self._estimators[0]._indices_check(x)
+
+    def _index_check(self, x: Any):
+        return self._estimators[0]._index_check(x)

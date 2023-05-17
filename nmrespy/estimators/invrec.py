@@ -1,7 +1,7 @@
 # invrec.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 12 May 2023 16:24:51 BST
+# Last Edited: Wed 17 May 2023 18:18:04 BST
 
 from __future__ import annotations
 import copy
@@ -327,20 +327,6 @@ class EstimatorInvRec(EstimatorSeq1D):
         )
         return cls(data, expinfo, delays, datapath)
 
-    @staticmethod
-    def _proc_mpm_signal(mpm_signal: np.ndarray) -> np.ndarray:
-        return ne.sig.ift(-1 * ne.sig.ft(mpm_signal))
-
-    @staticmethod
-    def _proc_nlp_signal(nlp_signal: np.ndarray) -> np.ndarray:
-        nlp_signal[0] = ne.sig.ift(-1 * ne.sig.ft(nlp_signal[0]))
-        return nlp_signal
-
-    @staticmethod
-    def _proc_first_result(result: np.ndarray) -> np.ndarray:
-        result[:, 0] *= -1
-        return result
-
     def get_x0(
         self,
         amplitudes: np.ndarray,
@@ -353,7 +339,6 @@ class EstimatorInvRec(EstimatorSeq1D):
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
-        neglect_increments: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
         r"""Fit estimation result for the given oscillators across increments in
         order to predict the longitudinal relaxtation time, :math:`T_1`.
@@ -377,10 +362,6 @@ class EstimatorInvRec(EstimatorSeq1D):
         index
             The result index. By default, the last result acquired is considered.
 
-        neglect_increments
-            Increments of the dataset to neglect. Default, all increments are included
-            in the fit.
-
         Returns
         -------
         Iterable[np.ndarray]
@@ -388,7 +369,7 @@ class EstimatorInvRec(EstimatorSeq1D):
             the first element corresponds to :math:`I_{\infty}`, and the second
             element corresponds to :math:`T_1`.
         """
-        result, errors = self._fit(indices, oscs, neglect_increments)
+        result, errors = self._fit(indices, oscs)
         return result, errors
 
     def model(
