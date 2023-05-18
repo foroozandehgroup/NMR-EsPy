@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 17 May 2023 19:22:31 BST
+# Last Edited: Thu 18 May 2023 10:56:55 BST
 
 from __future__ import annotations
 import copy
@@ -1120,7 +1120,8 @@ class EstimatorSeq1D(Estimator1D):
         self,
         y_range: Tuple[float, float],
         y_pts: int = 128,
-        scale: float = 1.,
+        distribution_width: float = 1.,
+        y_scale: str = "linear",
         indices: Optional[Iterable[int]] = None,
         region_separation: float = 0.02,
         oscillator_colors: Any = None,
@@ -1152,11 +1153,15 @@ class EstimatorSeq1D(Estimator1D):
             The number of increments along the y-axis. **Be careful with this value.
             See the "Notes" section below**.
 
-        scale
-            ``scale`` afects the linewidth of the Gaussian distribution plotted
+        distribution_width
+            Affects the linewidth of the Gaussian distribution plotted
             along the y-axis for each oscillator. The standard deviation of the
-            Guassian is given by ``scale * error`` where ``error`` is the error
-            associated with the parameter. See Notes below for more information.
+            Guassian is given by ``distribution_width * error`` where ``error``
+            is the error associated with the parameter. See Notes below for
+            more information.
+
+        y_scale
+            Should be either ``"linear"`` or ``"log"``.
 
         indices
             See :ref:`INDICES`.
@@ -1245,8 +1250,9 @@ class EstimatorSeq1D(Estimator1D):
 
         This can occur when you have fits with low errors.
         You will not see certain peaks appear in the plot in these circumstances.
-        To resolve this, you are advised to increase the value of ``scale``, in order
-        to increase the linewidth of the distribution plotted along the y-axis.
+        To resolve this, you are advised to increase the value of
+        ``distribution_width``, in order to increase the linewidth of the
+        distribution plotted along the y-axis.
         """
         sanity_check(
             (
@@ -1254,7 +1260,11 @@ class EstimatorSeq1D(Estimator1D):
                 {"length": 2, "must_be_positive": True},
             ),
             ("y_pts", y_pts, sfuncs.check_int, (), {"min_value": 1}),
-            ("scale", scale, sfuncs.check_float, (), {"greater_than_zero": True}),
+            (
+                "distribution_width", distribution_width, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            ("y_scale", y_scale, sfuncs.check_one_of, ("linear", "log")),
             self._indices_check(indices),
             self._funit_check(xaxis_unit, "xaxis_unit"),
             (
@@ -1349,7 +1359,6 @@ class EstimatorSeq1D(Estimator1D):
         )
 
         y = np.linspace(y_range[0], y_range[1], y_pts)
-
         zss = []
         peakss = []
         for mi in merge_indices:
@@ -1369,7 +1378,7 @@ class EstimatorSeq1D(Estimator1D):
                 peaks.append(spec)
 
                 if y_range[0] <= fit <= y_range[1]:
-                    sigma = scale * error
+                    sigma = distribution_width * error
                     gaussian = np.exp((-0.5 * (y - fit) ** 2) / (sigma ** 2))
                     gaussian /= np.amax(gaussian)
                     zs.append(np.outer(spec, gaussian))
@@ -1448,6 +1457,13 @@ class EstimatorSeq1D(Estimator1D):
 
             del zs[-1]
 
+        if y_scale == "linear":
+            ylabel = f"{self.fit_labels[-1]} ({self.fit_units[-1]})"
+        elif y_scale == "log":
+            # [1:-1] is to slice away $s
+            ylabel = f"$\\log({self.fit_labels[-1][1:-1]})$"
+            axs[1].set_yscale("log")
+
         axs[0].set_xticks([])
         axs[0].set_yticks([])
         axs[1].set_xticks(xaxis_ticks)
@@ -1455,7 +1471,7 @@ class EstimatorSeq1D(Estimator1D):
         axs[0].set_xlim(1, 0)
         axs[1].set_xlim(1, 0)
         axs[1].set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
-        axs[1].set_ylabel(f"{self.fit_labels[-1]} ({self.fit_units[-1]})")
+        axs[1].set_ylabel(ylabel)
 
         # Configure spines
         spine_lw = axs[0].spines["top"].get_lw()
