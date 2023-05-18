@@ -1,7 +1,7 @@
 # diffusion.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 22:17:19 BST
+# Last Edited: Thu 18 May 2023 13:35:55 BST
 
 from __future__ import annotations
 import copy
@@ -442,7 +442,6 @@ class _EstimatorDiff(EstimatorSeq1D):
         self,
         indices: Optional[Iterable[int]] = None,
         oscs: Optional[Iterable[int]] = None,
-        neglect_increments: Optional[Iterable[int]] = None,
     ) -> Iterable[np.ndarray]:
         r"""Fit estimation result for the given oscillators across increments in
         order to predict the translational diffusion coefficient, :math:`D`.
@@ -466,10 +465,6 @@ class _EstimatorDiff(EstimatorSeq1D):
         index
             The result index. By default, the last result acquired is considered.
 
-        neglect_increments
-            Increments of the dataset to neglect. Default, all increments are included
-            in the fit.
-
         Returns
         -------
         Iterable[np.ndarray]
@@ -477,7 +472,7 @@ class _EstimatorDiff(EstimatorSeq1D):
             the first element corresponds to :math:`I_{0}`, and the second
             element corresponds to :math:`D`.
         """
-        fits, errors = self._fit(indices, oscs, neglect_increments)
+        fits, errors = self._fit(indices, oscs)
         c = self.c
         for fit, err in zip(fits, errors):
             fit[1] /= c

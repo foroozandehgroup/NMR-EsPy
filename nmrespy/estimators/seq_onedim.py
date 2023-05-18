@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 18 May 2023 10:56:55 BST
+# Last Edited: Thu 18 May 2023 14:11:26 BST
 
 from __future__ import annotations
 import copy
@@ -205,7 +205,7 @@ class EstimatorSeq1D(Estimator1D):
         for estimator in self._estimators:
             estimator.exp_apodisation(k)
 
-    def phase_data(self, p0: float = 0., p1: float = 0., pivot: int = 0.) -> None:
+    def phase_data(self, p0: float = 0., p1: float = 0., pivot: int = 0) -> None:
         for estimator in self._estimators:
             estimator.phase_data(p0, p1, pivot)
 
@@ -311,6 +311,8 @@ class EstimatorSeq1D(Estimator1D):
         self._optimise_amps(x0, **kwargs)
 
     def _optimise_amps(self, x0: np.ndarray, **kwargs) -> None:
+        if "initial_guess" in kwargs:
+            kwargs.pop("initial_guess")
         kwargs["mode"] = "a"
         kwargs["negative_amps"] = "ignore"
         for estimator in self._estimators[1:]:
@@ -353,7 +355,7 @@ class EstimatorSeq1D(Estimator1D):
 
         results = []
         errors = []
-        for amps in self.amplitudes(indices, oscs):
+        for i, amps in enumerate(self.amplitudes(indices, oscs)):
             norm = np.linalg.norm(amps)
             amps /= norm
             args = (amps, self.increments)
@@ -363,19 +365,23 @@ class EstimatorSeq1D(Estimator1D):
             # Suppress output from trust_ncg function
             sys.stdout = io.StringIO(str(os.devnull))
 
+            # Pretty hacky automated way of intiialising the TR
+            initial_trust_radius = 0.1 * np.min(x0)
+
             nlp_result = trust_ncg(
                 x0=x0,
                 args=args,
                 function_factory=self.function_factory,
                 output_mode=None,
+                initial_trust_radius=initial_trust_radius,
             )
 
             # Switch output back on
             sys.stdout = sys.__stdout__
 
             x = nlp_result.x
-            x[0] *= norm
             errs = nlp_result.errors
+            x[0] *= norm
             errs[0] *= norm
 
             results.append(x)
