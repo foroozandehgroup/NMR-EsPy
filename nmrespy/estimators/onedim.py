@@ -1,7 +1,7 @@
 # onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 16:16:48 BST
+# Last Edited: Wed 24 May 2023 10:59:32 BST
 
 from __future__ import annotations
 import copy
@@ -403,6 +403,7 @@ class Estimator1D(_Estimator1DProc):
         plot_model: bool = True,
         plot_residual: bool = True,
         model_shift: Optional[float] = None,
+        residual_shift: Optional[float] = None,
         label_peaks: bool = True,
         denote_regions: bool = False,
         spectrum_line_kwargs: Optional[Dict] = None,
@@ -475,6 +476,9 @@ class Estimator1D(_Estimator1DProc):
 
         model_shift
             The vertical displacement of the model relative to the data.
+
+        residual_shift
+            The vertical displacement of the residaul relative to the data.
 
         label_peaks
             If True, label peaks according to their index. The parameters of a peak
@@ -733,31 +737,36 @@ class Estimator1D(_Estimator1DProc):
                 [np.amax(spectrum.get_ydata()) for spectrum in spectra]
             )
 
-        residual_span = self._get_line_span(residuals)
+        if plot_residual:
+            residual_span = self._get_line_span(residuals)
 
-        lines_to_shift = oscs + spectra
-        if plot_model:
-            lines_to_shift.extend(models)
+            lines_to_shift = oscs + spectra
+            if plot_model:
+                lines_to_shift.extend(models)
 
-        lines_to_shift_span = self._get_line_span(lines_to_shift)
-        top = (
-            (residual_span[1] - residual_span[0]) +
-            (lines_to_shift_span[1] - lines_to_shift_span[0])
-        ) / 0.91
-        line_shift = residual_span[1] - lines_to_shift_span[0] + (0.03 * top)
+            lines_to_shift_span = self._get_line_span(lines_to_shift)
+            if residual_shift is None:
+                top = (
+                    (residual_span[1] - residual_span[0]) +
+                    (lines_to_shift_span[1] - lines_to_shift_span[0])
+                ) / 0.91
+                line_shift = residual_span[1] - lines_to_shift_span[0] + (0.03 * top)
 
-        for line in lines_to_shift:
-            line.set_ydata(line.get_ydata() + line_shift)
+            else:
+                line_shift = residual_shift
 
-        if label_peaks:
-            for label in labels:
-                old_pos = label.get_position()
-                new_pos = (old_pos[0], old_pos[1] + line_shift)
-                label.set_position(new_pos)
+            for line in lines_to_shift:
+                line.set_ydata(line.get_ydata() + line_shift)
 
-        if plot_model:
-            for model in models:
-                model.set_ydata(model.get_ydata() + model_shift)
+            if label_peaks:
+                for label in labels:
+                    old_pos = label.get_position()
+                    new_pos = (old_pos[0], old_pos[1] + line_shift)
+                    label.set_position(new_pos)
+
+            if plot_model:
+                for model in models:
+                    model.set_ydata(model.get_ydata() + model_shift)
 
         # Set y-limit
         all_lines = oscs + spectra
