@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 17 May 2023 19:10:56 BST
+# Last Edited: Thu 25 May 2023 12:33:31 BST
 
 from __future__ import annotations
 import copy
@@ -1490,7 +1490,6 @@ class Estimator(ne.ExpInfo):
         else:
             txt = "ESTIMATING REGION: "
             unit = region_unit.replace("h", "H")
-            print(region)
             dim_strs = [
                 f"{r[0]} - {r[1]} {unit} (F{i + 1})"
                 for i, r in enumerate(region)
