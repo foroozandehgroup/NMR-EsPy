@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 18 May 2023 14:11:26 BST
+# Last Edited: Thu 25 May 2023 12:28:14 BST
 
 from __future__ import annotations
 import copy
@@ -17,7 +17,7 @@ from mpl_toolkits.mplot3d.axis3d import Axis
 import numpy as np
 
 import nmrespy as ne
-from nmrespy._colors import RED, END, USE_COLORAMA
+from nmrespy._colors import RED, ORA, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir
 from nmrespy._misc import proc_kwargs_dict
 from nmrespy._sanity import sanity_check, funcs as sfuncs
@@ -416,6 +416,110 @@ class EstimatorSeq1D(Estimator1D):
         oscs = self._process_oscs(oscs, n_oscs)
         amps = np.array([p[oscs, 0] for p in params]).T
         return amps
+
+    def fit_distribution(
+        self,
+        range_: Tuple[float, float],
+        pts: int = 128,
+        indices: Optional[Iterable[int]] = None,
+        oscs: Optional[Iterable[int]] = None,
+        distribution_width: float = 1.,
+        onedim: bool = True,
+    ) -> np.ndarray:
+        sanity_check(
+            (
+                "range_", range_, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}),
+            self._indices_check(indices),
+            (
+                "distribution_width", distribution_width, sfuncs.check_float, (),
+                {"greater_than_zero": True},
+            ),
+            ("onedim", onedim, sfuncs.check_bool),
+        )
+        indices = self._process_indices(indices)
+        thetas = self.get_params(indices=indices)[0]
+        fits, errors = self.fit(indices=indices)
+        x = np.linspace(range_[0], range_[1], pts)
+        distribution = np.zeros((self.default_pts[0], pts))
+        for theta, fit, error in zip(thetas, fits, errors):
+            fit, error = fit[1], error[1]
+            fid = self.make_fid(np.expand_dims(theta, axis=0))
+            fid[0] *= 0.5
+            spectrum = ne.sig.ft(fid).real
+            if type(self).__name__ == "EstimatorInvRec":
+                spectrum *= -1
+
+            sigma = distribution_width * error
+            gaussian = np.exp((-0.5 * (x - fit) ** 2) / (sigma ** 2))
+            gaussian /= np.amax(gaussian)
+            distribution += np.outer(spectrum, gaussian)
+
+        if onedim:
+            distribution = np.sum(distribution, axis=0)
+
+        return distribution
+
+    def make_fid_filtered(
+        self,
+        range_: Tuple[float, float],
+        pts: Optional[int] = None,
+        increment: int = 0,
+    ) -> Optional[np.ndarray]:
+        """Create an FID using parameters from estimation, in which only oscillators
+        whose amplitude fits lie within the specified range are used.
+
+        Parameters
+        ----------
+        range_
+            Lower and upper bound of fit parameter (i.e. :math:`g` for diffusion,
+            :math:`T_1` for inversion recovery etc.).
+
+        pts
+            Number of points to construct the FID from. If ``None``,
+            ``self.default_pts[0]`` will be used.
+
+        increment
+            The data increment to derive estimation parameters from. By default,
+            the first data increment will be used
+
+        Note
+        ----
+        If no oscillators are found to have amplitude fits which lie within ``range_``,
+        ``None`` is returned.
+        """
+        sanity_check(
+            (
+                "range_", range_, sfuncs.check_float_list, (),
+                {"length": 2, "must_be_positive": True},
+            ),
+            ("pts", pts, sfuncs.check_int, (), {"min_value": 1}, True),
+            (
+                "increment", increment, sfuncs.check_int, (),
+                {"min_value": 0, "max_value": self.n_increments - 1},
+            ),
+        )
+        # Don't need errors here
+        fits, _ = self.fit()
+        theta = self.get_params()[increment]
+        theta_filter = np.zeros((0, 4))
+        for fit, osc in zip(fits, theta):
+            param = fit[1]
+            if range_[0] <= param <= range_[1]:
+                theta_filter = np.vstack((theta_filter, osc))
+
+        if theta_filter.size == 0:
+            print(
+                f"{ORA}Warning: {type(self).__name__}.make_fid_filtered:\n"
+                f"No oscillators in the specified range of "
+                f"{range_[0]:.4g} - {range_[1]:.4g} {self._fit_units[1]} "
+                f"`None` will be returned.{END}"
+            )
+            return None
+
+        return self.make_fid(theta_filter, pts=pts)
 
     def plot_fit_single_oscillator(
         self,
@@ -1237,6 +1341,10 @@ class EstimatorSeq1D(Estimator1D):
             `matplotlib.pyplot.figure
             <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.figure.html>`_.
 
+        .. todo::
+
+            Yet to describe or sanity check ``contour_cmaps`` or ``contour_subsets``.
+
         Returns
         -------
         fig
@@ -1259,6 +1367,21 @@ class EstimatorSeq1D(Estimator1D):
         To resolve this, you are advised to increase the value of
         ``distribution_width``, in order to increase the linewidth of the
         distribution plotted along the y-axis.
+
+        Another warning you might see is:
+
+        .. code::
+
+            UserWarning: No contour levels were found within the data range.
+              axs[1].contour(
+
+        This implies that for some of the peaks to be plotted will not be visible
+        in the DOSY-style contour plot. Thsi results because either:
+
+        * The smallest contour level (given by ``contour_base``) is too large.
+          You will need to decrease its value.
+        * The peak lies outside the region specified by ``y_range``. You'll need
+          to expand this in order to include the missing peak.
         """
         sanity_check(
             (
@@ -1311,7 +1434,7 @@ class EstimatorSeq1D(Estimator1D):
         )
         gridspec_kwargs = proc_kwargs_dict(
             gridspec_kwargs,
-            default={"hspace": 0.},
+            default={"hspace": 0., "wspace": 0., "width_ratios": [1, 4]},
         )
         spectrum_line_kwargs = proc_kwargs_dict(
             spectrum_line_kwargs,
@@ -1367,6 +1490,7 @@ class EstimatorSeq1D(Estimator1D):
         y = np.linspace(y_range[0], y_range[1], y_pts)
         zss = []
         peakss = []
+        distribution_1d = np.zeros(y_pts)
         for mi in merge_indices:
             thetas = self.get_params(indices=mi)[0]
             fits, errors = self.fit(indices=mi)
@@ -1385,9 +1509,12 @@ class EstimatorSeq1D(Estimator1D):
 
                 if y_range[0] <= fit <= y_range[1]:
                     sigma = distribution_width * error
-                    gaussian = np.exp((-0.5 * (y - fit) ** 2) / (sigma ** 2))
-                    gaussian /= np.amax(gaussian)
-                    zs.append(np.outer(spec, gaussian))
+                    gaussian = (1 / np.sqrt(2 * np.pi * sigma)) * (
+                        np.exp((-0.5 * (y - fit) ** 2) / (sigma ** 2))
+                    )
+                    distribution = np.outer(spec, gaussian)
+                    zs.append(distribution)
+                    distribution_1d += np.sum(distribution, axis=0)
                 else:
                     zs.append(None)
 
@@ -1396,11 +1523,19 @@ class EstimatorSeq1D(Estimator1D):
 
         fig, axs = plt.subplots(
             nrows=2,
-            ncols=1,
+            ncols=2,
             gridspec_kw=gridspec_kwargs,
             **kwargs,
         )
+        axs[0, 0].remove()
+        axs = np.array([axs[0, 1], axs[1, 0], axs[1, 1]])
         colorcycle = make_color_cycle(oscillator_colors, sum([len(zs) for zs in zss]))
+        cmap = mpl.colors.LinearSegmentedColormap.from_list(
+            "mycmap", ["#e0e0e0", "k"], N=contour_nlevels,
+        )
+        # y-distribution
+        y_distribution = np.linspace(y_range[0], y_range[1], y_pts)
+        axs[1].plot(-distribution_1d, y_distribution, color="k")
 
         fid = self.data[0]
         fid[0] *= 0.5
@@ -1424,21 +1559,10 @@ class EstimatorSeq1D(Estimator1D):
             zs_slice = [z[slice_] if z is not None else None for z in zs]
             spec = spectrum[slice_]
             axs[0].plot(x, spec, **spectrum_line_kwargs)
-
             peaks = [peak[slice_] for peak in peaks]
             for peak, z_slice in zip(peaks, zs_slice):
                 color = next(colorcycle)
                 axs[0].plot(x, peak, color=color, **oscillator_line_kwargs)
-                if z_slice is not None:
-                    axs[1].contour(
-                        xx,
-                        yy,
-                        z_slice,
-                        colors=color,
-                        levels=contour_levels,
-                        **contour_kwargs,
-                    )
-
                 if label_peaks:
                     x_argmax = np.argmax(peak)
                     x_label = x[x_argmax]
@@ -1449,18 +1573,36 @@ class EstimatorSeq1D(Estimator1D):
                         color=color,
                         **label_kwargs,
                     )
-                    if z_slice is not None:
-                        y_argmax = np.argmax(z_slice[x_argmax])
-                        axs[1].text(
-                            x_label,
-                            y[y_argmax],
-                            str(peak_idx),
-                            color=color,
-                            **label_kwargs,
-                        )
+
+                # if z_slice is not None:
+                #     axs[2].contour(
+                #         xx,
+                #         yy,
+                #         z_slice,
+                #         colors=color,
+                #         levels=contour_levels,
+                #         **contour_kwargs,
+                #     )
+                #     if label_peaks:
+                #         y_argmax = np.argmax(z_slice[x_argmax])
+                #         axs[2].text(
+                #             x_label,
+                #             y[y_argmax],
+                #             str(peak_idx),
+                #             color=color,
+                #             **label_kwargs,
+                #         )
 
                     peak_idx += 1
 
+            axs[2].contour(
+                xx,
+                yy,
+                sum([z_slice for z_slice in zs_slice if z_slice is not None]),
+                cmap=cmap,
+                levels=contour_levels,
+                **contour_kwargs,
+            )
             del zs[-1]
 
         if y_scale == "linear":
@@ -1468,16 +1610,21 @@ class EstimatorSeq1D(Estimator1D):
         elif y_scale == "log":
             # [1:-1] is to slice away $s
             ylabel = f"$\\log({self.fit_labels[-1][1:-1]})$"
-            axs[1].set_yscale("log")
+            for ax in axs[1:]:
+                ax.set_yscale("log")
 
         axs[0].set_xticks([])
         axs[0].set_yticks([])
-        axs[1].set_xticks(xaxis_ticks)
-        axs[1].set_xticklabels(xaxis_ticklabels)
         axs[0].set_xlim(1, 0)
-        axs[1].set_xlim(1, 0)
-        axs[1].set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
         axs[1].set_ylabel(ylabel)
+        axs[1].set_xticks([])
+        axs[1].set_ylim(y_range[0], y_range[1])
+        axs[2].set_ylim(y_range[0], y_range[1])
+        axs[2].set_xticks(xaxis_ticks)
+        axs[2].set_xticklabels(xaxis_ticklabels)
+        axs[2].set_xlim(1, 0)
+        axs[2].set_yticks([])
+        axs[2].set_xlabel(self._axis_freq_labels(xaxis_unit)[-1])
 
         # Configure spines
         spine_lw = axs[0].spines["top"].get_lw()
@@ -1491,14 +1638,24 @@ class EstimatorSeq1D(Estimator1D):
             "mew": 1,
             "clip_on": False,
         }
-        for ax in axs:
+        for ax in axs[[0, 2]]:
             ax.spines["top"].set_visible(False)
             ax.spines["bottom"].set_visible(False)
             for i, mrs in enumerate(reversed(merge_region_spans)):
                 if i != 0:
-                    ax.plot([1 - mrs[1], 1 - mrs[1]], [0, 1], transform=ax.transAxes, **break_kwargs)
+                    ax.plot(
+                        [1 - mrs[1], 1 - mrs[1]],
+                        [0, 1],
+                        transform=ax.transAxes,
+                        **break_kwargs,
+                    )
                 if i != n_regions - 1:
-                    ax.plot([1 - mrs[0], 1 - mrs[0]], [0, 1], transform=ax.transAxes, **break_kwargs)
+                    ax.plot(
+                        [1 - mrs[0], 1 - mrs[0]],
+                        [0, 1],
+                        transform=ax.transAxes,
+                        **break_kwargs,
+                    )
                 for y in ([0, 0], [1, 1]):
                     ax.plot(
                         [1 - mrs[0], 1 - mrs[1]],

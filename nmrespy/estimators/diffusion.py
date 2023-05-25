@@ -1,7 +1,7 @@
 # diffusion.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 18 May 2023 13:35:55 BST
+# Last Edited: Thu 18 May 2023 19:11:09 BST
 
 from __future__ import annotations
 import copy
@@ -414,15 +414,18 @@ class _EstimatorDiff(EstimatorSeq1D):
 
     @property
     def c(self) -> float:
-        r"""Proportionality constant in Stejskal-Tanner, in units 10⁻⁴ m⁻² s.
+        r"""Proportionality constant in Stejskal-Tanner, in units 10⁻⁴ rad² m⁻² s.
 
         .. math::
 
             c = \gamma^2 \delta^2 \sigma^2 \Delta^{\prime}
         """
+        # N.B. When comparing fits to andrographolide data from Jon, I found
+        # good agreement when gamma was in units of rad Hz/G and sigma was set
+        # to 1. (i.e. no consideration of the shape function made).
         return (
             1.e-4 *
-            (self.gamma * self.small_delta * self.sigma) ** 2 *
+            (2 * np.pi * self.gamma * self.small_delta * self.sigma) ** 2 *
             self.big_delta_prime
         )
 
