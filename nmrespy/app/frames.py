@@ -1,11 +1,10 @@
 # frames.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 24 Mar 2022 11:21:46 GMT
-
-import webbrowser
+# Last Edited: Mon 17 Oct 2022 13:38:23 BST
 
 import tkinter as tk
+import webbrowser
 
 import nmrespy._paths_and_links as pl
 import nmrespy.app.config as cf
@@ -230,6 +229,7 @@ class RootButtonFrame(wd.MyFrame):
     def __init__(self, master, cancel_msg="Are you sure you want to close NMR-EsPy?"):
         super().__init__(master)
 
+        self.master = master
         self.cancel_msg = cancel_msg
 
         self.cancel_button = wd.MyButton(
@@ -298,7 +298,6 @@ class RootButtonFrame(wd.MyFrame):
         )
 
     def cancel(self):
-
         check = ConfirmWindow(
             parent=self,
             msg=self.cancel_msg,
@@ -309,29 +308,30 @@ class RootButtonFrame(wd.MyFrame):
 
         if check.conf:
             # Destroy NMREsPyApp
-            self.master.destroy()
+            self.ctrl.destroy()
 
 
 class ConfirmWindow(wd.MyToplevel):
     """A window to double-check the user wants to do something."""
 
-    def __init__(self, parent, msg, yes_text="Confirm", no_text="Cancel"):
+    def __init__(self, parent, msg, inc_no=True, yes_text="Confirm", no_text="Cancel"):
         super().__init__(parent)
 
         self.conf = False
 
         # add text explaining the issue
         text = wd.MyLabel(self, text=msg, wraplength=400)
-        text.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+        text.grid(row=0, column=0, columnspan=2 if inc_no else 1, padx=10, pady=10)
 
         # close button
-        cancel_button = wd.MyButton(
-            self,
-            text=no_text,
-            bg=cf.BUTTONRED,
-            command=self.cancel,
-        )
-        cancel_button.grid(row=1, column=0, padx=10, pady=(0, 10))
+        if inc_no:
+            cancel_button = wd.MyButton(
+                self,
+                text=no_text,
+                bg=cf.BUTTONRED,
+                command=self.cancel,
+            )
+            cancel_button.grid(row=1, column=0, padx=10, pady=(0, 10))
 
         confirm_button = wd.MyButton(
             self,
@@ -339,7 +339,9 @@ class ConfirmWindow(wd.MyToplevel):
             bg=cf.BUTTONGREEN,
             command=self.confirm,
         )
-        confirm_button.grid(row=1, column=1, padx=(0, 10), pady=(0, 10))
+        confirm_button.grid(
+            row=1, column=1 if inc_no else 0, padx=(0, 10), pady=(0, 10),
+        )
 
     def cancel(self):
         self.conf = False
@@ -351,50 +353,50 @@ class ConfirmWindow(wd.MyToplevel):
 
 
 # # TODO: fix
-# class WaitingWindow(MyToplevel):
+# class WaitingWindow(wd.MyToplevel):
 #     """A window with an animation that appears while the estimation routine
 #     is running."""
-#
+
 #     def __init__(self, master):
 #         super().__init__(master)
-#
+
 #         # Create a simple FID for the animation
 #         para = np.array([[1, 0, 2, 1.5]])
 #         n = 256
 #         sw = [50.]
 #         self.fid = np.real(sig.make_fid(para, [n], sw)[0])
-#
+
 #         # Create a figure
 #         self.fig = plt.figure(figsize=(3, 2))
 #         self.ax = self.fig.add_axes([0.05, 0.05, 0.9, 0.9])
 #         self.ax.set_xlim(-10, n + 10)
 #         pad = 0.05 * np.amax(self.fid)
 #         self.ax.set_ylim(np.amin(self.fid) - pad, np.amax(self.fid) + pad)
-#
-#         self.fig.patch.set_facecolor(BGCOLOR)
-#         self.ax.set_facecolor(BGCOLOR)
-#
+
+#         self.fig.patch.set_facecolor(cf.BGCOLOR)
+#         self.ax.set_facecolor(cf.BGCOLOR)
+
 #         for pos in ('top', 'bottom', 'right', 'left'):
 #             self.ax.spines[pos].set_visible(False)
-#
+
 #         self.ax.set_xticks([])
 #         self.ax.set_yticks([])
-#
+
 #         def hex_color():
 #             """Generates a random hex colour"""
 #             def r():
 #                 return random.randint(0, 255)
 #             return f'#{r():02x}{r():02x}{r():02x}'
-#
+
 #         self.line, = self.ax.plot(
 #             [], [], color=hex_color(), lw=5, solid_capstyle='round',
 #         )
-#
+
 #         def animate(i):
 #             x = self.line.get_xdata()
 #             y = self.line.get_ydata()
 #             s = x.size
-#
+
 #             if s == n:
 #                 self.line.set_xdata(np.array([]))
 #                 self.line.set_ydata(np.array([]))
@@ -402,17 +404,17 @@ class ConfirmWindow(wd.MyToplevel):
 #             else:
 #                 self.line.set_xdata(np.hstack((x, np.arange(s, s + 4))))
 #                 self.line.set_ydata(np.hstack((y, self.fid[s:s + 4])))
-#
+
 #             return self.line
-#
+
 #         ani = FuncAnimation(self.fig, animate, interval=20)
-#
+
 #         self.canvas = backend_tkagg.FigureCanvasTkAgg(self.fig, master=self)
 #         self.canvas.draw()
 #         self.canvas.get_tk_widget().grid(
 #             column=0, row=0, padx=50, pady=(50, 20),
 #         )
-#
+
 #         self.label = MyLabel(
 #             self, text='Estimating...', font=('Helvetica', 14, 'bold')
 #         ).grid(row=1, padx=50, pady=(0, 30))

@@ -1,7 +1,7 @@
 # plot.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 09 Sep 2022 18:29:38 BST
+# Last Edited: Mon 10 Oct 2022 13:33:52 BST
 
 """Module for plotting estimation results."""
 
@@ -54,12 +54,12 @@ def _to_hex(color: Any) -> Optional[str]:
         return None
 
 
-class ResultPlotter(ExpInfo):
+class ResultPlotter1D(ExpInfo):
     """Class for generating figures of estimation results."""
 
     def __init__(
         self,
-        data: np.ndarray,
+        spectrum: np.ndarray,
         result: np.ndarray,
         expinfo: ExpInfo,
         *,
@@ -367,7 +367,9 @@ class ResultPlotter(ExpInfo):
         if oscillator_colors in plt.colormaps():
             return [
                 _to_hex(c) for c in
-                cm.get_cmap(oscillator_colors)(np.linspace(0, 1, self.result.shape[0]))
+                mpl.colormaps[oscillator_colors](
+                    np.linspace(0, 1, self.result.shape[0])
+                )
             ]
         if isinstance(oscillator_colors, str):
             oscillator_colors = [oscillator_colors]
@@ -566,8 +568,10 @@ def make_color_cycle(color_input: Any, n: int) -> itertools.cycle:
     elif color_input in plt.colormaps():
         iterable = [
             mcolors.to_hex(c) for c in
-            cm.get_cmap(color_input)(np.linspace(0, 1, n))
+            mpl.colormaps[color_input](np.linspace(0, 1, n))
         ]
+    elif (single_color := _to_hex(color_input)) is not None:
+        iterable = [single_color]
     else:
         iterable = [_to_hex(c) for c in color_input]
 

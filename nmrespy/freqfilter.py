@@ -1,7 +1,7 @@
 # freqfilter.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 15:55:10 BST
+# Last Edited: Fri 12 May 2023 15:06:38 BST
 
 """Frequecy filtration of NMR data using super-Gaussian band-pass filters.
 
@@ -100,11 +100,25 @@ class Filter(ExpInfo):
         sanity_check(
             ("expinfo", expinfo, sfuncs.check_expinfo),
             ("sg_power", sg_power, sfuncs.check_float, (), {"greater_than_one": True}),
-            ("fid", fid, sfuncs.check_ndarray, (expinfo.dim,)),
+            ("fid", fid, sfuncs.check_ndarray),
         )
-
         self._fid = fid
         self._sg_power = sg_power
+
+        if expinfo.dim == 1:
+            sanity_check(("fid", fid, sfuncs.check_ndarray, (), {"dim": 1}))
+            shape = fid.shape
+
+        elif expinfo.dim == 2:
+            sanity_check(
+                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("hyper", "amp", "phase")),  # noqa: E501
+            )
+            if twodim_dtype == "hyper":
+                sanity_check(("fid", fid, sfuncs.check_ndarray, (), {"dim": 2}))
+                shape = fid.shape
+            elif twodim_dtype in ("amp", "phase"):
+                sanity_check(("fid", fid, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(0, 2)]}))  # noqa: E501
+                shape = fid.shape[1:]
 
         super().__init__(
             dim=expinfo.dim,
@@ -112,18 +126,9 @@ class Filter(ExpInfo):
             offset=expinfo.offset("hz"),
             sfo=expinfo.sfo,
             nuclei=expinfo.nuclei,
-            default_pts=self._fid.shape,
+            default_pts=shape,
             fn_mode=expinfo.fn_mode,
         )
-
-        if self.dim == 2:
-            sanity_check(
-                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("jres",)),
-            )
-        elif self.dim == 3:
-            sanity_check(
-                ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase")),
-            )
 
         sanity_check(
             (

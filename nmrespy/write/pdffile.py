@@ -1,7 +1,7 @@
 # pdffile.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Apr 2022 11:44:40 BST
+# Last Edited: Mon 10 Oct 2022 16:31:55 BST
 
 import datetime
 import re
@@ -116,6 +116,14 @@ def texify(entry: str) -> str:
 
     if entry == "∫":
         return "$\\int$"
+
+    # Check if nucleus symbol
+    nuc_regex = r"(⁰|¹|²|³|⁴|⁵|⁶|⁷|⁸|⁹)+[A-z][a-z]?"
+    if re.fullmatch(nuc_regex, entry):
+        x = re.search(r"[A-Z]", entry).span()[0]
+        entry = f"\\textsuperscript{{{entry[:x]}}}{entry[x:]}"
+        translation = str.maketrans(dict(zip("¹²³⁴⁵⁶⁷⁸⁹⁰", "1234567890")))
+        return entry.translate(translation)
 
     # Check if number
     number_regex = (

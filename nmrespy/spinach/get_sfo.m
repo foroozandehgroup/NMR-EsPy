@@ -1,4 +1,4 @@
-function sfo = get_sfo(field, channel)
-    gamma = spin(channel);
-    sfo = (field * gamma) / (2e6 * pi);
+function sfo = get_sfo(field, nucleus, offset)
+    gamma = spin(nucleus);
+    sfo = ((gamma * field / (2 * pi)) + offset) * 1e-6
 end

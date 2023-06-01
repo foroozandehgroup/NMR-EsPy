@@ -1,7 +1,7 @@
 # __main__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Apr 2022 12:14:41 BST
+# Last Edited: Fri 06 Jan 2023 00:19:20 GMT
 
 """Run when the user calls the nmrespy module from a command line.
 
@@ -20,12 +20,18 @@ import pathlib
 
 from nmrespy._colors import RED, END, USE_COLORAMA
 from nmrespy._install_to_topspin import main as install_to_topspin
+from nmrespy import Estimator1D, Estimator2DJ
 
 if USE_COLORAMA:
     import colorama
 
     colorama.init()
-from .app import NMREsPyApp
+from .app.main import NMREsPyApp
+
+
+def fmt_path(path: str) -> pathlib.Path:
+    return pathlib.Path(path).expanduser().resolve()
+
 
 if __name__ == "__main__":
 
@@ -36,18 +42,25 @@ if __name__ == "__main__":
     )
 
     group = parser.add_mutually_exclusive_group(required=True)
+
     group.add_argument(
-        "-e",
-        "--estimate",
-        help="Loads the nmrespy GUI to set up an estimation. Argument should "
-        "be a path to a Bruker data directory.",
+        "--setup1d",
+        help="Loads the nmrespy GUI to set up an estimation for 1D data."
     )
+
     group.add_argument(
-        "-r",
+        "--setup2dj",
+        help=(
+            "Loads the nmrespy GUI to set up an estimation for data acquired by a "
+            "2DJ experiemnt."
+        ),
+    )
+
+    group.add_argument(
         "--result",
-        help="Loads the nmrespy GUI to view an estimation result. Argument "
-        "should be a path to a pickled estimator instance.",
+        help="Loads the nmrespy GUI to view an estimation result."
     )
+
     group.add_argument(
         "-i",
         "--install-to-topspin",
@@ -55,6 +68,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Install the nmrespy GUI to TopSpin",
     )
+
     # Internal flag used to indicate that the app was loaded from inside
     # TopSpin. When this occurs, it is necessary to ascertain whether the
     # user would like to analyse data from the fid file or pdata file.
@@ -84,26 +98,33 @@ if __name__ == "__main__":
         install_to_topspin()
         exit()
 
-    if args.estimate is not None:
-        path = pathlib.Path(args.estimate).expanduser().resolve()
-        if not path.is_dir():
-            raise ValueError(
-                f"{RED}\nThe path you have specified doesn't exist:\n{path}" f"{END}"
-            )
-        res = False
+    res = False
+    if args.setup1d is not None:
+        path = fmt_path(args.setup1d)
+        dtype = "1D"
+        # Try to generate the estimator to ensure the path is valid
+        Estimator1D.new_bruker(path)
 
-    else:
-        path = pathlib.Path(args.result).expanduser().resolve()
+    elif args.setup2dj is not None:
+        path = fmt_path(args.setup2dj)
+        dtype = "2DJ"
+        # Try to generate the estimator to ensure the path is valid
+        Estimator2DJ.new_bruker(path)
+
+    elif args.result is not None:
+        path = fmt_path(args.result)
+        dtype = None
         if not path.is_file():
             raise ValueError(
                 f"{RED}\nThe path you have specified doesn't exist:\n{path}" f"{END}"
             )
         res = True
 
-    app = NMREsPyApp(
+    gui = NMREsPyApp(
         path=path,
         res=res,
+        dtype=dtype,
         topspin=args.topspin,
         pdflatex=args.pdflatex,
     )
-    app.mainloop()
+    gui.mainloop()

@@ -1,11 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 22 Jul 2022 15:18:42 BST
-
-# Simon Hulse
-# simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 10 May 2022 14:32:18 BST
+# Last Edited: Wed 17 May 2023 12:16:50 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
 
@@ -16,6 +12,7 @@ MWE
 """
 
 import copy
+import itertools
 from typing import Iterable, Union
 
 import numpy as np
@@ -74,7 +71,7 @@ class MatrixPencil(ResultFetcher):
         data: np.ndarray,
         oscillators: int = 0,
         start_point: Union[Iterable[int], None] = None,
-        fprint: bool = True,
+        output_mode: bool = True,
     ) -> None:
         """
         Parameters
@@ -96,14 +93,14 @@ class MatrixPencil(ResultFetcher):
             truncated at the beginning (i.e. the first point occurs at time
             zero).
 
-        fprint
+        output_mode
             Flag specifiying whether to print infomation to the terminal as
             the method runs.
         """
         sanity_check(
             ("expinfo", expinfo, sfuncs.check_expinfo),
             ("oscillators", oscillators, sfuncs.check_int, (), {"min_value": 0}),
-            ("fprint", fprint, sfuncs.check_bool),
+            ("output_mode", output_mode, sfuncs.check_bool),
         )
         sanity_check(
             ("data", data, sfuncs.check_ndarray, (expinfo.dim,)),
@@ -126,7 +123,7 @@ class MatrixPencil(ResultFetcher):
         self.start_point = start_point
         if self.start_point is None:
             self.start_point = [0] * self.dim
-        self.fprint = fprint
+        self.output_mode = output_mode
 
         # Init ResultFetcher
         super().__init__(sfo)
@@ -175,13 +172,13 @@ class MatrixPencil(ResultFetcher):
         # Pencil parameter.
         # Optimal when between N/2 and N/3 (see Lin's paper)
         L = int(np.floor(N / 3))
-        if self.fprint:
+        if self.output_mode:
             print(f"--> Pencil Parameter: {L}")
 
         # Construct Hankel matrix
         Y = slinalg.hankel(normed_data[: N - L], normed_data[N - L - 1 :])
 
-        if self.fprint:
+        if self.output_mode:
             print("--> Hankel data matrix constructed:")
             print(f"\tSize:   {Y.shape[0]} x {Y.shape[1]}")
             gibibytes = Y.nbytes / (2 ** 30)
@@ -193,46 +190,48 @@ class MatrixPencil(ResultFetcher):
         # Singular value decomposition of Y
         # returns singular values: min(N-L, L)-length vector
         # and right singular vectors (LxL size matrix)
-        if self.fprint:
+        if self.output_mode:
             print("--> Performing Singular Value Decomposition...")
         _, sigma, Vh = nlinalg.svd(Y)
         V = Vh.T
 
         # Compute the MDL in order to estimate the number of oscillators
-        if self.fprint:
+        if self.output_mode:
             print("--> Computing number of oscillators...")
 
         if self.oscillators == 0:
-            if self.fprint:
+            if self.output_mode:
                 print("\tNumber of oscillators will be estimated using MDL")
             self.oscillators = self._mdl_1d(sigma, N)
 
         else:
-            if self.fprint:
+            if self.output_mode:
                 print("\tNumber of oscillations has been pre-defined")
 
-        if self.fprint:
+        if self.output_mode:
             print(f"\tNumber of oscillations: {self.oscillators}")
 
         if self.oscillators == 0:
-            if self.fprint:
+            if self.output_mode:
                 print("No oscillators detected!")
                 self.params = None
                 return
 
         # Determine signal poles
-        if self.fprint:
+        if self.output_mode:
             print("--> Computing signal poles...")
 
         Vm = V[:, : self.oscillators]  # Retain M first right singular vectors
         V1 = Vm[:-1, :]  # Remove last column
         V2 = Vm[1:, :]  # Remove first column
 
-        # Determine first M signal poles (others should be 0)
-        poles = nlinalg.eig(V2 @ nlinalg.pinv(V1))[0][: self.oscillators]
+        # Determine M signal poles
+        V1inv = nlinalg.pinv(V1)
+        V1invV2 = V1inv @ V2
+        poles, _ = nlinalg.eig(V1invV2)
 
         # Compute complex amplitudes
-        if self.fprint:
+        if self.output_mode:
             print("--> Computing complex amplitudes...")
 
         # Pseudoinverse of Vandermonde matrix of poles multiplied by
@@ -256,11 +255,11 @@ class MatrixPencil(ResultFetcher):
         norm = nlinalg.norm(self.data)
         normed_data = self.data / norm
 
-        if self.fprint:
+        if self.output_mode:
             print("--> Computing number of oscillators...")
 
         if self.oscillators == 0:
-            if self.fprint:
+            if self.output_mode:
                 print(
                     "\tNumber of oscillators will be estimated using MDL on first "
                     "t1 increment."
@@ -278,21 +277,21 @@ class MatrixPencil(ResultFetcher):
             )
 
         else:
-            if self.fprint:
+            if self.output_mode:
                 print("\tNumber of oscillators has been pre-defined")
 
-        if self.fprint:
+        if self.output_mode:
             print(f"\tNumber of oscillators: {self.oscillators}")
 
         if self.oscillators == 0:
-            if self.fprint:
+            if self.output_mode:
                 print("No oscillators detected!")
                 self.params = None
                 return
 
         # Pencil parameters
         K, L = tuple([int((n + 1) / 2) for n in (N1, N2)])
-        if self.fprint:
+        if self.output_mode:
             print(f"--> Pencil parameters: {K}, {L}")
 
         # --- Enhanced Matrix ---
@@ -309,7 +308,7 @@ class MatrixPencil(ResultFetcher):
                 (Xe, X[:, k * (N2 - L + 1) : (k + N1 - K + 1) * (N2 - L + 1)])
             )
 
-        if self.fprint:
+        if self.output_mode:
             print("--> Enhanced Block Hankel matrix constructed:")
             print(f"\tSize: {Xe.shape[0]} x {Xe.shape[1]}")
             gibibytes = Xe.nbytes / (2 ** 30)
@@ -320,13 +319,15 @@ class MatrixPencil(ResultFetcher):
 
         # convert Xe to sparse matrix
         sparse_Xe = sparse.csr_matrix(Xe)
-        U, *_ = splinalg.svds(sparse_Xe, k=self.oscillators)
 
-        if self.fprint:
+        # --- SVD of Xe ---
+        if self.output_mode:
             print("--> Performing Singular Value Decomposition...")
 
+        U, *_ = splinalg.svds(sparse_Xe, k=self.oscillators)
+
         # --- Permutation matrix ---
-        if self.fprint:
+        if self.output_mode:
             print("--> Computing Permutation matrix...")
 
         # Create first row of matrix: [1, 0, 0, ..., 0]
@@ -353,21 +354,35 @@ class MatrixPencil(ResultFetcher):
 
         # --- Signal Poles ---
         # retain only M principle left s. vecs
-        if self.fprint:
+        if self.output_mode:
             print("--> Computing signal poles...")
 
         Us = U[:, : self.oscillators]
         U1 = Us[: Us.shape[0] - L, :]  # last L rows deleted
         U2 = Us[L:, :]  # first L rows deleted
         eig_y, vec_y = nlinalg.eig(nlinalg.pinv(U1) @ U2)
+
         Usp = P @ Us
         U1p = Usp[: Usp.shape[0] - K, :]  # last K rows deleted
         U2p = Usp[K:, :]  # first K rows deleted
-        eig_z = np.diag(nlinalg.solve(vec_y, nlinalg.pinv(U1p)) @ U2p @ vec_y)
+        Z = nlinalg.inv(vec_y) @ nlinalg.pinv(U1p) @ U2p @ vec_y
+        eig_z = np.diag(Z).copy()
+
+        # Get y frequencies in order to determine proximities
+        fy = (self.sw[0] / (2 * np.pi)) * np.imag(np.log(eig_y)) + self.offset[0]
+        groupings = self._find_similar_frequencies(fy)
+        for grouping in groupings:
+            n = len(grouping)
+            if n != 1:
+                A_slice = tuple(zip(*itertools.product(grouping, repeat=2)))
+                A = Z[A_slice].reshape(n, n)
+                eig_A, _ = nlinalg.eig(A)
+                eig_z[grouping] = eig_A
+
         poles = np.hstack((eig_y, eig_z)).reshape((2, self.oscillators))
 
         # --- Complex Amplitudes ---
-        if self.fprint:
+        if self.output_mode:
             print("--> Computing complex amplitudes...")
 
         ZL = np.power.outer(poles[1], np.arange(L)).T
@@ -440,7 +455,7 @@ class MatrixPencil(ResultFetcher):
             with shape ``(M_new, 2 * dim + 2)``, where
             ``M_new <= param.shape[0]`` and ``dim`` is the data dimension.
         """
-        if self.fprint:
+        if self.output_mode:
             print("--> Checking for oscillators with negative damping...")
 
         M_init = params.shape[0]
@@ -452,14 +467,34 @@ class MatrixPencil(ResultFetcher):
         ud_params = np.delete(params, neg_damp_idx, axis=0)
         M = ud_params.shape[0]
 
-        if M < M_init and self.fprint:
+        if M < M_init and self.output_mode:
             print(
                 f"\t{ORA}WARNING: Oscillations with negative damping\n"
                 f"\tfactors detected. These have been deleted.\n"
                 f"\tCorrected number of oscillations: {M}{END}"
             )
 
-        elif self.fprint:
+        elif self.output_mode:
             print("\tNone found")
 
         return ud_params, M
+
+    def _find_similar_frequencies(self, fys: np.ndarray) -> Iterable[Iterable[int]]:
+        threshold = self.sw[0] / self.data.shape[0]
+        groupings = {}
+        for idx, fy in enumerate(fys):
+            assigned = False
+            for freq, indices in groupings.items():
+                n = len(indices)
+                if np.abs(fy - freq) < threshold:
+                    indices.append(idx)
+                    indices = sorted(indices)
+                    # Get new mean freq of the group
+                    new_freq = (n * freq + fy) / (n + 1)
+                    groupings[new_freq] = groupings.pop(freq)
+                    assigned = True
+                    break
+            if not assigned:
+                groupings[fy] = [idx]
+
+        return [indices for indices in groupings.values()]

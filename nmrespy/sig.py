@@ -1,14 +1,14 @@
 # sig.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 07 Sep 2022 12:53:19 BST
+# Last Edited: Wed 17 May 2023 14:16:17 BST
 
-"""Manipulating and processing NMR signals."""
+"""A module for manipulating and processing NMR signals."""
 
 import copy
 import re
 import tkinter as tk
-from typing import Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -27,26 +27,24 @@ def make_virtual_echo(
 ) -> np.ndarray:
     """Generate a virtual echo [#]_ from a time-domain signal.
 
-    A vitrual echo is a signal with a purely real Fourier-Tranform and
-    absorption mode line shape if the data is phased.
+    A vitrual echo is a signal with a purely real Fourier-Tranform.
 
     Parameters
     ----------
     data
         The data to construct the virtual echo from. If the data comprises a pair
         of amplitude/phase modulated signals, these should be stored in a single
-        3D array with ``shape[2] == 2``, such that ``data[:, :, 0]`` if the cos/p
-        signal, and ``data[:, :, 1]`` is the sin/n signal.
+        3D array with ``shape[0] == 2``, such that ``data[0]`` is the cos/p
+        signal, and ``data[1]`` is the sin/n signal.
 
     twodim_dtype
         If the data is 2D, this parameter specifies the way to process the data.
         Allowed options are:
 
-        * ``"jres"``: The data should be derived from a J-Resolved (2DJ) experiment.
-        * ``"amp"``: the two signals in axis 2 of ``data`` should be an
-          amplitude modulated pair.
-        * ``"phase"``: the two signals in axis 2 of ``data`` should be a phase
-          modulated pair.
+        * ``"hyper"``: The data is hypercomplex. Virtual echo is constructed
+            along the second axis.
+        * ``"amp"``: The data comprises an amplitude-modulated pair.
+        * ``"phase"``: The data comprises a phase-modulated pair.
 
     References
     ----------
@@ -57,82 +55,79 @@ def make_virtual_echo(
     sanity_check(("data", data, sfuncs.check_ndarray))
     if data.ndim == 2:
         sanity_check(
-            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("jres",))
+            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("hyper",))
         )
     elif data.ndim == 3:
         sanity_check(
-            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase"))
+            ("twodim_dtype", twodim_dtype, sfuncs.check_one_of, ("amp", "phase")),
+            ("data", data, sfuncs.check_ndarray, (), {"shape": [(0, 2)]}),
         )
 
     if data.ndim == 1:
         pts = data.size
-        ve = np.zeros((2 * pts - 1), dtype="complex")
-        ve[0] = np.real(data[0])
-        ve[1:pts] = data[1:]
-        ve[pts:] = data[1:][::-1].conj()
+        tmp1, tmp2 = [np.zeros((2 * data.size,), dtype="complex") for _ in range(2)]
+        tmp1[: pts] = data
+        tmp2[pts :] = data[::-1].conj()
+        tmp2 = np.roll(tmp2, 1, axis=0)
+        ve = tmp1 + tmp2
+        ve[0] /= 2.
         return ve
 
-    if twodim_dtype == "jres":
+    if twodim_dtype == "hyper":
         pts = data.shape
-        ve = np.zeros((pts[0], 2 * pts[1] - 1), dtype="complex")
-        ve[:, 0] = np.real(data[:, 0])
-        ve[:, 1 : pts[1]] = data[:, 1:]
-        ve[:, pts[1]:] = data[:, 1:][:, ::-1].conj()
+        tmp1, tmp2 = [np.zeros((pts[0], 2 * pts[1]), dtype="complex") for _ in range(2)]
+        tmp1[:, : pts[1]] = data
+        tmp2[:, pts[1] :] = data[:, ::-1].conj()
+        tmp2 = np.roll(tmp2, 1, axis=1)
+        ve = tmp1 + tmp2
+        ve[:, 0] /= 2
         return ve
 
-    if twodim_dtype == "amp":
-        # TODO NEEDS FIXING
-        cos = data[:, :, 0]
-        sin = data[:, :, 1]
+    if twodim_dtype in ("amp", "phase"):
+        if twodim_dtype == "amp":
+            cos = data[0]
+            sin = data[1]
+        elif twodim_dtype == "phase":
+            cos = (data[0] + data[1]) / 2.
+            sin = (data[0] - data[1]) / 2.j
 
-    elif twodim_dtype == "phase":
-        cos = 0.5 * (data[:, :, 0] + data[:, :, 1])
-        sin = -1j * 0.5 * (data[:, :, 0] - data[:, :, 1])
+        # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
+        # where: Re(cos) -> R₁R₂, Im(cos) -> R₁I₂, Re(sin) -> I₁R₂, Im(sin) -> I₁I₂
+        r1r2 = np.real(cos)
+        r1i2 = np.imag(cos)
+        i1r2 = np.real(sin)
+        i1i2 = np.imag(sin)
 
-    # S±± = (R₁ ± iI₁)(R₂ ± iI₂)
-    # where: Re(cos) -> R₁R₂, Im(cos) -> R₁I₂, Re(sin) -> I₁R₂, Im(sin) -> I₁I₂
-    r1r2 = np.real(cos)
-    r1i2 = np.imag(cos)
-    i1r2 = np.real(sin)
-    i1i2 = np.imag(sin)
+        # S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)
+        pp = r1r2 - i1i2 + 1j * (r1i2 + i1r2)
+        # S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)
+        pm = r1r2 + i1i2 + 1j * (i1r2 - r1i2)
+        # S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)
+        mp = r1r2 + i1i2 + 1j * (r1i2 - i1r2)
+        # S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)
+        mm = r1r2 - i1i2 - 1j * (r1i2 + i1r2)
 
-    # S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)
-    pp = r1r2 - i1i2 + 1j * (r1i2 + i1r2)
-    # S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)
-    pm = r1r2 + i1i2 + 1j * (i1r2 - r1i2)
-    # S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)
-    mp = r1r2 + i1i2 + 1j * (r1i2 - i1r2)
-    # S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)
-    mm = r1r2 - i1i2 - 1j * (r1i2 + i1r2)
+        pts = cos.shape
 
-    pts = data.shape[:2]
+        ve_pts = tuple(2 * x for x in pts)
+        tmp1, tmp2, tmp3, tmp4 = [np.zeros(ve_pts, dtype="complex") for _ in range(4)]
+        tmp1[: pts[0], : pts[1]] = pp
 
-    tmp1 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-    tmp1[: pts[0], : pts[1]] = pp
-    tmp1[0] /= 2
-    tmp1[:, 0] /= 2
+        tmp2[: pts[0], pts[1] :] = pm[:, ::-1]
+        tmp2 = np.roll(tmp2, 1, axis=1)
 
-    tmp2 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-    tmp2[: pts[0], pts[1] - 1 :] = pm[:, ::-1]
-    tmp2[0] /= 2
-    tmp2[:, -1] /= 2
-    tmp2 = np.roll(tmp2, 1, axis=1)
+        tmp3[pts[0] :, : pts[1]] = mp[::-1]
+        tmp3 = np.roll(tmp3, 1, axis=0)
 
-    tmp3 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-    tmp3[pts[0] - 1 :, : pts[1]] = mp[::-1]
-    tmp3[-1] /= 2
-    tmp3[:, 0] /= 2
-    tmp3 = np.roll(tmp3, 1, axis=0)
+        tmp4[pts[0] :, pts[1] :] = mm[::-1, ::-1]
+        tmp4 = np.roll(tmp4, 1, axis=(0, 1))
 
-    tmp4 = np.zeros(tuple(2 * p - 1 for p in pts), dtype="complex")
-    tmp4[pts[0] - 1 :, pts[1] - 1 :] = mm[::-1, ::-1]
-    tmp4[-1] /= 2
-    tmp4[:, -1] /= 2
-    tmp4 = np.roll(tmp4, 1, axis=(0, 1))
+        ve = tmp1 + tmp2 + tmp3 + tmp4
+        ve[0, :] /= 2.
+        ve[:, 0] /= 2.
+        ve /= 2
 
-    ve = tmp1 + tmp2 + tmp3 + tmp4
-
-    return ve
+        return ve
 
 
 def zf(data: np.ndarray) -> np.ndarray:
@@ -181,26 +176,57 @@ def exp_apodisation(
     sanity_check(
         ("fid", fid, sfuncs.check_ndarray),
         ("k", k, sfuncs.check_float, (), {"greater_than_zero": True}),
-        (
-            "axes", axes, sfuncs.check_int_list, (),
-            {
-                "len_one_can_be_listless": True,
-                "min_value": -fid.ndim,
-                "max_value": fid.ndim - 1,
-            },
-            True,
-        ),
     )
-    if axes is None:
-        axes = list(range(fid.ndim))
-    else:
-        axes = [i % fid.ndim for i in axes]
-    indices = [chr(105 + i) for i in range(fid.ndim)]
+    dim = fid.ndim
+    sanity_check(_axes_check(axes, dim))
+
+    axes = _process_axes(axes, dim)
+
+    indices = [chr(i) for i in range(105, 105 + dim)]
     index_notation = ",".join(indices) + "->" + "".join(indices)
 
     return fid * np.einsum(
         index_notation,
         *[np.exp(-k * np.linspace(0, 1, n)) if i in axes
+          else np.ones(n)
+          for i, n in enumerate(fid.shape)],
+    )
+
+
+def sinebell_apodisation(
+    fid: np.ndarray,
+    axes: Optional[Iterable[int]] = None,
+) -> np.ndarray:
+    """Apply sine-bell apodisation to an FID.
+
+    The FID is multiplied by ``np.exp(-k * np.linspace(0, 1, n))`` in each dimension
+    specified by ``axes``, where ``n`` is the size of each dimension.
+
+    .. warning::
+        This is not intended for manipulating the FID prior to estimation.
+
+    Parameters
+    ----------
+    fid
+        FID to process.
+
+    axes
+        The axes to apply the apodiisation over. If ``None``, all axes are apodised.
+    """
+    sanity_check(
+        ("fid", fid, sfuncs.check_ndarray),
+    )
+    dim = fid.ndim
+    sanity_check(_axes_check(axes, dim))
+
+    axes = _process_axes(axes, dim)
+
+    indices = [chr(i) for i in range(105, 105 + dim)]
+    index_notation = ",".join(indices) + "->" + "".join(indices)
+
+    return fid * np.einsum(
+        index_notation,
+        *[np.sin(np.pi * np.linspace(0, 1, n)) if i in axes
           else np.ones(n)
           for i, n in enumerate(fid.shape)],
     )
@@ -216,7 +242,7 @@ def ft(
     It is conventional in NMR to plot spectra from high to low going
     left to right/down to up. This function utilises the
     `numpy.fft <https://numpy.org/doc/stable/reference/routines.fft.html>`_
-    module to carry out the Fourier Transformation.
+    module.
 
     Parameters
     ----------
@@ -237,31 +263,15 @@ def ft(
         ("flip", flip, sfuncs.check_bool),
     )
     dim = fid.ndim
-    sanity_check(
-        (
-            "axes", axes, sfuncs.check_int_list, (),
-            {
-                "len_one_can_be_listless": True,
-                "must_be_positive": True,
-                "max_value": dim - 1,
-            },
-            True,
-        )
-    )
+    sanity_check(_axes_check(axes, dim))
 
-    if axes is None:
-        axes = list(range(dim))
-    if isinstance(axes, int):
-        axes = [axes]
+    axes = _process_axes(axes, dim)
 
     spectrum = copy.deepcopy(fid)
     for axis in axes:
         spectrum = fftshift(fft(spectrum, axis=axis), axes=axis)
 
-    if flip:
-        spectrum = np.flip(spectrum, axis=axes)
-
-    return spectrum
+    return spectrum if not flip else np.flip(spectrum, axis=axes)
 
 
 def ift(
@@ -273,7 +283,7 @@ def ift(
 
     This function utilises the
     `numpy.fft <https://numpy.org/doc/stable/reference/routines.fft.html>`_
-    module to carry out the Fourier Transformation.
+    module.
 
     Parameters
     ----------
@@ -294,21 +304,9 @@ def ift(
         ("flip", flip, sfuncs.check_bool),
     )
     dim = spectrum.ndim
-    sanity_check(
-        (
-            "axes", axes, sfuncs.check_int_list, (),
-            {
-                "len_one_can_be_listless": True,
-                "must_be_positive": True,
-                "max_value": dim - 1,
-            },
-            True,
-        )
-    )
-    if axes is None:
-        axes = list(range(dim))
-    if isinstance(axes, int):
-        axes = [axes]
+    sanity_check(_axes_check(axes, dim))
+
+    axes = _process_axes(axes, dim)
 
     fid = copy.deepcopy(spectrum)
     fid = np.flip(fid, axis=axes) if flip else fid
@@ -336,6 +334,7 @@ def proc_amp_modulated(data: np.ndarray) -> np.ndarray:
     sanity_check(
         ("data", data, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(0, 2)]}),
     )
+    data[:, 0, 0] *= 0.5
     cos_t1_f2, sin_t1_f2 = [ft(x, axes=1).real for x in (data[0], data[1])]
     return ft(cos_t1_f2 + 1j * sin_t1_f2, axes=0)
 
@@ -373,6 +372,7 @@ def proc_phase_modulated(data: np.ndarray) -> np.ndarray:
     sanity_check(
         ("data", data, sfuncs.check_ndarray, (), {"dim": 3, "shape": [(0, 2)]}),
     )
+    data[:, 0, 0] *= 0.5
     p_t1_f2, n_t1_f2 = [ft(x, axes=1) for x in (data[0], data[1])]
 
     spectra = np.zeros((4, *data.shape[1:]))
@@ -440,7 +440,8 @@ def manual_phase_data(
 ) -> Tuple[Optional[Iterable[float]], Optional[Iterable[float]]]:
     """Manual phase correction using a Graphical User Interface.
 
-    .. warning::
+    .. note::
+
        Only 1D spectral data is currently supported.
 
     Parameters
@@ -676,7 +677,7 @@ class PhaseApp(tk.Tk):
 
 
 def add_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
-    """Add noise to an FID.
+    """Add Gaussian white noise noise to an FID.
 
     Parameters
     ----------
@@ -684,22 +685,27 @@ def add_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
         Noiseless FID.
 
     snr
-        The signal-to-noise ratio.
+        The signal-to-noise ratio. The smaller this value, the greater the
+        variance of the noise.
 
     decibels
         If `True`, the snr is taken to be in units of decibels. If `False`,
         it is taken to be simply the ratio of the singal power and noise
         power.
+
+    See also
+    --------
+    :py:func:`make_noise`
     """
     sanity_check(
         ("fid", fid, sfuncs.check_ndarray),
         ("snr", snr, sfuncs.check_float),
         ("decibels", decibels, sfuncs.check_bool),
     )
-    return fid + _make_noise(fid, snr, decibels)
+    return fid + make_noise(fid, snr, decibels)
 
 
-def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
+def make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarray:
     r"""Generate an array of white Guassian complex noise.
 
     The noise will be created with zero mean and a variance that abides by
@@ -730,6 +736,10 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
 
        \rho = \frac{\sum_{n=0}^{N-1} \left(x_n - \mu_x\right)^2}
        {N \cdot 20 \log_10 \left(\mathrm{SNR}_{\mathrm{dB}}\right)}
+
+    See also
+    --------
+    :py:func:`add_noise`
     """
     sanity_check(
         ("fid", fid, sfuncs.check_ndarray),
@@ -765,8 +775,10 @@ def _make_noise(fid: np.ndarray, snr: float, decibels: bool = True) -> np.ndarra
 def convdta(data: np.ndarray, grpdly: float) -> np.ndarray:
     """Remove the digital filter from time-domain Bruker data.
 
-    This function is inspired by nmrglue's ``nmrglue.fileio.bruker.rm_dig_filter``
-    function.
+    This function is inspired by `nmrglue.fileio.bruker.rm_dig_filter
+    <https://nmrglue.readthedocs.io/en/latest/reference/generated/\
+    nmrglue.fileio.bruker.rm_dig_filter.html?highlight=rm_dig_filter#\
+    nmrglue.fileio.bruker.rm_dig_filter>`_.
 
     Parameters
     ----------
@@ -795,7 +807,10 @@ def baseline_correction(
 ) -> Tuple[np.ndarray, dict]:
     """Apply baseline correction to a 1D dataset.
 
-    The algorithm used for correction is presented in [#]_. **CITE PYBASELINES**
+    The algorithm applied is desribed in [#]_. This uses an implementation
+    provided by `pybaselines
+    <https://pybaselines.readthedocs.io/en/latest/api/pybaselines/api/index.html#\
+    pybaselines.api.Baseline.fabc>`_.
 
     Parameters
     ----------
@@ -803,17 +818,19 @@ def baseline_correction(
         Spectrum to apply baseline correction to.
 
     mask
-        If not ``None``, a boolean array with the same size as ``spectrum``.
-        ``True`` indicates that a particular point comprises baseline, and
-        ``False`` indicates that a point comprises a peak. If ``None``,
-        this is determined automatically.
+        Should be either:
+
+        * ``None``: the points which comprise noise are predicted automatically
+        * A boolean array with the same size as ``spectrum``.
+
+          - ``True`` indicates that a particular point comprises baseline.
+          - ``False`` indicates that a point comprises a peak.
 
     min_length
-        Any region of consecutive baseline points less than ``min_length`` is
-        considered to be a false positive and all points in the region are
-        converted to peak points.  A higher `min_length` ensures less points
-        are falsely assigned as baseline points.  Default is 2, which only
-        removes lone baseline points.
+        *from pybaselines:* Any region of consecutive baseline points less than
+        ``min_length`` is considered to be a false positive and all points in
+        the region are converted to peak points.  A higher `min_length` ensures
+        less points are falsely assigned as baseline points.
 
     Returns
     -------
@@ -855,3 +872,24 @@ def baseline_correction(
     params["baseline"] = baseline
 
     return fixed_spectrum, params
+
+
+def _axes_check(axes: Any, dim: int):
+    return (
+        "axes", axes, sfuncs.check_int_list, (),
+        {
+            "len_one_can_be_listless": True,
+            "min_value": -dim,
+            "max_value": dim - 1,
+        },
+        True,
+    )
+
+
+def _process_axes(axes: Optional[Iterable[int]], dim: int) -> Iterable[int]:
+    if axes is None:
+        return list(range(dim))
+    elif isinstance(axes, int):
+        return [axes % dim]
+    else:
+        return [axis % dim for axis in axes]

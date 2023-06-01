@@ -1,393 +1,511 @@
 # result.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 27 May 2022 19:39:17 BST
+# Last Edited: Tue 07 Mar 2023 13:27:13 GMT
 
-import ast
-import copy
-import pathlib
+import io
+from pathlib import Path
 import re
 import subprocess
+import sys
 import tkinter as tk
+from tkinter import ttk
 import webbrowser
 
 from matplotlib.backends import backend_tkagg
+
+from nmrespy._colors import GRE, END, USE_COLORAMA
+import nmrespy._paths_and_links as pl
+from nmrespy.app import config as cf, custom_widgets as wd, frames as fr
 import numpy as np
 
-import nmrespy._paths_and_links as pl
-import nmrespy.app.config as cf
-import nmrespy.app.custom_widgets as wd
-import nmrespy.app.frames as fr
+if USE_COLORAMA:
+    import colorama
+    colorama.init()
 
 
-class Result(wd.MyToplevel):
-    def __init__(self, master):
+class Result1DType(wd.MyToplevel):
+    @property
+    def estimator(self):
+        return self.ctrl.estimator
 
-        super().__init__(master)
+    def __init__(self, ctrl):
+        super().__init__(ctrl)
+        self.ctrl = ctrl
+        self.configure_root()
+        self.construct_gui_frames()
+        self.construct_notebook()
 
+    def configure_root(self):
+        self.title("NMR-EsPy - Result")
         self.resizable(True, True)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
+        self.protocol("WM_DELETE_WINDOW", self.ctrl.destroy)
 
-        self.title("NMR-EsPy - Result")
-
-        self.protocol("WM_DELETE_WINDOW", self.click_cross)
-
-        self.create_plot()
-
-        # Canvas for figure
-        self.canvas = backend_tkagg.FigureCanvasTkAgg(
-            self.result_plot.fig,
-            master=self,
-        )
-        self.canvas.draw()
-        self.canvas.get_tk_widget().grid(
-            column=0,
-            row=0,
-            columnspan=2,
-            padx=10,
-            pady=10,
-            sticky="nsew",
+    def construct_gui_frames(self):
+        self.notebook_frame = wd.MyFrame(self)
+        self.notebook_frame.columnconfigure(0, weight=1)
+        self.notebook_frame.rowconfigure(0, weight=1)
+        self.notebook_frame.grid(
+            row=0, column=0, columnspan=2, padx=10, pady=(10, 0), sticky="nsew",
         )
 
-        # Frame containing the navigation toolbar and advanced settings
-        # button
-        self.toolbar_frame = wd.MyFrame(self)
-        self.toolbar_frame.grid(row=1, column=0, sticky="ew")
-        self.toolbar = wd.MyNavigationToolbar(
-            self.canvas,
-            parent=self.toolbar_frame,
+        self.logo_frame = fr.LogoFrame(self, scale=0.6)
+        self.logo_frame.grid(row=1, column=0, padx=(10, 0), pady=10, sticky="w")
+
+    def construct_notebook(self):
+        self.notebook = ttk.Notebook(self.notebook_frame)
+        self.notebook.columnconfigure(0, weight=1)
+        self.notebook.rowconfigure(0, weight=1)
+        self.notebook.grid(row=0, column=0, sticky="nsew")
+
+        # TODO Should probably bundle this stuff into a dataclass
+        self.tabs = []
+        self.figs = []
+        self.axs = []
+        self.xlims = []
+        self.canvases = []
+        self.toolbars = []
+        self.table_frames = []
+        self.tables = []
+        self.histories = []
+        self.button_frames = []
+        self.add_buttons = []
+        self.remove_buttons = []
+        self.merge_buttons = []
+        self.split_buttons = []
+        self.undo_buttons = []
+        self.unstage_buttons = []
+        self.rerun_buttons = []
+        self.edit_boxes = []
+        self.staged_edits = []
+        self.staged_oscs = []
+
+        self.n_regions = len(self.estimator._results)
+
+        self.update_all_tabs(0)
+
+    def update_all_tabs(self, current, replace=False):
+        for idx in range(self.n_regions):
+            self.new_tab(idx, replace)
+        self.notebook.select(current)
+
+    def new_tab(self, idx, replace=False):
+        def append(lst, obj):
+            if replace:
+                lst.pop(idx)
+                lst.insert(idx, obj)
+            else:
+                lst.append(obj)
+
+        if replace:
+            self.tabs[idx].destroy()
+
+        append(
+            self.tabs,
+            wd.MyFrame(self.notebook, bg=cf.NOTEBOOKCOLOR),
         )
-        self.toolbar.grid(
-            row=0,
-            column=0,
-            sticky="w",
-            padx=(10, 0),
-            pady=(0, 5),
+        self.tabs[idx].columnconfigure(0, weight=1)
+        self.tabs[idx].rowconfigure(0, weight=1)
+
+        if replace and idx < self.n_regions - 1:
+            self.notebook.insert(
+                idx,
+                self.tabs[idx],
+                text=str(idx),
+                sticky="nsew",
+            )
+
+        else:
+            self.notebook.add(
+                self.tabs[idx],
+                text=str(idx),
+                sticky="nsew",
+            )
+            self.histories.append(
+                [
+                    (
+                        self.estimator.get_params(indices=[idx]),
+                        self.estimator.get_errors(indices=[idx]),
+                    )
+                ]
+            )
+
+        append(
+            self.table_frames,
+            wd.MyFrame(
+                self.tabs[idx],
+                bg=cf.NOTEBOOKCOLOR,
+                highlightbackground="black",
+                highlightthickness=3,
+            ),
+        )
+        self.table_frames[idx].columnconfigure(0, weight=1)
+        self.table_frames[idx].rowconfigure(0, weight=1)
+        self.table_frames[idx].grid(
+            row=0, column=2, rowspan=2, padx=(0, 10), pady=10, sticky="ns",
         )
 
-        # Frame with NMR-EsPy an MF group logos
-        self.logo_frame = fr.LogoFrame(self, scale=0.72)
-        self.logo_frame.grid(row=2, column=0, sticky="w", padx=10, pady=10)
-
-        # Frame with cancel/help/run/advanced settings buttons
-        self.button_frame = ResultButtonFrame(self)
-        self.button_frame.grid(
-            row=1,
-            column=1,
-            rowspan=2,
-            sticky="se",
-            padx=10,
-            pady=10,
+        append(
+            self.tables,
+            wd.MyTable(
+                self.table_frames[idx],
+                contents=self.estimator.get_params(indices=[idx], funit="ppm"),
+                titles=self.table_titles,
+                region=self.get_region(idx),
+                bg=cf.NOTEBOOKCOLOR,
+            ),
+        )
+        self.tables[idx].grid(
+            row=0, column=0, columnspan=4, padx=(0, 10), pady=10, sticky="n",
         )
 
-    def click_cross(self):
-        self.button_frame.cancel()
+        append(
+            self.button_frames,
+            wd.MyFrame(self.table_frames[idx], bg=cf.NOTEBOOKCOLOR),
+        )
+        for r in range(4):
+            self.button_frames[idx].columnconfigure(r, weight=1)
+        self.button_frames[idx].grid(row=1, column=0, sticky="s")
 
-    def create_plot(self):
-        # Generate figure of result
-        self.result_plot = self.master.estimator.plot_result(
-            [len(self.master.estimator._results) - 1]
-        )[0]
-        self.result_plot.fig.set_size_inches(6, 3.5)
-        self.result_plot.fig.set_dpi(170)
+        append(
+            self.add_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Add",
+                command=self.add,
+            ),
+        )
+        self.add_buttons[idx].grid(
+            row=0, column=0, padx=(10, 0), pady=(10, 0), sticky="ew",
+        )
 
-        # Prevent panning outside the selected region
-        xlim = self.result_plot.ax.get_xlim()
-        cf.Restrictor(self.result_plot.ax, x=lambda x: x <= xlim[0])
-        cf.Restrictor(self.result_plot.ax, x=lambda x: x >= xlim[1])
+        append(
+            self.remove_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Remove",
+                state="disabled",
+                command=self.remove,
+            ),
+        )
+        self.remove_buttons[idx].grid(
+            row=0, column=1, padx=(10, 0), pady=(10, 0), sticky="ew",
+        )
 
-    def update_plot(self):
-        result = self.master.estimator._results[-1].get_params()
-        self.result_plot.result = result
-        self.result_plot._make_ydata()
-        self.result_plot._create_artists()
-        self.canvas.draw()
+        append(
+            self.merge_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Merge",
+                state="disabled",
+                command=self.merge,
+            ),
+        )
+        self.merge_buttons[idx].grid(
+            row=0, column=2, padx=(10, 0), pady=(10, 0), sticky="ew",
+        )
+
+        append(
+            self.split_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Split",
+                state="disabled",
+                command=self.split,
+            ),
+        )
+        self.split_buttons[idx].grid(
+            row=0, column=3, padx=10, pady=(10, 0), sticky="ew",
+        )
+
+        append(
+            self.unstage_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Unstage",
+                state="disabled",
+                command=self.unstage,
+            ),
+        )
+        self.unstage_buttons[idx].grid(
+            row=1, column=1, padx=(10, 0), pady=10, sticky="ew",
+        )
+
+        append(
+            self.undo_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Undo",
+                state="normal" if len(self.histories[idx]) > 1 else "disabled",
+                command=self.undo,
+            ),
+        )
+        self.undo_buttons[idx].grid(
+            row=1, column=2, padx=(10, 0), pady=10, sticky="ew",
+        )
+
+        append(
+            self.rerun_buttons,
+            wd.MyButton(
+                self.button_frames[idx],
+                text="Re-run",
+                state="disabled",
+                command=self.rerun,
+                fg="red",
+            ),
+        )
+        self.rerun_buttons[idx].grid(
+            row=1, column=3, padx=10, pady=10, sticky="ew",
+        )
+
+        self.tables[idx].selected_number.trace("w", self.configure_button_states)
+
+        append(
+            self.edit_boxes,
+            tk.Text(
+                self.table_frames[idx],
+                width=40,
+                height=10,
+            ),
+        )
+        self.edit_boxes[idx].grid(row=2, column=0, sticky="ew", padx=10, pady=10)
+        self.append_text(idx, f"Edits staged for result {idx}:\n")
+
+        append(self.staged_edits, [])
+        append(self.staged_oscs, [])
+
+        self.notebook.select(idx)
+
+    # --- Edit Parameters Methods ----------------------------------
+    def get_idx(self):
+        return self.notebook.index(self.notebook.select())
+
+    def configure_button_states(self, *args):
+        idx = self.get_idx()
+
+        # Number of curently selected oscillators
+        number = self.tables[idx].selected_number.get()
+
+        if number == 0:
+            self.add_buttons[idx]["state"] = "normal"
+            self.remove_buttons[idx]["state"] = "disabled"
+            self.merge_buttons[idx]["state"] = "disabled"
+            self.split_buttons[idx]["state"] = "disabled"
+
+        elif number == 1:
+            self.add_buttons[idx]["state"] = "disabled"
+            self.remove_buttons[idx]["state"] = "normal"
+            self.merge_buttons[idx]["state"] = "disabled"
+            self.split_buttons[idx]["state"] = "normal"
+
+        else:
+            self.add_buttons[idx]["state"] = "disabled"
+            self.remove_buttons[idx]["state"] = "normal"
+            self.merge_buttons[idx]["state"] = "normal"
+            self.split_buttons[idx]["state"] = "disabled"
+
+    def append_text(self, idx, text):
+        self.edit_boxes[idx]["state"] = "normal"
+        self.edit_boxes[idx].insert(tk.END, text)
+        self.edit_boxes[idx]["state"] = "disabled"
+
+    def clear_text(self, idx):
+        self.edit_boxes[idx]["state"] = "normal"
+        self.edit_boxes[idx].delete("1.0", tk.END)
+        self.edit_boxes[idx]["state"] = "disabled"
+
+    def reset_table(self, idx):
+        self.tables[idx].selected_rows = []
+        self.tables[idx].activate_rows(top=self.tables[idx].top)
+        self.tables[idx].selected_number.set(0)
+
+    def activate_rerun_button(self, idx):
+        self.rerun_buttons[idx]["state"] = "normal"
+        self.unstage_buttons[idx]["state"] = "normal"
+        self.button_frame.green_button["state"] = "disabled"
+
+    def deactivate_rerun_button(self, idx):
+        self.rerun_buttons[idx]["state"] = "disabled"
+        self.unstage_buttons[idx]["state"] = "disabled"
+        self.button_frame.green_button["state"] = "normal"
+
+    def check_for_duplicated_oscs(self, new_oscs, idx):
+        curr_oscs = [oscs for osc_list in self.staged_oscs[idx] for oscs in osc_list]
+        return bool(set(new_oscs) & set(curr_oscs))
+
+    def add(self):
+        idx = self.get_idx()
+        add_frame = AddFrame(self, self.table_titles, idx)
+        self.wait_window(add_frame)
+        oscs = add_frame.new_oscillators
+        if oscs is not None:
+            self.staged_oscs[idx].append([])
+            self.staged_edits[idx].append((0, oscs))
+            self.edit_boxes[idx]["state"] = "normal"
+            plural = "s" if oscs.shape[0] > 1 else ""
+            self.append_text(
+                idx,
+                f"--> Add {oscs.shape[0]} oscillator{plural}\n",
+            )
+            self.activate_rerun_button(idx)
+
+        self.reset_table(idx)
+
+    def remove(self):
+        idx = self.get_idx()
+        to_rm = self.tables[idx].selected_rows
+        if not self.check_for_duplicated_oscs(to_rm, idx):
+            self.staged_oscs[idx].append(to_rm)
+            self.staged_edits[idx].append((1, to_rm))
+            plural = "s" if len(to_rm) > 1 else ""
+            self.append_text(
+                idx,
+                f"--> Remove oscillator{plural} {', '.join([str(x) for x in to_rm])}\n",
+            )
+            self.activate_rerun_button(idx)
+
+        self.reset_table(idx)
+
+    def merge(self):
+        idx = self.get_idx()
+        to_merge = self.tables[idx].selected_rows
+        if not self.check_for_duplicated_oscs(to_merge, idx):
+            self.staged_oscs[idx].append(to_merge)
+            self.staged_edits[idx].append((2, to_merge))
+            self.append_text(
+                idx,
+                f"--> Merge oscillators {', '.join([str(x) for x in sorted(to_merge)])}\n",  # noqa: E501
+            )
+            self.activate_rerun_button(idx)
+
+        self.reset_table(idx)
+
+    def split(self):
+        idx = self.get_idx()
+        to_split = self.tables[idx].selected_rows
+        if not self.check_for_duplicated_oscs(to_split, idx):
+            split_frame = SplitFrame(self, idx, to_split[0])
+            self.wait_window(split_frame)
+            split_info = split_frame.split_info
+            if split_info is not None:
+                self.staged_oscs[idx].append([to_split])
+                self.staged_edits[idx].append((3, {to_split[0]: split_info}))
+                self.append_text(
+                    idx,
+                    f"--> Split oscillator {to_split[0]}\n",
+                )
+                self.activate_rerun_button(idx)
+
+        self.reset_table(idx)
+
+    def undo(self):
+        idx = self.get_idx()
+        self.histories[idx].pop()
+        params, errors = self.histories[idx][-1]
+        self.estimator._results[idx].params = params
+        self.estimator._results[idx].errors = errors
+        self.new_tab(idx, replace=True)
+        self.notebook.select(idx)
+        self.button_frame.green_button["state"] = "normal"
+
+    def unstage(self):
+        idx = self.get_idx()
+        self.staged_edits[idx].pop()
+        self.staged_oscs[idx].pop()
+        lines = self.edit_boxes[idx].get("1.0", tk.END)[:-2].split("\n")
+        lines.pop()
+        self.clear_text(idx)
+        self.append_text(idx, "\n".join(lines) + "\n")
+        if not self.staged_edits[idx]:
+            self.unstage_buttons[idx]["state"] = "disabled"
+            self.deactivate_rerun_button(idx)
+        self.reset_table(idx)
+
+    def rerun(self):
+        idx = self.get_idx()
+        add_oscs = None
+        rm_oscs = None
+        merge_oscs = None
+        split_oscs = None
+        for typ, info in self.staged_edits[idx]:
+            if typ == 0:
+                add_oscs = info if add_oscs is None else np.vstack(add_oscs, info)
+            elif typ == 1:
+                if rm_oscs is None:
+                    rm_oscs = info
+                else:
+                    rm_oscs.extend(info)
+            elif typ == 2:
+                if merge_oscs is None:
+                    merge_oscs = [info]
+                else:
+                    merge_oscs.append(info)
+            elif typ == 3:
+                if split_oscs is None:
+                    split_oscs = info
+                else:
+                    split_oscs = {**split_oscs, **info}
+
+        self.ctrl.estimator.edit_result(
+            index=idx,
+            add_oscs=add_oscs,
+            rm_oscs=rm_oscs,
+            merge_oscs=merge_oscs,
+            split_oscs=split_oscs,
+        )
+        self.histories[idx].append(
+            (
+                self.ctrl.estimator.get_params(indices=[idx]),
+                self.ctrl.estimator.get_errors(indices=[idx]),
+            )
+        )
+
+        self.new_tab(idx, replace=True)
+        self.notebook.select(idx)
+        self.button_frame.green_button["state"] = "normal"
 
 
 class ResultButtonFrame(fr.RootButtonFrame):
-    """Button frame for SetupApp. Buttons for quitting, loading help,
-    and running NMR-EsPy"""
-
     def __init__(self, master):
-
+        self.ctrl = master.ctrl
         cancel_msg = (
-            "Are you sure you want to close NMR-EsPy? The estimation result "
-            "will be unrecoverable."
+            "Are you sure you want to close NMR-EsPy?\n"
         )
-
         super().__init__(master, cancel_msg=cancel_msg)
         self.green_button["command"] = self.save_options
         self.green_button["text"] = "Save"
 
-        self.edit_parameter_button = wd.MyButton(
-            self,
-            text="Edit Parameter Estimate",
-            command=self.edit_parameters,
-        )
-        self.edit_parameter_button.grid(
-            row=0,
-            column=0,
-            columnspan=3,
-            sticky="ew",
-            padx=10,
-            pady=(10, 0),
-        )
-
         self.help_button["command"] = lambda: webbrowser.open_new(
-            f"{pl.DOCSLINK}gui/usage/result.html"
+            f"{pl.DOCSLINK}/content/gui/usage/result.html"
         )
-
-    def edit_parameters(self):
-        EditParametersFrame(self.master)
 
     def save_options(self):
         SaveFrame(self.master)
 
 
-class EditParametersFrame(wd.MyToplevel):
-    """TopLevel for editing an estimation result, and re-running the
-    optimiser"""
-
-    def __init__(self, master):
-        super().__init__(master)
-        self.grid_columnconfigure(0, weight=1)
-
-        self.title("NMR-EsPy - Edit Parameters")
-
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
-
-        # Reference to NMREsPyApp class: gives access to estimator
-        self.ctrl = self.master.master
-
-        # Prevent access to other windows
-        self.grab_set()
-
-        self.history = [
-            (
-                self.ctrl.estimator._results[-1].get_params(),
-                self.ctrl.estimator._results[-1].get_errors(),
-            )
-        ]
-
-        # --- Parameter table --------------------------------------------
-        titles = [
-            "Amplitude",
-            "Phase (rad)",
-            "Frequency (ppm)",
-            "Damping (s⁻¹)",
-        ]
-        self.result = self.ctrl.estimator._results[-1]
-        # Parameters in ppm - to be added to the table
-        contents = self.result.get_params(funit="ppm")
-        # Region of interest, in ppm. Used to ensure any newly frequency
-        # satisfies the selected region of interest
-        region = self.result.get_region(unit="ppm")
-
-        self.table = wd.MyTable(
-            self,
-            contents=contents,
-            titles=titles,
-            region=region,
-        )
-
-        self.table.grid(column=0, row=0, padx=10, pady=(10, 0))
-
-        # --- Buttons ----------------------------------------------------
-        self.button_frame = wd.MyFrame(self)
-        self.button_frame.grid(row=1, column=0, pady=10, padx=10, sticky="ew")
-        self.button_frame.grid_columnconfigure(0, weight=1)
-
-        # Construct two rows to place buttons
-        # Row 1: Edit parameter estimate:
-        # Add, remove, merge, split, manual edit
-        self.row1 = wd.MyFrame(self.button_frame)
-        self.row1.grid(row=0, column=0, sticky="ew")
-        # Row 2: Re-run optimiser, undo changes, close window
-        self.row2 = wd.MyFrame(self.button_frame)
-        self.row2.grid(row=1, column=0, sticky="e")
-
-        for i in range(4):
-            self.row1.columnconfigure(i, weight=1)
-            if i < 3:
-                self.row2.columnconfigure(i, weight=1)
-
-        # Add oscillator(s)
-        self.add_button = wd.MyButton(self.row1, text="Add", command=self.add)
-        self.add_button.grid(row=0, column=0, sticky="ew")
-
-        # Remove oscillator(s)
-        self.remove_button = wd.MyButton(
-            self.row1,
-            text="Remove",
-            state="disabled",
-            command=self.remove,
-        )
-        self.remove_button.grid(row=0, column=1, sticky="ew", padx=(10, 0))
-
-        # Merge oscillators
-        self.merge_button = wd.MyButton(
-            self.row1,
-            text="Merge",
-            state="disabled",
-            command=self.merge,
-        )
-        self.merge_button.grid(row=0, column=2, sticky="ew", padx=(10, 0))
-
-        # Split oscillator
-        self.split_button = wd.MyButton(
-            self.row1,
-            text="Split",
-            state="disabled",
-            command=self.split,
-        )
-        self.split_button.grid(row=0, column=3, sticky="ew", padx=(10, 0))
-
-        self.table.selected_number.trace("w", self.configure_button_states)
-
-        # Reset
-        self.undo_button = wd.MyButton(
-            self.row2,
-            text="Undo",
-            command=self.undo,
-            state="disabled",
-            width=10,
-        )
-        self.undo_button.grid(
-            row=0,
-            column=0,
-            sticky="e",
-            pady=(10, 0),
-            padx=(10, 0),
-        )
-
-        # Button to close if no changes have been made, and re-run optimiser
-        # if changes have been made
-        self.close_button = wd.MyButton(
-            self.row2,
-            text="Close",
-            command=self.destroy,
-            width=10,
-        )
-        self.close_button.grid(
-            row=0,
-            column=1,
-            sticky="e",
-            pady=(10, 0),
-            padx=(10, 0),
-        )
-
-    def configure_button_states(self, *args):
-        # Number of curently selected oscillators
-        number = self.table.selected_number.get()
-
-        if number == 0:
-            self.add_button["state"] = "normal"
-            self.remove_button["state"] = "disabled"
-            self.merge_button["state"] = "disabled"
-            self.split_button["state"] = "disabled"
-
-        elif number == 1:
-            self.add_button["state"] = "disabled"
-            self.remove_button["state"] = "normal"
-            self.merge_button["state"] = "disabled"
-            self.split_button["state"] = "normal"
-
-        else:
-            self.add_button["state"] = "disabled"
-            self.remove_button["state"] = "normal"
-            self.merge_button["state"] = "normal"
-            self.split_button["state"] = "disabled"
-
-    def add(self):
-        """Loads a window for adding new oscillators"""
-        add_frame = AddFrame(self)
-        self.wait_window(add_frame)
-
-    def remove(self):
-        """Removes selected oscillators from the result"""
-        rm_indices = self.table.selected_rows
-        self.ctrl.estimator.remove_oscillators(rm_indices)
-        self.changed_result()
-
-    def merge(self):
-        """Removes selected oscillators from the result"""
-        merge_indices = self.table.selected_rows
-        self.ctrl.estimator.merge_oscillators(merge_indices)
-        self.changed_result()
-
-    def split(self):
-        split_frame = SplitFrame(self, *self.table.selected_rows)
-        self.wait_window(split_frame)
-
-    def changed_result(self):
-        """Regenerate parameter table and plot to reflect change in
-        estimator.result"""
-        self.history.append(
-            (
-                self.ctrl.estimator._results[-1].get_params(),
-                self.ctrl.estimator._results[-1].get_errors(),
-            )
-        )
-
-        if len(self.history) > 1:
-            self.undo_button["state"] = "normal"
-        else:
-            self.undo_button["state"] = "disabled"
-
-        # Un-select all table rows, and reconstuct the table.
-        self.table.selected_rows = []
-        self.table.selected_number.set(0)
-        self.table.reconstruct(
-            contents=self.ctrl.estimator._results[-1].get_params(funit="ppm"),
-            top=0,
-        )
-
-        # Update the plot
-        self.master.update_plot()
-
-    def undo(self):
-        # Reset result back to original
-        self.ctrl.estimator._results[-1].params = self.history[-2][0]
-        self.ctrl.estimator._results[-1].errors = self.history[-2][1]
-        # Remove last elements from history
-        self.history.pop()
-        self.history.pop()
-        # Re-set the table and plot.
-        self.changed_result()
-
-
 class AddFrame(wd.MyToplevel):
-    """Toplevel for adding new oscillators to result"""
-
-    def __init__(self, master):
-
+    def __init__(self, master, titles, index):
         super().__init__(master)
+        self.titles = titles
+        self.cols = len(self.titles)
+        self.dim = self.cols // 2 - 1
+        self.index = index
+        self.new_oscillators = None
 
         self.title("NMR-EsPy - Add oscillators")
-
-        # NMREsPyApp instance
-        self.ctrl = self.master.master.master
-
-        # Prevent interacting with other windows
+        self.ctrl = self.master.master
         self.grab_set()
 
-        titles = [
-            "Amplitude",
-            "Phase (rad)",
-            "Frequency (ppm)",
-            "Damping (s⁻¹)",
-        ]
-
         # Empty entry boxes to begin with
-        contents = [["", "", "", ""]]
-        region = self.ctrl.estimator._results[-1].get_region(unit="ppm")
+        contents = [["" for _ in range(self.cols)]]
 
         self.table = wd.MyTable(
             self,
             contents=contents,
             titles=titles,
-            region=region,
+            region=master.get_region(index),
         )
 
         # Turn all widgets red initially to indicate they need filling in
@@ -444,31 +562,23 @@ class AddFrame(wd.MyToplevel):
             return
 
         # Extract parameters from table
-        new_oscillators = np.array(self.table.get_values())
+        oscs = np.array(self.table.get_values())
         # Convert from ppm to hz
-        new_oscillators[:, 2] = self.ctrl.estimator.convert(
-            [new_oscillators[:, 2]],
+        oscs[:, 2] = self.ctrl.estimator.convert(
+            [oscs[:, 2]],
             "ppm->hz",
         )[0]
-        self.ctrl.estimator.add_oscillators(new_oscillators)
-        self.master.changed_result()
+        self.new_oscillators = oscs
         self.destroy()
 
 
 class SplitFrame(wd.MyToplevel):
-    """Toplevel for splitting an oscillator into multiple oscillators"""
-
-    def __init__(self, master, index):
-
+    def __init__(self, master, index, to_split):
         super().__init__(master)
-
-        self.title("NMR-EsPy - Split oscillator")
-        # NMREsPyApp instance
-        self.ctrl = self.master.master.master
-        self.index = index
-
-        # Prevent interacting with other windows
         self.grab_set()
+        self.title("NMR-EsPy - Split oscillator")
+        self.ctrl = self.master.master
+        self.index = index
 
         # Add a frame with some padding from the window edge
         frame = wd.MyFrame(self)
@@ -477,7 +587,7 @@ class SplitFrame(wd.MyToplevel):
         # Window title and widget labels
         wd.MyLabel(
             frame,
-            text=f"Splitting Oscillator {self.index + 1}",
+            text=f"Splitting Oscillator {to_split}",
             font=(cf.MAINFONT, 12, "bold"),
         ).grid(row=0, column=0, columnspan=3, sticky="w")
         wd.MyLabel(frame, text="Number of oscillators:").grid(
@@ -597,7 +707,7 @@ class SplitFrame(wd.MyToplevel):
         )
 
         self.cancel_button = wd.MyButton(
-            button_frame, bg=cf.BUTTONRED, command=self.destroy, text="Cancel"
+            button_frame, bg=cf.BUTTONRED, command=self.cancel, text="Cancel"
         )
         self.cancel_button.grid(row=0, column=0, sticky="e")
 
@@ -667,28 +777,22 @@ class SplitFrame(wd.MyToplevel):
         else:
             self.amp_ratio["var"].set(self.amp_ratio["value"])
 
+    def cancel(self):
+        self.split_info = None
+        self.destroy()
+
     def confirm(self):
         """Perform the oscillator split and update the plot and parameter
         table"""
-        sep_freq = self.sep_freq["hz"]
-        split_number = int(self.number_chooser.get())
-        amp_ratio = self.amp_ratio["var"].get()
-        amp_ratio = [float(i) for i in amp_ratio.split(":")]
-
-        self.ctrl.estimator.split_oscillator(
-            self.index,
-            separation_frequency=sep_freq,
-            split_number=split_number,
-            amp_ratio=amp_ratio,
-        )
-
-        self.master.changed_result()
+        self.split_info = {
+            "separation": self.sep_freq["hz"],
+            "number": int(self.number_chooser.get()),
+            "amp_ratio": [float(i) for i in self.amp_ratio["var"].get().split(":")],
+        }
         self.destroy()
 
 
 class SaveFrame(wd.MyToplevel):
-    """Toplevel for choosing how to save estimation result"""
-
     def __init__(self, master):
         super().__init__(master)
         self.title("NMR-EsPy - Save Result")
@@ -740,7 +844,7 @@ class SaveFrame(wd.MyToplevel):
         self.save_fig_checkbutton = wd.MyCheckbutton(
             self.fig_frame,
             variable=self.save_fig,
-            command=self.ud_save_fig,
+            command=self.update_save_fig,
         )
         self.save_fig_checkbutton.grid(
             row=1,
@@ -751,7 +855,7 @@ class SaveFrame(wd.MyToplevel):
 
         self.fig_fmt = tk.StringVar()
         self.fig_fmt.set("pdf")
-        self.fig_fmt.trace("w", self.ud_fig_fmt)
+        self.fig_fmt.trace("w", self.update_fig_fmt)
 
         options = ("eps", "jpg", "pdf", "png", "ps", "svg")
         self.sep_unit_box = tk.OptionMenu(self.fig_frame, self.fig_fmt, *options)
@@ -777,13 +881,13 @@ class SaveFrame(wd.MyToplevel):
             self.fig_name_frame,
             textvariable=self.fig_name,
             width=18,
-            return_command=self.ud_file_name,
+            return_command=self.update_file_name,
             return_args=(self.fig_name,),
         )
         self.fig_name_entry.grid(column=0, row=0)
 
         self.fig_fmt_label = wd.MyLabel(self.fig_name_frame)
-        self.ud_fig_fmt()
+        self.update_fig_fmt()
         self.fig_fmt_label.grid(column=1, row=0, padx=(2, 0), pady=(5, 0))
 
         self.fig_dpi = cf.value_var_dict(300, "300")
@@ -791,7 +895,7 @@ class SaveFrame(wd.MyToplevel):
             self.fig_frame,
             textvariable=self.fig_dpi["var"],
             width=6,
-            return_command=self.ud_fig_dpi,
+            return_command=self.update_fig_dpi,
             return_args=(),
         )
         self.fig_dpi_entry.grid(row=4, column=1, sticky="w", pady=(10, 0))
@@ -811,7 +915,7 @@ class SaveFrame(wd.MyToplevel):
             self.__dict__[f"fig_{dim}_entry"] = wd.MyEntry(
                 self.fig_size_frame,
                 textvariable=self.__dict__[f"fig_{dim}"]["var"],
-                return_command=self.ud_fig_size,
+                return_command=self.update_fig_size,
                 return_args=(dim,),
             )
 
@@ -860,7 +964,7 @@ class SaveFrame(wd.MyToplevel):
             self.__dict__[f"{tag}_check"] = check = wd.MyCheckbutton(
                 self.file_frame,
                 variable=save_var,
-                command=lambda tag=tag: self.ud_save_file(tag),
+                command=lambda tag=tag: self.update_save_file(tag),
             )
             check.grid(
                 row=i + 2,
@@ -877,7 +981,7 @@ class SaveFrame(wd.MyToplevel):
                 self.file_frame,
                 textvariable=fname_var,
                 width=18,
-                return_command=self.ud_file_name,
+                return_command=self.update_file_name,
                 return_args=(fname_var,),
             )
             entry.grid(
@@ -953,7 +1057,7 @@ class SaveFrame(wd.MyToplevel):
         self.pickle_estimator_checkbutton = wd.MyCheckbutton(
             self.pickle_frame,
             variable=self.pickle_estimator,
-            command=self.ud_pickle_estimator,
+            command=self.update_pickle_estimator,
         )
         self.pickle_estimator_checkbutton.grid(
             row=1,
@@ -970,7 +1074,7 @@ class SaveFrame(wd.MyToplevel):
             self.pickle_name_frame,
             textvariable=self.pickle_name,
             width=18,
-            return_command=self.ud_file_name,
+            return_command=self.update_file_name,
             return_args=(self.pickle_name,),
         )
         self.pickle_name_entry.grid(column=0, row=0)
@@ -989,14 +1093,14 @@ class SaveFrame(wd.MyToplevel):
         )
 
         self.dir_name = tk.StringVar()
-        path = pathlib.Path.home()
+        path = Path.home()
         self.dir_name = cf.value_var_dict(path, str(path))
 
         self.dir_entry = wd.MyEntry(
             self.dir_frame,
             textvariable=self.dir_name["var"],
             width=30,
-            return_command=self.ud_dir,
+            return_command=self.update_dir,
             return_args=(),
         )
         self.dir_entry.grid(row=1, column=0, pady=(10, 0), sticky="w")
@@ -1040,9 +1144,7 @@ class SaveFrame(wd.MyToplevel):
             pady=(10, 0),
         )
 
-    # --- Save window methods --------------------------------------------
-    # Figure settings
-    def ud_save_fig(self):
+    def update_save_fig(self):
         state = "normal" if self.save_fig.get() else "disabled"
         widgets = [
             self.sep_unit_box,
@@ -1057,10 +1159,10 @@ class SaveFrame(wd.MyToplevel):
 
         self.fig_fmt_label["fg"] = "#000000" if state == "normal" else "#808080"
 
-    def ud_fig_fmt(self, *args):
+    def update_fig_fmt(self, *args):
         self.fig_fmt_label["text"] = f".{self.fig_fmt.get()}"
 
-    def ud_fig_dpi(self, *args):
+    def update_fig_dpi(self, *args):
         try:
             # Try to convert dpi text variable as an int. Both ensures
             # the user-given value can be converted to a numerical value
@@ -1076,7 +1178,7 @@ class SaveFrame(wd.MyToplevel):
             # Failed to convert to int, reset to previous value
             self.fig_dpi["var"].set(str(self.fig_dpi["value"]))
 
-    def ud_fig_size(self, dim):
+    def update_fig_size(self, dim):
         try:
             length = float(self.__dict__[f"fig_{dim}"]["var"].get())
             if not length > 0:
@@ -1098,19 +1200,19 @@ class SaveFrame(wd.MyToplevel):
         )
 
     # Result file settings
-    def ud_save_file(self, tag):
+    def update_save_file(self, tag):
         state = "normal" if self.__dict__[f"save_{tag}"].get() else "disabled"
         self.__dict__[f"{tag}_entry"]["state"] = state
         self.__dict__[f"{tag}_ext"]["fg"] = (
             "#000000" if state == "normal" else "#808080"
         )
 
-    def ud_file_name(self, var):
+    def update_file_name(self, var):
         name = var.get()
         var.set("".join(x for x in name if x.isalnum() or x in " _-"))
 
     # Pickle estimator
-    def ud_pickle_estimator(self):
+    def update_pickle_estimator(self):
         state = "normal" if self.pickle_estimator.get() else "disabled"
         self.pickle_name_entry["state"] = state
         self.pickle_ext_label["fg"] = "#000000" if state == "normal" else "#808080"
@@ -1121,11 +1223,11 @@ class SaveFrame(wd.MyToplevel):
         name = tk.filedialog.askdirectory(initialdir=self.dir_name["value"])
         # If user clicks close cross, an empty tuple is returned
         if name:
-            self.dir_name["value"] = pathlib.Path(name).resolve()
+            self.dir_name["value"] = Path(name).resolve()
             self.dir_name["var"].set(str(self.dir_name["value"]))
 
-    def ud_dir(self):
-        path = pathlib.Path(self.dir_name["var"].get()).resolve()
+    def update_dir(self):
+        path = Path(self.dir_name["var"].get()).resolve()
         if path.is_dir():
             self.dir_name["value"] = path
             self.dir_name["var"].set(path)
@@ -1139,25 +1241,26 @@ class SaveFrame(wd.MyToplevel):
             self.wait_window(warn_window)
             return
 
-        # Directory
+        old_stdout = sys.stdout
+        sys.stdout = mystdout = io.StringIO()
+
         dir_ = self.dir_name["value"]
-        index = [len(self.ctrl.estimator._results) - 1]
+
         # Figure
         if self.save_fig.get():
             # Generate figure path
             fig_fmt = self.fig_fmt.get()
             dpi = self.fig_dpi["value"]
             fig_name = self.fig_name.get()
-            fig_path = dir_ / f"{fig_name}"
+            fig_path = (dir_ / f"{fig_name}").with_suffix(f".{fig_fmt}")
 
             # Convert size from cm -> inches
-            fig_size = (
+            figsize = (
                 self.fig_width["value"] / 2.54,
                 self.fig_height["value"] / 2.54,
             )
-            plot = self.ctrl.estimator.plot_result(index)[0]
-            plot.fig.set_size_inches(*fig_size)
-            plot.save(fig_path, fmt=fig_fmt, dpi=dpi, force_overwrite=True)
+            fig = self.generate_figure(figsize, dpi)[0]
+            fig.savefig(fig_path)
 
         # Result files
         for fmt in ("txt", "pdf"):
@@ -1169,7 +1272,6 @@ class SaveFrame(wd.MyToplevel):
                     description = None
 
                 self.ctrl.estimator.write_result(
-                    index,
                     path=path,
                     description=description,
                     fmt=fmt,
@@ -1182,4 +1284,13 @@ class SaveFrame(wd.MyToplevel):
             path = str(dir_ / name)
             self.ctrl.estimator.to_pickle(path=path, force_overwrite=True)
 
-        self.master.destroy()
+        sys.stdout = old_stdout
+        msg = mystdout.getvalue() \
+                      .replace(GRE, "") \
+                      .replace(END, "") \
+                      .replace("Saved", "• Saved")
+
+        wdw = fr.ConfirmWindow(self, msg, inc_no=False)
+        self.wait_window(wdw)
+
+        self.ctrl.destroy()

@@ -1,8 +1,9 @@
 # utils.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 06 Jul 2022 14:29:29 BST
+# Last Edited: Tue 04 Oct 2022 13:31:59 BST
 
+import os
 from pathlib import Path
 import platform
 import re
@@ -56,7 +57,7 @@ def view_files(to_view: Iterable[Path], view_content: bool) -> None:
     if view_content:
         for path in to_view:
             if path.suffix in [".txt", ".log"]:
-                prog = "vi"
+                prog = os.getenv("EDITOR")
             elif path.suffix == ".pdf":
                 prog = "evince"
             subprocess.run([prog, str(path)])

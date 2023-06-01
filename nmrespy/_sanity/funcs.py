@@ -1,7 +1,7 @@
 # funcs.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 09 Sep 2022 18:29:35 BST
+# Last Edited: Fri 12 May 2023 00:33:11 BST
 
 from pathlib import Path
 import re
@@ -10,10 +10,7 @@ from typing import Any, Iterable, Optional, Tuple, Union
 import matplotlib as mpl
 from matplotlib import colors as mcolors
 import matplotlib.pyplot as plt
-
 import numpy as np
-from nmr_sims.nuclei import Nucleus, supported_nuclei
-from nmr_sims.spin_system import SpinSystem
 
 
 def isiter(x: Any) -> bool:
@@ -69,6 +66,16 @@ def check_int(
         return f"Should be less than or equal to {max_value}."
 
 
+def check_list_with_elements_in(obj: Any, allowed: Iterable[Any]) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a list of tuple."
+    if any([x not in allowed for x in obj]):
+        return (
+            "All elements should be one of the following values:\n" +
+            ", ".join(allowed)
+        )
+
+
 def check_index(obj: Any, length: int) -> Optional[str]:
     intcheck = check_int(obj)
     if isinstance(intcheck, str):
@@ -78,7 +85,7 @@ def check_index(obj: Any, length: int) -> Optional[str]:
         l[obj]
         return
     except IndexError:
-        return f"Invalid index {obj} for Estimator with {length} saved results."
+        return f"Invalid index ({obj}) for Estimator with {length} saved results."
 
 
 def check_float_list(
@@ -144,6 +151,25 @@ def check_int_list(
         return f"All elements must be greater than or equal to {min_value}."
     if not any([isint(x) for x in obj]):
         return "At least one element must be an int, all Nones not allowed."
+
+
+def check_int_list_list(
+    obj: Any,
+    min_value: Optional[int] = None,
+    max_value: Optional[int] = None,
+) -> Optional[str]:
+    if not isiter(obj):
+        return "Should be a tuple or list."
+    for i, elem in enumerate(obj):
+        msg = f"Issue with element {i}:\n"
+        if not isiter(elem):
+            return f"{msg}Each element should be a tuple or list of ints."
+        if not all([isint(x) for x in elem]):
+            return f"{msg}Each element should be a tuple or list of ints."
+        if (isint(max_value) and not all([x <= max_value for x in elem])):
+            return f"{msg}All values must be less than or equal to {max_value}."
+        if (isint(min_value) and not all([x >= min_value for x in elem])):
+            return f"{msg}All values must be greater than or equal to {min_value}."
 
 
 def check_str_list(obj: Any, length: Optional[int] = None) -> Optional[str]:
@@ -226,6 +252,7 @@ def check_ndarray(
     if not isinstance(obj, np.ndarray):
         return "Should be a numpy array."
     if dim is not None and obj.ndim != dim:
+        print(dim)
         return f"Should be a {dim}-dimensional array."
     if shape is not None:
         for (axis, size) in shape:
@@ -443,23 +470,6 @@ def check_oscillator_colors(obj: Any) -> Optional[str]:
     return "Not a valid color, list of colors, or colormap."
 
 
-def check_spin_system(obj: Any) -> Optional[str]:
-    if not isinstance(obj, SpinSystem):
-        return "Should be an instance of nmr_sims.spin_system.SpinSystem."
-
-
-def check_nmrsims_nucleus(obj: Any) -> Optional[str]:
-    if isinstance(obj, Nucleus):
-        return
-    elif isinstance(obj, str):
-        if obj in supported_nuclei:
-            return
-    return (
-        "Should be an instance of nmr_sims.nuclei.Nucleus, or a key found in "
-        "nmr_sims.nuclei.supported_nuclei."
-    )
-
-
 def isnuc(obj: Any) -> bool:
     return isinstance(obj, str) and bool(re.fullmatch(r"\d+[a-zA-Z]+", obj))
 
@@ -650,7 +660,6 @@ def check_xticks(obj: Any, regions: Iterable[Tuple[float, float]]) -> Optional[s
                 f"{msg}The first element of each entry should be an int between (and "
                 f"including) 0 and {n_regions - 1}."
             )
-        print([isfloat(x) for x in elem[1]])
         if not (isiter(elem[1]) and all([isfloat(x) for x in elem[1]])):
             return (
                 f"{msg}The second element of each entry should be a list or tuple of "
@@ -664,3 +673,86 @@ def check_xticks(obj: Any, regions: Iterable[Tuple[float, float]]) -> Optional[s
                 f"{msg}All ticks should lie with in the region "
                 f"({region[0]} - {region[1]})"
             )
+
+
+def check_split_oscs(obj: Any, dim: int, n: int) -> Optional[str]:
+    if not isinstance(obj, dict):
+        return "Should be a dict."
+    valid_keys = ("separation", "number", "amp_ratio")
+    valid_keys_str = ", ".join([f"\"{x}\"" for x in valid_keys])
+    for key, value in obj.items():
+        if not (isint(key) and 0 <= key <= n):
+            return f"Each key should be an int between 0 and {n}."
+        msg = f"Issue with element with key {key}:\n"
+
+        if value is None:
+            continue
+        if not (isinstance(value, dict)):
+            return f"{msg}Should be a dict or None."
+        if not all([k in valid_keys for k in value.keys()]):
+            return f"{msg}Only valid elements are: {valid_keys_str}."
+
+        msg = f"{msg}Issue with \"<KEY>\":\n<RESULT>"
+        if "separation" in value:
+            result = check_float_list(
+                value["separation"], length=dim, len_one_can_be_listless=True,
+                must_be_positive=True,
+            )
+            if isinstance(result, str):
+                return msg.replace("<KEY>", "separation").replace("<RESULT>", result)
+
+        if "number" in value:
+            result = check_int(value["number"], min_value=2)
+            if isinstance(result, str):
+                return msg.replace("<KEY>", "number").replace("<RESULT>", result)
+
+        if "amp_ratio" in value:
+            length = value["number"] if "number" in value else None
+            result = check_float_list(
+                value["amp_ratio"], length=length, must_be_positive=True
+            )
+            if isinstance(result, str):
+                return msg.replace("<KEY>", "amp_ratio").replace("<RESULT>", result)
+            # Wouldn;t be picked up in case "number" isn't given, and a
+            # single-element list is given
+            if len(value["amp_ratio"]) == 1:
+                return msg.replace("<KEY>", "amp_ratio").replace(
+                    "<RESULT>", "Should be at least 2 elements long.",
+                )
+
+
+def check_xaxis_ticks(
+    obj: Any,
+    regions: Iterable[Tuple[float, float]],
+) -> Optional[str]:
+    msg = (
+        "Should be a list or tuple with each element being of the form "
+        "`[int, [float, float, ...]]`"
+    )
+
+    if not isiter(obj):
+        return msg
+    n_regions = len(regions)
+    already_found = []
+    for i, elem in enumerate(obj):
+        if not isiter(elem) or len(elem) != 2 or not isint(elem[0]):
+            return msg
+
+        msg_prefix = f"Issue with element {i}:\n"
+        if elem[0] < 0 or elem[0] >= n_regions:
+            return f"{msg_prefix}Region index should be between 0-{n_regions - 1}."
+        if elem[0] in already_found:
+            return f"Duplicated region index: {elem[0]}."
+        already_found.append(elem[0])
+        region = regions[elem[0]]
+        if not isiter(elem[1]):
+            return f"{msg_prefix}Tick specification should be a list or tuple."
+        for tick in elem[1]:
+            if not isfloat(tick):
+                return "{msg_prefix}Tick specifications should be floats."
+            mn, mx = min(region), max(region)
+            if mn > tick or mx < tick:
+                return (
+                    f"{msg_prefix}At least one tick is out of bounds "
+                    f"(should be within the range {mn}-{mx})."
+                )

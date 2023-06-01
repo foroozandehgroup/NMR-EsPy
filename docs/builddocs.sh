@@ -1,14 +1,36 @@
 #!/bin/bash
-if [ $HOSTNAME = "precision" ] ; then
-	NMRESPYDIR=/home/simon/Documents/DPhil/projects/spectral_estimation/NMR-EsPy
-elif [ $HOSTNAME = "belladonna.chem.ox.ac.uk"  ] ; then
-	NMRESPYDIR=/u/mf/jesu2901/Documents/DPhil/projects/spectral_estimation/NMR-EsPy
+personal_pcs="precision spectre"
+work_pcs="parsley.chem.ox.ac.uk belladonna.chem.ox.ac.uk"
+found=1
+for pc in $personal_pcs
+do
+    if [ $HOSTNAME = $pc ] ; then
+        NMRESPYPATH=/home/simon/Documents/DPhil/projects/NMR-EsPy
+        found=0
+    fi
+done
+
+if [ $found = 1 ]; then
+    for pc in $work_pcs
+    do
+        echo $pc
+        if [ $HOSTNAME = $pc ] ; then
+            NMRESPYPATH=/u/mf/jesu2901/DPhil/projects/spectral_estimation/NMR-EsPy
+            found=0
+        fi
+    done
 fi
 
-cd $NMRESPYDIR/docs
-$NMRESPYDIR/.venv/bin/sphinx-build -b html . ./_build/html
-$NMRESPYDIR/.venv/bin/sphinx-build -b latex . ./_build/latex
-python3 latex_fudge.py
+if [ $found = 1 ]; then
+    echo "Unknown PC: add to the script."
+    exit
+fi
+
+cd $NMRESPYPATH/docs
+$NMRESPYPATH/.venv/bin/sphinx-build -b html . ./_build/html
+xdotool key "Super_L+Right" && xdotool key "Ctrl+r" && xdotool key "Super_L+Left"
+$NMRESPYPATH/.venv/bin/sphinx-build -b latex . ./_build/latex
+python latex_fudge.py
 cd ./_build/latex/
-xelatex nmr-espy.tex
-xelatex nmr-espy.tex
+xelatex --shell-escape nmr-espy.tex
+xelatex --shell-escape nmr-espy.tex

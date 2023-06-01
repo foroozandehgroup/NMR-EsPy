@@ -1,11 +1,10 @@
 # config.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 26 Apr 2022 10:18:51 BST
+# Last Edited: Thu 20 Oct 2022 16:44:38 BST
 
 import tkinter as tk
 from PIL import ImageTk, Image
-import numpy as np
 
 import nmrespy._paths_and_links as pl
 
@@ -67,7 +66,6 @@ def get_PhotoImage(path, scale=1.0):
         Tkinter-compatible image. This can be incorporated into a GUI using
         tk.Label(parent, image=img)
     """
-
     image = Image.open(path).convert("RGBA")
     [w, h] = image.size
     new_w = int(w * scale)
@@ -121,34 +119,40 @@ class Restrictor:
     `here <https://stackoverflow.com/questions/48709873/restricting-panning-\
     range-in-matplotlib-plots>`_"""
 
-    def __init__(self, ax, x=lambda x: True, y=lambda x: True):
-
-        self.res = [x, y]
+    def __init__(self, ax, x_bounds, y_bounds=None):
         self.ax = ax
-        self.limits = self.get_lim()
-        self.ax.callbacks.connect("xlim_changed", lambda evt: self.lims_change(axis=0))
-        self.ax.callbacks.connect("ylim_changed", lambda evt: self.lims_change(axis=1))
+        self.x_bounds = x_bounds
+        self.curr_xlim = self.ax.get_xlim()
+        self.ax.callbacks.connect("xlim_changed", lambda evt: self.xlim_change())
+        if y_bounds is not None:
+            self.y_bounds = y_bounds
+            self.curr_ylim = self.ax.get_ylim()
+            self.ax.callbacks.connect("ylim_changed", lambda evt: self.ylim_change())
 
-    def get_lim(self):
-        return [self.ax.get_xlim(), self.ax.get_ylim()]
+    def check_valid(self, axis):
+        bounds = getattr(self, f"{axis}_bounds")
+        lims = getattr(self.ax, f"get_{axis}lim")()
+        return all([min(bounds) <= lim <= max(bounds) for lim in lims])
 
-    def set_lim(self, axis, lim):
-        if axis == 0:
-            self.ax.set_xlim(lim)
-        else:
-            self.ax.set_ylim(lim)
-        self.limits[axis] = self.get_lim()[axis]
-
-    def lims_change(self, event=None, axis=0):
-        curlim = np.array(self.get_lim()[axis])
-        if self.limits[axis] != self.get_lim()[axis]:
-            # avoid recursion
-            if not np.all(self.res[axis](curlim)):
+    def xlim_change(self):
+        # Avoid recursion
+        if self.ax.get_xlim() != self.curr_xlim:
+            if not self.check_valid("x"):
                 # if limits are invalid, reset them to previous state
-                self.set_lim(axis, self.limits[axis])
+                self.ax.set_xlim(self.curr_xlim)
             else:
                 # if limits are valid, update previous stored limits
-                self.limits[axis] = self.get_lim()[axis]
+                self.curr_xlim = self.ax.get_xlim()
+
+    def ylim_change(self):
+        # Avoid recursion
+        if self.ax.get_ylim() != self.curr_ylim:
+            if not self.check_valid("y"):
+                # if limits are invalid, reset them to previous state
+                self.ax.set_ylim(self.curr_ylim)
+            else:
+                # if limits are valid, update previous stored limits
+                self.curr_ylim = self.ax.get_ylim()
 
 
 def check_int(value):
@@ -182,24 +186,23 @@ def strip_zeros(number):
     return number.rstrip("0").rstrip(".")
 
 
+def get_widgets(master):
+    """Recursively gets all widgets associated with master"""
+    widgets = master.winfo_children()
+    for widget in widgets:
+        if widget.winfo_children():
+            # Get intersection of current widgets and children of
+            # currently considered widget
+            widgets = list(set(get_widgets(widget)) | set(widgets))
+
+    return widgets
+
+
 def check_invalid_entries(master):
     """Check whether any entry widgets in a certain frame have been
     assigned a red colour. The implication of this is that certain
     entries have not been verified by the user pressing <Return>"""
-
-    def get_widgets(master):
-        """Recursively gets all widgets associated with master"""
-        widgets = master.winfo_children()
-        for widget in widgets:
-            if widget.winfo_children():
-                # Get intersection of current widgets and children of
-                # currently considered widget
-                widgets = list(set(get_widgets(widget)) | set(widgets))
-
-        return widgets
-
     for widget in list(get_widgets(master)):
         if widget.winfo_class() == "Entry" and widget["fg"] == "red":
             return False
-
     return True

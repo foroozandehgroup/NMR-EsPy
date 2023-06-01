@@ -1,0 +1,12 @@
+=====================
+Logfile for Estimator
+=====================
+--> Created @ 09-01-23 17:02:02
+--> `estimate` () {'region': (4.6, 4.4), 'noise_region': (4.3, 4.25), 'region_unit': 'ppm'}
+--> `estimate` () {'region': (4.02, 3.82), 'noise_region': (4.3, 4.25), 'region_unit': 'ppm'}
+--> `estimate` () {'region': (3.8, 3.6), 'noise_region': (4.3, 4.25), 'region_unit': 'ppm'}
+--> `write_result` () {'path': 'downloads/tutorial_1d', 'fmt': 'txt', 'description': 'Simulated 2,3-Dibromopropanoic acid signal.'}
+--> `write_result` () {'path': 'downloads/tutorial_1d', 'fmt': 'pdf', 'description': 'Simulated 2,3-Dibromopropanoic acid signal.'}
+--> `plot_result` () {'indices': None, 'figure_size': (4.5, 3.0), 'region_unit': 'ppm', 'axes_left': 0.03, 'axes_right': 0.97, 'axes_top': 0.98, 'axes_bottom': 0.09}
+--> `plot_result` () {'indices': [1], 'figure_size': (4.5, 3.0), 'region_unit': 'ppm', 'axes_left': 0.03, 'axes_right': 0.97, 'axes_top': 0.98, 'axes_bottom': 0.09}
+--> `to_pickle` ('downloads/dpa_estimator',) {}
