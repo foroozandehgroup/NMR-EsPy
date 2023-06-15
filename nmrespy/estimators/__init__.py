@@ -1,7 +1,7 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 25 May 2023 12:33:31 BST
+# Last Edited: Sun 11 Jun 2023 19:20:33 BST
 
 from __future__ import annotations
 import copy
@@ -1309,6 +1309,7 @@ class Estimator(ne.ExpInfo):
                         def_n, def_amp_ratio, def_split_dim
                     sep = def_sep(split_dim)
                 else:
+                    split_dim = self.dim - 1
                     if "separation" in split_info:
                         sep = split_info["separation"]
                     else:
@@ -1344,7 +1345,7 @@ class Estimator(ne.ExpInfo):
                     else:
                         new_oscs[:, 2 + i] = to_split[2 + i]
 
-                new_oscs[:, 2 + self.dim :] = to_split[2 + self.dim :]
+                new_oscs[:, 2 + self.dim :] = to_split[2 + self.dim :] / len(amps)
 
                 if oscs_to_add is None:
                     oscs_to_add = new_oscs
@@ -1372,9 +1373,13 @@ class Estimator(ne.ExpInfo):
             if key in ("region", "noise_region", "region_unit", "initial_guess"):
                 del estimate_kwargs[key]
 
+        if result.get_noise_region() is None:
+            region, noise_region = None, None
+        else:
+            region, noise_region = result.get_region()[-1], result.get_noise_region()[-1]
         self.estimate(
-            result.get_region()[-1],
-            result.get_noise_region()[-1],
+            region,
+            noise_region,
             region_unit="hz",
             initial_guess=x0,
             _log=False,

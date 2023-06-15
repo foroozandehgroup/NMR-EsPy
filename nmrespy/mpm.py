@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 17 May 2023 12:16:50 BST
+# Last Edited: Thu 15 Jun 2023 11:20:07 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
 
@@ -20,6 +20,7 @@ import numpy.linalg as nlinalg
 import scipy.linalg as slinalg
 from scipy import sparse
 import scipy.sparse.linalg as splinalg
+from scipy.signal import argrelextrema
 
 from nmrespy import ExpInfo
 from nmrespy._colors import RED, ORA, END, USE_COLORAMA
@@ -156,7 +157,7 @@ class MatrixPencil(ResultFetcher):
                 k * np.log(N) * (2 * L - k) / 2
             )
 
-        return np.argmin(self.mdl)
+        return argrelextrema(self.mdl, np.less)[0][0]
 
     @timer
     @start_end_wrapper("MPM STARTED", "MPM COMPLETE")
