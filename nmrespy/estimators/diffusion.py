@@ -1,7 +1,7 @@
 # diffusion.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 18 May 2023 19:11:09 BST
+# Last Edited: Thu 29 Jun 2023 15:21:55 BST
 
 from __future__ import annotations
 import copy
@@ -196,9 +196,13 @@ class _EstimatorDiff(EstimatorSeq1D):
         small_delta = float(acqus["P"][30]) * 1.e-6  # μs -> s
         big_delta = float(acqus["D"][20])
 
+        if datapath.parent.name == "pdata":
+            root_dir = datapath.parents[1]
+        else:
+            root_dir = datapath
         sanity_check(
             (
-                "gradient_file", gradfile := datapath / gradient_file,
+                "gradient_file", gradfile := root_dir / gradient_file,
                 check_existent_path,
             ),
         )
@@ -422,7 +426,8 @@ class _EstimatorDiff(EstimatorSeq1D):
         """
         # N.B. When comparing fits to andrographolide data from Jon, I found
         # good agreement when gamma was in units of rad Hz/G and sigma was set
-        # to 1. (i.e. no consideration of the shape function made).
+        # to 1. i.e. implication is that no consideration of the shape function
+        # made. Perhaps shape function is incorporated into difflist?
         return (
             1.e-4 *
             (2 * np.pi * self.gamma * self.small_delta * self.sigma) ** 2 *
@@ -476,6 +481,7 @@ class _EstimatorDiff(EstimatorSeq1D):
             element corresponds to :math:`D`.
         """
         fits, errors = self._fit(indices, oscs)
+        print(fits[0])
         c = self.c
         for fit, err in zip(fits, errors):
             fit[1] /= c
@@ -716,7 +722,7 @@ class EstimatorDiffBi(_EstimatorDiff):
         )
         small_delta *= 2.
         acqus = expinfo.parameters["acqus"]
-        tau = float(acqus["CNST"][17])
+        tau = float(acqus["D"][16])
 
         return cls(
             data,

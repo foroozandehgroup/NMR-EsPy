@@ -1,7 +1,7 @@
 # seq_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 25 May 2023 12:28:14 BST
+# Last Edited: Sun 02 Jul 2023 12:56:32 BST
 
 from __future__ import annotations
 import copy
@@ -130,12 +130,20 @@ class EstimatorSeq1D(Estimator1D):
         if data.ndim != 2:
             raise ValueError(f"{RED}Data dimension should be 2.{END}")
 
-        float_list_files = cls._check_float_list_file(directory)
+        if directory.parent.name == "pdata":
+            pdata = True
+            root_dir = directory.parents[1]
+        else:
+            pdata = False
+            root_dir = directory
+
+
+        float_list_files = cls._check_float_list_file(root_dir)
 
         if not float_list_files:
             raise ValueError(
                 f"{RED}Could not find a suitable delay file in directory: "
-                f"{directory}.{END}"
+                f"{root_dir}.{END}"
             )
 
         elif len(float_list_files) == 1:
@@ -165,7 +173,13 @@ class EstimatorSeq1D(Estimator1D):
                     f"it does not correspond to a correctly formatted file.{END}"
                 )
 
-        if convdta:
+        if pdata:
+            slice_ = slice(0, data.shape[-1] // 2)
+            data = (2 * ne.sig.ift(data, 1))[:, slice_]
+            n_increments = len(increments)
+            data = data[:n_increments]
+
+        elif convdta:
             grpdly = expinfo_2d.parameters["acqus"]["GRPDLY"]
             data = ne.sig.convdta(data, grpdly)
 
@@ -216,6 +230,7 @@ class EstimatorSeq1D(Estimator1D):
         p0, p1 = self._estimators[0].manual_phase_data(max_p1)
         for estimator in self._estimators[1:]:
             estimator.phase_data(p0=p0, p1=p1)
+        return p0, p1
 
     def baseline_correction(self, min_length: int = 50) -> None:
         for estimator in self._estimators:
@@ -1232,6 +1247,7 @@ class EstimatorSeq1D(Estimator1D):
         y_pts: int = 128,
         distribution_width: float = 1.,
         y_scale: str = "linear",
+        spectrum_ylim: Optional[Tuple[float, float]] = None,
         indices: Optional[Iterable[int]] = None,
         region_separation: float = 0.02,
         oscillator_colors: Any = None,
@@ -1272,6 +1288,9 @@ class EstimatorSeq1D(Estimator1D):
 
         y_scale
             Should be either ``"linear"`` or ``"log"``.
+
+        spectrum_ylim
+            Bottom and top of axes showing the spectral data.
 
         indices
             See :ref:`INDICES`.
@@ -1376,7 +1395,7 @@ class EstimatorSeq1D(Estimator1D):
               axs[1].contour(
 
         This implies that for some of the peaks to be plotted will not be visible
-        in the DOSY-style contour plot. Thsi results because either:
+        in the DOSY-style contour plot. This results because either:
 
         * The smallest contour level (given by ``contour_base``) is too large.
           You will need to decrease its value.
@@ -1394,6 +1413,10 @@ class EstimatorSeq1D(Estimator1D):
                 {"greater_than_zero": True},
             ),
             ("y_scale", y_scale, sfuncs.check_one_of, ("linear", "log")),
+            (
+                "spectrum_ylim", spectrum_ylim, sfuncs.check_float_list,
+                (), {"length": 2}, True,
+            ),
             self._indices_check(indices),
             self._funit_check(xaxis_unit, "xaxis_unit"),
             (
@@ -1574,35 +1597,20 @@ class EstimatorSeq1D(Estimator1D):
                         **label_kwargs,
                     )
 
-                # if z_slice is not None:
-                #     axs[2].contour(
-                #         xx,
-                #         yy,
-                #         z_slice,
-                #         colors=color,
-                #         levels=contour_levels,
-                #         **contour_kwargs,
-                #     )
-                #     if label_peaks:
-                #         y_argmax = np.argmax(z_slice[x_argmax])
-                #         axs[2].text(
-                #             x_label,
-                #             y[y_argmax],
-                #             str(peak_idx),
-                #             color=color,
-                #             **label_kwargs,
-                #         )
-
                     peak_idx += 1
 
-            axs[2].contour(
-                xx,
-                yy,
-                sum([z_slice for z_slice in zs_slice if z_slice is not None]),
-                cmap=cmap,
-                levels=contour_levels,
-                **contour_kwargs,
-            )
+            zz = sum([z_slice for z_slice in zs_slice if z_slice is not None])
+            # if all zs_slice elements are None, sum() will return 0
+            # Avoid plotting if so
+            if type(zz) != int:
+                axs[2].contour(
+                    xx,
+                    yy,
+                    zz,
+                    cmap=cmap,
+                    levels=contour_levels,
+                    **contour_kwargs,
+                )
             del zs[-1]
 
         if y_scale == "linear":
@@ -1616,6 +1624,8 @@ class EstimatorSeq1D(Estimator1D):
         axs[0].set_xticks([])
         axs[0].set_yticks([])
         axs[0].set_xlim(1, 0)
+        if spectrum_ylim is not None:
+            axs[0].set_ylim(spectrum_ylim)
         axs[1].set_ylabel(ylabel)
         axs[1].set_xticks([])
         axs[1].set_ylim(y_range[0], y_range[1])
