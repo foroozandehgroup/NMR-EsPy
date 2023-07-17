@@ -36,7 +36,7 @@ the path to the dataset:
        >>> estimator.phase_data(p0=2.653, p1=-5.686, pivot=13596)
        >>> estimator.baseline_correction()
 
-2. To import the processed data, set the path as
+2. To import processed data, set the path as
    ``"<path_to_data>/<expno>/pdata/<procno>"``. There should be a ``1r`` file
    and a ``procs`` file directly under this directory. The data in ``1r`` will
    be Inverse Fourier Transformed, and the resulting time-domain signal is sliced
@@ -48,8 +48,7 @@ the path to the dataset:
        data will be converted to the time-domain for estimation, as you can
        then rely on TopSpin's automated processing scripts to phase and
        baseline correct. However, **you should not apply any window function to
-       the data.** The ony exception is exponential damping, though if you
-       don't need it, it's best you don't use it.
+       the data other than exponential line broadening.**
 
    .. code::
 
@@ -61,7 +60,7 @@ Simulated data from a set of oscillator parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can create an estimator with synthetic data constructed from known
-parameters using :py:meth:`~nmrespy.Estimator1D.new_synthetic_from_parameters`
+parameters using :py:meth:`~nmrespy.Estimator1D.new_from_parameters`.
 The parameters must be provided as a 2D NumPy array with ``params.shape[1] ==
 4``. Each row should contain an oscillator's amplitude, phase (rad), frequency
 (Hz), and damping factor (s⁻¹).
@@ -70,23 +69,23 @@ The parameters must be provided as a 2D NumPy array with ``params.shape[1] ==
 
     >>> import nmrespy as ne
     >>> import numpy as np
-    >>> # Using frequencies of 2,3-Dibromopropanoic acid
+    >>> # Using frequencies of 2,3-Dibromopropanoic acid @ 500MHz
     >>> params = np.array([
-    >>>     [1, 0, 1864.4, 5],
-    >>>     [1, 0, 1855.8, 5],
-    >>>     [1, 0, 1844.2, 5],
-    >>>     [1, 0, 1835.6, 5],
-    >>>     [1, 0, 1981.4, 5],
-    >>>     [1, 0, 1961.2, 5],
-    >>>     [1, 0, 1958.8, 5],
-    >>>     [1, 0, 1938.6, 5],
-    >>>     [1, 0, 2265.6, 5],
-    >>>     [1, 0, 2257.0, 5],
-    >>>     [1, 0, 2243.0, 5],
-    >>>     [1, 0, 2234.4, 5],
+    >>>     [1., 0., 1864.4, 7.],
+    >>>     [1., 0., 1855.8, 7.],
+    >>>     [1., 0., 1844.2, 7.],
+    >>>     [1., 0., 1835.6, 7.],
+    >>>     [1., 0., 1981.4, 7.],
+    >>>     [1., 0., 1961.2, 7.],
+    >>>     [1., 0., 1958.8, 7.],
+    >>>     [1., 0., 1938.6, 7.],
+    >>>     [1., 0., 2265.6, 7.],
+    >>>     [1., 0., 2257.0, 7.],
+    >>>     [1., 0., 2243.0, 7.],
+    >>>     [1., 0., 2234.4, 7.],
     >>> ])
     >>> sfo = 500.
-    >>> estimator = ne.Estimator1D.new_synthetic_from_parameters(
+    >>> estimator = ne.Estimator1D.new_from_parameters(
     >>>     params=params,
     >>>     pts=2048,
     >>>     sw=1.2 * sfo,  # 1ppm
@@ -105,20 +104,16 @@ Simulated data from Spinach
 
 Assuming you have installed the :ref:`relevant requirements <SPINACH_INSTALL>`,
 you can create an instance with data simulated using Spinach with
-:py:meth:`~nmrespy.Estimator1D.new_spinach`. It is necessary to provide:
+:py:meth:`~nmrespy.Estimator1D.new_spinach`. The spin system is defined by a
+specification of isotropic chemical shifts, and scalar couplings:
 
-* A list of floats for the chemical shifts of each nucleus
-* A list with 3-element tuples of the form ``(spin1, spin2, coupling)`` for
-  the couplings (N.B. the spin indices start at ``1`` rather than ``0``).
-* An int for the number of datapoints
-* A float for the sweep width.
-* (Optionally) a float for the transmitter offset (Hz).
-* (Optionally) a float for the transmitter frequency (MHz).
-* (Optionally) a str for the nucleus identity.
-* (Optionally) a float for the signal's approximate SNR in dB.
-* (Optionally) a float for the exponential damping factor.
+* For the chemical shift, a list of floats is required.
+* For J-couplings, a list with 3-element tuples of the form ``(spin1, spin2,
+  coupling)`` is required. **N.B. the spin indices start at ``1`` rather than
+  ``0``**.
 
-Note this may take some time in order to start-up MATLAB and run the simulation.
+It can take some time to run this function is it involves (a) starting up
+MATLAB and (b) running a simulation of the experiment.
 
 .. code:: pycon
 
@@ -142,7 +137,8 @@ Viewing and accessing the dataset
 ---------------------------------
 
 You can inspect the data associated with the estimator with
-:py:meth:`~nmrespy.Estimator1D.view_data`
+:py:meth:`~nmrespy.Estimator1D.view_data`, which loads an interactive
+matplotlib figure:
 
 .. code:: pycon
 
@@ -151,20 +147,35 @@ You can inspect the data associated with the estimator with
 .. image:: ../media/estimator_1d_view_data.png
    :align: center
 
-You can acquire the time-domain data with :py:meth:`~nmrespy.Estimator1D.data`,
-the associated timepoints can be retrieved using
+You can access the time-domain data with the
+:py:meth:`~nmrespy.Estimator1D.data` property,
+and the associated time-points can be retrieved using
 :py:meth:`~nmrespy.Estimator1D.get_timepoints`.  The spectral data is accessed
 with :py:meth:`~nmrespy.Estimator1D.spectrum`, and the corresponding chemical
-shifts  with :py:meth:`~nmrespy.Estimator1D.get_shifts`.
+shifts with :py:meth:`~nmrespy.Estimator1D.get_shifts`.
 
-.. todo::
+.. code:: pycon
 
-   Provide an example of using these methods
+    >>> fid = estimator.data
+    >>> tp = estimator.get_timepoints()[0]
+    >>> spectrum = estimator.spectrum
+    >>> shifts = estimator.get_shifts(unit="ppm")[0]
+    >>> fig, axs = plt.subplots(nrows=2)
+    >>> axs[0].plot(tp, fid.real)
+    >>> axs[0].set_xlabel("$t$ (s)")
+    >>> axs[1].plot(shifts, spectrum.real)
+    >>> # Flip x-axis limits (ensure plotting from high to low shifts)
+    >>> axs[1].set_xlim(reversed(axs[1].get_xlim()))
+    >>> axs[1].set_xlabel("$^1$H (ppm)")
+    >>> plt.show()
+
+.. image:: ../media/fid_spec.png
+   :align: center
 
 Estimating the dataset
 ----------------------
 
-The generation of parameters estimates for the dataset is facilitated using the
+The generation of parameter estimates for the dataset is facilitated using the
 :py:meth:`~nmrespy.Estimator1D.estimate` method. In most scenarios, your
 dataset will possess too many oscillators for it to be feasible computationally
 to estimate the entire signal at once. For this reason, NMR-EsPy generates
@@ -202,10 +213,10 @@ Inspecting estimation results
     **Result Indices**
 
     Each time the :py:meth:`~nmrespy.Estimator1D.estimate` method is called, the
-    result is appended to a list of all recorded results. For many methods that use
+    result is appended to a list of all generated results. For many methods that use
     estimation results, an argument called ``indices`` exists. This lets you specify
-    the results you are interested in. By default all results will be used
-    (``indices = None``). A subset of the results can be considered by including a
+    the results you are interested in. By default (``indices = None``) all
+    results will be used. A subset of the results can be considered by including a
     list of integers. For example ``indices = [0, 2]`` would mean only the 1st
     and 3rd results acquired with the estimator are considered.
 
@@ -291,6 +302,7 @@ Creating result plots
 ^^^^^^^^^^^^^^^^^^^^^
 
 Figures giving an overview of the estimation result can be generated using
+:py:meth:`~nmrespy.Estimator1D.plot_result`.
 
 .. code::
 
@@ -306,6 +318,16 @@ Figures giving an overview of the estimation result can be generated using
     >>>     )
     >>>     fig.savefig(f"tutorial_1d_{txt}_fig.pdf")
 
+
+.. only:: latex
+
+    Below is the figure ``tutorial_1d_complete_fig.pdf``:
+
+   .. image:: ../downloads/tutorial_1d_complete_fig.pdf
+        :align: center
+        :scale: 80%
+
+
 .. only:: html
 
     * :download:`tutorial_1d_complete_fig.pdf
@@ -314,6 +336,7 @@ Figures giving an overview of the estimation result can be generated using
     * :download:`tutorial_1d_index_1_fig.pdf
       <../downloads/tutorial_1d_index_1_fig.pdf>`: result for 2nd estimated
       region only (index 1)
+
 
 Saving the estimator
 ^^^^^^^^^^^^^^^^^^^^
@@ -347,8 +370,3 @@ A logfile listing all the methods called on the estimator can be saved using
 .. only:: html
 
     * :download:`tutorial_1d.log <../downloads/tutorial_1d.log>`
-
-Editing parameter results
--------------------------
-
-**TODO**
