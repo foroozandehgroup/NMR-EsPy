@@ -1,7 +1,7 @@
 # result_onedim.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 07 Mar 2023 13:49:26 GMT
+# Last Edited: Sun 16 Jul 2023 13:34:36 BST
 
 from matplotlib import backends
 
@@ -38,13 +38,13 @@ class Result1D(Result1DType):
 
         super().new_tab(idx, replace)
 
-        fig, ax, _ = self.estimator.plot_result(
+        fig, ax = self.estimator.plot_result(
             indices=[idx],
             axes_bottom=0.12,
             axes_left=0.02,
             axes_right=0.98,
             axes_top=0.98,
-            region_unit="ppm",
+            xaxis_unit="ppm",
             figsize=(6, 3.5),
             dpi=170,
         )

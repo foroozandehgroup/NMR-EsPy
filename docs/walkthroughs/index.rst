@@ -1,10 +1,17 @@
 Walkthroughs
 ============
 
-Listed below are links to walkthroughs to help you get up-and-running with
-certain features of NMR-EsPy. These walkthroughs provides a fairly bare-bones
-description of the key features of NMR-EsPy. For a rigorous description of the
-API, you should consult the :doc:`Reference <../references/index>` afterwards.
+.. only:: latex
+
+    In this chapter, walkthroughs are provided to help you get up-and-running with
+    the main features of the NMR-EsPy API. For a rigorous description of the
+    API, you should consult the :doc:`Reference <../references/index>` afterwards.
+
+.. only:: html
+
+    Below are links to walkthroughs to help you get up-and-running with
+    the main features of the NMR-EsPy API. For a rigorous description of the
+    API, you should consult the :doc:`Reference <../references/index>` afterwards.
 
 .. toctree::
    :maxdepth: 2
