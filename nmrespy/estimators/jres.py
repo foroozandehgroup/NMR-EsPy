@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Tue 16 May 2023 12:29:33 BST
+# Last Edited: Wed 05 Jul 2023 17:02:22 BST
 
 from __future__ import annotations
 import copy
@@ -621,6 +621,33 @@ class Estimator2DJ(_Estimator1DProc):
         thold: Optional[float] = None,
         freq_unit: str = "hz",
     ) -> Iterable[np.ndarray]:
+        """Generate a list of FIDs corresponding to each multiplet structure.
+
+        Parameters
+        ----------
+        indices
+            See :ref:`INDICES`.
+
+        pts
+            The number of points to construct the mutliplets from.
+
+        thold
+            Frequency threshold for multiplet prediction. All oscillators that make
+            up a multiplet are assumed to obey the following expression:
+
+            .. math::
+                f_c - f_t < f^{(2)} - f^{(1)} < f_c + f_t
+
+            where :math:`f_c` is the central frequency of the multiplet, and `f_t` is
+            ``thold``
+
+        freq_unit
+            Must be ``"hz"`` or ``"ppm"``.
+
+        Returns
+        -------
+        List of numpy arrays with each FID.
+        """
         # TODO: CHECKING
         multiplets = self.predict_multiplets(
             indices=indices,
@@ -758,7 +785,7 @@ class Estimator2DJ(_Estimator1DProc):
             The path to the root directory to store the data in. This must already
             exist.
 
-        expinfo
+        expno
             The experiment number. If ``None``, the first directory number
             ``<x>`` for which ``<path>/<x>/`` isn;t currently a directory will be
             used.

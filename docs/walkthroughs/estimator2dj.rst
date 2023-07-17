@@ -3,14 +3,13 @@
 Using ``Estimator2DJ``
 ======================
 
-The :py:meth:`nmrespy.Estimator2DJ` class enables the estimation of J-Resolved
-(2DJ) spectroscopy experiments. This facilitates use of **CUPID**
+The :py:class:`nmrespy.Estimator2DJ` class enables the estimation of J-Resolved
+(2DJ) spectroscopy datasets. This facilitates use of **CUPID**
 (**C**\ omputer-assisted **U**\ ltrahigh-resolution **P**\ rotocol for **I**\ deal
-**D**\ ecoupling) for generating homodecoupled signals with absorption-mode
-lineshapes and without loss of sensitivity, and for predicting multiplet
-structures.
+**D**\ ecoupling) which can be used to generate homodecoupled spectra and to
+predicting multiplet structures.
 
-Many methods in this class have analogues in :py:meth:`~nmrespy.Estimator1D`.
+Many methods in this class have analogues in :py:class:`~nmrespy.Estimator1D`.
 You are advised to read through the :ref:`1D walkthrough <ESTIMATOR1D>` before
 continuing, as I will be providing minimal descriptions of things covered in
 that.
@@ -25,12 +24,13 @@ Use :py:meth:`~nmrespy.Estimator2DJ.new_bruker`. Unlike ``Estimator1D``, you
 must import time-domain 2DJ data. The path should be set as
 ``"<path_to_data>/<expno>/"``. There should be a ``ser`` file, an ``acqus``
 file, and an ``acqu2s`` file directly under this directory. Again, phasing in the
-direct-dimension, and baseline correction will be needed.
+direct-dimension will be needed. If deemed necessary, baseline correction is possible
+too.
 
 .. code:: pycon
 
     >>> import nmrespy as ne
-    >>> estimator = ne.Estimator2DJ.new_bruker("/home/simon/nmr_data/dexamethasone/2")
+    >>> estimator = ne.Estimator2DJ.new_bruker("/home/simon/nmr_data/qunine/dexamethasone/2")
     >>> estimator.phase_data(p0=0.041, p1=-6.383, pivot=1923)
     >>> estimator.baseline_correction()
     <Estimator2DJ object at 0x7f4b7e1f5cd0>
@@ -148,7 +148,7 @@ generating filtered sub-FIDs. No filtering is done in the indirect dimension.
 In our example, it turns out that for a couple of the regions selected, the number
 of oscillators automatically generated is slightly smaller that the "true" number,
 and so we force the optimiser to us the true number (see the lines involving
-``initial_guesses``.
+``initial_guesses``).
 
 .. code::
 
@@ -221,7 +221,7 @@ Multiplet prediction
 --------------------
 
 Oscillators belonging to the same multiplet can be predicted based on the fact
-that in a 2DJ signal any two of such oscillators should satisfy the following:
+that in a 2DJ signal any pair should satisfy the following:
 
 .. math::
 
@@ -233,35 +233,24 @@ where :math:`\epsilon` is an error threshold. :math:`f^{(1)}` and
 respectively. The :py:meth:`~nmrespy.Estimator2DJ.predict_multiplets` generates
 groups of oscillator indices satisfying the above criterion. A key parameter
 for this is ``thold``, which sets the error threshold :math:`\epsilon`. By
-default, this is set to be :math:`f^{(1)}_{\text{sw}} / 2N^{(2)}`, i.e. half
-the indirect-dimension spectral resolution (see
-:py:meth:`~nmrespy.Estimator2DJ.default_multiplet_thold`. However, especially
-for real data, this threshold can be a little optimistic. For good multiplet
-resolution, you may need to manually provide a larger threshold.
+default, this is set to be
+:math:`\operatorname{max}\left(
+f^{(1)}_{\text{sw}} / N^{(1)},
+f^{(2)}_{\text{sw}} / N^{(2)}\right)`, i.e whichever is larger out of
+the indirect- and direct-dimension spectral resolutions. However, especially
+when considering real data, this threshold can be a little optimistic. For good
+multiplet groupings, you may need to manually provide a slightly larger
+threshold.
 
-In the example below, multiplet sets are determined for regions with indices 1-5.
-The parameters for each multiplet are extracted, and 1D spectra for each multiplet
-are formed, which are plotted separately. Note that ``[0, 1, 3, 5]`` are the
-indices of the amplitude, phase, direct-dimension frequency, and
-direct-dimension damping factor (third line).
+In the example below, multiplet groups are determined for regions with indices
+1-5 (covering the region plotted above).
 
 .. code:: pycon
 
     >>> indices = [1, 2, 3, 4, 5]
     >>> multiplets = estimator.predict_multiplets(indices=indices)
-    >>> params_1d = estimator.get_params(indices=indices)[:, [0, 1, 3, 5]]
-    >>> # Creates an `nmrespy.ExpInfo` instance with just direct-dimension information
-    >>> expinfo_1d = estimator.direct_expinfo
-    >>> spectra = []
     >>> for (freq, idx) in multiplets.items():
     ...     print(f"{freq / estimator.sfo[1]:.4f}ppm: {idx}")
-    ...     mp_params = params_1d[idx]
-    ...     fid = expinfo_1d.make_fid(mp_params)
-    ...     # Halve first point prior to FT to prevent vertical baseline shift
-    ...     fid[0] *= 0.5
-    ...     # FT and retrieve real component
-    ...     spectrum = ne.sig.ft(fid).real
-    ...     spectra.append(spectrum)
     ...
     3.8890ppm: [1, 4]
     3.8910ppm: [0, 2, 3, 5]
@@ -274,15 +263,28 @@ direct-dimension damping factor (third line).
     4.5167ppm: [34, 35]
     4.5537ppm: [36, 37, 38, 39, 40, 41, 42, 43]
     4.6349ppm: [44, 45, 46, 47, 48, 49]
+
+
+To generate FIDs corresponding to each multiplet structure, use the
+:py:meth:`~nmrespy.Estimator2DJ.construct_multiplet_fids` method. In the following
+code snippet, each generated FID undergoes FT, with all the spectra being
+plotted.
+
+.. code:: pycon
+
+    >>> # Direct-dimension shifts
+    >>> shifts_f2 = estimator.get_shifts(unit="ppm", meshgrid=False)[-1]
+    >>> fids = estimator.construct_multiplet_fids(indices=indices)
     >>> # Create an iterator which cycles through values infinitely
     >>> from itertools import cycle
     >>> colors = cycle(["#84c757", "#ef476f", "#ffd166", "#36c9c6"])
-    >>> # Chemical shifts in direct dimension
-    >>> # Note comma, which unpacks the shifts from the 1-element tuple
-    >>> shifts_f2, = expinfo_1d.get_shifts(unit="ppm")
     >>> fig, ax = plt.subplots(figsize=(4.5, 2.5))
-    >>> for spectrum in spectra:
-    ...     ax.plot(shifts, spectrum, color=next(colors))
+    >>> for fid in fids:
+    ...     # Halve first point prior to FT to prevent vertical baseline shift
+    ...     fid[0] *= 0.5
+    ...     # FT and retrieve real component
+    ...     spectrum = ne.sig.ft(fid).real
+    ...     ax.plot(shifts_f2, spectrum, color=next(colors))
     ...
     >>> ax.set_xlim(4.7, 3.8)
     >>> # ========================
@@ -303,7 +305,8 @@ direct-dimension damping factor (third line).
 Generating tilted spectra
 -------------------------
 
-The well-known 45° "tilt" that is applied to 2DJ spectra for orthogonal
+The well-known 45° "tilt" (technically a shear) that is applied to 2DJ spectra
+for orthogonal
 separation of chemical shifts and scalar couplings effectively maps the
 frequencies in the direct dimension :math:`f^{(2)}` to :math:`f^{(2)} -
 f^{(1)}`. Armed with an estimation result, a signal with these adjusted
@@ -363,7 +366,7 @@ The :py:meth:`~nmrespy.Estimator2DJ.plot_result` method enables the generation o
 
 * The homodecoupled spectrum generated using
   :py:meth:`~nmrespy.Estimator2DJ.cupid_spectrum`.
-* The 1D spectrum corresponding to the 2DJ dataset.
+* The 1D spectrum generated from the first direct-dimension FID in the 2DJ dataset.
 * The multiplet structures predicted. Note that to get decent multiplet
   assignments, you may need to increase the value of the ``multiplet_thold``
   argument manually.
@@ -377,13 +380,9 @@ The :py:meth:`~nmrespy.Estimator2DJ.plot_result` method enables the generation o
     ...     region_unit="ppm",
     ...     marker_size=5.,
     ...     figsize=(4.5, 2.5),
-    ...     # Number of points to construct homodecoupled signal
-    ...     # and multiplet structures from
-    ...     high_resolution_pts=16384,
     ...     # There is a lot of scope for editing the colours of
     ...     # multiplets. See the reference!
-    ...     # Here I specify a recognised name of a colourmap in
-    ...     # matplotlib.
+    ...     # Here I specify the name of a colormap in matplotlib.
     ...     multiplet_colors="inferno",
     ...     # Argumnets of the position of the plot in the figure
     ...     axes_left=0.1,

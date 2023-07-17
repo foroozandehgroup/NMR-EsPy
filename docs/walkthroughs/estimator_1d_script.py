@@ -1,7 +1,7 @@
 # estimator_1d_script.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 09 Jan 2023 17:01:54 GMT
+# Last Edited: Wed 05 Jul 2023 11:23:56 BST
 
 import nmrespy as ne
 import numpy as np
@@ -28,7 +28,7 @@ sfo = 500.
 sw = sfo * 1.2
 offset = sfo * 4.1
 
-estimator = ne.Estimator1D.new_synthetic_from_parameters(
+estimator = ne.Estimator1D.new_from_parameters(
     params=params,
     pts=pts,
     sw=sw,
@@ -36,6 +36,30 @@ estimator = ne.Estimator1D.new_synthetic_from_parameters(
     sfo=sfo,
     snr=40.,
 )
+
+fid = estimator.data
+tp = estimator.get_timepoints()[0]
+spectrum = estimator.spectrum
+shifts = estimator.get_shifts(unit="ppm")[0]
+fig, axs = plt.subplots(
+    nrows=2,
+    gridspec_kw={
+        "left": 0.07,
+        "right": 0.99,
+        "bottom": 0.13,
+        "top": 0.99,
+        "hspace": 0.34,
+    },
+    figsize=(4.5, 3.5),
+)
+axs[0].plot(tp, fid.real)
+axs[0].set_xlabel("$t$ (s)")
+axs[1].plot(shifts, spectrum.real)
+# Flip x-axis limits (ensure plotting from high to low shifts)
+axs[1].set_xlim(reversed(axs[1].get_xlim()))
+axs[1].set_xlabel("$^1$H (ppm)")
+fig.savefig("walkthroughs/fid_spec.png")
+exit()
 
 regions = [(4.6, 4.4), (4.02, 3.82), (3.8, 3.6)]
 noise_region = (4.3, 4.25)
