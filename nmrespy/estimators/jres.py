@@ -1,7 +1,7 @@
 # jres.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 05 Jul 2023 17:02:22 BST
+# Last Edited: Fri 21 Jul 2023 12:36:09 BST
 
 from __future__ import annotations
 import copy
@@ -463,14 +463,17 @@ class Estimator2DJ(_Estimator1DProc):
         # Remove spurious opscillators, if requested
         if rm_spurious:
             spurious = {}
-            for cfreq, oscs in multiplets.items():
-                if len(oscs) == 1 and abs(cfreq) > thold:
-                    # osc_loc is a tuple of the form (result_index, osc_index)
-                    osc_loc = self.find_osc(params[oscs[0]])
-                    if osc_loc[0] in spurious:
-                        spurious[osc_loc[0]].append(osc_loc[1])
-                    else:
-                        spurious[osc_loc[0]] = [osc_loc[1]]
+            for oscs in multiplets.values():
+                if len(oscs) == 1:
+                    osc = oscs[0]
+                    f1 = params[osc, 2]
+                    if abs(f1) > thold:
+                        # osc_loc is a tuple of the form (result_index, osc_index)
+                        osc_loc = self.find_osc(params[osc])
+                        if osc_loc[0] in spurious:
+                            spurious[osc_loc[0]].append(osc_loc[1])
+                        else:
+                            spurious[osc_loc[0]] = [osc_loc[1]]
 
             for res_idx, osc_idx in spurious.items():
                 self.edit_result(index=res_idx, rm_oscs=osc_idx, **estimate_kwargs)
@@ -1199,6 +1202,7 @@ class Estimator2DJ(_Estimator1DProc):
             f1_f2.append(f1_f2_region)
             center_freqs.append(center_freq)
 
+        print(center_freqs)
         n_multiplets = len(multiplet_spectra)
 
         # Plot individual mutliplets
