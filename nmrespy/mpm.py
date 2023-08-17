@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 15 Jun 2023 11:20:07 BST
+# Last Edited: Thu 17 Aug 2023 11:07:00 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
 
@@ -295,111 +295,110 @@ class MatrixPencil(ResultFetcher):
         if self.output_mode:
             print(f"--> Pencil parameters: {K}, {L}")
 
-        # --- Enhanced Matrix ---
-        X = slinalg.hankel(normed_data[0, :L], normed_data[0, L - 1 : N2])
-        for n1 in range(1, N1):
-            blk = slinalg.hankel(normed_data[n1, :L], normed_data[n1, L - 1 : N2])
-            X = np.hstack((X, blk))
-
-        # vertically stack rows of block matricies to get Xe
-        Xe = X[:, : (N1 - K + 1) * (N2 - L + 1)]
-
-        for k in range(1, K):
-            Xe = np.vstack(
-                (Xe, X[:, k * (N2 - L + 1) : (k + N1 - K + 1) * (N2 - L + 1)])
-            )
+        # === Construct block Hankel EY ===
+        row_size = L2
+        col_size = N2 - L2 + 1
+        EY = np.zeros(
+            (L1 * L2, (N1 - L1 + 1) * (N2 - L2 + 1)),
+            dtype="complex",
+        )
+        for n1 in range(N1):
+            col = normed_data[n1, :L2]
+            row = normed_data[n1, L2 - 1:]
+            HYn1 = slinalg.hankel(col, row)
+            for n in range(n1 + 1):
+                r, c = n, n1 - n
+                if r < L1 and c < N1 - L1 + 1:
+                    EY[
+                        r * row_size : (r + 1) * row_size,
+                        c * col_size : (c + 1) * col_size
+                    ] = HYn1
 
         if self.output_mode:
             print("--> Enhanced Block Hankel matrix constructed:")
-            print(f"\tSize: {Xe.shape[0]} x {Xe.shape[1]}")
+            print(f"\tSize: {EY.shape[0]} x {EY.shape[1]}")
             gibibytes = Xe.nbytes / (2 ** 30)
             if gibibytes >= 0.1:
                 print(f"\tMemory: {round(gibibytes, 4)}GiB")
             else:
                 print(f"\tMemory: {round(gibibytes * (2**10), 4)}MiB")
 
-        # convert Xe to sparse matrix
-        sparse_Xe = sparse.csr_matrix(Xe)
 
-        # --- SVD of Xe ---
+        sparse_EY = sparse.csr_array(EY)
+
         if self.output_mode:
             print("--> Performing Singular Value Decomposition...")
+        UM, *_ = sparse.linalg.svds(EY, k=self.oscillators)
 
-        U, *_ = splinalg.svds(sparse_Xe, k=self.oscillators)
+        # === Construct permutation matrix ===
+        P = np.zeros((L1 * L2, L1 * L2))
+        r = 0
+        for l2 in range(L2):
+            for l1 in range(L1):
+                c = l1 * L2 + l2
+                P[r, c] = 1
+                r += 1
+        UM1 = UM[: (L1 - 1) * L2]
+        UM2 = UM[L2:]
+        z1, W1 = nlinalg.eig(nlinalg.pinv(UM1) @ UM2)
 
-        # --- Permutation matrix ---
-        if self.output_mode:
-            print("--> Computing Permutation matrix...")
+        UMP = P @ UM
+        UMP1 = UMP[: L1 * (L2 - 1)]
+        UMP2 = UMP[L1:]
+        G = nlinalg.inv(W1) @ nlinalg.pinv(UMP1) @ UMP2 @ W1
+        z2 = np.diag(G).copy()  # copy needed as slice is readonly
 
-        # Create first row of matrix: [1, 0, 0, ..., 0]
-        fst_row = sparse.lil_matrix((1, K * L))
-        fst_row[0, 0] = 1
+        # === Check for and deal with similar frequencies in f1 ===
+        freq1 = (0.5 * self.sw[0] / np.pi) * np.imag(np.log(z1)) + self.offset[0]
+        threshold = self.sw[0] / N1
+        groupings = {}
+        for idx, f1 in enumerate(freq1):
+            assigned = False
+            for group_f1, indices in groupings.items():
+                if np.abs(f1 - group_f1) < threshold:
+                    indices.append(idx)
+                    n = len(indices)
+                    indices = sorted(indices)
+                    # Get new mean freq of the group
+                    new_group_f1 = (n * group_f1 + f1) / (n + 1)
+                    groupings[new_group_f1] = groupings.pop(group_f1)
+                    assigned = True
+                    break
+            if not assigned:
+                groupings[f1] = [idx]
 
-        # Seed the permutation matrix
-        P = copy.deepcopy(fst_row)
-
-        # First block of K rows of permutation matrix
-        for k in range(1, K):
-            row = sparse.hstack((fst_row[:, -(k * L) :], fst_row[:, : -(k * L)]))
-            P = sparse.vstack((P, row))
-
-        # first K-sized block of matrix
-        fst_blk = copy.deepcopy(P).tolil()
-
-        # Stack K-sized blocks to form (K * L) row matrix
-        for el in range(1, L):
-            blk = sparse.hstack((fst_blk[:, -el:], fst_blk[:, :-el]))
-            P = sparse.vstack((P, blk))
-
-        P = P.todense()
-
-        # --- Signal Poles ---
-        # retain only M principle left s. vecs
-        if self.output_mode:
-            print("--> Computing signal poles...")
-
-        Us = U[:, : self.oscillators]
-        U1 = Us[: Us.shape[0] - L, :]  # last L rows deleted
-        U2 = Us[L:, :]  # first L rows deleted
-        eig_y, vec_y = nlinalg.eig(nlinalg.pinv(U1) @ U2)
-
-        Usp = P @ Us
-        U1p = Usp[: Usp.shape[0] - K, :]  # last K rows deleted
-        U2p = Usp[K:, :]  # first K rows deleted
-        Z = nlinalg.inv(vec_y) @ nlinalg.pinv(U1p) @ U2p @ vec_y
-        eig_z = np.diag(Z).copy()
-
-        # Get y frequencies in order to determine proximities
-        fy = (self.sw[0] / (2 * np.pi)) * np.imag(np.log(eig_y)) + self.offset[0]
-        groupings = self._find_similar_frequencies(fy)
-        for grouping in groupings:
-            n = len(grouping)
+        for indices in groupings.values():
+            n = len(indices)
             if n != 1:
-                A_slice = tuple(zip(*itertools.product(grouping, repeat=2)))
-                A = Z[A_slice].reshape(n, n)
-                eig_A, _ = nlinalg.eig(A)
-                eig_z[grouping] = eig_A
+                Gr_slice = tuple(zip(*itertools.product(indices, repeat=2)))
+                Gr = G[Gr_slice].reshape(n, n)
+                new_group_z2, _ = np.linalg.eig(Gr)
+                z2[indices] = new_group_z2  # $\label{ln:similar-f-end}$
 
-        poles = np.hstack((eig_y, eig_z)).reshape((2, self.oscillators))
+        # === EL and ER ===
+        ZL2 = np.power.outer(z2, np.arange(L2)).T
+        ZR2 = np.power.outer(z2, np.arange(N2 - L2 + 1))
+        Z1D = np.diag(z1)
 
-        # --- Complex Amplitudes ---
-        if self.output_mode:
-            print("--> Computing complex amplitudes...")
+        EL = np.zeros((L1 * L2, self.oscillators), dtype="complex")
+        Z2LZ1D = ZL2
+        for i in range(L1):
+            EL[i * row_size : (i + 1) * row_size] = Z2LZ1D
+            Z2LZ1D = Z2LZ1D @ Z1D
 
-        ZL = np.power.outer(poles[1], np.arange(L)).T
-        ZR = np.power.outer(poles[1], np.arange(N2 - L + 1))
-        Yd = np.diag(poles[0])
-
-        EL = copy.deepcopy(ZL)
-        for k in range(1, K):
-            EL = np.vstack((EL, ZL @ (Yd ** k)))
-
-        ER = copy.deepcopy(ZR)
-        for m in range(1, N1 - K + 1):
-            ER = np.hstack((ER, (Yd ** m) @ ZR))
-
-        alpha = np.diag(nlinalg.pinv(EL) @ Xe @ nlinalg.pinv(ER))
-
+        ER = np.zeros(
+            (
+                self.oscillators,
+                (N1 - L1 + 1) * (N2 - L2 + 1),
+            ),
+            dtype="complex",
+        )
+        Z1DZ2R = ZR2
+        for i in range(N1 - L1 + 1):
+            ER[:, i * col_size : (i + 1) * col_size] = Z1DZ2R
+            Z1DZ2R = Z1D @ Z1DZ2R
+        alpha = np.diag(np.linalg.pinv(EL) @ EY @ np.linalg.pinv(ER))
+        poles = np.hstack((z1, z2)).reshape((2, self.oscillators))
         params = self._generate_params(alpha, poles)
         params[:, 0] *= norm
         self.params, self.oscillators = self._remove_negative_damping(params)
