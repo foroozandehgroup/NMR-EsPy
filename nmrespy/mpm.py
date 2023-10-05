@@ -1,7 +1,7 @@
 # mpm.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 17 Aug 2023 11:07:00 BST
+# Last Edited: Fri 29 Sep 2023 11:07:27 BST
 
 """Computation of NMR parameter estimates using the Matrix Pencil Method.
 
@@ -291,9 +291,9 @@ class MatrixPencil(ResultFetcher):
                 return
 
         # Pencil parameters
-        K, L = tuple([int((n + 1) / 2) for n in (N1, N2)])
+        L1, L2 = tuple([int((n + 1) / 2) for n in (N1, N2)])
         if self.output_mode:
-            print(f"--> Pencil parameters: {K}, {L}")
+            print(f"--> Pencil parameters: {L1}, {L2}")
 
         # === Construct block Hankel EY ===
         row_size = L2
@@ -317,7 +317,7 @@ class MatrixPencil(ResultFetcher):
         if self.output_mode:
             print("--> Enhanced Block Hankel matrix constructed:")
             print(f"\tSize: {EY.shape[0]} x {EY.shape[1]}")
-            gibibytes = Xe.nbytes / (2 ** 30)
+            gibibytes = EY.nbytes / (2 ** 30)
             if gibibytes >= 0.1:
                 print(f"\tMemory: {round(gibibytes, 4)}GiB")
             else:
