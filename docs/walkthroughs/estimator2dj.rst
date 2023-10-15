@@ -3,16 +3,15 @@
 Using ``Estimator2DJ``
 ======================
 
-The :py:class:`nmrespy.Estimator2DJ` class enables the estimation of J-Resolved
+The :py:class:`nmrespy.Estimator2DJ` class enables the estimation of 2D J-Resolved
 (2DJ) spectroscopy datasets. This facilitates use of **CUPID**
-(**C**\ omputer-assisted **U**\ ltrahigh-resolution **P**\ rotocol for **I**\ deal
-**D**\ ecoupling) which can be used to generate homodecoupled spectra and to
-predicting multiplet structures.
+(**C**\ omputer-assisted **U**\ ndiminished-sensitivity **P**\ rotocol for **I**\ deal
+**D**\ ecoupling) which can be used to generate homodecoupled (*pure shift*)
+spectra and to predict multiplet structures.
 
 Many methods in this class have analogues in :py:class:`~nmrespy.Estimator1D`.
-You are advised to read through the :ref:`1D walkthrough <ESTIMATOR1D>` before
-continuing, as I will be providing minimal descriptions of things covered in
-that.
+You are advised to read through the :ref:`1D tutorial <ESTIMATOR1D>` before
+continuing, as minimal descriptions will be provided of concepts covered in that.
 
 Generating an instance
 ----------------------
@@ -23,9 +22,9 @@ Bruker data
 Use :py:meth:`~nmrespy.Estimator2DJ.new_bruker`. Unlike ``Estimator1D``, you
 must import time-domain 2DJ data. The path should be set as
 ``"<path_to_data>/<expno>/"``. There should be a ``ser`` file, an ``acqus``
-file, and an ``acqu2s`` file directly under this directory. Again, phasing in the
-direct-dimension will be needed. If deemed necessary, baseline correction is possible
-too.
+file, and an ``acqu2s`` file directly under this directory. Phasing in the
+direct-dimension will be needed. If deemed necessary, baseline correction can
+be performed too.
 
 .. code:: pycon
 
@@ -57,60 +56,30 @@ Use :py:meth:`~nmrespy.Estimator2DJ.new_spinach`
 
 .. code:: pycon
 
-    >>> # Sucrose shifts and couplings
+    >>> # Sucrose DFT calculation shifts and couplings
+    >>> # Note that the dataset generated will not be reminiscent of what
+    >>> # the actual solution-state dataset for sucrose looks like!
     >>> shifts = [
-    >>>    6.005,
-    >>>    3.510,
-    >>>    3.934,
-    >>>    3.423,
-    >>>    4.554,
-    >>>    3.891,
-    >>>    4.287,
-    >>>    3.332,
-    >>>    1.908,
-    >>>    1.555,
-    >>>    0.644,
-    >>>    4.042,
-    >>>    4.517,
-    >>>    3.889,
-    >>>    4.635,
-    >>>    4.160,
-    >>>    4.021,
-    >>>    4.408,
-    >>>    0.311,
-    >>>    1.334,
-    >>>    0.893,
-    >>>    0.150,
-    >>> ]
+    ...     6.005, 3.510, 3.934, 3.423, 4.554, 3.891, 4.287, 3.332, 1.908, 1.555, 0.644,
+    ...     4.042, 4.517, 3.889, 4.635, 4.160, 4.021, 4.408, 0.311, 1.334, 0.893, 0.150,
+    ... ]
     >>> couplings = [
-    >>>     (1, 2, 2.285),
-    >>>     (2, 3, 4.657),
-    >>>     (2, 8, 4.828),
-    >>>     (3, 4, 4.326),
-    >>>     (4, 5, 4.851),
-    >>>     (5, 6, 5.440),
-    >>>     (5, 7, 2.288),
-    >>>     (6, 7, -6.210),
-    >>>     (7, 11, 7.256),
-    >>>     (12, 13, -4.005),
-    >>>     (12, 19, 1.460),
-    >>>     (14, 15, 4.253),
-    >>>     (15, 16, 4.448),
-    >>>     (15, 21, 3.221),
-    >>>     (16, 18, 4.733),
-    >>>     (17, 18, -4.182),
-    >>>     (18, 22, 1.350),
-    >>> ]
+    ...     (1, 2, 2.285), (2, 3, 4.657), (2, 8, 4.828), (3, 4, 4.326),
+    ...     (4, 5, 4.851), (5, 6, 5.440), (5, 7, 2.288), (6, 7, -6.210),
+    ...     (7, 11, 7.256), (12, 13, -4.005), (12, 19, 1.460), (14, 15, 4.253),
+    ...     (15, 16, 4.448), (15, 21, 3.221), (16, 18, 4.733), (17, 18, -4.182),
+    ...     (18, 22, 1.350),
+    ... ]
     >>> estimator = ne.Estimator2DJ.new_spinach(
-    >>>     shifts=shifts,
-    >>>     couplings=couplings,
-    >>>     pts=(64, 4096),
-    >>>     sw=(30., 2200.),
-    >>>     offset=1000.,
-    >>>     field=300.,
-    >>>     field_unit="MHz",
-    >>>     snr=20.,
-    >>> )
+    ...     shifts=shifts,
+    ...     couplings=couplings,
+    ...     pts=(64, 4096),
+    ...     sw=(30., 2200.),
+    ...     offset=1000.,
+    ...     field=300.,
+    ...     field_unit="MHz",
+    ...     snr=20.,
+    ... )
 
 .. note::
 
@@ -146,22 +115,15 @@ The procedure for estimating 2DJ data is very similar to that of 1D data. You
 need to specify regions in the direct dimension that are of interest for
 generating filtered sub-FIDs. No filtering is done in the indirect dimension.
 In our example, it turns out that for a couple of the regions selected, the number
-of oscillators automatically generated is slightly smaller that the "true" number,
-and so we force the optimiser to us the true number (see the lines involving
+of oscillators automatically predicted is slightly smaller that the "true" number,
+and so the true number has been hard-coded (see the lines involving
 ``initial_guesses``).
 
 .. code::
 
     >>> regions = (
-    ...     (6.08, 5.91),
-    ...     (4.72, 4.46),
-    ...     (4.46, 4.22),
-    ...     (4.22, 4.1),
-    ...     (4.09, 3.98),
-    ...     (3.98, 3.83),
-    ...     (3.58, 3.28),
-    ...     (2.08, 1.16),
-    ...     (1.05, 0.0),
+    ...     (6.08, 5.91), (4.72, 4.46), (4.46, 4.22), (4.22, 4.1), (4.09, 3.98),
+    ...     (3.98, 3.83), (3.58, 3.28), (2.08, 1.16), (1.05, 0.0),
     ... )
     >>> n_regions = len(regions)
     >>> initial_guesses = n_regions * [None]
@@ -180,13 +142,13 @@ and so we force the optimiser to us the true number (see the lines involving
     >>> estimator.to_pickle("sucrose")
 
 
-Acquiring a homodecoupled spectrum
+Acquiring a pure shift spectrum
 ----------------------------------
 
 The :py:meth:`~nmrespy.Estimator2DJ.cupid_spectrum` method produces a
-homodecoupled spectrum using the estimation parameters. In the code snippet
-below, a figure is made comparing the homodecoupled spectrum with the spectrum
-of the first direct-dimension slice in the 2DJ data, which is a normal 1D
+pure shift spectrum using the 2DJ parameter estimate. In the code snippet
+below, a figure is made which compares the pure shift spectrum with the spectrum
+of the first direct-dimension slice in the 2DJ data, i.e. a normal 1D
 spectrum.
 
 .. code::
@@ -221,26 +183,25 @@ Multiplet prediction
 --------------------
 
 Oscillators belonging to the same multiplet can be predicted based on the fact
-that in a 2DJ signal any pair should satisfy the following:
+that in a 2DJ FID any pair of signals :math:`i, j` should satisfy the following:
 
 .. math::
 
     \left \lvert \left( f^{(2)}_i - f^{(1)}_i \right) - \left(f^{(2)}_j -
-    f^{(1)}_j \right) \right \rvert  < \epsilon
+    f^{(1)}_j \right) \right \rvert  < \epsilon,
 
-where :math:`\epsilon` is an error threshold. :math:`f^{(1)}` and
-:math:`f^{(2)}` are the indirect- and direct-dimension frequencies,
-respectively. The :py:meth:`~nmrespy.Estimator2DJ.predict_multiplets` generates
+where :math:`\epsilon` is an error threshold, and :math:`f^{(1)}` and
+:math:`f^{(2)}` are the estimated indirect- and direct-dimension frequencies,
+respectively. :py:meth:`~nmrespy.Estimator2DJ.predict_multiplets` generates
 groups of oscillator indices satisfying the above criterion. A key parameter
 for this is ``thold``, which sets the error threshold :math:`\epsilon`. By
 default, this is set to be
-:math:`\operatorname{max}\left(
+:math:`\operatorname{min}\left(
 f^{(1)}_{\text{sw}} / N^{(1)},
 f^{(2)}_{\text{sw}} / N^{(2)}\right)`, i.e whichever is larger out of
 the indirect- and direct-dimension spectral resolutions. However, especially
 when considering real data, this threshold can be a little optimistic. For good
-multiplet groupings, you may need to manually provide a slightly larger
-threshold.
+multiplet groupings, you may need to manually provide a larger threshold.
 
 In the example below, multiplet groups are determined for regions with indices
 1-5 (covering the region plotted above).
@@ -305,16 +266,16 @@ plotted.
 Generating tilted spectra
 -------------------------
 
-The well-known 45° "tilt" (technically a shear) that is applied to 2DJ spectra
-for orthogonal
-separation of chemical shifts and scalar couplings effectively maps the
+The well-known 45° shear (commonly called a tilt) that is applied to 2DJ spectra
+for orthogonal separation of chemical shifts and scalar couplings effectively maps the
 frequencies in the direct dimension :math:`f^{(2)}` to :math:`f^{(2)} -
-f^{(1)}`. Armed with an estimation result, a signal with these adjusted
-frequencies can easily be constructed. As well as this, generating a pair of
+f^{(1)}`. Armed with a parameter estimate of an FID, a synthetic signal with
+these adjusted frequencies can be constructed. As well as this, generating a pair of
 phase- or amplitude-modulated FIDs enables the construction of absorption-mode
-spectra. Use :py:meth:`nmrespy.Estimator2DJ.sheared_signal`, with
+spectra (cf the issues involved in generating nice spectra from hypercomplex
+2DJ datasets). Use :py:meth:`nmrespy.Estimator2DJ.sheared_signal`, with
 ``indirect_modulation`` set to either ``"amp"`` or ``"phase"`` to generate the
-desired spectra. Then, you can use either
+desired spectrum. Then, use either
 :py:func:`nmrespy.sig.proc_phase_modulated` or
 :py:func:`nmrespy.sig.proc_amp_modulated` as appropriate to construct the
 spectrum:
@@ -362,7 +323,9 @@ spectrum:
 Plotting result figures
 -----------------------
 
-The :py:meth:`~nmrespy.Estimator2DJ.plot_result` method enables the generation of a figure giving an overview of the estimation result. The figure comprises the following, from top to bottom:
+The :py:meth:`~nmrespy.Estimator2DJ.plot_result` method enables the generation
+of a figure which gives an overview of the estimation result. The figure
+comprises the following, from top to bottom:
 
 * The homodecoupled spectrum generated using
   :py:meth:`~nmrespy.Estimator2DJ.cupid_spectrum`.
@@ -402,9 +365,9 @@ Writing data to Bruker format
    generated by NMR-EsPy (you'll get an error along the lines of *"This
    application requires frequency domain data"* if you try to peak pick,
    integrate etc). As a workaround for now, you can run a processing script on
-   the FID to generate processed data that is readable by TopSpin. All I do to
-   get the spectrum from the FID is halve the initial point and FT (there is no
-   apodisation).
+   the FID to generate processed data that is readable by TopSpin. All that is
+   done to get the spectrum from the FID is halve the initial point and FT
+   (there is no apodisation).
 
 Multiplets
 ^^^^^^^^^^
@@ -447,4 +410,4 @@ Miscellaneous
 
 For writing result tables to text and PDF files, saving estimators to binary
 files for later use, and saving log files, look at the relevant sections in the
-:ref:`ESTIMATOR1D` walkthrough. The process is identical.
+:ref:`ESTIMATOR1D` tutorial.
