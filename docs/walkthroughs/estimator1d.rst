@@ -8,7 +8,7 @@ The :py:class:`nmrespy.Estimator1D` class is provided for the consideration of 1
 Generating an instance
 ----------------------
 
-There are a few ways to create a new instance of the estimator depending on the source of the data
+There are a few ways to create a new instance of the estimator depending on the source of the data.
 
 Bruker data
 ^^^^^^^^^^^
@@ -17,10 +17,10 @@ It is possible to load both raw FID data and processed spectral data from
 Bruker using :py:meth:`~nmrespy.Estimator1D.new_bruker`. All that is needed is
 the path to the dataset:
 
-1. If you wish to import FID data, set the path as ``"<path_to_data>/<expno>/"``.
+1. If you wish to import an FID, set the path as ``"<path_to_data>/<expno>/"``.
    There should be an ``fid`` file and an ``acqus`` file directly under this
    directory. The data in the ``fid`` file will be imported, and the artefact
-   from digital filtering is removed by a first-order phase shift.
+   from digital filtering will be removed by a first-order phase shift.
 
    .. note::
 
@@ -56,13 +56,13 @@ the path to the dataset:
        >>> estimator = ne.Estimator1D.new_bruker("home/simon/nmr_data/andrographolide/1/pdata/1")
        >>> # Note there is no need for extra data-processing steps
 
-Simulated data from a set of oscillator parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Simulated data from a set of signal parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can create an estimator with synthetic data constructed from known
 parameters using :py:meth:`~nmrespy.Estimator1D.new_from_parameters`.
 The parameters must be provided as a 2D NumPy array with ``params.shape[1] ==
-4``. Each row should contain an oscillator's amplitude, phase (rad), frequency
+4``. Each row should contain a signal's amplitude, phase (rad), frequency
 (Hz), and damping factor (s⁻¹).
 
 .. code:: pycon
@@ -87,27 +87,27 @@ The parameters must be provided as a 2D NumPy array with ``params.shape[1] ==
     >>> sfo = 500.
     >>> estimator = ne.Estimator1D.new_from_parameters(
     >>>     params=params,
-    >>>     pts=2048,
-    >>>     sw=1.2 * sfo,  # 1ppm
-    >>>     offset=4.1 * sfo,  # 4.1ppm
-    >>>     sfo=sfo,
-    >>>     snr=40.,
+    >>>     pts=2048,  # FID made with 2048 points
+    >>>     sw=1.2 * sfo,  # sweep width set to 1.2 ppm
+    >>>     offset=4.1 * sfo,  # transmitter offset set to 4.1 ppm
+    >>>     sfo=sfo,  # transmitter frequecy set to 500 MHz
+    >>>     snr=40.,  # signal-to-noise ratio of the FID set to 40 dB
     >>> )
 
 .. note::
 
-    For the rest of this tutorial, we will be using the estimator created in
+    For the rest of this section, we will be using the estimator created in
     the above code snippet.
 
 Simulated data from Spinach
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Assuming you have installed the :ref:`relevant requirements <SPINACH_INSTALL>`,
-you can create an instance with data simulated using Spinach with
+you can create an estimator instance with data simulated using Spinach with
 :py:meth:`~nmrespy.Estimator1D.new_spinach`. The spin system is defined by a
-specification of isotropic chemical shifts, and scalar couplings:
+specification of isotropic chemical shifts and scalar couplings:
 
-* For the chemical shift, a list of floats is required.
+* For the chemical shifts, a list of floats is required.
 * For J-couplings, a list with 3-element tuples of the form ``(spin1, spin2,
   coupling)`` is required. **N.B. the spin indices start at ``1`` rather than
   ``0``**.
@@ -122,14 +122,12 @@ MATLAB and (b) running a simulation of the experiment.
     >>> shifts = [3.7, 3.92, 4.5]
     >>> couplings = [(1, 2, -10.1), (1, 3, 4.3), (2, 3, 11.3)]
     >>> sfo = 500.
-    >>> offset = 4.1 * sfo  # Hz
-    >>> sw = 1.2 * sfo
     >>> estimator = ne.Estimator1D.new_spinach(
     >>>     shifts=shifts,
     >>>     couplings=couplings,
     >>>     pts=2048,
-    >>>     sw=sw,
-    >>>     offset=offset,
+    >>>     sw=1.2 * sfo,
+    >>>     offset=4.1 * sfo,
     >>>     sfo=sfo,
     >>> )
 
@@ -175,23 +173,24 @@ shifts with :py:meth:`~nmrespy.Estimator1D.get_shifts`.
 Estimating the dataset
 ----------------------
 
-The generation of parameter estimates for the dataset is facilitated using the
-:py:meth:`~nmrespy.Estimator1D.estimate` method. In most scenarios, your
-dataset will possess too many oscillators for it to be feasible computationally
-to estimate the entire signal at once. For this reason, NMR-EsPy generates
+The generation of parameter estimates is facilitated using the
+:py:meth:`~nmrespy.Estimator1D.estimate` method. In most scenarios,
+it will not be computationally feasible to estimate the entire FID at once, due
+to the number of constituent datapoints and signals. For this reason, NMR-EsPy generates
 frequency-filtered "sub-FIDs" to break the problem down into more manageable
-chunks. To create suitable sub-FIDs, it is important to select regions where
-the bounds are placed at points that comprise the baseline. As well as this, a
-region that comprises just the baseline must be indicated. In the figure below,
-the red region would be inappropriate as it slices through signal. The green
-region is acceptable, as the bounds are located on the baseline. Finally, the
-grey region is a suitable noise region as it contains only baseline.
+chunks. To create suitable sub-FIDs, it is important to select regions in which
+all signals of interest fully reside within its bounds. As well as this, a
+region that is devoid of signals (the "noise region") must be indicated. In the
+figure below, the red region would be inappropriate as the signals clearly do
+not reside within it fully. The green region is acceptable, as the signals do
+abide by this. Finally, the grey region is a suitable noise region as it only
+comprises points in the baseline.
 
 .. image:: ../media/good_bad_noise_regions.png
    :align: center
 
-For our dataset, we will estimate three regions, comprising each multiplet
-structure in the spectrum. A region should be given as a tuple of 2 floats,
+For our dataset, we will estimate three regions, encompassing each multiplet
+structure in the spectrum. Each region must be given as a tuple of 2 floats,
 specifying the left and right boundaries of the region of interest (the order
 of these doesn't matter). By default, these are assumed to be given in Hz,
 unless ``region_unit`` is set to ``"ppm"``.
@@ -210,20 +209,20 @@ Inspecting estimation results
 
 .. note::
 
-    **Result Indices**
+    **Result indices**
 
     Each time the :py:meth:`~nmrespy.Estimator1D.estimate` method is called, the
-    result is appended to a list of all generated results. For many methods that use
-    estimation results, an argument called ``indices`` exists. This lets you specify
-    the results you are interested in. By default (``indices = None``) all
-    results will be used. A subset of the results can be considered by including a
+    result is appended to a list containing all the generated results. For many
+    methods that make use of estimation results, an argument called ``indices``
+    exists. This lets you specify the results you are interested in. By default
+    (``indices = None``) all results will be used. A subset of the results can
+    be considered by including a
     list of integers. For example ``indices = [0, 2]`` would mean only the 1st
     and 3rd results acquired with the estimator are considered.
 
 A NumPy array of the generated results can be acquired using
 :py:meth:`~nmrespy.Estimator1D.get_params`. The corresponding errors associated
-with each parameters are obtained with
-:py:meth:`~nmrespy.Estimator1D.get_errors`.
+with the signal parameters are obtained with :py:meth:`~nmrespy.Estimator1D.get_errors`.
 
 .. code:: pycon
 
@@ -241,6 +240,7 @@ with each parameters are obtained with
      [ 1.0011e+00  6.0150e-04  2.2430e+03  7.0011e+00]
      [ 9.9902e-01  2.8231e-04  2.2570e+03  6.9856e+00]
      [ 1.0004e+00 -1.8229e-03  2.2656e+03  7.0057e+00]]
+    >>>
     >>> # All errors, frequencies in Hz
     >>> estimator.get_errors()
     [[0.0013 0.0013 0.0019 0.0121]
@@ -255,18 +255,21 @@ with each parameters are obtained with
      [0.0013 0.0013 0.0019 0.0118]
      [0.0013 0.0013 0.0019 0.0118]
      [0.0013 0.0013 0.0018 0.0116]]
+    >>>
     >>> # Params for first region, frequencies in ppm
     >>> estimator.get_params(indices=[0], funit="ppm")
     [[ 1.0003e+00  1.1306e-03  4.4688e+00  7.0095e+00]
      [ 1.0011e+00  6.0150e-04  4.4860e+00  7.0011e+00]
      [ 9.9902e-01  2.8231e-04  4.5140e+00  6.9856e+00]
      [ 1.0004e+00 -1.8229e-03  4.5312e+00  7.0057e+00]]
+    >>>
     >>> # Params for second and third regions, split up
     >>> estimator.get_params(indices=[1, 2], merge=False, funit="ppm")
     [array([[ 1.0022e+00,  7.1936e-04,  3.8772e+00,  7.0109e+00],
            [ 9.9470e-01, -7.4609e-04,  3.9176e+00,  6.9866e+00],
            [ 1.0080e+00, -1.0112e-03,  3.9224e+00,  7.0448e+00],
-           [ 1.0009e+00, -7.1398e-04,  3.9628e+00,  7.0131e+00]]), array([[1.0018e+00, 1.5921e-03, 3.6712e+00, 7.0187e+00],
+           [ 1.0009e+00, -7.1398e-04,  3.9628e+00,  7.0131e+00]]),
+     array([[1.0018e+00, 1.5921e-03, 3.6712e+00, 7.0187e+00],
            [1.0003e+00, 2.4881e-03, 3.6884e+00, 6.9968e+00],
            [1.0024e+00, 1.5817e-03, 3.7116e+00, 7.0281e+00],
            [1.0008e+00, 9.1591e-04, 3.7288e+00, 7.0007e+00]])]
@@ -349,7 +352,7 @@ The estimator object itself can be saved and reloaded for future use with the
 
     >>> estimator.to_pickle("tutorial_1d")
     Saved file tutorial_1d.pkl.
-    >>> # Load the estimator and save to the `estimator_cp` variable
+    >>> # Load the estimator and assign to the `estimator_cp` variable
     >>> estimator_cp = ne.Estimator1D.from_pickle("tutorial_1d")
 
 .. only:: html
@@ -359,7 +362,7 @@ The estimator object itself can be saved and reloaded for future use with the
 Saving a logfile
 ^^^^^^^^^^^^^^^^
 
-A logfile listing all the methods called on the estimator can be saved using
+A logfile listing all the methods called on the estimator can be created using
 :py:meth:`~nmrespy.Estimator1D.save_log`:
 
 .. code::
