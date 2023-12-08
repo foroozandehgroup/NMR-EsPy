@@ -39,7 +39,7 @@ be performed too.
 
     Parameter                   │F1  │F2
     ────────────────────────────┼────┼───────
-    Nucleus                     │¹H  │¹H
+    Nucleus                     │N/A │¹H
     Transmitter Frequency (MHz) │N/A │600.18
     Sweep Width (Hz)            │50  │7211.5
     Sweep Width (ppm)           │N/A │12.016
@@ -89,24 +89,14 @@ Use :py:meth:`~nmrespy.Estimator2DJ.new_spinach`
 
     .. code::
 
-        >>> import nmrspy as ne
+        >>> import nmrespy as ne
         >>> from pathlib import Path
         >>> import pickle
-        >>> fid_path = Path(ne.__file__).expanduser().parents[1] \
-        ...     / "samples/jres_sucrose_sythetic/sucrose_jres_fid.pkl"
+        >>> estimator_path = Path(ne.__file__).expanduser().parents[1] \
+        ...     / "samples/jres_sucrose_sythetic/sucrose_jres_synthetic.pkl"
         >>> with open(fid_path, "rb") as fh:
-        ...     fid = pickle.load(fh)
+        ...     estimator = pickle.load(fh)
         ...
-        >>> expinfo = ne.ExpInfo(
-        ...     dim=2,
-        ...     sw=(30., 2200.),
-        ...     offset=(0., 1000.),
-        ...     sfo=(None, 300.),
-        ...     nucleus=(None, "1H"),
-        ...     default_pts=(64, 4096),
-        ... )
-        >>> estimator = ne.Estimator2DJ(fid, expinfo)
-
 
 Estimating the dataset
 ----------------------
@@ -154,7 +144,7 @@ spectrum.
 .. code::
 
     >>> # Normal 1D spectrum
-    >>> init_spectrum = estimator.spectrum_zero_t1.real
+    >>> init_spectrum = estimator.spectrum_direct.real
     >>> # Homodecoupled spectrum produced using CUPID
     >>> cupid_spectrum = estimator.cupid_spectrum().real
     >>> # Get direct-dimension shifts
@@ -172,7 +162,7 @@ spectrum.
     >>> ax.set_xticks([4.7 - 0.1 * i for i in range(10)])
     >>> ax.set_yticks([])
     >>> ax.set_position([0.03, 0.175, 0.94, 0.83])
-    >>> ax.set_xlabel(f"{estimator.latex_nuclei[1]} (ppm)")
+    >>> ax.set_xlabel(f"{estimator.unicode_nuclei[1]} (ppm)")
     >>> # ========================
     >>> fig.savefig("cupid_spectrum.png")
 
@@ -256,7 +246,7 @@ plotted.
     >>> ax.set_xticks([4.7 - 0.1 * i for i in range(10)])
     >>> ax.set_yticks([])
     >>> ax.set_position([0.03, 0.175, 0.94, 0.83])
-    >>> ax.set_xlabel(f"{estimator.latex_nuclei[1]} (ppm)")
+    >>> ax.set_xlabel(f"{estimator.unicode_nuclei[1]} (ppm)")
     >>> # ========================
     >>> fig.savefig("multiplets.png")
 
@@ -312,7 +302,7 @@ spectrum:
     >>> # These lines are just for plot aesthetics
     >>> ax.set_xticks([4.7 - 0.1 * i for i in range(10)])
     >>> ax.set_position([0.12, 0.175, 0.85, 0.79])
-    >>> ax.set_xlabel(f"{estimator.latex_nuclei[1]} (ppm)", labelpad=1)
+    >>> ax.set_xlabel(f"{estimator.unicode_nuclei[1]} (ppm)", labelpad=1)
     >>> ax.set_ylabel("Hz", labelpad=1)
     >>> # ========================
     >>> fig.savefig("sheared_spectrum.png")

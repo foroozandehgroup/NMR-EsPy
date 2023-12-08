@@ -17,26 +17,28 @@ one:
   oscillators. You can navigate using the up and down arrow buttons, or by
   specifying an oscillator label to jump to.
 
-Making edits to the result
---------------------------
+.. todo::
 
-It may be that there are certain aspects of the result which you feel are
-incorrect. Possible examples include a particular peak being fit by more than
-one oscillator (over-fitting), or two close-together peaks being fit by a
-single oscillator (under-fitting). You can make *controlled* edits to the
-result via the parameter table. There are 4 types of edit that NMR-EsPy
-currently supports:
+   Further discussion to be made here.
 
-* *Add* oscillators to a result.
-* *Remove* oscillators from a result.
-* *Merge* oscillators together.
-* *Split* an oscillator into multiple oscillators.
+.. Making edits to the result
+.. --------------------------
 
-After edits have been made to the result, you are forced to re-run the
-optimisation routine. This ensures (a) good fitting of the model to the data
-(b) you cannot simply fudge the result!
+.. It may be that there are certain aspects of the result which you feel are
+.. incorrect. Possible examples include a particular peak being fit by more than
+.. one oscillator (over-fitting), or two close-together peaks being fit by a
+.. single oscillator (under-fitting). You can make *controlled* edits to the
+.. result via the parameter table. There are 4 types of edit that NMR-EsPy
+.. currently supports:
 
-Selecting oscillators
-^^^^^^^^^^^^^^^^^^^^^
+.. * *Add* oscillators to a result.
+.. * *Remove* oscillators from a result.
+.. * *Merge* oscillators together.
+.. * *Split* an oscillator into multiple oscillators.
 
+.. After edits have been made to the result, you are forced to re-run the
+.. optimisation routine. This ensures (a) good fitting of the model to the data
+.. (b) you cannot simply fudge the result!
 
+.. Selecting oscillators
+.. ^^^^^^^^^^^^^^^^^^^^^
