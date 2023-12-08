@@ -1,14 +1,18 @@
 # __init__.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 01 Jun 2023 17:52:51 BST
+# Last Edited: Fri 08 Dec 2023 05:30:44 PM EST
 
 """NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python."""
 
+from importlib.metadata import version
+from importlib.util import find_spec
 import importlib
 from pathlib import Path
 
-MATLAB_AVAILABLE = importlib.util.find_spec("matlab") is not None
+__version__ = version(__package__)
+
+MATLAB_AVAILABLE = find_spec("matlab") is not None
 directory = Path(__file__).parent.resolve()
 TOPSPINPATHS = [
     directory / "app/topspin_scripts" / x

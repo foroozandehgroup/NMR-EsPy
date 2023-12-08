@@ -1,3 +1,5 @@
+.. _GUI:
+
 Using the Graphical User Interface
 ==================================
 
