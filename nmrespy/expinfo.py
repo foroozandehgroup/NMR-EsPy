@@ -1,7 +1,7 @@
 # expinfo.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Sun 26 Feb 2023 13:35:19 GMT
+# Last Edited: Fri 08 Dec 2023 05:25:31 PM EST
 
 import datetime
 import os
@@ -912,7 +912,7 @@ class ExpInfo(FrequencyConverter):
             with open(NMRESPYPATH / f"ts_templates/proc{s}s", "r") as fh:
                 proc_texts.append(fh.read())
 
-        tz = datetime.timezone(datetime.timedelta(time.timezone))
+        tz = datetime.timezone(datetime.timedelta(seconds=-time.timezone))
         now = datetime.datetime.now(tz=tz)
         unix_time = int(
             (now - datetime.datetime(1970, 1, 1, tzinfo=tz)).total_seconds()

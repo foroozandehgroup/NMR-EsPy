@@ -1,12 +1,12 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Mon 27 Feb 2023 12:15:51 GMT
+# Last Edited: Fri 08 Dec 2023 05:08:16 PM EST
 
 import os
 import sys
 import sphinx_nameko_theme
-
+import nmrespy
 
 sys.path.insert(0, os.path.abspath("exts"))
 sys.path.insert(0, os.path.abspath(".."))
@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "NMR-EsPy"
 author = "Simon Hulse & Mohammadali Foroozandeh"
 copyright = "2023, Simon Hulse & Mohammadali Foroozandeh"
-version = "2.0"
+version = nmrespy.__version__
 release = version
 
 extensions = [
