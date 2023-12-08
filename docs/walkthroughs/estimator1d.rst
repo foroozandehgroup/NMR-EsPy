@@ -71,28 +71,28 @@ The parameters must be provided as a 2D NumPy array with ``params.shape[1] ==
     >>> import numpy as np
     >>> # Using frequencies of 2,3-Dibromopropanoic acid @ 500MHz
     >>> params = np.array([
-    >>>     [1., 0., 1864.4, 7.],
-    >>>     [1., 0., 1855.8, 7.],
-    >>>     [1., 0., 1844.2, 7.],
-    >>>     [1., 0., 1835.6, 7.],
-    >>>     [1., 0., 1981.4, 7.],
-    >>>     [1., 0., 1961.2, 7.],
-    >>>     [1., 0., 1958.8, 7.],
-    >>>     [1., 0., 1938.6, 7.],
-    >>>     [1., 0., 2265.6, 7.],
-    >>>     [1., 0., 2257.0, 7.],
-    >>>     [1., 0., 2243.0, 7.],
-    >>>     [1., 0., 2234.4, 7.],
-    >>> ])
+    ...     [1., 0., 1864.4, 7.],
+    ...     [1., 0., 1855.8, 7.],
+    ...     [1., 0., 1844.2, 7.],
+    ...     [1., 0., 1835.6, 7.],
+    ...     [1., 0., 1981.4, 7.],
+    ...     [1., 0., 1961.2, 7.],
+    ...     [1., 0., 1958.8, 7.],
+    ...     [1., 0., 1938.6, 7.],
+    ...     [1., 0., 2265.6, 7.],
+    ...     [1., 0., 2257.0, 7.],
+    ...     [1., 0., 2243.0, 7.],
+    ...     [1., 0., 2234.4, 7.],
+    ... ])
     >>> sfo = 500.
     >>> estimator = ne.Estimator1D.new_from_parameters(
-    >>>     params=params,
-    >>>     pts=2048,  # FID made with 2048 points
-    >>>     sw=1.2 * sfo,  # sweep width set to 1.2 ppm
-    >>>     offset=4.1 * sfo,  # transmitter offset set to 4.1 ppm
-    >>>     sfo=sfo,  # transmitter frequecy set to 500 MHz
-    >>>     snr=40.,  # signal-to-noise ratio of the FID set to 40 dB
-    >>> )
+    ...     params=params,
+    ...     pts=2048,  # FID made with 2048 points
+    ...     sw=1.2 * sfo,  # sweep width set to 1.2 ppm
+    ...     offset=4.1 * sfo,  # transmitter offset set to 4.1 ppm
+    ...     sfo=sfo,  # transmitter frequecy set to 500 MHz
+    ...     snr=40.,  # signal-to-noise ratio of the FID set to 40 dB
+    ... )
 
 .. note::
 
@@ -123,13 +123,13 @@ MATLAB and (b) running a simulation of the experiment.
     >>> couplings = [(1, 2, -10.1), (1, 3, 4.3), (2, 3, 11.3)]
     >>> sfo = 500.
     >>> estimator = ne.Estimator1D.new_spinach(
-    >>>     shifts=shifts,
-    >>>     couplings=couplings,
-    >>>     pts=2048,
-    >>>     sw=1.2 * sfo,
-    >>>     offset=4.1 * sfo,
-    >>>     sfo=sfo,
-    >>> )
+    ...     shifts=shifts,
+    ...     couplings=couplings,
+    ...     pts=2048,
+    ...     sw=1.2 * sfo,
+    ...     offset=4.1 * sfo,
+    ...     sfo=sfo,
+    ... )
 
 Viewing and accessing the dataset
 ---------------------------------
@@ -154,17 +154,25 @@ shifts with :py:meth:`~nmrespy.Estimator1D.get_shifts`.
 
 .. code:: pycon
 
+    >>> import matplotlib.pyplot as plt
     >>> fid = estimator.data
     >>> tp = estimator.get_timepoints()[0]
     >>> spectrum = estimator.spectrum
     >>> shifts = estimator.get_shifts(unit="ppm")[0]
     >>> fig, axs = plt.subplots(nrows=2)
     >>> axs[0].plot(tp, fid.real)
+    [<matplotlib.lines.Line2D object at 0x7f2c0e0aa680>]
     >>> axs[0].set_xlabel("$t$ (s)")
+    Text(0.5, 0, '$t$ (s)')
     >>> axs[1].plot(shifts, spectrum.real)
+    [<matplotlib.lines.Line2D object at 0x7f2c0e0aa8c0>]
     >>> # Flip x-axis limits (ensure plotting from high to low shifts)
     >>> axs[1].set_xlim(reversed(axs[1].get_xlim()))
+    (4.759384765624999, 3.4400292968749997)
     >>> axs[1].set_xlabel("$^1$H (ppm)")
+    Text(0.5, 0, '$^1$H (ppm)')
+    >>> # The exact appearence of the generated figure may slightly differ to
+    >>> # the one below; that'll just be due to customisations I have made to mpl.
     >>> plt.show()
 
 .. image:: ../media/fid_spec.png
@@ -200,9 +208,65 @@ unless ``region_unit`` is set to ``"ppm"``.
     >>> regions = [(4.6, 4.4), (4.02, 3.82), (3.8, 3.6)]
     >>> noise_region = (4.3, 4.25)
     >>> for region in regions:
-    >>>     estimator.estimate(
-    >>>         region=region, noise_region=noise_region, region_unit="ppm",
-    >>>     )
+    ...     estimator.estimate(
+    ...         region=region, noise_region=noise_region, region_unit="ppm",
+    ...     )
+    ...
+    ┌─────────────────────────────────────┐
+    │ESTIMATING REGION: 4.6 - 4.4 ppm (F1)│
+    └─────────────────────────────────────┘
+    ┌───────────┐
+    │MPM STARTED│
+    └───────────┘
+    --> Pencil Parameter: 125
+    --> Hankel data matrix constructed:
+        Size:   251 x 126
+        Memory: 0.4826MiB
+    --> Performing Singular Value Decomposition...
+    --> Computing number of oscillators...
+        Number of oscillators will be estimated using MDL
+        Number of oscillations: 4
+    --> Computing signal poles...
+    --> Computing complex amplitudes...
+    --> Checking for oscillators with negative damping...
+        None found
+    ┌────────────┐
+    │MPM COMPLETE│
+    └────────────┘
+    Time elapsed: 0 mins, 0 secs, 45 msecs
+    ┌────────────────────┐
+    │OPTIMISATION STARTED│
+    └────────────────────┘
+    ┌───────────────────────────┐
+    │TRUST NCG ALGORITHM STARTED│
+    └───────────────────────────┘
+    ┌───────┬──────────────┬──────────────┬──────────────┐
+    │ Iter. │  Objective   │  Grad. Norm  │ Trust Radius │
+    ├───────┼──────────────┼──────────────┼──────────────┤
+    │ 0     │ 0.0106245    │ 0.0653396    │ 1            │
+    │ 6     │ 0.00529026   │ 4.06591e-09  │ 1            │
+    └───────┴──────────────┴──────────────┴──────────────┘
+    Optimiser successfully converged.
+    ┌────────────────────────────┐
+    │TRUST NCG ALGORITHM COMPLETE│
+    └────────────────────────────┘
+    Time elapsed: 0 mins, 0 secs, 34 msecs
+    ┌─────────────────────┐
+    │OPTIMISATION COMPLETE│
+    └─────────────────────┘
+    Time elapsed: 0 mins, 0 secs, 101 msecs
+    ┌───────────────────────────────────────┐
+    │ESTIMATING REGION: 4.02 - 3.82 ppm (F1)│
+    └───────────────────────────────────────┘
+
+    --snip--
+
+    ┌─────────────────────────────────────┐
+    │ESTIMATING REGION: 3.8 - 3.6 ppm (F1)│
+    └─────────────────────────────────────┘
+
+    --snip--
+
 
 Inspecting estimation results
 -----------------------------
@@ -285,11 +349,12 @@ need a working LaTeX installation. See the :ref:`installation instructions
 .. code::
 
     >>> for fmt in ("txt", "pdf"):
-    >>>     estimator.write_result(
-    >>>         path="tutorial_1d",
-    >>>         fmt=fmt,
-    >>>         description="Simulated 2,3-Dibromopropanoic acid signal.",
-    >>>     )
+    ...     estimator.write_result(
+    ...         path="tutorial_1d",
+    ...         fmt=fmt,
+    ...         description="Simulated 2,3-Dibromopropanoic acid signal.",
+    ...     )
+    ...
     Saved file tutorial_1d.txt.
     Saved file tutorial_1d.tex.
     Saved file tutorial_1d.pdf.
@@ -310,16 +375,17 @@ Figures giving an overview of the estimation result can be generated using
 .. code::
 
     >>> for (txt, indices) in zip(("complete", "index_1"), (None, [1])):
-    >>>     fig, ax = estimator.plot_result(
-    >>>         indices=indices,
-    >>>         figure_size=(4.5, 3.),
-    >>>         region_unit="ppm",
-    >>>         axes_left=0.03,
-    >>>         axes_right=0.97,
-    >>>         axes_top=0.98,
-    >>>         axes_bottom=0.09,
-    >>>     )
-    >>>     fig.savefig(f"tutorial_1d_{txt}_fig.pdf")
+    ...     fig, ax = estimator.plot_result(
+    ...         indices=indices,
+    ...         figure_size=(4.5, 3.),
+    ...         region_unit="ppm",
+    ...         axes_left=0.03,
+    ...         axes_right=0.97,
+    ...         axes_top=0.98,
+    ...         axes_bottom=0.09,
+    ...     )
+    ...     fig.savefig(f"tutorial_1d_{txt}_fig.pdf")
+    ...
 
 
 .. only:: latex
@@ -373,3 +439,11 @@ A logfile listing all the methods called on the estimator can be created using
 .. only:: html
 
     * :download:`tutorial_1d.log <../downloads/tutorial_1d.log>`
+
+.. only:: html
+
+    The full script
+    ^^^^^^^^^^^^^^^
+
+    Everything covered here is incorporated into the following Python script:
+    :download:`estimator1d_tutorial.py <../downloads/estimator1d_tutorial.py>`

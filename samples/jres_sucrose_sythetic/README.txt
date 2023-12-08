@@ -1,4 +1,5 @@
-Sucrose 2DJ FID simulated using Spinach, with the following parameters:
+Sucrose 2DJ Estimator containing an FID simulated using Spinach, with the
+following parameters:
 
 * pts: 64, 4096
 * sw: 30Hz, 2200Hz
