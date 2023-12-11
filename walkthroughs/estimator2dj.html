@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Using Estimator2DJ &#8212; NMR-EsPy 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d7e2fa82" />
+    <link rel="stylesheet" type="text/css" href="../_static/nameko.css?v=2296cfae" />
+    <script src="../_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Using the Graphical User Interface" href="../gui/index.html" />
+    <link rel="prev" title="Using Estimator1D" href="estimator1d.html" />
+   
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Lora:400' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+  </head><body>
+  
+  
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../gui/index.html" title="Using the Graphical User Interface"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="estimator1d.html" title="Using Estimator1D"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy 2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Tutorials</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Using <code class="docutils literal notranslate"><span class="pre">Estimator2DJ</span></code></a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <style>
+   .grey {color:#808080}
+   .red {color:#ff0000}
+   .green {color:#008000}
+   .blue {color:#0000ff}
+   .oscblue {color:#1063e0}
+   .oscorange {color:#eb9310}
+   .oscgreen {color:#2bb539}
+   .oscred {color:#d4200c}
+   .regiongreen {color: #7fd47f}
+   .regionblue {color: #66b3ff}
+</style><section id="using-estimator2dj">
+<span id="estimator2dj"></span><h1>Using <code class="docutils literal notranslate"><span class="pre">Estimator2DJ</span></code><a class="headerlink" href="#using-estimator2dj" title="Link to this heading">¶</a></h1>
+<p>The <a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ" title="nmrespy.Estimator2DJ"><code class="xref py py-class docutils literal notranslate"><span class="pre">nmrespy.Estimator2DJ</span></code></a> class enables the estimation of 2D J-Resolved
+(2DJ) spectroscopy datasets. This facilitates use of <strong>CUPID</strong>
+(<strong>C</strong>omputer-assisted <strong>U</strong>ndiminished-sensitivity <strong>P</strong>rotocol for <strong>I</strong>deal
+<strong>D</strong>ecoupling) which can be used to generate homodecoupled (<em>pure shift</em>)
+spectra and to predict multiplet structures.</p>
+<p>Many methods in this class have analogues in <a class="reference internal" href="../references/estimator1d.html#nmrespy.Estimator1D" title="nmrespy.Estimator1D"><code class="xref py py-class docutils literal notranslate"><span class="pre">Estimator1D</span></code></a>.
+You are advised to read through the <a class="reference internal" href="estimator1d.html#estimator1d"><span class="std std-ref">1D tutorial</span></a> before
+continuing, as minimal descriptions will be provided of concepts covered in that.</p>
+<section id="generating-an-instance">
+<h2>Generating an instance<a class="headerlink" href="#generating-an-instance" title="Link to this heading">¶</a></h2>
+<section id="bruker-data">
+<h3>Bruker data<a class="headerlink" href="#bruker-data" title="Link to this heading">¶</a></h3>
+<p>Use <a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.new_bruker" title="nmrespy.Estimator2DJ.new_bruker"><code class="xref py py-meth docutils literal notranslate"><span class="pre">new_bruker()</span></code></a>. Unlike <code class="docutils literal notranslate"><span class="pre">Estimator1D</span></code>, you
+must import time-domain 2DJ data. The path should be set as
+<code class="docutils literal notranslate"><span class="pre">&quot;&lt;path_to_data&gt;/&lt;expno&gt;/&quot;</span></code>. There should be a <code class="docutils literal notranslate"><span class="pre">ser</span></code> file, an <code class="docutils literal notranslate"><span class="pre">acqus</span></code>
+file, and an <code class="docutils literal notranslate"><span class="pre">acqu2s</span></code> file directly under this directory. Phasing in the
+direct-dimension will be needed. If deemed necessary, baseline correction can
+be performed too.</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">Estimator2DJ</span><span class="o">.</span><span class="n">new_bruker</span><span class="p">(</span><span class="s2">&quot;/home/simon/nmr_data/qunine/dexamethasone/2&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">phase_data</span><span class="p">(</span><span class="n">p0</span><span class="o">=</span><span class="mf">0.041</span><span class="p">,</span> <span class="n">p1</span><span class="o">=-</span><span class="mf">6.383</span><span class="p">,</span> <span class="n">pivot</span><span class="o">=</span><span class="mi">1923</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">baseline_correction</span><span class="p">()</span>
+<span class="go">&lt;Estimator2DJ object at 0x7f4b7e1f5cd0&gt;</span>
+
+<span class="go">Experiment Information</span>
+<span class="go">──────────────────────</span>
+
+<span class="go">Parameter                   │F1  │F2</span>
+<span class="go">────────────────────────────┼────┼───────</span>
+<span class="go">Nucleus                     │N/A │¹H</span>
+<span class="go">Transmitter Frequency (MHz) │N/A │600.18</span>
+<span class="go">Sweep Width (Hz)            │50  │7211.5</span>
+<span class="go">Sweep Width (ppm)           │N/A │12.016</span>
+<span class="go">Transmitter Offset (Hz)     │0   │2815.4</span>
+<span class="go">Transmitter Offset (ppm)    │N/A │4.691</span>
+
+
+<span class="go">No estimation performed yet.</span>
+</pre></div>
+</div>
+</section>
+<section id="simulated-data-from-spinach">
+<h3>Simulated data from Spinach<a class="headerlink" href="#simulated-data-from-spinach" title="Link to this heading">¶</a></h3>
+<p>Use <a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.new_spinach" title="nmrespy.Estimator2DJ.new_spinach"><code class="xref py py-meth docutils literal notranslate"><span class="pre">new_spinach()</span></code></a></p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Sucrose DFT calculation shifts and couplings</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Note that the dataset generated will not be reminiscent of what</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># the actual solution-state dataset for sucrose looks like!</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">shifts</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="mf">6.005</span><span class="p">,</span> <span class="mf">3.510</span><span class="p">,</span> <span class="mf">3.934</span><span class="p">,</span> <span class="mf">3.423</span><span class="p">,</span> <span class="mf">4.554</span><span class="p">,</span> <span class="mf">3.891</span><span class="p">,</span> <span class="mf">4.287</span><span class="p">,</span> <span class="mf">3.332</span><span class="p">,</span> <span class="mf">1.908</span><span class="p">,</span> <span class="mf">1.555</span><span class="p">,</span> <span class="mf">0.644</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="mf">4.042</span><span class="p">,</span> <span class="mf">4.517</span><span class="p">,</span> <span class="mf">3.889</span><span class="p">,</span> <span class="mf">4.635</span><span class="p">,</span> <span class="mf">4.160</span><span class="p">,</span> <span class="mf">4.021</span><span class="p">,</span> <span class="mf">4.408</span><span class="p">,</span> <span class="mf">0.311</span><span class="p">,</span> <span class="mf">1.334</span><span class="p">,</span> <span class="mf">0.893</span><span class="p">,</span> <span class="mf">0.150</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">couplings</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">2.285</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mf">4.657</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mf">4.828</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">4.326</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mf">4.851</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mf">5.440</span><span class="p">),</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mf">2.288</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="o">-</span><span class="mf">6.210</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mf">7.256</span><span class="p">),</span> <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="o">-</span><span class="mf">4.005</span><span class="p">),</span> <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">19</span><span class="p">,</span> <span class="mf">1.460</span><span class="p">),</span> <span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mf">4.253</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mf">4.448</span><span class="p">),</span> <span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mf">3.221</span><span class="p">),</span> <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mf">4.733</span><span class="p">),</span> <span class="p">(</span><span class="mi">17</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="o">-</span><span class="mf">4.182</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="mf">1.350</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">Estimator2DJ</span><span class="o">.</span><span class="n">new_spinach</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">shifts</span><span class="o">=</span><span class="n">shifts</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">couplings</span><span class="o">=</span><span class="n">couplings</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">pts</span><span class="o">=</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">4096</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">sw</span><span class="o">=</span><span class="p">(</span><span class="mf">30.</span><span class="p">,</span> <span class="mf">2200.</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">offset</span><span class="o">=</span><span class="mf">1000.</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">field</span><span class="o">=</span><span class="mf">300.</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">field_unit</span><span class="o">=</span><span class="s2">&quot;MHz&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">snr</span><span class="o">=</span><span class="mf">20.</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>We will be using the estimator generated above for the rest of this
+tutorial. If you do not have access to MATLAB/Spinach, you can construct the
+estimator by using an FID I made earlier:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pickle</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">estimator_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ne</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> \
+<span class="gp">... </span>    <span class="o">/</span> <span class="s2">&quot;samples/jres_sucrose_sythetic/sucrose_jres_synthetic.pkl&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fid_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">estimator</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span>
+<span class="gp">...</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="estimating-the-dataset">
+<h2>Estimating the dataset<a class="headerlink" href="#estimating-the-dataset" title="Link to this heading">¶</a></h2>
+<p>The procedure for estimating 2DJ data is very similar to that of 1D data. You
+need to specify regions in the direct dimension that are of interest for
+generating filtered sub-FIDs. No filtering is done in the indirect dimension.
+In our example, it turns out that for a couple of the regions selected, the number
+of oscillators automatically predicted is slightly smaller that the “true” number,
+and so the true number has been hard-coded (see the lines involving
+<code class="docutils literal notranslate"><span class="pre">initial_guesses</span></code>).</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">regions</span> <span class="o">=</span> <span class="p">(</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="mf">6.08</span><span class="p">,</span> <span class="mf">5.91</span><span class="p">),</span> <span class="p">(</span><span class="mf">4.72</span><span class="p">,</span> <span class="mf">4.46</span><span class="p">),</span> <span class="p">(</span><span class="mf">4.46</span><span class="p">,</span> <span class="mf">4.22</span><span class="p">),</span> <span class="p">(</span><span class="mf">4.22</span><span class="p">,</span> <span class="mf">4.1</span><span class="p">),</span> <span class="p">(</span><span class="mf">4.09</span><span class="p">,</span> <span class="mf">3.98</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="p">(</span><span class="mf">3.98</span><span class="p">,</span> <span class="mf">3.83</span><span class="p">),</span> <span class="p">(</span><span class="mf">3.58</span><span class="p">,</span> <span class="mf">3.28</span><span class="p">),</span> <span class="p">(</span><span class="mf">2.08</span><span class="p">,</span> <span class="mf">1.16</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.05</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">n_regions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">initial_guesses</span> <span class="o">=</span> <span class="n">n_regions</span> <span class="o">*</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">initial_guesses</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">16</span><span class="p">,</span> <span class="mi">16</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># kwargs common to estimation of each region</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">common_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s2">&quot;noise_region&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">5.5</span><span class="p">,</span> <span class="mf">5.33</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s2">&quot;region_unit&quot;</span><span class="p">:</span> <span class="s2">&quot;ppm&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;max_iterations&quot;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s2">&quot;phase_variance&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">init_guess</span><span class="p">,</span> <span class="n">region</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">initial_guesses</span><span class="p">,</span> <span class="n">regions</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="p">{</span><span class="s2">&quot;region&quot;</span><span class="p">:</span> <span class="n">region</span><span class="p">,</span> <span class="s2">&quot;initial_guess&quot;</span><span class="p">:</span> <span class="n">init_guess</span><span class="p">},</span> <span class="o">**</span><span class="n">common_kwargs</span><span class="p">}</span>
+<span class="gp">... </span>    <span class="n">estimator</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># It is a good idea to pickle the estimator after estimation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="s2">&quot;sucrose&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="acquiring-a-pure-shift-spectrum">
+<h2>Acquiring a pure shift spectrum<a class="headerlink" href="#acquiring-a-pure-shift-spectrum" title="Link to this heading">¶</a></h2>
+<p>The <a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.cupid_spectrum" title="nmrespy.Estimator2DJ.cupid_spectrum"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cupid_spectrum()</span></code></a> method produces a
+pure shift spectrum using the 2DJ parameter estimate. In the code snippet
+below, a figure is made which compares the pure shift spectrum with the spectrum
+of the first direct-dimension slice in the 2DJ data, i.e. a normal 1D
+spectrum.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Normal 1D spectrum</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">init_spectrum</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">spectrum_direct</span><span class="o">.</span><span class="n">real</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Homodecoupled spectrum produced using CUPID</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cupid_spectrum</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">cupid_spectrum</span><span class="p">()</span><span class="o">.</span><span class="n">real</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get direct-dimension shifts</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">shifts</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span> <span class="n">meshgrid</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">init_spectrum</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">cupid_spectrum</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># The most interesting region of the spectrum</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">4.7</span><span class="p">,</span> <span class="mf">3.8</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ========================</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># These lines are just for plot aesthetics</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">):</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="n">ax</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="n">x</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([</span><span class="mf">4.7</span> <span class="o">-</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_position</span><span class="p">([</span><span class="mf">0.03</span><span class="p">,</span> <span class="mf">0.175</span><span class="p">,</span> <span class="mf">0.94</span><span class="p">,</span> <span class="mf">0.83</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">unicode_nuclei</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> (ppm)&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ========================</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;cupid_spectrum.png&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="../_images/cupid_spectrum.png" class="align-center" src="../_images/cupid_spectrum.png" />
+</section>
+<section id="multiplet-prediction">
+<h2>Multiplet prediction<a class="headerlink" href="#multiplet-prediction" title="Link to this heading">¶</a></h2>
+<p>Oscillators belonging to the same multiplet can be predicted based on the fact
+that in a 2DJ FID any pair of signals <img class="math" src="../_images/math/f49c62bf4f2fbed05875f0ca49a0c1dbf887c13b.png" alt="i, j"/> should satisfy the following:</p>
+<div class="math">
+<p><img src="../_images/math/84b7d6a3d1d48d3316bdf5e3975be33960384980.png" alt="\left \lvert \left( f^{(2)}_i - f^{(1)}_i \right) - \left(f^{(2)}_j -
+f^{(1)}_j \right) \right \rvert  &lt; \epsilon,"/></p>
+</div><p>where <img class="math" src="../_images/math/0ad7b30534898f253002222f998f38001e604648.png" alt="\epsilon"/> is an error threshold, and <img class="math" src="../_images/math/48008a64b0913cdb50095639d2fa16beeb096f86.png" alt="f^{(1)}"/> and
+<img class="math" src="../_images/math/7698de803d91f8bd76894103ea2e88c3d0174822.png" alt="f^{(2)}"/> are the estimated indirect- and direct-dimension frequencies,
+respectively. <a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.predict_multiplets" title="nmrespy.Estimator2DJ.predict_multiplets"><code class="xref py py-meth docutils literal notranslate"><span class="pre">predict_multiplets()</span></code></a> generates
+groups of oscillator indices satisfying the above criterion. A key parameter
+for this is <code class="docutils literal notranslate"><span class="pre">thold</span></code>, which sets the error threshold <img class="math" src="../_images/math/0ad7b30534898f253002222f998f38001e604648.png" alt="\epsilon"/>. By
+default, this is set to be
+<img class="math" src="../_images/math/e0efdef92cafef2d021ddd08702b87b05ac3e21c.png" alt="\operatorname{min}\left(
+f^{(1)}_{\text{sw}} / N^{(1)},
+f^{(2)}_{\text{sw}} / N^{(2)}\right)"/>, i.e whichever is larger out of
+the indirect- and direct-dimension spectral resolutions. However, especially
+when considering real data, this threshold can be a little optimistic. For good
+multiplet groupings, you may need to manually provide a larger threshold.</p>
+<p>In the example below, multiplet groups are determined for regions with indices
+1-5 (covering the region plotted above).</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">multiplets</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">predict_multiplets</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span> <span class="ow">in</span> <span class="n">multiplets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">freq</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">estimator</span><span class="o">.</span><span class="n">sfo</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">ppm: </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="go">3.8890ppm: [1, 4]</span>
+<span class="go">3.8910ppm: [0, 2, 3, 5]</span>
+<span class="go">3.9344ppm: [6, 7, 8]</span>
+<span class="go">4.0205ppm: [9, 10]</span>
+<span class="go">4.0416ppm: [11, 12, 13, 14]</span>
+<span class="go">4.1598ppm: [15, 16, 17]</span>
+<span class="go">4.2876ppm: [18, 19, 20, 21, 22, 23, 24, 25]</span>
+<span class="go">4.4083ppm: [26, 27, 28, 29, 30, 31, 32, 33]</span>
+<span class="go">4.5167ppm: [34, 35]</span>
+<span class="go">4.5537ppm: [36, 37, 38, 39, 40, 41, 42, 43]</span>
+<span class="go">4.6349ppm: [44, 45, 46, 47, 48, 49]</span>
+</pre></div>
+</div>
+<p>To generate FIDs corresponding to each multiplet structure, use the
+<a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.construct_multiplet_fids" title="nmrespy.Estimator2DJ.construct_multiplet_fids"><code class="xref py py-meth docutils literal notranslate"><span class="pre">construct_multiplet_fids()</span></code></a> method. In the following
+code snippet, each generated FID undergoes FT, with all the spectra being
+plotted.</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Direct-dimension shifts</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">shifts_f2</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span> <span class="n">meshgrid</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fids</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">construct_multiplet_fids</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create an iterator which cycles through values infinitely</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">cycle</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">colors</span> <span class="o">=</span> <span class="n">cycle</span><span class="p">([</span><span class="s2">&quot;#84c757&quot;</span><span class="p">,</span> <span class="s2">&quot;#ef476f&quot;</span><span class="p">,</span> <span class="s2">&quot;#ffd166&quot;</span><span class="p">,</span> <span class="s2">&quot;#36c9c6&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">fid</span> <span class="ow">in</span> <span class="n">fids</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="c1"># Halve first point prior to FT to prevent vertical baseline shift</span>
+<span class="gp">... </span>    <span class="n">fid</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+<span class="gp">... </span>    <span class="c1"># FT and retrieve real component</span>
+<span class="gp">... </span>    <span class="n">spectrum</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">fid</span><span class="p">)</span><span class="o">.</span><span class="n">real</span>
+<span class="gp">... </span>    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts_f2</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="n">colors</span><span class="p">))</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">4.7</span><span class="p">,</span> <span class="mf">3.8</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ========================</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># These lines are just for plot aesthetics</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">ax</span><span class="o">.</span><span class="n">spines</span><span class="p">[</span><span class="n">x</span><span class="p">]</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([</span><span class="mf">4.7</span> <span class="o">-</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_position</span><span class="p">([</span><span class="mf">0.03</span><span class="p">,</span> <span class="mf">0.175</span><span class="p">,</span> <span class="mf">0.94</span><span class="p">,</span> <span class="mf">0.83</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">unicode_nuclei</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> (ppm)&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ========================</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;multiplets.png&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="../_images/multiplets.png" class="align-center" src="../_images/multiplets.png" />
+</section>
+<section id="generating-tilted-spectra">
+<h2>Generating tilted spectra<a class="headerlink" href="#generating-tilted-spectra" title="Link to this heading">¶</a></h2>
+<p>The well-known 45° shear (commonly called a tilt) that is applied to 2DJ spectra
+for orthogonal separation of chemical shifts and scalar couplings effectively maps the
+frequencies in the direct dimension <img class="math" src="../_images/math/7698de803d91f8bd76894103ea2e88c3d0174822.png" alt="f^{(2)}"/> to <img class="math" src="../_images/math/aa78615134ed189b1074cdc21b93e4799a4c9b5f.png" alt="f^{(2)} -
+f^{(1)}"/>. Armed with a parameter estimate of an FID, a synthetic signal with
+these adjusted frequencies can be constructed. As well as this, generating a pair of
+phase- or amplitude-modulated FIDs enables the construction of absorption-mode
+spectra (cf the issues involved in generating nice spectra from hypercomplex
+2DJ datasets). Use <a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.sheared_signal" title="nmrespy.Estimator2DJ.sheared_signal"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nmrespy.Estimator2DJ.sheared_signal()</span></code></a>, with
+<code class="docutils literal notranslate"><span class="pre">indirect_modulation</span></code> set to either <code class="docutils literal notranslate"><span class="pre">&quot;amp&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;phase&quot;</span></code> to generate the
+desired spectrum. Then, use either
+<a class="reference internal" href="../references/sig.html#nmrespy.sig.proc_phase_modulated" title="nmrespy.sig.proc_phase_modulated"><code class="xref py py-func docutils literal notranslate"><span class="pre">nmrespy.sig.proc_phase_modulated()</span></code></a> or
+<a class="reference internal" href="../references/sig.html#nmrespy.sig.proc_amp_modulated" title="nmrespy.sig.proc_amp_modulated"><code class="xref py py-func docutils literal notranslate"><span class="pre">nmrespy.sig.proc_amp_modulated()</span></code></a> as appropriate to construct the
+spectrum:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Generate P- and N- type FIDs with &quot;sheared&quot; frequencies</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sheared_fid</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">sheared_signal</span><span class="p">(</span><span class="n">indirect_modulation</span><span class="o">=</span><span class="s2">&quot;phase&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># sheared_fid[0] -&gt; P-type, sheared_fid[1] -&gt; N-type</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sheared_fid</span><span class="o">.</span><span class="n">shape</span>
+<span class="go">(2, 64, 4096)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Generates 2rr, 2ri, 2ir, 2ii spectra</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sheared_spectrum</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">proc_phase_modulated</span><span class="p">(</span><span class="n">sheared_fid</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sheared_spectrum</span><span class="o">.</span><span class="n">shape</span>
+<span class="go">(4, 64, 4096)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">spectrum_2rr</span> <span class="o">=</span> <span class="n">sheared_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Note the `meshgrid` kwarg is True here to make 2D shift arrays</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">shifts_f1</span><span class="p">,</span> <span class="n">shifts_f2</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Contour levels</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">base</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">nlevels</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">,</span> <span class="mi">10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">levels</span> <span class="o">=</span> <span class="p">[</span><span class="n">base</span> <span class="o">*</span> <span class="n">factor</span> <span class="o">**</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlevels</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">shifts_f2</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">shifts_f1</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">spectrum_2rr</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">colors</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">levels</span><span class="o">=</span><span class="n">levels</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">linewidths</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">4.7</span><span class="p">,</span> <span class="mf">3.8</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mf">10.</span><span class="p">,</span> <span class="o">-</span><span class="mf">10.</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ========================</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># These lines are just for plot aesthetics</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([</span><span class="mf">4.7</span> <span class="o">-</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_position</span><span class="p">([</span><span class="mf">0.12</span><span class="p">,</span> <span class="mf">0.175</span><span class="p">,</span> <span class="mf">0.85</span><span class="p">,</span> <span class="mf">0.79</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="n">unicode_nuclei</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> (ppm)&quot;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Hz&quot;</span><span class="p">,</span> <span class="n">labelpad</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ========================</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;sheared_spectrum.png&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="../_images/sheared_spectrum.png" class="align-center" src="../_images/sheared_spectrum.png" />
+</section>
+<section id="plotting-result-figures">
+<h2>Plotting result figures<a class="headerlink" href="#plotting-result-figures" title="Link to this heading">¶</a></h2>
+<p>The <a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.plot_result" title="nmrespy.Estimator2DJ.plot_result"><code class="xref py py-meth docutils literal notranslate"><span class="pre">plot_result()</span></code></a> method enables the generation
+of a figure which gives an overview of the estimation result. The figure
+comprises the following, from top to bottom:</p>
+<ul class="simple">
+<li><p>The homodecoupled spectrum generated using
+<a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.cupid_spectrum" title="nmrespy.Estimator2DJ.cupid_spectrum"><code class="xref py py-meth docutils literal notranslate"><span class="pre">cupid_spectrum()</span></code></a>.</p></li>
+<li><p>The 1D spectrum generated from the first direct-dimension FID in the 2DJ dataset.</p></li>
+<li><p>The multiplet structures predicted. Note that to get decent multiplet
+assignments, you may need to increase the value of the <code class="docutils literal notranslate"><span class="pre">multiplet_thold</span></code>
+argument manually.</p></li>
+<li><p>A contour plot of the 2DJ spectrum, with points indicating the positions of
+estimated peaks.</p></li>
+</ul>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">plot_result</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">indices</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">region_unit</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">marker_size</span><span class="o">=</span><span class="mf">5.</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="c1"># There is a lot of scope for editing the colours of</span>
+<span class="gp">... </span>    <span class="c1"># multiplets. See the reference!</span>
+<span class="gp">... </span>    <span class="c1"># Here I specify the name of a colormap in matplotlib.</span>
+<span class="gp">... </span>    <span class="n">multiplet_colors</span><span class="o">=</span><span class="s2">&quot;inferno&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="c1"># Argumnets of the position of the plot in the figure</span>
+<span class="gp">... </span>    <span class="n">axes_left</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">axes_bottom</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;plot_result_2dj.png&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="../_images/plot_result_2dj.png" class="align-center" src="../_images/plot_result_2dj.png" />
+</section>
+<section id="writing-data-to-bruker-format">
+<h2>Writing data to Bruker format<a class="headerlink" href="#writing-data-to-bruker-format" title="Link to this heading">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>I am aware that it is currently not possible to analyse the pdata that is
+generated by NMR-EsPy (you’ll get an error along the lines of <em>“This
+application requires frequency domain data”</em> if you try to peak pick,
+integrate etc). As a workaround for now, you can run a processing script on
+the FID to generate processed data that is readable by TopSpin. All that is
+done to get the spectrum from the FID is halve the initial point and FT
+(there is no apodisation).</p>
+</div>
+<section id="multiplets">
+<h3>Multiplets<a class="headerlink" href="#multiplets" title="Link to this heading">¶</a></h3>
+<p>To write individual multiplet structures to separate Bruker experiments, you can
+use <a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.write_multiplets_to_bruker" title="nmrespy.Estimator2DJ.write_multiplets_to_bruker"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_multiplets_to_bruker()</span></code></a>. It is a good idea
+to set a prefix for the experiment numbers, especially if the directory
+you are saving to already has data directories, so you can easily remember
+which of the directories correspond to multiplet structures. In the example
+below, as 22 multiplets were resolved, and <code class="docutils literal notranslate"><span class="pre">expno_prefix</span></code> was set to <code class="docutils literal notranslate"><span class="pre">99</span></code>,
+the directories <code class="docutils literal notranslate"><span class="pre">9901/</span></code>, <code class="docutils literal notranslate"><span class="pre">9902/</span></code>, …, <code class="docutils literal notranslate"><span class="pre">9922/</span></code> are created.</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">write_multiplets_to_bruker</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">expno_prefix</span><span class="o">=</span><span class="mi">99</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">pts</span><span class="o">=</span><span class="mi">16384</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">force_overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">Saved multiplets to folders ./[9901-9922]/</span>
+</pre></div>
+</div>
+</section>
+<section id="cupid-data">
+<h3>CUPID data<a class="headerlink" href="#cupid-data" title="Link to this heading">¶</a></h3>
+<p>To save the homodecoupled signal generated by our CUPID method, use
+<a class="reference internal" href="../references/estimator2dj.html#nmrespy.Estimator2DJ.write_cupid_to_bruker" title="nmrespy.Estimator2DJ.write_cupid_to_bruker"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_cupid_to_bruker()</span></code></a>:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">write_cupid_to_bruker</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">expno</span><span class="o">=</span><span class="mi">1111</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">pts</span><span class="o">=</span><span class="mi">16384</span><span class="p">,</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">Saved CUPID signal to ./1111/</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="miscellaneous">
+<h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Link to this heading">¶</a></h2>
+<p>For writing result tables to text and PDF files, saving estimators to binary
+files for later use, and saving log files, look at the relevant sections in the
+<a class="reference internal" href="estimator1d.html#estimator1d"><span class="std std-ref">Using Estimator1D</span></a> tutorial.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><style>
+.aligncenter {
+    text-align: center;
+}
+</style>
+
+<a href="https://foroozandehgroup.github.io/NMR-EsPy/">
+    <img style="padding: 0px 0px 12px"
+         src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png"
+         alt="NMR-EsPy logo"
+         width=230px
+         height=auto />
+</a>
+
+<p class="aligncenter">
+    <a href="https://github.com/foroozandehgroup/NMR-EsPy">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/github.png"
+             alt="Github"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="mailto:simonhulse@protonmail.com?subject=NMR-EsPy%20query">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
+             alt="email"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+<!--     <a href="https://foroozandeh.chem.ox.ac.uk/home"> -->
+<!--         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png" -->
+<!--              alt="Group website" -->
+<!--              width=auto -->
+<!--              height=30px /> -->
+<!--     </a> -->
+</p>
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Using <code class="docutils literal notranslate"><span class="pre">Estimator2DJ</span></code></a><ul>
+<li><a class="reference internal" href="#generating-an-instance">Generating an instance</a><ul>
+<li><a class="reference internal" href="#bruker-data">Bruker data</a></li>
+<li><a class="reference internal" href="#simulated-data-from-spinach">Simulated data from Spinach</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#estimating-the-dataset">Estimating the dataset</a></li>
+<li><a class="reference internal" href="#acquiring-a-pure-shift-spectrum">Acquiring a pure shift spectrum</a></li>
+<li><a class="reference internal" href="#multiplet-prediction">Multiplet prediction</a></li>
+<li><a class="reference internal" href="#generating-tilted-spectra">Generating tilted spectra</a></li>
+<li><a class="reference internal" href="#plotting-result-figures">Plotting result figures</a></li>
+<li><a class="reference internal" href="#writing-data-to-bruker-format">Writing data to Bruker format</a><ul>
+<li><a class="reference internal" href="#multiplets">Multiplets</a></li>
+<li><a class="reference internal" href="#cupid-data">CUPID data</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+
+  </div><h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation index</a><ul>
+  <li><a href="index.html">Tutorials</a><ul>
+      <li>Previous: <a href="estimator1d.html" title="previous chapter">Using <code class="docutils literal notranslate"><span class="pre">Estimator1D</span></code></a></li>
+      <li>Next: <a href="../gui/index.html" title="next chapter">Using the Graphical User Interface</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/walkthroughs/estimator2dj.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  
+  </body>
+</html>

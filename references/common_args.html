@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Common Arguments &#8212; NMR-EsPy 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d7e2fa82" />
+    <link rel="stylesheet" type="text/css" href="../_static/nameko.css?v=2296cfae" />
+    <script src="../_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="sig" href="sig.html" />
+   
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Lora:400' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+  </head><body>
+  
+  
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="sig.html" title="sig"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy 2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Common Arguments</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <style>
+   .grey {color:#808080}
+   .red {color:#ff0000}
+   .green {color:#008000}
+   .blue {color:#0000ff}
+   .oscblue {color:#1063e0}
+   .oscorange {color:#eb9310}
+   .oscgreen {color:#2bb539}
+   .oscred {color:#d4200c}
+   .regiongreen {color: #7fd47f}
+   .regionblue {color: #66b3ff}
+</style><section id="common-arguments">
+<h1>Common Arguments<a class="headerlink" href="#common-arguments" title="Link to this heading">¶</a></h1>
+<p>Listed here are descriptions of arguments which commonly appear in methods of the
+various estimator classes.</p>
+<section id="indices">
+<span id="id1"></span><h2>indices<a class="headerlink" href="#indices" title="Link to this heading">¶</a></h2>
+<p>A list of the indices of results to consider. Index <code class="docutils literal notranslate"><span class="pre">0</span></code> corresponds to the
+first result obtained using the estimator, <code class="docutils literal notranslate"><span class="pre">1</span></code> corresponds to the next, etc.
+You can also you negative ints for backward-indexing. For example <code class="docutils literal notranslate"><span class="pre">-1</span></code>
+corresponds to the last result acquired. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all results will be
+considered.</p>
+<p>Suppose you have called the estimator’s <code class="docutils literal notranslate"><span class="pre">estimate</span></code> method 3 times:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="n">region</span><span class="o">=</span><span class="p">(</span><span class="mf">5.</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">estimator</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="n">region</span><span class="o">=</span><span class="p">(</span><span class="mf">3.</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">estimator</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="n">region</span><span class="o">=</span><span class="p">(</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With <code class="docutils literal notranslate"><span class="pre">indices=[0]</span></code>, only the result corresponding to the 5-4.5 region will be
+considered. With <code class="docutils literal notranslate"><span class="pre">indices=[1,</span> <span class="pre">2]</span></code>, both the results corresponding to the 3-2.5
+and 1-0.5 regions will be considered. With <code class="docutils literal notranslate"><span class="pre">indices=[-1]</span></code>, only the
+result corresponding to 1-0.5 will be considered.</p>
+</section>
+<section id="index">
+<span id="id2"></span><h2>index<a class="headerlink" href="#index" title="Link to this heading">¶</a></h2>
+<p>An integer denoting the estimation result to consider. See <a class="reference internal" href="#indices"><span class="std std-ref">indices</span></a> for more
+details.</p>
+</section>
+<section id="color-cycle">
+<span id="id3"></span><h2>color cycle<a class="headerlink" href="#color-cycle" title="Link to this heading">¶</a></h2>
+<p>The following is a complete list of options:</p>
+<ul class="simple">
+<li><p>If a <a class="reference external" href="https://matplotlib.org/stable/tutorials/colors/colors.html">valid matplotlib colour</a> is
+given, all multiplets will be given this color.</p></li>
+<li><p>If a string corresponding to a <a class="reference external" href="https://matplotlib.org/stable/tutorials/colors/colormaps.html">matplotlib colormap</a>
+is given, the multiplets will be consecutively shaded by linear
+increments of this colormap.</p></li>
+<li><p>If an iterable object containing valid matplotlib colors is
+given, these colors will be cycled.
+For example, if <code class="docutils literal notranslate"><span class="pre">oscillator_colors</span> <span class="pre">=</span> <span class="pre">['r',</span> <span class="pre">'g',</span> <span class="pre">'b']</span></code>:</p>
+<ul>
+<li><p>Multiplets 0, 3, 6, … would be <span class="red">red (#FF0000)</span></p></li>
+<li><p>Multiplets 1, 4, 7, … would be <span class="green">green (#008000)</span></p></li>
+<li><p>Multiplets 2, 5, 8, … would be <span class="blue">blue (#0000FF)</span></p></li>
+</ul>
+</li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default colouring method will be applied, which
+involves cycling through the following colors:</p>
+<ul>
+<li><p><span class="oscblue">#1063E0</span></p></li>
+<li><p><span class="oscorange">#EB9310</span></p></li>
+<li><p><span class="oscgreen">#2BB539</span></p></li>
+<li><p><span class="oscred">#D4200C</span></p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="xaxis-ticks">
+<span id="id4"></span><h2>xaxis_ticks<a class="headerlink" href="#xaxis-ticks" title="Link to this heading">¶</a></h2>
+<p>Specifies custom x-axis ticks for each region, overwriting the default
+ticks. Should be of the form: <code class="docutils literal notranslate"><span class="pre">[(i,</span> <span class="pre">(a,</span> <span class="pre">b,</span> <span class="pre">...)),</span> <span class="pre">(j,</span> <span class="pre">(c,</span> <span class="pre">d,</span> <span class="pre">...)),</span> <span class="pre">...]</span></code>
+where <code class="docutils literal notranslate"><span class="pre">i</span></code> and <code class="docutils literal notranslate"><span class="pre">j</span></code> are ints indicating the region under consideration,
+and <code class="docutils literal notranslate"><span class="pre">a</span></code>-<code class="docutils literal notranslate"><span class="pre">d</span></code> are floats indicating the tick values.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><style>
+.aligncenter {
+    text-align: center;
+}
+</style>
+
+<a href="https://foroozandehgroup.github.io/NMR-EsPy/">
+    <img style="padding: 0px 0px 12px"
+         src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png"
+         alt="NMR-EsPy logo"
+         width=230px
+         height=auto />
+</a>
+
+<p class="aligncenter">
+    <a href="https://github.com/foroozandehgroup/NMR-EsPy">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/github.png"
+             alt="Github"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="mailto:simonhulse@protonmail.com?subject=NMR-EsPy%20query">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
+             alt="email"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+<!--     <a href="https://foroozandeh.chem.ox.ac.uk/home"> -->
+<!--         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png" -->
+<!--              alt="Group website" -->
+<!--              width=auto -->
+<!--              height=30px /> -->
+<!--     </a> -->
+</p>
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Common Arguments</a><ul>
+<li><a class="reference internal" href="#indices">indices</a></li>
+<li><a class="reference internal" href="#index">index</a></li>
+<li><a class="reference internal" href="#color-cycle">color cycle</a></li>
+<li><a class="reference internal" href="#xaxis-ticks">xaxis_ticks</a></li>
+</ul>
+</li>
+</ul>
+
+  </div><h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation index</a><ul>
+  <li><a href="index.html">Reference</a><ul>
+      <li>Previous: <a href="sig.html" title="previous chapter">sig</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/references/common_args.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  
+  </body>
+</html>

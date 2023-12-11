@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Installation &#8212; NMR-EsPy 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d7e2fa82" />
+    <link rel="stylesheet" type="text/css" href="_static/nameko.css?v=2296cfae" />
+    <script src="_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorials" href="walkthroughs/index.html" />
+    <link rel="prev" title="NMR-EsPy" href="index.html" />
+   
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Lora:400' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+  </head><body>
+  
+  
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="walkthroughs/index.html" title="Tutorials"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="NMR-EsPy"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">NMR-EsPy 2.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Installation</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <style>
+   .grey {color:#808080}
+   .red {color:#ff0000}
+   .green {color:#008000}
+   .blue {color:#0000ff}
+   .oscblue {color:#1063e0}
+   .oscorange {color:#eb9310}
+   .oscgreen {color:#2bb539}
+   .oscred {color:#d4200c}
+   .regiongreen {color: #7fd47f}
+   .regionblue {color: #66b3ff}
+</style><section id="installation">
+<span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>On this page, <code class="docutils literal notranslate"><span class="pre">&lt;pyexe&gt;</span></code> denotes the symbolic link/path to the Python
+executable you are using. <strong>You need to be using Python 3.8 or above.</strong></p>
+</div>
+<p>NMR-EsPy is available via the
+<a class="reference external" href="https://pypi.org/project/nmrespy/">Python Package Index</a>. The latest stable
+version can be installed using:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ &lt;pyexe&gt; -m pip install nmrespy
+</pre></div>
+</div>
+<p>If you want to install the development and documentation-building requirements,
+use the following command:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ &lt;pyexe&gt; -m pip install nmrespy[dev,docs]
+</pre></div>
+</div>
+<p>NMR-EsPy has the follwoing dependencies which are installed automatically when
+you run <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code>.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Package</p></th>
+<th class="head"><p>Version</p></th>
+<th class="head"><p>Details</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference external" href="https://numpy.org/">Numpy</a></p></td>
+<td><p>1.19+</p></td>
+<td><p>Ubiquitous</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="https://www.scipy.org/">Scipy</a></p></td>
+<td><p>1.5+</p></td>
+<td><p>Ubiquitous</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="https://matplotlib.org/stable/index.html">Matplotlib</a></p></td>
+<td><p>3.3+</p></td>
+<td><p>Required for result plotting,
+manual phase-correction, and the GUI.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="https://5hulse.github.io/bruker_utils/">bruker_utils</a></p></td>
+<td><p>0.0.1+</p></td>
+<td><p>Required for loading Bruker data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference external" href="https://github.com/derb12/pybaselines">pybaselines</a></p></td>
+<td><p>1.0.0+</p></td>
+<td><p>Required for baseline correction.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference external" href="https://pypi.org/project/colorama/">Colorama</a></p></td>
+<td><p>0.4+</p></td>
+<td><p>Required on Windows only. Enables
+ANSI escape character sequences to
+work, allowing coloured terminal
+output.</p></td>
+</tr>
+</tbody>
+</table>
+<section id="installing-the-gui-to-topspin">
+<span id="topspin-install"></span><h2>Installing the GUI to TopSpin<a class="headerlink" href="#installing-the-gui-to-topspin" title="Link to this heading">¶</a></h2>
+<p>NMR-EsPy has an accompanying Graphical User Interface (GUI) which is accessible
+via both the terminal and Bruker’s TopSpin software. The following two sections
+describe ways to install the scripts for accessing the GUI via TopSpin.</p>
+<section id="automatic-topspin-installation">
+<h3>Automatic TopSpin installation<a class="headerlink" href="#automatic-topspin-installation" title="Link to this heading">¶</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Use this method if you can, it is less error prone!</p>
+</div>
+<p>Enter the following into a terminal:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ &lt;pyexe&gt; -m nmrespy --install-to-topspin
+</pre></div>
+</div>
+<p>Directories matching the following glob pattern will be searched for on your
+system:</p>
+<ul class="simple">
+<li><p>UNIX: <code class="docutils literal notranslate"><span class="pre">/opt/topspin*</span></code></p></li>
+<li><p>Windows: <code class="docutils literal notranslate"><span class="pre">C:\Bruker\TopSpin*</span></code></p></li>
+</ul>
+<p>If there are valid directories, you will see a message similar to this:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>The following TopSpin path(s) were found on your system:
+    [1] /opt/topspin4.0.8
+For each TopSpin version you would like to install the nmrespy app to,
+provide the corresponding numbers, separated by whitespaces.
+If you want to cancel the install to TopSpin, enter 0.
+If you want to install to all the listed TopSpin installations, press &lt;Return&gt;:
+</pre></div>
+</div>
+<p>In this example, pressing <code class="docutils literal notranslate"><span class="pre">1</span></code> or <code class="docutils literal notranslate"><span class="pre">&lt;Return&gt;</span></code> would install the scripts to
+TopSpin 4.0.8. Pressing <code class="docutils literal notranslate"><span class="pre">0</span></code> would cancel the operation.</p>
+<p>For each specified path, two files will be generated:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">/&lt;path</span> <span class="pre">to&gt;/topspin&lt;x.y.z&gt;/exp/stan/nmr/py/user/espy1d.py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/&lt;path</span> <span class="pre">to&gt;/topspin&lt;x.y.z&gt;/exp/stan/nmr/py/user/espy2dj.py</span></code></p></li>
+</ul>
+<p>where <code class="docutils literal notranslate"><span class="pre">&lt;x.y.z&gt;</span></code> is the TopSpin version number.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>SUCCESS:
+    /opt/topspin4.0.8/exp/stan/nmr/py/user/espy1d.py
+
+SUCCESS:
+    /opt/topspin4.0.8/exp/stan/nmr/py/user/espy2dj.py
+</pre></div>
+</div>
+<p>If you get the following message instead, you either need to install TopSpin,
+or manually install the script (see the next section):</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>No TopSpin installations were found on your system! If you don&#39;t have
+TopSpin, I guess that makes sense. If you do have TopSpin, perhaps it is
+installed in a non-default location? You&#39;ll have to perform a manual
+installation in this case. See the documentation for details.
+</pre></div>
+</div>
+</section>
+<section id="manual-topspin-installation">
+<h3>Manual TopSpin installation<a class="headerlink" href="#manual-topspin-installation" title="Link to this heading">¶</a></h3>
+<p>If automatic installation failed, perhaps because TopSpin isn’t installed in
+the default location, you can get the TopSpin GUI loader up-and-running with
+the following steps.</p>
+<section id="copying-the-loader-scripts">
+<h4>Copying the loader scripts<a class="headerlink" href="#copying-the-loader-scripts" title="Link to this heading">¶</a></h4>
+<p>Load a Python REPL and enter the following to determine where the GUI loading
+scripts are located:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="go">$ &lt;pyexe&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">TOPSPINPATHS</span> <span class="k">as</span> <span class="n">tp</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">tp</span><span class="p">:</span>
+<span class="gp">... </span>     <span class="nb">print</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+<span class="gp">...</span>
+<span class="go">/home/simon/.venv/lib/python3.9/site-packages/nmrespy/app/topspin_scripts/espy2dj.py</span>
+<span class="go">/home/simon/.venv/lib/python3.9/site-packages/nmrespy/app/topspin_scripts/espy1d.py</span>
+</pre></div>
+</div>
+<p>Copy these files to your TopSpin installation.</p>
+<ul>
+<li><p>UNIX:</p>
+<p>You may need <code class="docutils literal notranslate"><span class="pre">sudo</span></code> depending on where your TopSpin directory is.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ cp /home/simon/.venv/lib/python3.9/site-packages/nmrespy/app/topspin_scripts/espy2dj.py \
+&gt; /path/to/.../topspinx.y.z/exp/stan/nmr/py/user/
+$ cp /home/simon/.venv/lib/python3.9/site-packages/nmrespy/app/topspin_scripts/espy1d.py \
+&gt; /path/to/.../topspinx.y.z/exp/stan/nmr/py/user/
+</pre></div>
+</div>
+</li>
+<li><p>Windows:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&gt; copy C:\Users\simon\.venv\Lib\site-packages\nmrespy\app\topspin_scripts\espy2dj.py ^
+More? C:\path\to\...\TopSpinx.y.z\exp\stan\nmr\py\user\
+&gt; copy C:\Users\simon\.venv\Lib\site-packages\nmrespy\app\topspin_scripts\espy1d.py ^
+More? C:\path\to\...\TopSpinx.y.z\exp\stan\nmr\py\user\
+</pre></div>
+</div>
+</li>
+</ul>
+</section>
+<section id="editing-the-loader-scripts">
+<h4>Editing the loader scripts<a class="headerlink" href="#editing-the-loader-scripts" title="Link to this heading">¶</a></h4>
+<p>Now you need to open the newly created files and make some edits to configure
+path information.</p>
+<ol class="arabic simple">
+<li><p>Load TopSpin</p></li>
+<li><p>Enter <code class="docutils literal notranslate"><span class="pre">edpy</span></code> in the bottom-left command prompt</p></li>
+<li><p>Select the <code class="docutils literal notranslate"><span class="pre">user</span></code> subdirectory from <code class="docutils literal notranslate"><span class="pre">Source</span></code></p></li>
+</ol>
+<p>Then do the following things for both <code class="docutils literal notranslate"><span class="pre">espy1d.py</span></code> and <code class="docutils literal notranslate"><span class="pre">espy2dj.py</span></code>:</p>
+<ol class="arabic">
+<li><p>Double click the file</p></li>
+<li><p>You need to set <code class="docutils literal notranslate"><span class="pre">py_exe</span></code> (which is <code class="docutils literal notranslate"><span class="pre">None</span></code> initially) with the path to
+your Python executable. One way to determine this which should be independent
+of Operating System is to load a Python REPL and enter the following lines
+(below is an example on Windows):</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\\\\</span><span class="s1">&#39;</span><span class="p">)</span> <span class="c1"># replace is needed for Windows</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">{</span><span class="n">exe</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">&quot;C:\\Users\\simon\\.venv\\Scripts\\python.exe&quot;</span>
+</pre></div>
+</div>
+<p>You should set <code class="docutils literal notranslate"><span class="pre">py_exe</span></code> as the <strong>EXACT</strong> output you get from this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">py_exe</span> <span class="o">=</span> <span class="s2">&quot;C:</span><span class="se">\\</span><span class="s2">Users</span><span class="se">\\</span><span class="s2">simon</span><span class="se">\\</span><span class="s2">.venv</span><span class="se">\\</span><span class="s2">Scripts</span><span class="se">\\</span><span class="s2">python.exe&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p>(Optional) If you have <code class="docutils literal notranslate"><span class="pre">pdflatex</span></code> on your system (see the <em>LaTeX</em> section
+below), and you want to be able to produce PDF result files, you will also
+have to specify the path to the <code class="docutils literal notranslate"><span class="pre">pdflatex</span></code> executable, given by the
+variable <code class="docutils literal notranslate"><span class="pre">pdflatex_exe</span></code>, which is set to <code class="docutils literal notranslate"><span class="pre">None</span></code> by default. To find this
+path, enter the following into a REPL:</p>
+<ul>
+<li><p><em>UNIX</em></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">subprocess</span> <span class="kn">import</span> <span class="n">check_output</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="n">check_output</span><span class="p">([</span><span class="s2">&quot;which&quot;</span><span class="p">,</span> <span class="s2">&quot;pdflatex&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exe</span><span class="p">,</span> <span class="s1">&#39;utf-8&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">{</span><span class="n">exe</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">&quot;/usr/bin/pdflatex&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><em>Windows</em></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">subprocess</span> <span class="kn">import</span> <span class="n">check_output</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="n">check_output</span><span class="p">(</span><span class="s2">&quot;where pdflatex&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exe</span><span class="p">,</span> <span class="s1">&#39;utf-8&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\\\</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">{</span><span class="n">exe</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="go">&quot;C:\\texlive\\2020\\bin\\win32\\pdflatex.exe&quot;</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>You should set <code class="docutils literal notranslate"><span class="pre">pdflatex_exe</span></code> as the <strong>EXACT</strong> output you get from this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pdflatex_exe</span> <span class="o">=</span> <span class="s2">&quot;C:</span><span class="se">\\</span><span class="s2">texlive</span><span class="se">\\</span><span class="s2">2020</span><span class="se">\\</span><span class="s2">bin</span><span class="se">\\</span><span class="s2">win32</span><span class="se">\\</span><span class="s2">pdflatex.exe&quot;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+</section>
+<section id="latex-optional">
+<span id="latex-install"></span><h2>LaTeX (Optional)<a class="headerlink" href="#latex-optional" title="Link to this heading">¶</a></h2>
+<p>NMR-EsPy provides functionality to save result files to PDF format using LaTeX.
+The easiest way to get LaTeX is probably to install <a class="reference external" href="https://tug.org/texlive/">TexLive</a>.</p>
+<p>As a simple check that your system has LaTeX available, the command <code class="docutils literal notranslate"><span class="pre">pdflatex</span></code>
+should exist. Open a terminal.</p>
+<p>Enter the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pdflatex -v
+</pre></div>
+</div>
+<p>If you see something similar to the following:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>pdfTeX 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian)
+kpathsea version 6.3.1
+Copyright 2019 Han The Thanh (pdfTeX) et al.
+
+--snip--
+</pre></div>
+</div>
+<p>things should work fine. If you get an error indicating that <code class="docutils literal notranslate"><span class="pre">pdflatex</span></code>
+isn’t recognised, you probably haven’t got LaTeX installed.</p>
+<p>The following is a full list of packages that your LaTeX installation
+will need to successfully compile the <code class="docutils literal notranslate"><span class="pre">.tex</span></code> files generated by this module:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://ctan.org/pkg/amsmath?lang=en">amsmath</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/array?lang=en">array</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/booktabs?lang=en">booktabs</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/cmbright">cmbright</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/geometry">geometry</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/hyperref?lang=en">hyperref</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/longtable">longtable</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/nicefrac?lang=en">nicefrac</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/siunitx?lang=en">siunitx</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/tcolorbox?lang=en">tcolorbox</a></p></li>
+<li><p><a class="reference external" href="https://www.ctan.org/pkg/varwidth">varwidth</a></p></li>
+<li><p><a class="reference external" href="https://ctan.org/pkg/xcolor?lang=en">xcolor</a></p></li>
+</ul>
+<p>If you wish to check the packages are available, use <code class="docutils literal notranslate"><span class="pre">kpsewhich</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ kpsewhich booktabs.sty
+/usr/share/texlive/texmf-dist/tex/latex/booktabs/booktabs.sty
+</pre></div>
+</div>
+<p>If a pathname appears, the package is installed to that path. These packages
+are pretty ubiquitous, so it is likely that they have been installed already.</p>
+</section>
+<section id="matlab-and-spinach-optional">
+<span id="spinach-install"></span><h2>MATLAB and Spinach (Optional)<a class="headerlink" href="#matlab-and-spinach-optional" title="Link to this heading">¶</a></h2>
+<p><a class="reference external" href="http://spindynamics.org/group/?page_id=12">Spinach</a> is a highly
+sophisticated library for spin dynamics simulations using <a class="reference external" href="https://www.mathworks.com/products/matlab.html">MATLAB</a>. NMR-EsPy provides some
+routines that enable the generation of datasets via Spinach. For this you will
+need:</p>
+<ul class="simple">
+<li><p>MATLAB installed</p></li>
+<li><p>Spinach downloaded, and present in the MATLAB path list (see <a class="reference external" href="https://spindynamics.org/wiki/index.php?title=Installation">the
+installation instructions</a>)</p></li>
+<li><p>The MATLAB Engine for Python installed (see <a class="reference external" href="https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html">the installation instructions</a>)</p></li>
+</ul>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><style>
+.aligncenter {
+    text-align: center;
+}
+</style>
+
+<a href="https://foroozandehgroup.github.io/NMR-EsPy/">
+    <img style="padding: 0px 0px 12px"
+         src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png"
+         alt="NMR-EsPy logo"
+         width=230px
+         height=auto />
+</a>
+
+<p class="aligncenter">
+    <a href="https://github.com/foroozandehgroup/NMR-EsPy">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/github.png"
+             alt="Github"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="mailto:simonhulse@protonmail.com?subject=NMR-EsPy%20query">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
+             alt="email"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+<!--     <a href="https://foroozandeh.chem.ox.ac.uk/home"> -->
+<!--         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png" -->
+<!--              alt="Group website" -->
+<!--              width=auto -->
+<!--              height=30px /> -->
+<!--     </a> -->
+</p>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Installation</a><ul>
+<li><a class="reference internal" href="#installing-the-gui-to-topspin">Installing the GUI to TopSpin</a><ul>
+<li><a class="reference internal" href="#automatic-topspin-installation">Automatic TopSpin installation</a></li>
+<li><a class="reference internal" href="#manual-topspin-installation">Manual TopSpin installation</a><ul>
+<li><a class="reference internal" href="#copying-the-loader-scripts">Copying the loader scripts</a></li>
+<li><a class="reference internal" href="#editing-the-loader-scripts">Editing the loader scripts</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#latex-optional">LaTeX (Optional)</a></li>
+<li><a class="reference internal" href="#matlab-and-spinach-optional">MATLAB and Spinach (Optional)</a></li>
+</ul>
+</li>
+</ul>
+
+  </div><h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation index</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">NMR-EsPy</a></li>
+      <li>Next: <a href="walkthroughs/index.html" title="next chapter">Tutorials</a></li>
+  </ul></li>
+</ul>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/install.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  
+  </body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Loading the 1D GUI &#8212; NMR-EsPy 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d7e2fa82" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nameko.css?v=2296cfae" />
+    <script src="../../_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Setting up a 1D estimation" href="setup.html" />
+    <link rel="prev" title="1D GUI" href="index.html" />
+   
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Lora:400' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+  </head><body>
+  
+  
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="setup.html" title="Setting up a 1D estimation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="1D GUI"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">NMR-EsPy 2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Using the Graphical User Interface</a> &#187;</li>
+          <li class="nav-item nav-item-2"><a href="index.html" accesskey="U">1D GUI</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Loading the 1D GUI</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <style>
+   .grey {color:#808080}
+   .red {color:#ff0000}
+   .green {color:#008000}
+   .blue {color:#0000ff}
+   .oscblue {color:#1063e0}
+   .oscorange {color:#eb9310}
+   .oscgreen {color:#2bb539}
+   .oscred {color:#d4200c}
+   .regiongreen {color: #7fd47f}
+   .regionblue {color: #66b3ff}
+</style><section id="loading-the-1d-gui">
+<h1>Loading the 1D GUI<a class="headerlink" href="#loading-the-1d-gui" title="Link to this heading">¶</a></h1>
+<section id="from-a-terminal">
+<h2>From a terminal<a class="headerlink" href="#from-a-terminal" title="Link to this heading">¶</a></h2>
+<p>Enter the following:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ &lt;pyexe&gt; -m nmrespy --setup1d /path/to/data
+</pre></div>
+</div>
+<p>The data path can be of either of the following forms:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/&lt;expno&gt;</span></code>, where <code class="docutils literal notranslate"><span class="pre">&lt;expno&gt;</span></code> is an experiment number. Directly under
+this directory should be an <code class="docutils literal notranslate"><span class="pre">fid</span></code> file, as well as an <code class="docutils literal notranslate"><span class="pre">acqus</span></code> file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/&lt;expno&gt;/pdata/&lt;procno&gt;</span></code>, where <code class="docutils literal notranslate"><span class="pre">&lt;procno&gt;</span></code> is a processed data
+number. Directly under this directory should be a <code class="docutils literal notranslate"><span class="pre">1r</span></code> file, as well as a
+<code class="docutils literal notranslate"><span class="pre">procs</span></code> file.</p></li>
+</ul>
+</section>
+<section id="from-topspin">
+<h2>From TopSpin<a class="headerlink" href="#from-topspin" title="Link to this heading">¶</a></h2>
+<p>Assuming you have <a class="reference internal" href="../../install.html#topspin-install"><span class="std std-ref">installed the TopSpin scripts already</span></a>,
+load the 1D dataset of interest. Then, in the bottom left command prompt, enter
+<code class="docutils literal notranslate"><span class="pre">espy1d</span></code>.</p>
+<p>At this point, you will be prompted on whether you would like to import the raw
+FID data (stored in the <code class="docutils literal notranslate"><span class="pre">../../fid</span></code> file) or the processed data (stored in
+<code class="docutils literal notranslate"><span class="pre">1r</span></code>).</p>
+<img alt="../../_images/datatype.png" class="align-center" src="../../_images/datatype.png" />
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><style>
+.aligncenter {
+    text-align: center;
+}
+</style>
+
+<a href="https://foroozandehgroup.github.io/NMR-EsPy/">
+    <img style="padding: 0px 0px 12px"
+         src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png"
+         alt="NMR-EsPy logo"
+         width=230px
+         height=auto />
+</a>
+
+<p class="aligncenter">
+    <a href="https://github.com/foroozandehgroup/NMR-EsPy">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/github.png"
+             alt="Github"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="mailto:simonhulse@protonmail.com?subject=NMR-EsPy%20query">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
+             alt="email"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+<!--     <a href="https://foroozandeh.chem.ox.ac.uk/home"> -->
+<!--         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png" -->
+<!--              alt="Group website" -->
+<!--              width=auto -->
+<!--              height=30px /> -->
+<!--     </a> -->
+</p>
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Loading the 1D GUI</a><ul>
+<li><a class="reference internal" href="#from-a-terminal">From a terminal</a></li>
+<li><a class="reference internal" href="#from-topspin">From TopSpin</a></li>
+</ul>
+</li>
+</ul>
+
+  </div><h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation index</a><ul>
+  <li><a href="../index.html">Using the Graphical User Interface</a><ul>
+  <li><a href="index.html">1D GUI</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">1D GUI</a></li>
+      <li>Next: <a href="setup.html" title="next chapter">Setting up a 1D estimation</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/gui/onedim/loading.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  
+  </body>
+</html>

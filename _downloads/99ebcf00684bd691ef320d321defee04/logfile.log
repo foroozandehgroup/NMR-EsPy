@@ -1,9 +1,0 @@
-=====================
-Logfile for Estimator
-=====================
---> Created @ 13-04-22 11:20:23
---> `estimate` ((5.285, 5.18), (6.48, 6.38)) {'region_unit': 'ppm', 'phase_variance': True}
---> `estimate` ((5.54, 5.42), (6.48, 6.38)) {'region_unit': 'ppm', 'phase_variance': True}
---> `write_result` () {'path': 'result', 'fmt': 'txt'}
---> `write_result` () {'path': 'result', 'fmt': 'pdf'}
---> `plot_result` () {}

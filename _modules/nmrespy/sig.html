@@ -1,18 +1,15 @@
-
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="en" data-content_root="../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>nmrespy.sig &#8212; NMR-EsPy  documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/nameko.css" />
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../../_static/doctools.js"></script>
+    <title>nmrespy.sig &#8212; NMR-EsPy 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d7e2fa82" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nameko.css?v=2296cfae" />
+    <script src="../../_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -33,7 +30,7 @@
         <li class="right" >
           <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../index.html">NMR-EsPy  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">NMR-EsPy 2.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">nmrespy.sig</a></li> 
       </ul>
@@ -48,51 +45,52 @@
 <span></span><span class="c1"># sig.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Thu 28 Jul 2022 09:47:40 BST</span>
+<span class="c1"># Last Edited: Wed 17 May 2023 14:16:17 BST</span>
 
-<span class="sd">&quot;&quot;&quot;Manipulating and processing NMR signals.&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;A module for manipulating and processing NMR signals.&quot;&quot;&quot;</span>
 
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">tkinter</span> <span class="k">as</span> <span class="nn">tk</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
-
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">numpy.fft</span> <span class="kn">import</span> <span class="n">fft</span><span class="p">,</span> <span class="n">fftshift</span><span class="p">,</span> <span class="n">ifft</span><span class="p">,</span> <span class="n">ifftshift</span>
-<span class="kn">import</span> <span class="nn">numpy.random</span> <span class="k">as</span> <span class="nn">nrandom</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">from</span> <span class="nn">matplotlib.figure</span> <span class="kn">import</span> <span class="n">Figure</span>
 <span class="kn">from</span> <span class="nn">matplotlib.backends.backend_tkagg</span> <span class="kn">import</span> <span class="n">FigureCanvasTkAgg</span><span class="p">,</span> <span class="n">NavigationToolbar2Tk</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy.fft</span> <span class="kn">import</span> <span class="n">fft</span><span class="p">,</span> <span class="n">fftshift</span><span class="p">,</span> <span class="n">ifft</span><span class="p">,</span> <span class="n">ifftshift</span>
+<span class="kn">import</span> <span class="nn">numpy.random</span> <span class="k">as</span> <span class="nn">nrandom</span>
+<span class="kn">import</span> <span class="nn">pybaselines</span>
+
 
 <span class="kn">from</span> <span class="nn">nmrespy._sanity</span> <span class="kn">import</span> <span class="n">sanity_check</span><span class="p">,</span> <span class="n">funcs</span> <span class="k">as</span> <span class="n">sfuncs</span>
 
 
-<div class="viewcode-block" id="make_virtual_echo"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.make_virtual_echo">[docs]</a><span class="k">def</span> <span class="nf">make_virtual_echo</span><span class="p">(</span>
+<div class="viewcode-block" id="make_virtual_echo">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.make_virtual_echo">[docs]</a>
+<span class="k">def</span> <span class="nf">make_virtual_echo</span><span class="p">(</span>
     <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">twodim_dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Generate a virtual echo [#]_ from a time-domain signal.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a virtual echo [#]_ from a time-domain signal.</span>
 
-<span class="sd">    A vitrual echo is a signal with a purely real Fourier-Tranform and</span>
-<span class="sd">    absorption mode line shape if the data is phased.</span>
+<span class="sd">    A vitrual echo is a signal with a purely real Fourier-Tranform.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    data</span>
 <span class="sd">        The data to construct the virtual echo from. If the data comprises a pair</span>
 <span class="sd">        of amplitude/phase modulated signals, these should be stored in a single</span>
-<span class="sd">        3D array with ``shape[2] == 2``, such that ``data[:, :, 0]`` if the cos/p</span>
-<span class="sd">        signal, and ``data[:, :, 1]`` is the sin/n signal.</span>
+<span class="sd">        3D array with ``shape[0] == 2``, such that ``data[0]`` is the cos/p</span>
+<span class="sd">        signal, and ``data[1]`` is the sin/n signal.</span>
 
 <span class="sd">    twodim_dtype</span>
 <span class="sd">        If the data is 2D, this parameter specifies the way to process the data.</span>
 <span class="sd">        Allowed options are:</span>
 
-<span class="sd">        * ``&quot;jres&quot;``: The data should be derived from a J-Resolved (2DJ) experiment.</span>
-<span class="sd">        * ``&quot;amp&quot;``: the two signals in axis 2 of ``data`` should be an</span>
-<span class="sd">          amplitude modulated pair.</span>
-<span class="sd">        * ``&quot;phase&quot;``: the two signals in axis 2 of ``data`` should be a phase</span>
-<span class="sd">          modulated pair.</span>
+<span class="sd">        * ``&quot;hyper&quot;``: The data is hypercomplex. Virtual echo is constructed</span>
+<span class="sd">            along the second axis.</span>
+<span class="sd">        * ``&quot;amp&quot;``: The data comprises an amplitude-modulated pair.</span>
+<span class="sd">        * ``&quot;phase&quot;``: The data comprises a phase-modulated pair.</span>
 
 <span class="sd">    References</span>
 <span class="sd">    ----------</span>
@@ -103,86 +101,86 @@
     <span class="n">sanity_check</span><span class="p">((</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
         <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;twodim_dtype&quot;</span><span class="p">,</span> <span class="n">twodim_dtype</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;jres&quot;</span><span class="p">,))</span>
+            <span class="p">(</span><span class="s2">&quot;twodim_dtype&quot;</span><span class="p">,</span> <span class="n">twodim_dtype</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;hyper&quot;</span><span class="p">,))</span>
         <span class="p">)</span>
     <span class="k">elif</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
         <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;twodim_dtype&quot;</span><span class="p">,</span> <span class="n">twodim_dtype</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;amp&quot;</span><span class="p">,</span> <span class="s2">&quot;phase&quot;</span><span class="p">))</span>
+            <span class="p">(</span><span class="s2">&quot;twodim_dtype&quot;</span><span class="p">,</span> <span class="n">twodim_dtype</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;amp&quot;</span><span class="p">,</span> <span class="s2">&quot;phase&quot;</span><span class="p">)),</span>
+            <span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;shape&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)]}),</span>
         <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
         <span class="n">pts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span>
-        <span class="n">ve</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span>
-        <span class="n">ve</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="n">ve</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">pts</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
-        <span class="n">ve</span><span class="p">[</span><span class="n">pts</span><span class="p">:]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">:][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">conj</span><span class="p">()</span>
+        <span class="n">tmp1</span><span class="p">,</span> <span class="n">tmp2</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+        <span class="n">tmp1</span><span class="p">[:</span> <span class="n">pts</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">tmp2</span><span class="p">[</span><span class="n">pts</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">conj</span><span class="p">()</span>
+        <span class="n">tmp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">tmp2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">ve</span> <span class="o">=</span> <span class="n">tmp1</span> <span class="o">+</span> <span class="n">tmp2</span>
+        <span class="n">ve</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mf">2.</span>
         <span class="k">return</span> <span class="n">ve</span>
 
-    <span class="k">if</span> <span class="n">twodim_dtype</span> <span class="o">==</span> <span class="s2">&quot;jres&quot;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">twodim_dtype</span> <span class="o">==</span> <span class="s2">&quot;hyper&quot;</span><span class="p">:</span>
         <span class="n">pts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span>
-        <span class="n">ve</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span>
-        <span class="n">ve</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
-        <span class="n">ve</span><span class="p">[:,</span> <span class="mi">1</span> <span class="p">:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span>
-        <span class="n">ve</span><span class="p">[:,</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]:]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:][:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">conj</span><span class="p">()</span>
+        <span class="n">tmp1</span><span class="p">,</span> <span class="n">tmp2</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)]</span>
+        <span class="n">tmp1</span><span class="p">[:,</span> <span class="p">:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">tmp2</span><span class="p">[:,</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">conj</span><span class="p">()</span>
+        <span class="n">tmp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">tmp2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ve</span> <span class="o">=</span> <span class="n">tmp1</span> <span class="o">+</span> <span class="n">tmp2</span>
+        <span class="n">ve</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
         <span class="k">return</span> <span class="n">ve</span>
 
-    <span class="k">if</span> <span class="n">twodim_dtype</span> <span class="o">==</span> <span class="s2">&quot;amp&quot;</span><span class="p">:</span>
-        <span class="c1"># TODO NEEDS FIXING</span>
-        <span class="n">cos</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span>
-        <span class="n">sin</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">twodim_dtype</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;amp&quot;</span><span class="p">,</span> <span class="s2">&quot;phase&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">twodim_dtype</span> <span class="o">==</span> <span class="s2">&quot;amp&quot;</span><span class="p">:</span>
+            <span class="n">cos</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">sin</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">twodim_dtype</span> <span class="o">==</span> <span class="s2">&quot;phase&quot;</span><span class="p">:</span>
+            <span class="n">cos</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mf">2.</span>
+            <span class="n">sin</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mf">2.</span><span class="n">j</span>
 
-    <span class="k">elif</span> <span class="n">twodim_dtype</span> <span class="o">==</span> <span class="s2">&quot;phase&quot;</span><span class="p">:</span>
-        <span class="n">cos</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">])</span>
-        <span class="n">sin</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="c1"># S±± = (R₁ ± iI₁)(R₂ ± iI₂)</span>
+        <span class="c1"># where: Re(cos) -&gt; R₁R₂, Im(cos) -&gt; R₁I₂, Re(sin) -&gt; I₁R₂, Im(sin) -&gt; I₁I₂</span>
+        <span class="n">r1r2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">cos</span><span class="p">)</span>
+        <span class="n">r1i2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">cos</span><span class="p">)</span>
+        <span class="n">i1r2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">sin</span><span class="p">)</span>
+        <span class="n">i1i2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">sin</span><span class="p">)</span>
 
-    <span class="c1"># S±± = (R₁ ± iI₁)(R₂ ± iI₂)</span>
-    <span class="c1"># where: Re(cos) -&gt; R₁R₂, Im(cos) -&gt; R₁I₂, Re(sin) -&gt; I₁R₂, Im(sin) -&gt; I₁I₂</span>
-    <span class="n">r1r2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">cos</span><span class="p">)</span>
-    <span class="n">r1i2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">cos</span><span class="p">)</span>
-    <span class="n">i1r2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">sin</span><span class="p">)</span>
-    <span class="n">i1i2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">sin</span><span class="p">)</span>
+        <span class="c1"># S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)</span>
+        <span class="n">pp</span> <span class="o">=</span> <span class="n">r1r2</span> <span class="o">-</span> <span class="n">i1i2</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">r1i2</span> <span class="o">+</span> <span class="n">i1r2</span><span class="p">)</span>
+        <span class="c1"># S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)</span>
+        <span class="n">pm</span> <span class="o">=</span> <span class="n">r1r2</span> <span class="o">+</span> <span class="n">i1i2</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">i1r2</span> <span class="o">-</span> <span class="n">r1i2</span><span class="p">)</span>
+        <span class="c1"># S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)</span>
+        <span class="n">mp</span> <span class="o">=</span> <span class="n">r1r2</span> <span class="o">+</span> <span class="n">i1i2</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">r1i2</span> <span class="o">-</span> <span class="n">i1r2</span><span class="p">)</span>
+        <span class="c1"># S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)</span>
+        <span class="n">mm</span> <span class="o">=</span> <span class="n">r1r2</span> <span class="o">-</span> <span class="n">i1i2</span> <span class="o">-</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">r1i2</span> <span class="o">+</span> <span class="n">i1r2</span><span class="p">)</span>
 
-    <span class="c1"># S++ = R₁R₂ - I₁I₂ + i(R₁I₂ + I₁R₂)</span>
-    <span class="n">pp</span> <span class="o">=</span> <span class="n">r1r2</span> <span class="o">-</span> <span class="n">i1i2</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">r1i2</span> <span class="o">+</span> <span class="n">i1r2</span><span class="p">)</span>
-    <span class="c1"># S+- = R₁R₂ + I₁I₂ + i(I₁R₂ - R₁I₂)</span>
-    <span class="n">pm</span> <span class="o">=</span> <span class="n">r1r2</span> <span class="o">+</span> <span class="n">i1i2</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">i1r2</span> <span class="o">-</span> <span class="n">r1i2</span><span class="p">)</span>
-    <span class="c1"># S-+ = R₁R₂ + I₁I₂ + i(R₁I₂ - I₁R₂)</span>
-    <span class="n">mp</span> <span class="o">=</span> <span class="n">r1r2</span> <span class="o">+</span> <span class="n">i1i2</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">r1i2</span> <span class="o">-</span> <span class="n">i1r2</span><span class="p">)</span>
-    <span class="c1"># S-- = R₁R₂ - I₁I₂ - i(R₁I₂ + I₁R₂)</span>
-    <span class="n">mm</span> <span class="o">=</span> <span class="n">r1r2</span> <span class="o">-</span> <span class="n">i1i2</span> <span class="o">-</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="p">(</span><span class="n">r1i2</span> <span class="o">+</span> <span class="n">i1r2</span><span class="p">)</span>
+        <span class="n">pts</span> <span class="o">=</span> <span class="n">cos</span><span class="o">.</span><span class="n">shape</span>
 
-    <span class="n">pts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">ve_pts</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">)</span>
+        <span class="n">tmp1</span><span class="p">,</span> <span class="n">tmp2</span><span class="p">,</span> <span class="n">tmp3</span><span class="p">,</span> <span class="n">tmp4</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ve_pts</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
+        <span class="n">tmp1</span><span class="p">[:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">pp</span>
 
-    <span class="n">tmp1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">p</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span>
-    <span class="n">tmp1</span><span class="p">[:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">pp</span>
-    <span class="n">tmp1</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-    <span class="n">tmp1</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
+        <span class="n">tmp2</span><span class="p">[:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pm</span><span class="p">[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">tmp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">tmp2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="n">tmp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">p</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span>
-    <span class="n">tmp2</span><span class="p">[:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pm</span><span class="p">[:,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">tmp2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-    <span class="n">tmp2</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-    <span class="n">tmp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">tmp2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">tmp3</span><span class="p">[</span><span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">:,</span> <span class="p">:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">mp</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">tmp3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">tmp3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
-    <span class="n">tmp3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">p</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span>
-    <span class="n">tmp3</span><span class="p">[</span><span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:,</span> <span class="p">:</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">mp</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">tmp3</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-    <span class="n">tmp3</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-    <span class="n">tmp3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">tmp3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">tmp4</span><span class="p">[</span><span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">:,</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">mm</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">tmp4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">tmp4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
 
-    <span class="n">tmp4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">p</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pts</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;complex&quot;</span><span class="p">)</span>
-    <span class="n">tmp4</span><span class="p">[</span><span class="n">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:,</span> <span class="n">pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">mm</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">tmp4</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-    <span class="n">tmp4</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-    <span class="n">tmp4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">tmp4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">ve</span> <span class="o">=</span> <span class="n">tmp1</span> <span class="o">+</span> <span class="n">tmp2</span> <span class="o">+</span> <span class="n">tmp3</span> <span class="o">+</span> <span class="n">tmp4</span>
+        <span class="n">ve</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/=</span> <span class="mf">2.</span>
+        <span class="n">ve</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mf">2.</span>
+        <span class="n">ve</span> <span class="o">/=</span> <span class="mi">2</span>
 
-    <span class="n">ve</span> <span class="o">=</span> <span class="n">tmp1</span> <span class="o">+</span> <span class="n">tmp2</span> <span class="o">+</span> <span class="n">tmp3</span> <span class="o">+</span> <span class="n">tmp4</span>
-
-    <span class="k">return</span> <span class="n">ve</span></div>
+        <span class="k">return</span> <span class="n">ve</span></div>
 
 
-<div class="viewcode-block" id="zf"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.zf">[docs]</a><span class="k">def</span> <span class="nf">zf</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Zero-fill data to the next power of 2 in each dimension.</span>
+
+<div class="viewcode-block" id="zf">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.zf">[docs]</a>
+<span class="k">def</span> <span class="nf">zf</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Zero-fill data to the next power of 2 in each dimension.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -203,12 +201,15 @@
     <span class="k">return</span> <span class="n">zf_data</span></div>
 
 
-<div class="viewcode-block" id="exp_apodisation"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.exp_apodisation">[docs]</a><span class="k">def</span> <span class="nf">exp_apodisation</span><span class="p">(</span>
+
+<div class="viewcode-block" id="exp_apodisation">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.exp_apodisation">[docs]</a>
+<span class="k">def</span> <span class="nf">exp_apodisation</span><span class="p">(</span>
     <span class="n">fid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Apply exponential apodisation to an FID.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply exponential apodisation to an FID.</span>
 
 <span class="sd">    The FID is multiplied by ``np.exp(-k * np.linspace(0, 1, n))`` in each dimension</span>
 <span class="sd">    specified by ``axes``, where ``n`` is the size of each dimension.</span>
@@ -227,18 +228,13 @@
     <span class="n">sanity_check</span><span class="p">(</span>
         <span class="p">(</span><span class="s2">&quot;fid&quot;</span><span class="p">,</span> <span class="n">fid</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">),</span>
         <span class="p">(</span><span class="s2">&quot;k&quot;</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span>
-        <span class="p">(</span>
-            <span class="s2">&quot;axes&quot;</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span>
-            <span class="p">{</span>
-                <span class="s2">&quot;len_one_can_be_listless&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                <span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="o">-</span><span class="n">fid</span><span class="o">.</span><span class="n">ndim</span><span class="p">,</span>
-                <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="n">fid</span><span class="o">.</span><span class="n">ndim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="p">},</span>
-            <span class="kc">True</span><span class="p">,</span>
-        <span class="p">),</span>
     <span class="p">)</span>
-    <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="n">fid</span><span class="o">.</span><span class="n">ndim</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">]</span>
-    <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="nb">chr</span><span class="p">(</span><span class="mi">105</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">fid</span><span class="o">.</span><span class="n">ndim</span><span class="p">)]</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">ndim</span>
+    <span class="n">sanity_check</span><span class="p">(</span><span class="n">_axes_check</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">dim</span><span class="p">))</span>
+
+    <span class="n">axes</span> <span class="o">=</span> <span class="n">_process_axes</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
+
+    <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="nb">chr</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">105</span><span class="p">,</span> <span class="mi">105</span> <span class="o">+</span> <span class="n">dim</span><span class="p">)]</span>
     <span class="n">index_notation</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;-&gt;&quot;</span> <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">fid</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span>
@@ -249,17 +245,62 @@
     <span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="ft"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.ft">[docs]</a><span class="k">def</span> <span class="nf">ft</span><span class="p">(</span>
+
+<div class="viewcode-block" id="sinebell_apodisation">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.sinebell_apodisation">[docs]</a>
+<span class="k">def</span> <span class="nf">sinebell_apodisation</span><span class="p">(</span>
+    <span class="n">fid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply sine-bell apodisation to an FID.</span>
+
+<span class="sd">    The FID is multiplied by ``np.exp(-k * np.linspace(0, 1, n))`` in each dimension</span>
+<span class="sd">    specified by ``axes``, where ``n`` is the size of each dimension.</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        This is not intended for manipulating the FID prior to estimation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fid</span>
+<span class="sd">        FID to process.</span>
+
+<span class="sd">    axes</span>
+<span class="sd">        The axes to apply the apodiisation over. If ``None``, all axes are apodised.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sanity_check</span><span class="p">(</span>
+        <span class="p">(</span><span class="s2">&quot;fid&quot;</span><span class="p">,</span> <span class="n">fid</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">ndim</span>
+    <span class="n">sanity_check</span><span class="p">(</span><span class="n">_axes_check</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">dim</span><span class="p">))</span>
+
+    <span class="n">axes</span> <span class="o">=</span> <span class="n">_process_axes</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
+
+    <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="nb">chr</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">105</span><span class="p">,</span> <span class="mi">105</span> <span class="o">+</span> <span class="n">dim</span><span class="p">)]</span>
+    <span class="n">index_notation</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;-&gt;&quot;</span> <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fid</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span>
+        <span class="n">index_notation</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">axes</span>
+          <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+          <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fid</span><span class="o">.</span><span class="n">shape</span><span class="p">)],</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ft">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.ft">[docs]</a>
+<span class="k">def</span> <span class="nf">ft</span><span class="p">(</span>
     <span class="n">fid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">flip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Fourier transformation with optional spectrum flipping.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fourier transformation with optional spectrum flipping.</span>
 
 <span class="sd">    It is conventional in NMR to plot spectra from high to low going</span>
 <span class="sd">    left to right/down to up. This function utilises the</span>
 <span class="sd">    `numpy.fft &lt;https://numpy.org/doc/stable/reference/routines.fft.html&gt;`_</span>
-<span class="sd">    module to carry out the Fourier Transformation.</span>
+<span class="sd">    module.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -280,43 +321,30 @@
         <span class="p">(</span><span class="s2">&quot;flip&quot;</span><span class="p">,</span> <span class="n">flip</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
     <span class="p">)</span>
     <span class="n">dim</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">ndim</span>
-    <span class="n">sanity_check</span><span class="p">(</span>
-        <span class="p">(</span>
-            <span class="s2">&quot;axes&quot;</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
-            <span class="p">{</span>
-                <span class="s2">&quot;len_one_can_be_listless&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                <span class="s2">&quot;must_be_positive&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="n">dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="p">},</span>
-            <span class="kc">True</span><span class="p">,</span>
-        <span class="p">)</span>
-    <span class="p">)</span>
+    <span class="n">sanity_check</span><span class="p">(</span><span class="n">_axes_check</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">dim</span><span class="p">))</span>
 
-    <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">axes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">))</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">axes</span><span class="p">]</span>
+    <span class="n">axes</span> <span class="o">=</span> <span class="n">_process_axes</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
 
     <span class="n">spectrum</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">fid</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
         <span class="n">spectrum</span> <span class="o">=</span> <span class="n">fftshift</span><span class="p">(</span><span class="n">fft</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axis</span><span class="p">),</span> <span class="n">axes</span><span class="o">=</span><span class="n">axis</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">flip</span><span class="p">:</span>
-        <span class="n">spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">spectrum</span></div>
+    <span class="k">return</span> <span class="n">spectrum</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">flip</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="ift"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.ift">[docs]</a><span class="k">def</span> <span class="nf">ift</span><span class="p">(</span>
+
+<div class="viewcode-block" id="ift">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.ift">[docs]</a>
+<span class="k">def</span> <span class="nf">ift</span><span class="p">(</span>
     <span class="n">spectrum</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">flip</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Inverse Fourier Transform a spectrum.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverse Fourier Transform a spectrum.</span>
 
 <span class="sd">    This function utilises the</span>
 <span class="sd">    `numpy.fft &lt;https://numpy.org/doc/stable/reference/routines.fft.html&gt;`_</span>
-<span class="sd">    module to carry out the Fourier Transformation.</span>
+<span class="sd">    module.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -337,21 +365,9 @@
         <span class="p">(</span><span class="s2">&quot;flip&quot;</span><span class="p">,</span> <span class="n">flip</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
     <span class="p">)</span>
     <span class="n">dim</span> <span class="o">=</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">ndim</span>
-    <span class="n">sanity_check</span><span class="p">(</span>
-        <span class="p">(</span>
-            <span class="s2">&quot;axes&quot;</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
-            <span class="p">{</span>
-                <span class="s2">&quot;len_one_can_be_listless&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                <span class="s2">&quot;must_be_positive&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="n">dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
-            <span class="p">},</span>
-            <span class="kc">True</span><span class="p">,</span>
-        <span class="p">)</span>
-    <span class="p">)</span>
-    <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">axes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">))</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="n">axes</span> <span class="o">=</span> <span class="p">[</span><span class="n">axes</span><span class="p">]</span>
+    <span class="n">sanity_check</span><span class="p">(</span><span class="n">_axes_check</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">dim</span><span class="p">))</span>
+
+    <span class="n">axes</span> <span class="o">=</span> <span class="n">_process_axes</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">dim</span><span class="p">)</span>
 
     <span class="n">fid</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">spectrum</span><span class="p">)</span>
     <span class="n">fid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span> <span class="k">if</span> <span class="n">flip</span> <span class="k">else</span> <span class="n">fid</span>
@@ -361,8 +377,11 @@
     <span class="k">return</span> <span class="n">fid</span></div>
 
 
-<div class="viewcode-block" id="proc_amp_modulated"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.proc_amp_modulated">[docs]</a><span class="k">def</span> <span class="nf">proc_amp_modulated</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Generate a frequency-discrimiated signal from amplitude-modulated 2D FIDs.</span>
+
+<div class="viewcode-block" id="proc_amp_modulated">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.proc_amp_modulated">[docs]</a>
+<span class="k">def</span> <span class="nf">proc_amp_modulated</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate a frequency-discrimiated signal from amplitude-modulated 2D FIDs.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -379,12 +398,16 @@
     <span class="n">sanity_check</span><span class="p">(</span>
         <span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;dim&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;shape&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)]}),</span>
     <span class="p">)</span>
+    <span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
     <span class="n">cos_t1_f2</span><span class="p">,</span> <span class="n">sin_t1_f2</span> <span class="o">=</span> <span class="p">[</span><span class="n">ft</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">real</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
     <span class="k">return</span> <span class="n">ft</span><span class="p">(</span><span class="n">cos_t1_f2</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">sin_t1_f2</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="proc_phase_modulated"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.proc_phase_modulated">[docs]</a><span class="k">def</span> <span class="nf">proc_phase_modulated</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Process phase modulated 2D FIDs.</span>
+
+<div class="viewcode-block" id="proc_phase_modulated">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.proc_phase_modulated">[docs]</a>
+<span class="k">def</span> <span class="nf">proc_phase_modulated</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Process phase modulated 2D FIDs.</span>
 
 <span class="sd">    This function generates the set of spectra corresponding to the</span>
 <span class="sd">    processing protocol outlined in [#]_.</span>
@@ -416,6 +439,7 @@
     <span class="n">sanity_check</span><span class="p">(</span>
         <span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;dim&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;shape&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)]}),</span>
     <span class="p">)</span>
+    <span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
     <span class="n">p_t1_f2</span><span class="p">,</span> <span class="n">n_t1_f2</span> <span class="o">=</span> <span class="p">[</span><span class="n">ft</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
 
     <span class="n">spectra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span> <span class="o">*</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
@@ -431,13 +455,16 @@
     <span class="k">return</span> <span class="n">spectra</span></div>
 
 
-<div class="viewcode-block" id="phase"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.phase">[docs]</a><span class="k">def</span> <span class="nf">phase</span><span class="p">(</span>
+
+<div class="viewcode-block" id="phase">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.phase">[docs]</a>
+<span class="k">def</span> <span class="nf">phase</span><span class="p">(</span>
     <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">p0</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">p1</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">pivot</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Apply a linear phase correction to a signal.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply a linear phase correction to a signal.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -477,13 +504,17 @@
     <span class="k">return</span> <span class="n">phased_data</span></div>
 
 
-<div class="viewcode-block" id="manual_phase_data"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.manual_phase_data">[docs]</a><span class="k">def</span> <span class="nf">manual_phase_data</span><span class="p">(</span>
+
+<div class="viewcode-block" id="manual_phase_data">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.manual_phase_data">[docs]</a>
+<span class="k">def</span> <span class="nf">manual_phase_data</span><span class="p">(</span>
     <span class="n">spectrum</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">max_p1</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">]]]:</span>
-    <span class="sd">&quot;&quot;&quot;Manual phase correction using a Graphical User Interface.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manual phase correction using a Graphical User Interface.</span>
 
-<span class="sd">    .. warning::</span>
+<span class="sd">    .. note::</span>
+
 <span class="sd">       Only 1D spectral data is currently supported.</span>
 
 <span class="sd">    Parameters</span>
@@ -532,8 +563,9 @@
     <span class="k">return</span> <span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">p0</span><span class="p">,),</span> <span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">p1</span><span class="p">,)</span></div>
 
 
+
 <span class="k">class</span> <span class="nc">PhaseApp</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">Tk</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Tkinter application for manual phase correction.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tkinter application for manual phase correction.</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -541,7 +573,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">max_p1</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Construct the GUI.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Construct the GUI.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -678,7 +710,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">cancel_button</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">row</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sticky</span><span class="o">=</span><span class="s2">&quot;e&quot;</span><span class="p">,</span> <span class="n">padx</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
 
     <span class="k">def</span> <span class="nf">update_phase</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Command run whenever a parameter is altered.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Command run whenever a parameter is altered.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -707,19 +739,21 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw_idle</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Kill the application and update p0 based on pivot and p1.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Kill the application and update p0 based on pivot and p1.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">p0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">p0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">p1</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pivot</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">cancel</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Kill the application and set phases to None.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Kill the application and set phases to None.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">p0</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">p1</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">destroy</span><span class="p">()</span>
 
 
-<div class="viewcode-block" id="add_noise"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.add_noise">[docs]</a><span class="k">def</span> <span class="nf">add_noise</span><span class="p">(</span><span class="n">fid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">snr</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">decibels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Add noise to an FID.</span>
+<div class="viewcode-block" id="add_noise">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.add_noise">[docs]</a>
+<span class="k">def</span> <span class="nf">add_noise</span><span class="p">(</span><span class="n">fid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">snr</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">decibels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add Gaussian white noise noise to an FID.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -727,23 +761,31 @@
 <span class="sd">        Noiseless FID.</span>
 
 <span class="sd">    snr</span>
-<span class="sd">        The signal-to-noise ratio.</span>
+<span class="sd">        The signal-to-noise ratio. The smaller this value, the greater the</span>
+<span class="sd">        variance of the noise.</span>
 
 <span class="sd">    decibels</span>
 <span class="sd">        If `True`, the snr is taken to be in units of decibels. If `False`,</span>
 <span class="sd">        it is taken to be simply the ratio of the singal power and noise</span>
 <span class="sd">        power.</span>
+
+<span class="sd">    See also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :py:func:`make_noise`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">sanity_check</span><span class="p">(</span>
         <span class="p">(</span><span class="s2">&quot;fid&quot;</span><span class="p">,</span> <span class="n">fid</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">),</span>
         <span class="p">(</span><span class="s2">&quot;snr&quot;</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">),</span>
         <span class="p">(</span><span class="s2">&quot;decibels&quot;</span><span class="p">,</span> <span class="n">decibels</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="n">fid</span> <span class="o">+</span> <span class="n">_make_noise</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">decibels</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">fid</span> <span class="o">+</span> <span class="n">make_noise</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">decibels</span><span class="p">)</span></div>
 
 
-<span class="k">def</span> <span class="nf">_make_noise</span><span class="p">(</span><span class="n">fid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">snr</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">decibels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Generate an array of white Guassian complex noise.</span>
+
+<div class="viewcode-block" id="make_noise">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.make_noise">[docs]</a>
+<span class="k">def</span> <span class="nf">make_noise</span><span class="p">(</span><span class="n">fid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">snr</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">decibels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Generate an array of white Guassian complex noise.</span>
 
 <span class="sd">    The noise will be created with zero mean and a variance that abides by</span>
 <span class="sd">    the desired SNR, in accordance with the FID provided.</span>
@@ -773,6 +815,10 @@
 
 <span class="sd">       \rho = \frac{\sum_{n=0}^{N-1} \left(x_n - \mu_x\right)^2}</span>
 <span class="sd">       {N \cdot 20 \log_10 \left(\mathrm{SNR}_{\mathrm{dB}}\right)}</span>
+
+<span class="sd">    See also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :py:func:`add_noise`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">sanity_check</span><span class="p">(</span>
         <span class="p">(</span><span class="s2">&quot;fid&quot;</span><span class="p">,</span> <span class="n">fid</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">),</span>
@@ -802,14 +848,19 @@
 
     <span class="c1"># The noise is constructed from the two closest arrays</span>
     <span class="c1"># to the desired SNR</span>
-    <span class="k">return</span> <span class="n">instances</span><span class="p">[</span><span class="n">first</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">instances</span><span class="p">[</span><span class="n">second</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">instances</span><span class="p">[</span><span class="n">first</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">instances</span><span class="p">[</span><span class="n">second</span><span class="p">]</span></div>
 
 
-<div class="viewcode-block" id="convdta"><a class="viewcode-back" href="../../content/references/sig.html#nmrespy.sig.convdta">[docs]</a><span class="k">def</span> <span class="nf">convdta</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">grpdly</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;Remove the digital filter from time-domain Bruker data.</span>
 
-<span class="sd">    This function is inspired by nmrglue&#39;s ``nmrglue.fileio.bruker.rm_dig_filter``</span>
-<span class="sd">    function.</span>
+<div class="viewcode-block" id="convdta">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.convdta">[docs]</a>
+<span class="k">def</span> <span class="nf">convdta</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">grpdly</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove the digital filter from time-domain Bruker data.</span>
+
+<span class="sd">    This function is inspired by `nmrglue.fileio.bruker.rm_dig_filter</span>
+<span class="sd">    &lt;https://nmrglue.readthedocs.io/en/latest/reference/generated/\</span>
+<span class="sd">    nmrglue.fileio.bruker.rm_dig_filter.html?highlight=rm_dig_filter#\</span>
+<span class="sd">    nmrglue.fileio.bruker.rm_dig_filter&gt;`_.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -829,6 +880,105 @@
     <span class="n">pdata</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">to_add</span><span class="p">]</span> <span class="o">+=</span> <span class="n">pdata</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="p">(</span><span class="n">to_add</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">pdata</span> <span class="o">=</span> <span class="n">pdata</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="n">to_rm</span><span class="p">]</span>
     <span class="k">return</span> <span class="n">pdata</span></div>
+
+
+
+<div class="viewcode-block" id="baseline_correction">
+<a class="viewcode-back" href="../../references/sig.html#nmrespy.sig.baseline_correction">[docs]</a>
+<span class="k">def</span> <span class="nf">baseline_correction</span><span class="p">(</span>
+    <span class="n">spectrum</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">mask</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">min_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply baseline correction to a 1D dataset.</span>
+
+<span class="sd">    The algorithm applied is desribed in [#]_. This uses an implementation</span>
+<span class="sd">    provided by `pybaselines</span>
+<span class="sd">    &lt;https://pybaselines.readthedocs.io/en/latest/api/pybaselines/api/index.html#\</span>
+<span class="sd">    pybaselines.api.Baseline.fabc&gt;`_.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    spectrum</span>
+<span class="sd">        Spectrum to apply baseline correction to.</span>
+
+<span class="sd">    mask</span>
+<span class="sd">        Should be either:</span>
+
+<span class="sd">        * ``None``: the points which comprise noise are predicted automatically</span>
+<span class="sd">        * A boolean array with the same size as ``spectrum``.</span>
+
+<span class="sd">          - ``True`` indicates that a particular point comprises baseline.</span>
+<span class="sd">          - ``False`` indicates that a point comprises a peak.</span>
+
+<span class="sd">    min_length</span>
+<span class="sd">        *from pybaselines:* Any region of consecutive baseline points less than</span>
+<span class="sd">        ``min_length`` is considered to be a false positive and all points in</span>
+<span class="sd">        the region are converted to peak points.  A higher `min_length` ensures</span>
+<span class="sd">        less points are falsely assigned as baseline points.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fixed_spectrum</span>
+<span class="sd">        The baseline-corrected spectrum.</span>
+
+<span class="sd">    params</span>
+<span class="sd">        A dictionary with the items:</span>
+
+<span class="sd">        * ``&quot;mask&quot;`` A boolean array designating baseline points as ``True`` and</span>
+<span class="sd">          peak points as ``False``.</span>
+<span class="sd">        * ``&quot;baseline&quot;`` The computed baseline. Note that ``fixed_spectrum`` is</span>
+<span class="sd">          computed via ``spectrum - baseline``.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [#] Cobas, J., et al. A new general-purpose fully automatic baseline-correction</span>
+<span class="sd">           procedure for 1D and 2D NMR data. Journal of Magnetic Resonance,</span>
+<span class="sd">           2006, 183(1), 145-151.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sanity_check</span><span class="p">((</span><span class="s2">&quot;spectrum&quot;</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;dim&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}))</span>
+    <span class="n">sanity_check</span><span class="p">(</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;min_length&quot;</span><span class="p">,</span> <span class="n">min_length</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span>
+            <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">size</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;mask&quot;</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">,</span> <span class="p">(),</span>
+            <span class="p">{</span><span class="s2">&quot;dim&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;shape&quot;</span><span class="p">:</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">spectrum</span><span class="o">.</span><span class="n">size</span><span class="p">),)},</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="n">baseline</span><span class="p">,</span> <span class="n">params</span> <span class="o">=</span> <span class="n">pybaselines</span><span class="o">.</span><span class="n">classification</span><span class="o">.</span><span class="n">fabc</span><span class="p">(</span>
+        <span class="n">spectrum</span><span class="p">,</span> <span class="n">min_length</span><span class="o">=</span><span class="n">min_length</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">fixed_spectrum</span> <span class="o">=</span> <span class="n">spectrum</span> <span class="o">-</span> <span class="n">baseline</span>
+
+    <span class="k">del</span> <span class="n">params</span><span class="p">[</span><span class="s2">&quot;weights&quot;</span><span class="p">]</span>
+    <span class="n">params</span><span class="p">[</span><span class="s2">&quot;baseline&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">baseline</span>
+
+    <span class="k">return</span> <span class="n">fixed_spectrum</span><span class="p">,</span> <span class="n">params</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">_axes_check</span><span class="p">(</span><span class="n">axes</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="s2">&quot;axes&quot;</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;len_one_can_be_listless&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="o">-</span><span class="n">dim</span><span class="p">,</span>
+            <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="n">dim</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_process_axes</span><span class="p">(</span><span class="n">axes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span> <span class="n">dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">axes</span> <span class="o">%</span> <span class="n">dim</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">axis</span> <span class="o">%</span> <span class="n">dim</span> <span class="k">for</span> <span class="n">axis</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">]</span>
 </pre></div>
 
             <div class="clearer"></div>
@@ -859,7 +1009,7 @@
              height=30px />
     </a>
 
-    <a href="mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy%20query">
+    <a href="mailto:simonhulse@protonmail.com?subject=NMR-EsPy%20query">
         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
              alt="email"
              style="padding: 0px 30px 0px 0px"
@@ -867,12 +1017,12 @@
              height=30px />
     </a>
 
-    <a href="https://foroozandeh.chem.ox.ac.uk/home">
-        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png"
-             alt="Group website"
-             width=auto
-             height=30px />
-    </a>
+<!--     <a href="https://foroozandeh.chem.ox.ac.uk/home"> -->
+<!--         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png" -->
+<!--              alt="Group website" -->
+<!--              width=auto -->
+<!--              height=30px /> -->
+<!--     </a> -->
 </p><h3>Related Topics</h3>
 <ul>
   <li><a href="../../index.html">Documentation index</a><ul>

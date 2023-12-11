@@ -1,22 +1,19 @@
-
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Welcome to NMR-EsPy’s Documentatation &#8212; NMR-EsPy  documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/nameko.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
+    <title>NMR-EsPy &#8212; NMR-EsPy 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d7e2fa82" />
+    <link rel="stylesheet" type="text/css" href="_static/nameko.css?v=2296cfae" />
+    <script src="_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Installation" href="content/install.html" />
+    <link rel="next" title="Installation" href="install.html" />
    
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
   <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Lora:400' rel='stylesheet' type='text/css'>
@@ -38,10 +35,10 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="content/install.html" title="Installation"
+          <a href="install.html" title="Installation"
              accesskey="N">next</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">NMR-EsPy  documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">Welcome to NMR-EsPy’s Documentatation</a></li> 
+        <li class="nav-item nav-item-0"><a href="#">NMR-EsPy 2.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">NMR-EsPy</a></li> 
       </ul>
     </div>  
 
@@ -61,67 +58,89 @@
    .oscred {color:#d4200c}
    .regiongreen {color: #7fd47f}
    .regionblue {color: #66b3ff}
-</style><section id="welcome-to-nmr-espy-s-documentatation">
-<h1>Welcome to NMR-EsPy’s Documentatation<a class="headerlink" href="#welcome-to-nmr-espy-s-documentatation" title="Permalink to this heading">¶</a></h1>
-<a class="reference external image-reference" href="https://badge.fury.io/py/nmrespy"><img alt="https://badge.fury.io/py/nmrespy.svg" src="https://badge.fury.io/py/nmrespy.svg" /></a>
-<a class="reference external image-reference" href="https://github.com/foroozandehgroup/NMR-EsPy/actions?query=workflow%3Apublish-docs"><img alt="https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg" src="https://github.com/foroozandehgroup/NMR-EsPy/workflows/publish-docs/badge.svg" /></a>
-<a class="reference external image-reference" href="https://opensource.org/licenses/MIT"><img alt="https://img.shields.io/badge/License-MIT-yellow.svg" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
+</style><section id="nmr-espy">
+<h1>NMR-EsPy<a class="headerlink" href="#nmr-espy" title="Link to this heading">¶</a></h1>
 <p><strong>Simon G. Hulse &amp; Mohammadali Foroozandeh,</strong><span class="raw-html"><br /></span>
 <strong>Department of Chemistry,</strong><span class="raw-html"><br /></span>
 <strong>University of Oxford</strong></p>
+<p><strong>Contents</strong></p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="walkthroughs/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gui/index.html">Using the Graphical User Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="references/index.html">Reference</a></li>
+</ul>
+</div>
+<p><strong>What is NMR-EsPy?</strong></p>
 <p>NMR-EsPy (<strong>N</strong>uclear <strong>M</strong>agnetic <strong>R</strong>esonance <strong>Es</strong>timation in
 <strong>Py</strong>thon) is a Python package for the estimation of parameters that
 describe NMR signals.</p>
-<p>As with the majority of packages that do a lot of number crunching in Python,
-NMR-EsPy relies heavily on <a class="reference external" href="https://numpy.org/">NumPy</a> as well as
-<a class="reference external" href="https://www.scipy.org/">SciPy</a> routines to function efficiently.</p>
-<p>The NMR-EsPy package is a product of work carried out during Simon’s Ph.D
-within the Foroozandeh group. To find out more about the group, take a look
-at our <a class="reference external" href="http://foroozandeh.chem.ox.ac.uk/home">website.</a></p>
-<p>If you come across any unexpected behavior, please get in touch with Simon,
-via email (see the email icon in the sidebar), or <a class="reference external" href="https://github.com/foroozandehgroup/NMR-EsPy/issues">file an issue</a>.</p>
-<section id="contents">
-<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this heading">¶</a></h2>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="content/install.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="content/install.html#python-packages">Python Packages</a></li>
-<li class="toctree-l2"><a class="reference internal" href="content/install.html#latex">LaTeX</a></li>
+<p>As with many packages that do number crunching in Python, NMR-EsPy makes heavy
+use of the <a class="reference external" href="https://numpy.org/">NumPy ecosystem</a>.</p>
+<p>NMR-EsPy package is a product of work carried out during Simon’s Ph.D
+within the former Foroozandeh group in the University of Oxford’s Chemistry
+Department.</p>
+<p>The primary goal behind the NMR-EsPy package is to quantify NMR datasets. It is
+assumed that raw NMR datasets (called FIDs) comprise a number of sinusoidal
+oscillators; NMR-EsPy uses numerical techniques in order to estimate the
+amplitudes, phases, frequencies, and damping rates of these oscillators. Such
+information can be made use of in various applications.</p>
+<p>This version of NMR-EsPy provides the means to estimate both 1D NMR datasets
+and 2D J-Resolved datasets. Available features include:</p>
+<ul class="simple">
+<li><p>Importing data acquired on Bruker specrometers.</p></li>
+<li><p>Simulating data using the Spinach Matlab package.</p></li>
+<li><p>Basic pre-processing of NMR data (phasing, baseline correction).</p></li>
+<li><p>Estimation of NMR data using numerical optimisation.</p></li>
+<li><p>Generating parameter tables.</p></li>
+<li><p>Generating result figures.</p></li>
 </ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="content/theory_overview.html">Theory Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="content/walkthrough.html">Example Walk-through</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="content/walkthrough.html#tl-dr-a-full-script">TL;DR: A Full Script</a></li>
-<li class="toctree-l2"><a class="reference internal" href="content/walkthrough.html#generating-an-estimator-instance">Generating an Estimator instance</a></li>
-<li class="toctree-l2"><a class="reference internal" href="content/walkthrough.html#estimating-the-signal-parameters">Estimating the Signal Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="content/walkthrough.html#inspecting-estimation-results">Inspecting Estimation Results</a></li>
-<li class="toctree-l2"><a class="reference internal" href="content/walkthrough.html#miscellaneous">Miscellaneous</a></li>
-<li class="toctree-l2"><a class="reference internal" href="content/walkthrough.html#generated-files">Generated Files</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="content/gui/index.html">The NMR-EsPy GUI</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="content/gui/topspin_install.html">Integrating the GUI into TopSpin</a></li>
-<li class="toctree-l2"><a class="reference internal" href="content/gui/usage/index.html">Using The GUI</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="content/references/index.html">Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="content/references/index.html#things-that-you-will-need-to-look-at">Things that you will need to look at</a></li>
-<li class="toctree-l2"><a class="reference internal" href="content/references/index.html#things-you-probably-won-t-need-to-look-at">Things you (probably) won’t need to look at</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="content/contributors.html">Contributors</a></li>
-</ul>
-</div>
-</section>
-<section id="publications">
-<h2>Publications<a class="headerlink" href="#publications" title="Permalink to this heading">¶</a></h2>
+<p>With 2D-J Resolved datasets, NMR-EsPy can be employed to construct
+homodecoupled (pure shift) spectra via estimation (a paper outlining this is
+yet to be released).</p>
+<p>In future versions, support for other NMR data types and applications will be
+included.</p>
+<p><strong>Using the Documentation</strong></p>
+<p>New to NMR-EsPy? Look at the following:</p>
+<p><em>If you wish to use the API:</em></p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Read the <a class="reference internal" href="install.html#installation"><span class="std std-ref">installation instructions</span></a>. If you are not
+interested in using the GUI, it is possible to skip the section
+titled <em>Installing the GUI to TopSpin</em></p></li>
+<li><p>Read the <a class="reference internal" href="walkthroughs/estimator1d.html#estimator1d"><span class="std std-ref">tutorial on 1D data estimation</span></a>.</p></li>
+<li><p>Read <a class="reference internal" href="walkthroughs/index.html#tutorials"><span class="std std-ref">further tutorials</span></a> that are relevant to your
+interests.</p></li>
+<li><p>Whenever a moment arises that you wish to understand more about
+particular features in the package, consult the <a class="reference internal" href="references/index.html#references"><span class="std std-ref">API reference</span></a>.</p></li>
+</ol>
+</div></blockquote>
+<p><em>If you wish to use the GUI:</em></p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Read the <a class="reference internal" href="install.html#installation"><span class="std std-ref">installation instructions</span></a>.
+If you are going to be loading the GUI from within TopSpin,
+it is important to read the section titled <em>Installing the GUI to
+TopSpin</em>.</p></li>
+<li><p>Read the <a class="reference internal" href="gui/index.html#gui"><span class="std std-ref">instructions on using the GUI</span></a>.</p></li>
+</ol>
+</div></blockquote>
+<p>In you are comfortable with writing Python code, it is recommended that you
+make use of NMR-EsPy via the API, rather than the GUI, as it is more feature
+rich.</p>
+<p><strong>Issues</strong></p>
+<p>If you come across any unexpected behavior/bugs, please get in touch with
+Simon, via email (see the email icon in the sidebar), or <a class="reference external" href="https://github.com/foroozandehgroup/NMR-EsPy/issues">file an issue</a>. This project is no
+longer actively worked on, but if there are bugs that prevent use of the
+package I will try to fix them.</p>
+<p><strong>Publications</strong></p>
 <ul class="simple">
 <li><p>Simon G. Hulse, Mohammadali Foroozandeh. Newton meets Ockham: Parameter
 estimation and model selection of NMR data with NMR-EsPy. <em>J. Magn. Reson.</em>
 338 (2022) 107173. <span class="raw-html"><br /></span>
 <a class="reference external" href="https://doi.org/10.1016/j.jmr.2022.107173">https://doi.org/10.1016/j.jmr.2022.107173</a></p></li>
 </ul>
-</section>
 </section>
 
 
@@ -153,7 +172,7 @@ estimation and model selection of NMR data with NMR-EsPy. <em>J. Magn. Reson.</e
              height=30px />
     </a>
 
-    <a href="mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy%20query">
+    <a href="mailto:simonhulse@protonmail.com?subject=NMR-EsPy%20query">
         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
              alt="email"
              style="padding: 0px 30px 0px 0px"
@@ -161,27 +180,16 @@ estimation and model selection of NMR data with NMR-EsPy. <em>J. Magn. Reson.</e
              height=30px />
     </a>
 
-    <a href="https://foroozandeh.chem.ox.ac.uk/home">
-        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png"
-             alt="Group website"
-             width=auto
-             height=30px />
-    </a>
-</p>
-  <div>
-    <h3><a href="#">Table of Contents</a></h3>
-    <ul>
-<li><a class="reference internal" href="#">Welcome to NMR-EsPy’s Documentatation</a><ul>
-<li><a class="reference internal" href="#contents">Contents</a></li>
-<li><a class="reference internal" href="#publications">Publications</a></li>
-</ul>
-</li>
-</ul>
-
-  </div><h3>Related Topics</h3>
+<!--     <a href="https://foroozandeh.chem.ox.ac.uk/home"> -->
+<!--         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png" -->
+<!--              alt="Group website" -->
+<!--              width=auto -->
+<!--              height=30px /> -->
+<!--     </a> -->
+</p><h3>Related Topics</h3>
 <ul>
   <li><a href="#">Documentation index</a><ul>
-      <li>Next: <a href="content/install.html" title="next chapter">Installation</a></li>
+      <li>Next: <a href="install.html" title="next chapter">Installation</a></li>
   </ul></li>
 </ul>
   <div role="note" aria-label="source link">

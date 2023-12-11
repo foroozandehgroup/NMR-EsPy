@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>sig &#8212; NMR-EsPy 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d7e2fa82" />
+    <link rel="stylesheet" type="text/css" href="../_static/nameko.css?v=2296cfae" />
+    <script src="../_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Common Arguments" href="common_args.html" />
+    <link rel="prev" title="Estimator2DJ" href="estimator2dj.html" />
+   
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Lora:400' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+  </head><body>
+  
+  
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="common_args.html" title="Common Arguments"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="estimator2dj.html" title="Estimator2DJ"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy 2.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Reference</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">sig</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <style>
+   .grey {color:#808080}
+   .red {color:#ff0000}
+   .green {color:#008000}
+   .blue {color:#0000ff}
+   .oscblue {color:#1063e0}
+   .oscorange {color:#eb9310}
+   .oscgreen {color:#2bb539}
+   .oscred {color:#d4200c}
+   .regiongreen {color: #7fd47f}
+   .regionblue {color: #66b3ff}
+</style><section id="module-nmrespy.sig">
+<span id="sig"></span><h1>sig<a class="headerlink" href="#module-nmrespy.sig" title="Link to this heading">¶</a></h1>
+<p>A module for manipulating and processing NMR signals.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.add_noise">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">add_noise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decibels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#add_noise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.add_noise" title="Link to this definition">¶</a></dt>
+<dd><p>Add Gaussian white noise noise to an FID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fid</strong> – Noiseless FID.</p></li>
+<li><p><strong>snr</strong> – The signal-to-noise ratio. The smaller this value, the greater the
+variance of the noise.</p></li>
+<li><p><strong>decibels</strong> – If <cite>True</cite>, the snr is taken to be in units of decibels. If <cite>False</cite>,
+it is taken to be simply the ratio of the singal power and noise
+power.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#nmrespy.sig.make_noise" title="nmrespy.sig.make_noise"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_noise()</span></code></a></p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.baseline_correction">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">baseline_correction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spectrum</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#baseline_correction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.baseline_correction" title="Link to this definition">¶</a></dt>
+<dd><p>Apply baseline correction to a 1D dataset.</p>
+<p>The algorithm applied is desribed in <a class="footnote-reference brackets" href="#id2" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>. This uses an implementation
+provided by <a class="reference external" href="https://pybaselines.readthedocs.io/en/latest/api/pybaselines/api/index.html#pybaselines.api.Baseline.fabc">pybaselines</a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spectrum</strong> – Spectrum to apply baseline correction to.</p></li>
+<li><p><strong>mask</strong> – <p>Should be either:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">None</span></code>: the points which comprise noise are predicted automatically</p></li>
+<li><p>A boolean array with the same size as <code class="docutils literal notranslate"><span class="pre">spectrum</span></code>.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">True</span></code> indicates that a particular point comprises baseline.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">False</span></code> indicates that a point comprises a peak.</p></li>
+</ul>
+</li>
+</ul>
+</p></li>
+<li><p><strong>min_length</strong> – <em>from pybaselines:</em> Any region of consecutive baseline points less than
+<code class="docutils literal notranslate"><span class="pre">min_length</span></code> is considered to be a false positive and all points in
+the region are converted to peak points.  A higher <cite>min_length</cite> ensures
+less points are falsely assigned as baseline points.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>fixed_spectrum</em> – The baseline-corrected spectrum.</p></li>
+<li><p><em>params</em> – A dictionary with the items:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;mask&quot;</span></code> A boolean array designating baseline points as <code class="docutils literal notranslate"><span class="pre">True</span></code> and
+peak points as <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;baseline&quot;</span></code> The computed baseline. Note that <code class="docutils literal notranslate"><span class="pre">fixed_spectrum</span></code> is
+computed via <code class="docutils literal notranslate"><span class="pre">spectrum</span> <span class="pre">-</span> <span class="pre">baseline</span></code>.</p></li>
+</ul>
+</li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id2" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Cobas, J., et al. A new general-purpose fully automatic baseline-correction
+procedure for 1D and 2D NMR data. Journal of Magnetic Resonance,
+2006, 183(1), 145-151.</p>
+</aside>
+</aside>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.convdta">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">convdta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grpdly</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#convdta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.convdta" title="Link to this definition">¶</a></dt>
+<dd><p>Remove the digital filter from time-domain Bruker data.</p>
+<p>This function is inspired by <a class="reference external" href="https://nmrglue.readthedocs.io/en/latest/reference/generated/nmrglue.fileio.bruker.rm_dig_filter.html?highlight=rm_dig_filter#nmrglue.fileio.bruker.rm_dig_filter">nmrglue.fileio.bruker.rm_dig_filter</a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Time-domain data to process.</p></li>
+<li><p><strong>grpdly</strong> – Group delay.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.exp_apodisation">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">exp_apodisation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#exp_apodisation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.exp_apodisation" title="Link to this definition">¶</a></dt>
+<dd><p>Apply exponential apodisation to an FID.</p>
+<p>The FID is multiplied by <code class="docutils literal notranslate"><span class="pre">np.exp(-k</span> <span class="pre">*</span> <span class="pre">np.linspace(0,</span> <span class="pre">1,</span> <span class="pre">n))</span></code> in each dimension
+specified by <code class="docutils literal notranslate"><span class="pre">axes</span></code>, where <code class="docutils literal notranslate"><span class="pre">n</span></code> is the size of each dimension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fid</strong> – FID to process.</p></li>
+<li><p><strong>k</strong> – Line-broadening factor.</p></li>
+<li><p><strong>axes</strong> – The axes to apply the apodiisation over. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all axes are apodised.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.ft">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">ft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#ft"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.ft" title="Link to this definition">¶</a></dt>
+<dd><p>Fourier transformation with optional spectrum flipping.</p>
+<p>It is conventional in NMR to plot spectra from high to low going
+left to right/down to up. This function utilises the
+<a class="reference external" href="https://numpy.org/doc/stable/reference/routines.fft.html">numpy.fft</a>
+module.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fid</strong> – Time-domain data.</p></li>
+<li><p><strong>axes</strong> – The axes to apply Fourier Transformation to. By default (<code class="docutils literal notranslate"><span class="pre">None</span></code>), FT is
+applied to all axes. If an int, FT will only be applied to the relevant axis.
+If a list of ints, FT will be applied to this subset of axes.</p></li>
+<li><p><strong>flip</strong> – Whether or not to flip the Fourier Transform of <cite>fid</cite> in each
+dimension.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.ift">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">ift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spectrum</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#ift"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.ift" title="Link to this definition">¶</a></dt>
+<dd><p>Inverse Fourier Transform a spectrum.</p>
+<p>This function utilises the
+<a class="reference external" href="https://numpy.org/doc/stable/reference/routines.fft.html">numpy.fft</a>
+module.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spectrum</strong> (<em>numpy.ndarray</em>) – Spectrum</p></li>
+<li><p><strong>axes</strong> – The axes to apply IFT to. By default (<code class="docutils literal notranslate"><span class="pre">None</span></code>), IFT is
+applied to all axes. If an int, IFT will only be applied to the relevant axis.
+If a list of ints, IFT will be applied to this subset of axes.</p></li>
+<li><p><strong>flip</strong> (<em>bool</em><em>, </em><em>default: True</em>) – Whether or not to flip <code class="docutils literal notranslate"><span class="pre">spectrum</span></code> in each dimension prior to Inverse
+Fourier Transform.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.make_noise">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">make_noise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decibels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#make_noise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.make_noise" title="Link to this definition">¶</a></dt>
+<dd><p>Generate an array of white Guassian complex noise.</p>
+<p>The noise will be created with zero mean and a variance that abides by
+the desired SNR, in accordance with the FID provided.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fid</strong> – Noiseless FID.</p></li>
+<li><p><strong>snr</strong> – The signal-to-noise ratio.</p></li>
+<li><p><strong>decibels</strong> – If <cite>True</cite>, the snr is taken to be in units of decibels. If <cite>False</cite>,
+it is taken to be simply the ratio of the singal power and noise
+power.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>noise</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Noise variance is given by:</p>
+<div class="math">
+<p><img src="../_images/math/7fd33c35b142030e22fffee71953cbc016c1cdc2.png" alt="\rho = \frac{\sum_{n=0}^{N-1} \left(x_n - \mu_x\right)^2}
+{N \cdot 20 \log_10 \left(\mathrm{SNR}_{\mathrm{dB}}\right)}"/></p>
+</div><div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="#nmrespy.sig.add_noise" title="nmrespy.sig.add_noise"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_noise()</span></code></a></p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.make_virtual_echo">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">make_virtual_echo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">twodim_dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#make_virtual_echo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.make_virtual_echo" title="Link to this definition">¶</a></dt>
+<dd><p>Generate a virtual echo <a class="footnote-reference brackets" href="#id5" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> from a time-domain signal.</p>
+<p>A vitrual echo is a signal with a purely real Fourier-Tranform.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – The data to construct the virtual echo from. If the data comprises a pair
+of amplitude/phase modulated signals, these should be stored in a single
+3D array with <code class="docutils literal notranslate"><span class="pre">shape[0]</span> <span class="pre">==</span> <span class="pre">2</span></code>, such that <code class="docutils literal notranslate"><span class="pre">data[0]</span></code> is the cos/p
+signal, and <code class="docutils literal notranslate"><span class="pre">data[1]</span></code> is the sin/n signal.</p></li>
+<li><p><strong>twodim_dtype</strong> – <p>If the data is 2D, this parameter specifies the way to process the data.
+Allowed options are:</p>
+<ul>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">&quot;hyper&quot;</span></code>: The data is hypercomplex. Virtual echo is constructed</dt><dd><p>along the second axis.</p>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;amp&quot;</span></code>: The data comprises an amplitude-modulated pair.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;phase&quot;</span></code>: The data comprises a phase-modulated pair.</p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id5" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">2</a><span class="fn-bracket">]</span></span>
+<p>M. Mayzel, K. Kazimierczuk, V. Y. Orekhov, The causality principle
+in the reconstruction of sparse nmr spectra, Chem. Commun. 50 (64)
+(2014) 8947–8950.</p>
+</aside>
+</aside>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.manual_phase_data">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">manual_phase_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spectrum</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_p1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#manual_phase_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.manual_phase_data" title="Link to this definition">¶</a></dt>
+<dd><p>Manual phase correction using a Graphical User Interface.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Only 1D spectral data is currently supported.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spectrum</strong> – Spectral data of interest.</p></li>
+<li><p><strong>max_p1</strong> – Specifies the range of first-order phases permitted.
+Bounds are set as <code class="docutils literal notranslate"><span class="pre">[-max_p1,</span> <span class="pre">max_p1]</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>p0</em> – Zero-order phase correction in each dimension, in radians. If the
+user chooses to cancel rather than save, this is set to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><em>p1</em> – First-order phase correction in each dimension, in radians. If the
+user chooses to cancel rather than save, this is set to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.phase">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">phase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pivot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#phase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.phase" title="Link to this definition">¶</a></dt>
+<dd><p>Apply a linear phase correction to a signal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Data to be phased.</p></li>
+<li><p><strong>p0</strong> – Zero-order phase correction in each dimension, in radians.</p></li>
+<li><p><strong>p1</strong> – First-order phase correction in each dimension, in radians.</p></li>
+<li><p><strong>pivot</strong> – Index of the pivot in each dimension. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the pivot will be <code class="docutils literal notranslate"><span class="pre">0</span></code>
+in each dimension.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.proc_amp_modulated">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">proc_amp_modulated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#proc_amp_modulated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.proc_amp_modulated" title="Link to this definition">¶</a></dt>
+<dd><p>Generate a frequency-discrimiated signal from amplitude-modulated 2D FIDs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – cos-modulated signal and sin-modulated signal, stored in a 3D numpy array,
+such that <code class="docutils literal notranslate"><span class="pre">data[0]</span></code> is the the cos signal and <code class="docutils literal notranslate"><span class="pre">data[1]</span></code> is the sin
+signal.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>spectrum</strong> – Frequency-discrimiated spectrum.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.proc_phase_modulated">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">proc_phase_modulated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#proc_phase_modulated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.proc_phase_modulated" title="Link to this definition">¶</a></dt>
+<dd><p>Process phase modulated 2D FIDs.</p>
+<p>This function generates the set of spectra corresponding to the
+processing protocol outlined in <a class="footnote-reference brackets" href="#id7" id="id6" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – P-type signal and N-type signal, stored in a 3D numpy array, such that
+<code class="docutils literal notranslate"><span class="pre">data[0]</span></code> is the the P signal and <code class="docutils literal notranslate"><span class="pre">data[1]</span></code> is the N signal.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>3D array with <code class="docutils literal notranslate"><span class="pre">spectra.shape[0]</span> <span class="pre">==</span> <span class="pre">4</span></code>. The sub-arrays in axis 0 correspond
+to the following signals:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">spectra[0]</span></code>: RR</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spectra[1]</span></code>: RI</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spectra[2]</span></code>: IR</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">spectra[3]</span></code>: II</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>spectra</p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id7" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id6">3</a><span class="fn-bracket">]</span></span>
+<p>A. L. Davis, J. Keeler, E. D. Laue, and D. Moskau, “Experiments for
+recording pure-absorption heteronuclear correlation spectra using
+pulsed field gradients,” Journal of Magnetic Resonance (1969),
+vol. 98, no. 1, pp. 207–216, 1992.</p>
+</aside>
+</aside>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.sinebell_apodisation">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">sinebell_apodisation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#sinebell_apodisation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.sinebell_apodisation" title="Link to this definition">¶</a></dt>
+<dd><p>Apply sine-bell apodisation to an FID.</p>
+<p>The FID is multiplied by <code class="docutils literal notranslate"><span class="pre">np.exp(-k</span> <span class="pre">*</span> <span class="pre">np.linspace(0,</span> <span class="pre">1,</span> <span class="pre">n))</span></code> in each dimension
+specified by <code class="docutils literal notranslate"><span class="pre">axes</span></code>, where <code class="docutils literal notranslate"><span class="pre">n</span></code> is the size of each dimension.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This is not intended for manipulating the FID prior to estimation.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fid</strong> – FID to process.</p></li>
+<li><p><strong>axes</strong> – The axes to apply the apodiisation over. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, all axes are apodised.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nmrespy.sig.zf">
+<span class="sig-prename descclassname"><span class="pre">nmrespy.sig.</span></span><span class="sig-name descname"><span class="pre">zf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../_modules/nmrespy/sig.html#zf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#nmrespy.sig.zf" title="Link to this definition">¶</a></dt>
+<dd><p>Zero-fill data to the next power of 2 in each dimension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – Signal to zero-fill.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><style>
+.aligncenter {
+    text-align: center;
+}
+</style>
+
+<a href="https://foroozandehgroup.github.io/NMR-EsPy/">
+    <img style="padding: 0px 0px 12px"
+         src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png"
+         alt="NMR-EsPy logo"
+         width=230px
+         height=auto />
+</a>
+
+<p class="aligncenter">
+    <a href="https://github.com/foroozandehgroup/NMR-EsPy">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/github.png"
+             alt="Github"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+    <a href="mailto:simonhulse@protonmail.com?subject=NMR-EsPy%20query">
+        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
+             alt="email"
+             style="padding: 0px 30px 0px 0px"
+             width=auto
+             height=30px />
+    </a>
+
+<!--     <a href="https://foroozandeh.chem.ox.ac.uk/home"> -->
+<!--         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png" -->
+<!--              alt="Group website" -->
+<!--              width=auto -->
+<!--              height=30px /> -->
+<!--     </a> -->
+</p>
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">sig</a><ul>
+<li><a class="reference internal" href="#nmrespy.sig.add_noise"><code class="docutils literal notranslate"><span class="pre">add_noise()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.baseline_correction"><code class="docutils literal notranslate"><span class="pre">baseline_correction()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.convdta"><code class="docutils literal notranslate"><span class="pre">convdta()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.exp_apodisation"><code class="docutils literal notranslate"><span class="pre">exp_apodisation()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.ft"><code class="docutils literal notranslate"><span class="pre">ft()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.ift"><code class="docutils literal notranslate"><span class="pre">ift()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.make_noise"><code class="docutils literal notranslate"><span class="pre">make_noise()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.make_virtual_echo"><code class="docutils literal notranslate"><span class="pre">make_virtual_echo()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.manual_phase_data"><code class="docutils literal notranslate"><span class="pre">manual_phase_data()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.phase"><code class="docutils literal notranslate"><span class="pre">phase()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.proc_amp_modulated"><code class="docutils literal notranslate"><span class="pre">proc_amp_modulated()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.proc_phase_modulated"><code class="docutils literal notranslate"><span class="pre">proc_phase_modulated()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.sinebell_apodisation"><code class="docutils literal notranslate"><span class="pre">sinebell_apodisation()</span></code></a></li>
+<li><a class="reference internal" href="#nmrespy.sig.zf"><code class="docutils literal notranslate"><span class="pre">zf()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+  </div><h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation index</a><ul>
+  <li><a href="index.html">Reference</a><ul>
+      <li>Previous: <a href="estimator2dj.html" title="previous chapter">Estimator2DJ</a></li>
+      <li>Next: <a href="common_args.html" title="next chapter">Common Arguments</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/references/sig.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  
+  </body>
+</html>

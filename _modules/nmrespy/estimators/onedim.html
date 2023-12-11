@@ -1,18 +1,15 @@
-
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="en" data-content_root="../../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>nmrespy.estimators.onedim &#8212; NMR-EsPy  documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/nameko.css" />
-    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-    <script src="../../../_static/jquery.js"></script>
-    <script src="../../../_static/underscore.js"></script>
-    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="../../../_static/doctools.js"></script>
+    <title>nmrespy.estimators.onedim &#8212; NMR-EsPy 2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d7e2fa82" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/nameko.css?v=2296cfae" />
+    <script src="../../../_static/documentation_options.js?v=60dbed4a"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
@@ -33,7 +30,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">NMR-EsPy  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">NMR-EsPy 2.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">nmrespy.estimators.onedim</a></li> 
       </ul>
@@ -48,37 +45,31 @@
 <span></span><span class="c1"># onedim.py</span>
 <span class="c1"># Simon Hulse</span>
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
-<span class="c1"># Last Edited: Fri 22 Jul 2022 15:29:50 BST</span>
+<span class="c1"># Last Edited: Wed 24 May 2023 10:59:32 BST</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">import</span> <span class="nn">re</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 
-<span class="kn">from</span> <span class="nn">nmr_sims.experiments.pa</span> <span class="kn">import</span> <span class="n">PulseAcquireSimulation</span>
-<span class="kn">from</span> <span class="nn">nmr_sims.nuclei</span> <span class="kn">import</span> <span class="n">Nucleus</span>
-<span class="kn">from</span> <span class="nn">nmr_sims.spin_system</span> <span class="kn">import</span> <span class="n">SpinSystem</span>
+<span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
+<span class="kn">from</span> <span class="nn">nmrespy.load</span> <span class="kn">import</span> <span class="n">load_bruker</span>
+<span class="kn">from</span> <span class="nn">nmrespy.plot</span> <span class="kn">import</span> <span class="n">make_color_cycle</span>
 
-<span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">ExpInfo</span><span class="p">,</span> <span class="n">sig</span>
 <span class="kn">from</span> <span class="nn">nmrespy._colors</span> <span class="kn">import</span> <span class="n">RED</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">USE_COLORAMA</span>
-<span class="kn">from</span> <span class="nn">nmrespy._files</span> <span class="kn">import</span> <span class="n">check_existent_dir</span>
-<span class="kn">from</span> <span class="nn">nmrespy._paths_and_links</span> <span class="kn">import</span> <span class="n">NMRESPYPATH</span>
+<span class="kn">from</span> <span class="nn">nmrespy._files</span> <span class="kn">import</span> <span class="n">check_existent_dir</span><span class="p">,</span> <span class="n">check_saveable_dir</span>
+<span class="kn">from</span> <span class="nn">nmrespy._misc</span> <span class="kn">import</span> <span class="n">proc_kwargs_dict</span>
 <span class="kn">from</span> <span class="nn">nmrespy._sanity</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">sanity_check</span><span class="p">,</span>
     <span class="n">funcs</span> <span class="k">as</span> <span class="n">sfuncs</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">nmrespy.freqfilter</span> <span class="kn">import</span> <span class="n">Filter</span>
-<span class="kn">from</span> <span class="nn">nmrespy.load</span> <span class="kn">import</span> <span class="n">load_bruker</span>
-<span class="kn">from</span> <span class="nn">nmrespy.mpm</span> <span class="kn">import</span> <span class="n">MatrixPencil</span>
-<span class="kn">from</span> <span class="nn">nmrespy.nlp</span> <span class="kn">import</span> <span class="n">NonlinearProgramming</span>
-<span class="kn">from</span> <span class="nn">nmrespy.plot</span> <span class="kn">import</span> <span class="n">ResultPlotter</span>
 
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">logger</span><span class="p">,</span> <span class="n">Estimator</span><span class="p">,</span> <span class="n">Result</span>
+<span class="kn">from</span> <span class="nn">nmrespy.estimators</span> <span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span> <span class="nn">nmrespy.estimators._proc_onedim</span> <span class="kn">import</span> <span class="n">_Estimator1DProc</span>
 
 
 <span class="k">if</span> <span class="n">USE_COLORAMA</span><span class="p">:</span>
@@ -86,47 +77,41 @@
     <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 
 
-<div class="viewcode-block" id="Estimator1D"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D">[docs]</a><span class="k">class</span> <span class="nc">Estimator1D</span><span class="p">(</span><span class="n">Estimator</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Estimator class for 1D data.</span>
+<div class="viewcode-block" id="Estimator1D">
+<a class="viewcode-back" href="../../../references/estimator1d.html#nmrespy.Estimator1D">[docs]</a>
+<span class="k">class</span> <span class="nc">Estimator1D</span><span class="p">(</span><span class="n">_Estimator1DProc</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Estimator class for 1D data. For a tutorial on the basic functionailty</span>
+<span class="sd">    this provides, see :ref:`ESTIMATOR1D`.</span>
 
 <span class="sd">    .. note::</span>
 
-<span class="sd">        To create an instance of ``Estimator1D``, you should use one of the following</span>
-<span class="sd">        methods:</span>
+<span class="sd">        To create an instance of ``Estimator1D``, you are advised to use one of</span>
+<span class="sd">        the following methods if any are appropriate:</span>
 
 <span class="sd">        * :py:meth:`new_bruker`</span>
-<span class="sd">        * :py:meth:`new_synthetic_from_parameters`</span>
-<span class="sd">        * :py:meth:`new_synthetic_from_simulation`</span>
+<span class="sd">        * :py:meth:`new_from_parameters`</span>
+<span class="sd">        * :py:meth:`new_spinach`</span>
 <span class="sd">        * :py:meth:`from_pickle` (re-loads a previously saved estimator).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-        <span class="n">expinfo</span><span class="p">:</span> <span class="n">ExpInfo</span><span class="p">,</span>
-        <span class="n">datapath</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        data</span>
-<span class="sd">            Time-domain data to estimate.</span>
+    <span class="n">dim</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">twodim_dtype</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">proc_dims</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ft_dims</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">default_mpm_trim</span> <span class="o">=</span> <span class="p">[</span><span class="mi">4096</span><span class="p">]</span>
+    <span class="n">default_nlp_trim</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+    <span class="n">default_max_iterations_exact_hessian</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">default_max_iterations_gn_hessian</span> <span class="o">=</span> <span class="mi">200</span>
 
-<span class="sd">        expinfo</span>
-<span class="sd">            Experiment information.</span>
-
-<span class="sd">        datapath</span>
-<span class="sd">            If applicable, the path that the data was derived from.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span><span class="p">,</span> <span class="n">datapath</span><span class="p">)</span>
-
-<div class="viewcode-block" id="Estimator1D.new_bruker"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.new_bruker">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Estimator1D.new_bruker">
+<a class="viewcode-back" href="../../../references/estimator1d.html#nmrespy.Estimator1D.new_bruker">[docs]</a>
+    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">new_bruker</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span>
         <span class="n">directory</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
         <span class="n">convdta</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Estimator1D</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Create a new instance from Bruker-formatted data.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a new instance from Bruker-formatted data.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -139,8 +124,6 @@
 
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
-<span class="sd">        **Directory Requirements**</span>
-
 <span class="sd">        There are certain file paths expected to be found relative to ``directory``</span>
 <span class="sd">        which contain the data and parameter files. Here is an extensive list of</span>
 <span class="sd">        the paths expected to exist, for different data types:</span>
@@ -169,25 +152,133 @@
 
         <span class="k">if</span> <span class="n">directory</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;pdata&quot;</span><span class="p">:</span>
             <span class="n">slice_</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sig</span><span class="o">.</span><span class="n">ift</span><span class="p">(</span><span class="n">data</span><span class="p">))[</span><span class="n">slice_</span><span class="p">]</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">ift</span><span class="p">(</span><span class="n">data</span><span class="p">))[</span><span class="n">slice_</span><span class="p">]</span>
 
         <span class="k">elif</span> <span class="n">convdta</span><span class="p">:</span>
             <span class="n">grpdly</span> <span class="o">=</span> <span class="n">expinfo</span><span class="o">.</span><span class="n">parameters</span><span class="p">[</span><span class="s2">&quot;acqus&quot;</span><span class="p">][</span><span class="s2">&quot;GRPDLY&quot;</span><span class="p">]</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">convdta</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">grpdly</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">convdta</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">grpdly</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span><span class="p">,</span> <span class="n">directory</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Estimator1D.new_synthetic_from_parameters"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.new_synthetic_from_parameters">[docs]</a>    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">new_synthetic_from_parameters</span><span class="p">(</span>
+
+<div class="viewcode-block" id="Estimator1D.new_spinach">
+<a class="viewcode-back" href="../../../references/estimator1d.html#nmrespy.Estimator1D.new_spinach">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">new_spinach</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">shifts</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="n">couplings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)]],</span>
+        <span class="n">pts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">sw</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">offset</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
+        <span class="n">field</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">11.74</span><span class="p">,</span>
+        <span class="n">nucleus</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;1H&quot;</span><span class="p">,</span>
+        <span class="n">snr</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">20.</span><span class="p">,</span>
+        <span class="n">lb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.91</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Estimator1D</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Create a new instance from a pulse-acquire Spinach simulation.</span>
+
+<span class="sd">        See :ref:`SPINACH_INSTALL` for requirments to use this method.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        shifts</span>
+<span class="sd">            A list of tuple of chemical shift values for each spin.</span>
+
+<span class="sd">        couplings</span>
+<span class="sd">            The scalar couplings present in the spin system. Given ``shifts`` is of</span>
+<span class="sd">            length ``n``, couplings should be an iterable with entries of the form</span>
+<span class="sd">            ``(i1, i2, coupling)``, where ``1 &lt;= i1, i2 &lt;= n`` are the indices of</span>
+<span class="sd">            the two spins involved in the coupling, and ``coupling`` is the value</span>
+<span class="sd">            of the scalar coupling in Hz. ``None`` will set all spins to be</span>
+<span class="sd">            uncoupled.</span>
+
+<span class="sd">        pts</span>
+<span class="sd">            The number of points the signal comprises.</span>
+
+<span class="sd">        sw</span>
+<span class="sd">            The sweep width of the signal (Hz).</span>
+
+<span class="sd">        offset</span>
+<span class="sd">            The transmitter offset (Hz).</span>
+
+<span class="sd">        sfo</span>
+<span class="sd">            The magnetic field strength (T).</span>
+
+<span class="sd">        nucleus</span>
+<span class="sd">            The identity of the nucleus. Should be of the form ``&quot;&lt;mass&gt;&lt;sym&gt;&quot;``</span>
+<span class="sd">            where ``&lt;mass&gt;`` is the atomic mass and ``&lt;sym&gt;`` is the element symbol.</span>
+<span class="sd">            Examples:</span>
+
+<span class="sd">            * ``&quot;1H&quot;``</span>
+<span class="sd">            * ``&quot;13C&quot;``</span>
+<span class="sd">            * ``&quot;195Pt&quot;``</span>
+
+<span class="sd">        snr</span>
+<span class="sd">            The signal-to-noise ratio of the resulting signal, in decibels. ``None``</span>
+<span class="sd">            produces a noiseless signal.</span>
+
+<span class="sd">        lb</span>
+<span class="sd">            Line broadening (exponential damping) to apply to the signal.</span>
+<span class="sd">            The first point will be unaffected by damping, and the final point will</span>
+<span class="sd">            be multiplied by ``np.exp(-lb)``. The default results in the final</span>
+<span class="sd">            point being decreased in value by a factor of roughly 1000.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sanity_check</span><span class="p">(</span>
+            <span class="p">(</span><span class="s2">&quot;shifts&quot;</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float_list</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;pts&quot;</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}),</span>
+            <span class="p">(</span><span class="s2">&quot;sw&quot;</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span>
+            <span class="p">(</span><span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;field&quot;</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span>
+            <span class="p">(</span><span class="s2">&quot;nucleus&quot;</span><span class="p">,</span> <span class="n">nucleus</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_nucleus</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;snr&quot;</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;lb&quot;</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+        <span class="p">)</span>
+        <span class="n">nspins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">shifts</span><span class="p">)</span>
+        <span class="n">sanity_check</span><span class="p">(</span>
+            <span class="p">(</span><span class="s2">&quot;couplings&quot;</span><span class="p">,</span> <span class="n">couplings</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_spinach_couplings</span><span class="p">,</span> <span class="p">(</span><span class="n">nspins</span><span class="p">,),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">),</span>  <span class="c1"># noqa: E501</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">couplings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">couplings</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">fid</span><span class="p">,</span> <span class="n">sfo</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_run_spinach</span><span class="p">(</span>
+            <span class="s2">&quot;onedim_sim&quot;</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">couplings</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">nucleus</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">fid</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fid</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">add_noise</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">snr</span><span class="p">)</span>
+
+        <span class="n">fid</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">exp_apodisation</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">lb</span><span class="p">)</span>
+
+        <span class="n">expinfo</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">ExpInfo</span><span class="p">(</span>
+            <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">sw</span><span class="o">=</span><span class="n">sw</span><span class="p">,</span>
+            <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+            <span class="n">sfo</span><span class="o">=</span><span class="n">sfo</span><span class="p">,</span>
+            <span class="n">nuclei</span><span class="o">=</span><span class="n">nucleus</span><span class="p">,</span>
+            <span class="n">default_pts</span><span class="o">=</span><span class="n">fid</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">expinfo</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Estimator1D.new_from_parameters">
+<a class="viewcode-back" href="../../../references/estimator1d.html#nmrespy.Estimator1D.new_from_parameters">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">new_from_parameters</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span>
         <span class="n">params</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
         <span class="n">pts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">sw</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-        <span class="n">offset</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">sfo</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">snr</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span>
+        <span class="n">offset</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">sfo</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">500.</span><span class="p">,</span>
+        <span class="n">nucleus</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;1H&quot;</span><span class="p">,</span>
+        <span class="n">snr</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">20.</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Estimator1D</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Generate an estimator instance from an array of oscillator parameters.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate an estimator instance with sythetic data created from an</span>
+<span class="sd">        array of oscillator parameters.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -215,152 +306,47 @@
 <span class="sd">        sfo</span>
 <span class="sd">            The transmitter frequency (MHz).</span>
 
+<span class="sd">        nucleus</span>
+<span class="sd">            The identity of the nucleus. Should be of the form ``&quot;&lt;mass&gt;&lt;sym&gt;&quot;``</span>
+<span class="sd">            where ``&lt;mass&gt;`` is the atomic mass and ``&lt;sym&gt;`` is the element symbol.</span>
+<span class="sd">            Examples: ``&quot;1H&quot;``, ``&quot;13C&quot;``, ``&quot;195Pt&quot;``</span>
+
 <span class="sd">        snr</span>
-<span class="sd">            The signal-to-noise ratio. If ``None`` then no noise will be added</span>
+<span class="sd">            The signal-to-noise ratio (dB). If ``None`` then no noise will be added</span>
 <span class="sd">            to the FID.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_ndarray</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;dim&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;shape&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]}),</span>
+            <span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_parameter_array</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)),</span>
             <span class="p">(</span><span class="s2">&quot;pts&quot;</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}),</span>
             <span class="p">(</span><span class="s2">&quot;sw&quot;</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span>
             <span class="p">(</span><span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;nucleus&quot;</span><span class="p">,</span> <span class="n">nucleus</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_nucleus</span><span class="p">),</span>
             <span class="p">(</span><span class="s2">&quot;sfo&quot;</span><span class="p">,</span> <span class="n">sfo</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
             <span class="p">(</span><span class="s2">&quot;snr&quot;</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
         <span class="p">)</span>
 
-        <span class="n">expinfo</span> <span class="o">=</span> <span class="n">ExpInfo</span><span class="p">(</span>
+        <span class="n">expinfo</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">ExpInfo</span><span class="p">(</span>
             <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
             <span class="n">sw</span><span class="o">=</span><span class="n">sw</span><span class="p">,</span>
             <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
             <span class="n">sfo</span><span class="o">=</span><span class="n">sfo</span><span class="p">,</span>
+            <span class="n">nuclei</span><span class="o">=</span><span class="n">nucleus</span><span class="p">,</span>
             <span class="n">default_pts</span><span class="o">=</span><span class="n">pts</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">data</span> <span class="o">=</span> <span class="n">expinfo</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">snr</span><span class="o">=</span><span class="n">snr</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Estimator1D.new_synthetic_from_simulation"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.new_synthetic_from_simulation">[docs]</a>    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">new_synthetic_from_simulation</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span>
-        <span class="n">spin_system</span><span class="p">:</span> <span class="n">SpinSystem</span><span class="p">,</span>
-        <span class="n">sw</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-        <span class="n">offset</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-        <span class="n">pts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">freq_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hz&quot;</span><span class="p">,</span>
-        <span class="n">channel</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Nucleus</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1H&quot;</span><span class="p">,</span>
-        <span class="n">snr</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Estimator1D</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Generate an estimator with data derived from a pulse-aquire experiment</span>
-<span class="sd">        simulation.</span>
 
-<span class="sd">        Simulations are performed using the</span>
-<span class="sd">        `nmr_sims.experiments.pa.PulseAcquireSimulation</span>
-<span class="sd">        &lt;https://foroozandehgroup.github.io/nmr_sims/content/references/experiments/</span>
-<span class="sd">        pa.html#nmr_sims.experiments.pa.PulseAcquireSimulation&gt;`_</span>
-<span class="sd">        class.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        spin_system</span>
-<span class="sd">            Specification of the spin system to run simulations on.</span>
-<span class="sd">            `See here &lt;https://foroozandehgroup.github.io/nmr_sims/content/</span>
-<span class="sd">            references/spin_system.html#nmr_sims.spin_system.SpinSystem.__init__&gt;`_</span>
-<span class="sd">            for more details. **N.B. the transmitter frequency (sfo) will</span>
-<span class="sd">            be determined by** ``spin_system.field``.</span>
-
-<span class="sd">        sw</span>
-<span class="sd">            The sweep width in Hz.</span>
-
-<span class="sd">        offset</span>
-<span class="sd">            The transmitter offset frequency in Hz.</span>
-
-<span class="sd">        pts</span>
-<span class="sd">            The number of points sampled.</span>
-
-<span class="sd">        freq_unit</span>
-<span class="sd">            The unit that ``sw`` and ``offset`` are expressed in. Should</span>
-<span class="sd">            be either ``&quot;hz&quot;`` or ``&quot;ppm&quot;``.</span>
-
-<span class="sd">        channel</span>
-<span class="sd">            Nucleus targeted in the experiment simulation. ¹H is set as the default.</span>
-<span class="sd">            `See here &lt;https://foroozandehgroup.github.io/nmr_sims/content/</span>
-<span class="sd">            references/nuclei.html&gt;`__ for more information.</span>
-
-<span class="sd">        snr</span>
-<span class="sd">            The signal-to-noise ratio of the resulting signal, in decibels. ``None``</span>
-<span class="sd">            produces a noiseless signal.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;spin_system&quot;</span><span class="p">,</span> <span class="n">spin_system</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_spin_system</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;sw&quot;</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;greater_than_zero&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}),</span>
-            <span class="p">(</span><span class="s2">&quot;offset&quot;</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;pts&quot;</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_positive_int</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;freq_unit&quot;</span><span class="p">,</span> <span class="n">freq_unit</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;hz&quot;</span><span class="p">,</span> <span class="s2">&quot;ppm&quot;</span><span class="p">)),</span>
-            <span class="p">(</span><span class="s2">&quot;channel&quot;</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_nmrsims_nucleus</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;snr&quot;</span><span class="p">,</span> <span class="n">snr</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">),</span>
-        <span class="p">)</span>
-
-        <span class="n">sw</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sw</span><span class="si">}{</span><span class="n">freq_unit</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">offset</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">offset</span><span class="si">}{</span><span class="n">freq_unit</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="n">sim</span> <span class="o">=</span> <span class="n">PulseAcquireSimulation</span><span class="p">(</span>
-            <span class="n">spin_system</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="n">channel</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">sim</span><span class="o">.</span><span class="n">simulate</span><span class="p">()</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">fid</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">data</span> <span class="o">+=</span> <span class="n">sig</span><span class="o">.</span><span class="n">_make_noise</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">snr</span><span class="p">)</span>
-
-        <span class="n">expinfo</span> <span class="o">=</span> <span class="n">ExpInfo</span><span class="p">(</span>
-            <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-            <span class="n">sw</span><span class="o">=</span><span class="n">sim</span><span class="o">.</span><span class="n">sweep_widths</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-            <span class="n">offset</span><span class="o">=</span><span class="n">sim</span><span class="o">.</span><span class="n">offsets</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-            <span class="n">sfo</span><span class="o">=</span><span class="n">sim</span><span class="o">.</span><span class="n">sfo</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-            <span class="n">nuclei</span><span class="o">=</span><span class="n">channel</span><span class="p">,</span>
-            <span class="n">default_pts</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">expinfo</span><span class="p">)</span></div>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Return the spectrum corresponding to ``self.data``&quot;&quot;&quot;</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
-        <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-        <span class="k">return</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-
-<div class="viewcode-block" id="Estimator1D.phase_data"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.phase_data">[docs]</a>    <span class="k">def</span> <span class="nf">phase_data</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">p0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">p1</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="n">pivot</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Apply first-order phae correction to the estimator&#39;s data.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        p0</span>
-<span class="sd">            Zero-order phase correction, in radians.</span>
-
-<span class="sd">        p1</span>
-<span class="sd">            First-order phase correction, in radians.</span>
-
-<span class="sd">        pivot</span>
-<span class="sd">            Index of the pivot.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;p0&quot;</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;p1&quot;</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;pivot&quot;</span><span class="p">,</span> <span class="n">pivot</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_index</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">size</span><span class="p">,)),</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">phase</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span> <span class="p">[</span><span class="n">p0</span><span class="p">],</span> <span class="p">[</span><span class="n">p1</span><span class="p">],</span> <span class="p">[</span><span class="n">pivot</span><span class="p">])</span></div>
-
-<div class="viewcode-block" id="Estimator1D.view_data"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.view_data">[docs]</a>    <span class="k">def</span> <span class="nf">view_data</span><span class="p">(</span>
+<div class="viewcode-block" id="Estimator1D.view_data">
+<a class="viewcode-back" href="../../../references/estimator1d.html#nmrespy.Estimator1D.view_data">[docs]</a>
+    <span class="k">def</span> <span class="nf">view_data</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;freq&quot;</span><span class="p">,</span>
         <span class="n">components</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;real&quot;</span><span class="p">,</span>
         <span class="n">freq_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hz&quot;</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;View the data.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;View the data (FID or spectrum) with an interactive matplotlib plot.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -371,7 +357,8 @@
 <span class="sd">            Must be ``&quot;real&quot;``, ``&quot;imag&quot;``, or ``&quot;both&quot;``.</span>
 
 <span class="sd">        freq_unit</span>
-<span class="sd">            Must be ``&quot;hz&quot;`` or ``&quot;ppm&quot;``.</span>
+<span class="sd">            Must be ``&quot;hz&quot;`` or ``&quot;ppm&quot;``. If ``domain`` is ``freq``, this</span>
+<span class="sd">            determines which unit to set chemical shifts to.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">sanity_check</span><span class="p">(</span>
             <span class="p">(</span><span class="s2">&quot;domain&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;freq&quot;</span><span class="p">,</span> <span class="s2">&quot;time&quot;</span><span class="p">)),</span>
@@ -385,11 +372,10 @@
 
         <span class="k">if</span> <span class="n">domain</span> <span class="o">==</span> <span class="s2">&quot;freq&quot;</span><span class="p">:</span>
             <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">freq_unit</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/=</span> <span class="mi">2</span>
-            <span class="n">y</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-            <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;$</span><span class="se">\\</span><span class="s2">omega$ (</span><span class="si">{</span><span class="n">freq_unit</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;h&#39;</span><span class="p">,</span> <span class="s1">&#39;H&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span>
+            <span class="n">label</span><span class="p">,</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_axis_freq_labels</span><span class="p">(</span><span class="n">freq_unit</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">domain</span> <span class="o">==</span> <span class="s2">&quot;time&quot;</span><span class="p">:</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_timepoints</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">x</span><span class="p">,</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_timepoints</span><span class="p">()</span>
             <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;$t$ (s)&quot;</span>
 
         <span class="k">if</span> <span class="n">components</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;real&quot;</span><span class="p">,</span> <span class="s2">&quot;both&quot;</span><span class="p">]:</span>
@@ -402,618 +388,474 @@
 
         <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Estimator1D.estimate"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.estimate">[docs]</a>    <span class="nd">@logger</span>
-    <span class="k">def</span> <span class="nf">estimate</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">region</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">noise_region</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">region_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hz&quot;</span><span class="p">,</span>
-        <span class="n">initial_guess</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gauss-newton&quot;</span><span class="p">,</span>
-        <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;apfd&quot;</span><span class="p">,</span>
-        <span class="n">phase_variance</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">max_iterations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">cut_ratio</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.1</span><span class="p">,</span>
-        <span class="n">mpm_trim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">,</span>
-        <span class="n">nlp_trim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">fprint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">_log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Estimate a specified region of the signal.</span>
 
-<span class="sd">        The basic steps that this method carries out are:</span>
-
-<span class="sd">        * (Optional, but highly advised) Generate a frequency-filtered signal</span>
-<span class="sd">          corresponding to the specified region.</span>
-<span class="sd">        * (Optional) Generate an inital guess using the Matrix Pencil Method (MPM).</span>
-<span class="sd">        * Apply numerical optimisation to determine a final estimate of the signal</span>
-<span class="sd">          parameters</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        region</span>
-<span class="sd">            The frequency range of interest. Should be of the form ``[left, right]``</span>
-<span class="sd">            where ``left`` and ``right`` are the left and right bounds of the region</span>
-<span class="sd">            of interest. If ``None``, the full signal will be considered, though</span>
-<span class="sd">            for sufficently large and complex signals it is probable that poor and</span>
-<span class="sd">            slow performance will be achieved.</span>
-
-<span class="sd">        noise_region</span>
-<span class="sd">            If ``region`` is not ``None``, this must be of the form ``[left, right]``</span>
-<span class="sd">            too. This should specify a frequency range where no noticeable signals</span>
-<span class="sd">            reside, i.e. only noise exists.</span>
-
-<span class="sd">        region_unit</span>
-<span class="sd">            One of ``&quot;hz&quot;`` or ``&quot;ppm&quot;`` Specifies the units that ``region``</span>
-<span class="sd">            and ``noise_region`` have been given as.</span>
-
-<span class="sd">        initial_guess</span>
-<span class="sd">            If ``None``, an initial guess will be generated using the MPM,</span>
-<span class="sd">            with the Minimum Descritpion Length being used to estimate the</span>
-<span class="sd">            number of oscilltors present. If and int, the MPM will be used to</span>
-<span class="sd">            compute the initial guess with the value given being the number of</span>
-<span class="sd">            oscillators. If a NumPy array, this array will be used as the initial</span>
-<span class="sd">            guess.</span>
-
-<span class="sd">        method</span>
-<span class="sd">            Specifies the optimisation method.</span>
-
-<span class="sd">            * ``&quot;exact&quot;`` Uses SciPy&#39;s</span>
-<span class="sd">              `trust-constr routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
-<span class="sd">              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr&gt;`_</span>
-<span class="sd">              The Hessian will be exact.</span>
-<span class="sd">            * ``&quot;gauss-newton&quot;`` Uses SciPy&#39;s</span>
-<span class="sd">              `trust-constr routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
-<span class="sd">              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr&gt;`_</span>
-<span class="sd">              The Hessian will be approximated based on the</span>
-<span class="sd">              `Gauss-Newton method &lt;https://en.wikipedia.org/wiki/</span>
-<span class="sd">              Gauss%E2%80%93Newton_algorithm&gt;`_</span>
-<span class="sd">            * ``&quot;lbfgs&quot;`` Uses SciPy&#39;s</span>
-<span class="sd">              `L-BFGS-B routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
-<span class="sd">              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb&gt;`_.</span>
-
-<span class="sd">        mode</span>
-<span class="sd">            A string containing a subset of the characters ``&quot;a&quot;`` (amplitudes),</span>
-<span class="sd">            ``&quot;p&quot;`` (phases), ``&quot;f&quot;`` (frequencies), and ``&quot;d&quot;`` (damping factors).</span>
-<span class="sd">            Specifies which types of parameters should be considered for optimisation.</span>
-
-<span class="sd">        phase_variance</span>
-<span class="sd">            Whether or not to include the variance of oscillator phases in the cost</span>
-<span class="sd">            function. This should be set to ``True`` in cases where the signal being</span>
-<span class="sd">            considered is derived from well-phased data.</span>
-
-<span class="sd">        max_iterations</span>
-<span class="sd">            A value specifiying the number of iterations the routine may run</span>
-<span class="sd">            through before it is terminated. If ``None``, the default number</span>
-<span class="sd">            of maximum iterations is set (``100`` if ``method`` is</span>
-<span class="sd">            ``&quot;exact&quot;`` or ``&quot;gauss-newton&quot;``, and ``500`` if ``&quot;method&quot;`` is</span>
-<span class="sd">            ``&quot;lbfgs&quot;``).</span>
-
-<span class="sd">        mpm_trim</span>
-<span class="sd">            Specifies the maximal size allowed for the filtered signal when</span>
-<span class="sd">            undergoing the Matrix Pencil. If ``None``, no trimming is applied</span>
-<span class="sd">            to the signal. If an int, and the filtered signal has a size</span>
-<span class="sd">            greater than ``mpm_trim``, this signal will be set as</span>
-<span class="sd">            ``signal[:mpm_trim]``.</span>
-
-<span class="sd">        nlp_trim</span>
-<span class="sd">            Specifies the maximal size allowed for the filtered signal when undergoing</span>
-<span class="sd">            nonlinear programming. By default (``None``), no trimming is applied to</span>
-<span class="sd">            the signal. If an int, and the filtered signal has a size greater than</span>
-<span class="sd">            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.</span>
-
-<span class="sd">        fprint</span>
-<span class="sd">            Whether of not to output information to the terminal.</span>
-
-<span class="sd">        _log</span>
-<span class="sd">            Ignore this!</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;region_unit&quot;</span><span class="p">,</span> <span class="n">region_unit</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_frequency_unit</span><span class="p">,</span>
-                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hz_ppm_valid</span><span class="p">,),</span>
-            <span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;initial_guess&quot;</span><span class="p">,</span> <span class="n">initial_guess</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_initial_guess</span><span class="p">,</span>
-                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,),</span> <span class="p">{},</span> <span class="kc">True</span>
-            <span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;lbfgs&quot;</span><span class="p">,</span> <span class="s2">&quot;gauss-newton&quot;</span><span class="p">,</span> <span class="s2">&quot;exact&quot;</span><span class="p">)),</span>
-            <span class="p">(</span><span class="s2">&quot;phase_variance&quot;</span><span class="p">,</span> <span class="n">phase_variance</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;mode&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_optimiser_mode</span><span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="n">max_iterations</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;fprint&quot;</span><span class="p">,</span> <span class="n">fprint</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;mpm_trim&quot;</span><span class="p">,</span> <span class="n">mpm_trim</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;nlp_trim&quot;</span><span class="p">,</span> <span class="n">nlp_trim</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;cut_ratio&quot;</span><span class="p">,</span> <span class="n">cut_ratio</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span><span class="s2">&quot;greater_than_one&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-        <span class="p">)</span>
-
-        <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;region&quot;</span><span class="p">,</span> <span class="n">region</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_region</span><span class="p">,</span>
-                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(</span><span class="n">region_unit</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">region_unit</span><span class="p">)),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;noise_region&quot;</span><span class="p">,</span> <span class="n">noise_region</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_region</span><span class="p">,</span>
-                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(</span><span class="n">region_unit</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">region_unit</span><span class="p">)),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-        <span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">region</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">region</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">convert</span><span class="p">(((</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),),</span> <span class="s2">&quot;idx-&gt;hz&quot;</span><span class="p">)</span>
-            <span class="n">noise_region</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="n">mpm_signal</span> <span class="o">=</span> <span class="n">nlp_signal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
-            <span class="n">mpm_expinfo</span> <span class="o">=</span> <span class="n">nlp_expinfo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expinfo</span>
-
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">filt</span> <span class="o">=</span> <span class="n">Filter</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">expinfo</span><span class="p">,</span>
-                <span class="n">region</span><span class="p">,</span>
-                <span class="n">noise_region</span><span class="p">,</span>
-                <span class="n">region_unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">,</span>
-            <span class="p">)</span>
-
-            <span class="n">mpm_signal</span><span class="p">,</span> <span class="n">mpm_expinfo</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_filtered_fid</span><span class="p">(</span><span class="n">cut_ratio</span><span class="o">=</span><span class="n">cut_ratio</span><span class="p">)</span>
-            <span class="n">nlp_signal</span><span class="p">,</span> <span class="n">nlp_expinfo</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_filtered_fid</span><span class="p">(</span><span class="n">cut_ratio</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-            <span class="n">region</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_region</span><span class="p">()</span>
-            <span class="n">noise_region</span> <span class="o">=</span> <span class="n">filt</span><span class="o">.</span><span class="n">get_noise_region</span><span class="p">()</span>
-
-        <span class="k">if</span> <span class="p">(</span><span class="n">mpm_trim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">mpm_trim</span> <span class="o">&gt;</span> <span class="n">mpm_signal</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
-            <span class="n">mpm_trim</span> <span class="o">=</span> <span class="n">mpm_signal</span><span class="o">.</span><span class="n">size</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">nlp_trim</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">nlp_trim</span> <span class="o">&gt;</span> <span class="n">nlp_signal</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
-            <span class="n">nlp_trim</span> <span class="o">=</span> <span class="n">nlp_signal</span><span class="o">.</span><span class="n">size</span>
-
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_guess</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="n">x0</span> <span class="o">=</span> <span class="n">initial_guess</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">oscillators</span> <span class="o">=</span> <span class="n">initial_guess</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">initial_guess</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
-
-            <span class="n">x0</span> <span class="o">=</span> <span class="n">MatrixPencil</span><span class="p">(</span>
-                <span class="n">mpm_expinfo</span><span class="p">,</span>
-                <span class="n">mpm_signal</span><span class="p">[:</span><span class="n">mpm_trim</span><span class="p">],</span>
-                <span class="n">oscillators</span><span class="o">=</span><span class="n">oscillators</span><span class="p">,</span>
-                <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">get_params</span><span class="p">()</span>
-
-            <span class="k">if</span> <span class="n">x0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="n">Result</span><span class="p">(</span>
-                        <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[]]),</span>
-                        <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[]]),</span>
-                        <span class="n">region</span><span class="p">,</span>
-                        <span class="n">noise_region</span><span class="p">,</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">,</span>
-                    <span class="p">)</span>
-                <span class="p">)</span>
-
-        <span class="n">result</span> <span class="o">=</span> <span class="n">NonlinearProgramming</span><span class="p">(</span>
-            <span class="n">nlp_expinfo</span><span class="p">,</span>
-            <span class="n">nlp_signal</span><span class="p">[:</span><span class="n">nlp_trim</span><span class="p">],</span>
-            <span class="n">x0</span><span class="p">,</span>
-            <span class="n">phase_variance</span><span class="o">=</span><span class="n">phase_variance</span><span class="p">,</span>
-            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
-            <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
-            <span class="n">max_iterations</span><span class="o">=</span><span class="n">max_iterations</span><span class="p">,</span>
-            <span class="n">fprint</span><span class="o">=</span><span class="n">fprint</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-            <span class="n">Result</span><span class="p">(</span>
-                <span class="n">result</span><span class="o">.</span><span class="n">get_params</span><span class="p">(),</span>
-                <span class="n">result</span><span class="o">.</span><span class="n">get_errors</span><span class="p">(),</span>
-                <span class="n">region</span><span class="p">,</span>
-                <span class="n">noise_region</span><span class="p">,</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">,</span>
-            <span class="p">)</span>
-        <span class="p">)</span></div>
-
-<div class="viewcode-block" id="Estimator1D.subband_estimate"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.subband_estimate">[docs]</a>    <span class="nd">@logger</span>
-    <span class="k">def</span> <span class="nf">subband_estimate</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">noise_region</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
-        <span class="n">noise_region_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hz&quot;</span><span class="p">,</span>
-        <span class="n">nsubbands</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gauss-newton&quot;</span><span class="p">,</span>
-        <span class="n">phase_variance</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">max_iterations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">cut_ratio</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.1</span><span class="p">,</span>
-        <span class="n">mpm_trim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4096</span><span class="p">,</span>
-        <span class="n">nlp_trim</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">fprint</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">_log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Perform estiamtion on the entire signal via estimation of frequency-filtered</span>
-<span class="sd">        sub-bands.</span>
-
-<span class="sd">        This method splits the signal up into ``nsubbands`` equally-sized region</span>
-<span class="sd">        and extracts parameters from each region before finally concatenating all</span>
-<span class="sd">        the results together.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        noise_region</span>
-<span class="sd">            Specifies a frequency range where no noticeable signals reside, i.e. only</span>
-<span class="sd">            noise exists.</span>
-
-<span class="sd">        noise_region_unit</span>
-<span class="sd">            One of ``&quot;hz&quot;`` or ``&quot;ppm&quot;``. Specifies the units that ``noise_region``</span>
-<span class="sd">            have been given in.</span>
-
-<span class="sd">        nsubbands</span>
-<span class="sd">            The number of sub-bands to break the signal into. If ``None``, the number</span>
-<span class="sd">            will be set as the nearest integer to the data size divided by 500.</span>
-
-<span class="sd">        method</span>
-<span class="sd">            Specifies the optimisation method.</span>
-
-<span class="sd">            * ``&quot;exact&quot;`` Uses SciPy&#39;s</span>
-<span class="sd">              `trust-constr routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
-<span class="sd">              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr&gt;`_</span>
-<span class="sd">              The Hessian will be exact.</span>
-<span class="sd">            * ``&quot;gauss-newton&quot;`` Uses SciPy&#39;s</span>
-<span class="sd">              `trust-constr routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
-<span class="sd">              optimize.minimize-trustconstr.html\#optimize-minimize-trustconstr&gt;`_</span>
-<span class="sd">              The Hessian will be approximated based on the</span>
-<span class="sd">              `Gauss-Newton method &lt;https://en.wikipedia.org/wiki/</span>
-<span class="sd">              Gauss%E2%80%93Newton_algorithm&gt;`_</span>
-<span class="sd">            * ``&quot;lbfgs&quot;`` Uses SciPy&#39;s</span>
-<span class="sd">              `L-BFGS-B routine &lt;https://docs.scipy.org/doc/scipy/reference/</span>
-<span class="sd">              optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb&gt;`_.</span>
-
-<span class="sd">        phase_variance</span>
-<span class="sd">            Whether or not to include the variance of oscillator phases in the cost</span>
-<span class="sd">            function. This should be set to ``True`` in cases where the signal being</span>
-<span class="sd">            considered is derived from well-phased data.</span>
-
-<span class="sd">        max_iterations</span>
-<span class="sd">            A value specifiying the number of iterations the routine may run</span>
-<span class="sd">            through before it is terminated. If ``None``, the default number</span>
-<span class="sd">            of maximum iterations is set (``100`` if ``method`` is</span>
-<span class="sd">            ``&quot;exact&quot;`` or ``&quot;gauss-newton&quot;``, and ``500`` if ``&quot;method&quot;`` is</span>
-<span class="sd">            ``&quot;lbfgs&quot;``).</span>
-
-<span class="sd">        mpm_trim</span>
-<span class="sd">            Specifies the maximal size allowed for the filtered signal when</span>
-<span class="sd">            undergoing the Matrix Pencil. If ``None``, no trimming is applied</span>
-<span class="sd">            to the signal. If an int, and the filtered signal has a size</span>
-<span class="sd">            greater than ``mpm_trim``, this signal will be set as</span>
-<span class="sd">            ``signal[:mpm_trim]``.</span>
-
-<span class="sd">        nlp_trim</span>
-<span class="sd">            Specifies the maximal size allowed for the filtered signal when undergoing</span>
-<span class="sd">            nonlinear programming. By default (``None``), no trimming is applied to</span>
-<span class="sd">            the signal. If an int, and the filtered signal has a size greater than</span>
-<span class="sd">            ``nlp_trim``, this signal will be set as ``signal[:nlp_trim]``.</span>
-
-<span class="sd">        fprint</span>
-<span class="sd">            Whether of not to output information to the terminal.</span>
-
-<span class="sd">        _log</span>
-<span class="sd">            Ignore this!</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;noise_region_unit&quot;</span><span class="p">,</span> <span class="n">noise_region_unit</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_frequency_unit</span><span class="p">,</span>
-                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hz_ppm_valid</span><span class="p">,),</span>
-            <span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;nsubbands&quot;</span><span class="p">,</span> <span class="n">nsubbands</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;method&quot;</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_one_of</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;lbfgs&quot;</span><span class="p">,</span> <span class="s2">&quot;gauss-newton&quot;</span><span class="p">,</span> <span class="s2">&quot;exact&quot;</span><span class="p">)),</span>
-            <span class="p">(</span><span class="s2">&quot;phase_variance&quot;</span><span class="p">,</span> <span class="n">phase_variance</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;max_iterations&quot;</span><span class="p">,</span> <span class="n">max_iterations</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;fprint&quot;</span><span class="p">,</span> <span class="n">fprint</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;mpm_trim&quot;</span><span class="p">,</span> <span class="n">mpm_trim</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;nlp_trim&quot;</span><span class="p">,</span> <span class="n">nlp_trim</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;cut_ratio&quot;</span><span class="p">,</span> <span class="n">cut_ratio</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span><span class="s2">&quot;greater_than_one&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-        <span class="p">)</span>
-
-        <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;noise_region&quot;</span><span class="p">,</span> <span class="n">noise_region</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_region</span><span class="p">,</span>
-                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(</span><span class="n">noise_region_unit</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">noise_region_unit</span><span class="p">)),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-        <span class="p">)</span>
-
-        <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span>
-            <span class="s2">&quot;phase_variance&quot;</span><span class="p">:</span> <span class="n">phase_variance</span><span class="p">,</span>
-            <span class="s2">&quot;max_iterations&quot;</span><span class="p">:</span> <span class="n">max_iterations</span><span class="p">,</span>
-            <span class="s2">&quot;cut_ratio&quot;</span><span class="p">:</span> <span class="n">cut_ratio</span><span class="p">,</span>
-            <span class="s2">&quot;mpm_trim&quot;</span><span class="p">:</span> <span class="n">mpm_trim</span><span class="p">,</span>
-            <span class="s2">&quot;nlp_trim&quot;</span><span class="p">:</span> <span class="n">nlp_trim</span><span class="p">,</span>
-            <span class="s2">&quot;fprint&quot;</span><span class="p">:</span> <span class="n">fprint</span><span class="p">,</span>
-        <span class="p">}</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_subband_estimate</span><span class="p">(</span><span class="n">nsubbands</span><span class="p">,</span> <span class="n">noise_region</span><span class="p">,</span> <span class="n">noise_region_unit</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="Estimator1D.make_fid"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.make_fid">[docs]</a>    <span class="k">def</span> <span class="nf">make_fid</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Construct a noiseless FID from estimation result parameters.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        indices</span>
-<span class="sd">            The indices of results to extract errors from. Index ``0`` corresponds to</span>
-<span class="sd">            the first result obtained using the estimator, ``1`` corresponds to</span>
-<span class="sd">            the next, etc.  If ``None``, all results will be used.</span>
-
-<span class="sd">        pts</span>
-<span class="sd">            The number of points to construct the time-points with in each dimesnion.</span>
-<span class="sd">            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be</span>
-<span class="sd">            used.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;indices&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span><span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;pts&quot;</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span>
-                    <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span>
-                    <span class="s2">&quot;len_one_can_be_listless&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                    <span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="p">},</span>
-                <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-        <span class="p">)</span>
-
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">pts</span><span class="p">)</span></div>
-
-    <span class="k">def</span> <span class="nf">write_to_topspin</span><span class="p">(</span>
+<div class="viewcode-block" id="Estimator1D.write_to_bruker">
+<a class="viewcode-back" href="../../../references/estimator1d.html#nmrespy.Estimator1D.write_to_bruker">[docs]</a>
+    <span class="k">def</span> <span class="nf">write_to_bruker</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
-        <span class="n">expno</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">force_overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">expno</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">procno</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">force_overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">res_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write a signal generated with estimated parameters to Bruker format.</span>
+
+<span class="sd">        * ``&lt;path&gt;/&lt;expno&gt;/`` will contain the time-domain data and information</span>
+<span class="sd">          (``fid``, ``acqus``, ...)</span>
+<span class="sd">        * ``&lt;path&gt;/&lt;expno&gt;/pdata/1/`` will contain the processed data and</span>
+<span class="sd">          information (``pdata``, ``procs``, ...)</span>
+
+<span class="sd">        .. note::</span>
+
+<span class="sd">             There is a known problem that the spectral data has timepoints along</span>
+<span class="sd">             the x-axis rather than chemical shifts. I will try to figure out why</span>
+<span class="sd">             and fix this in due course!</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        path</span>
+<span class="sd">            The path to the root directory to store the data in.</span>
+
+<span class="sd">        indices</span>
+<span class="sd">            See :ref:`INDICES`.</span>
+
+<span class="sd">        pts</span>
+<span class="sd">            The number of points to construct the signal from.</span>
+
+<span class="sd">        expno</span>
+<span class="sd">            The experiment number. If ``None``, the smallest int ``x`` for which the</span>
+<span class="sd">            directory ``&lt;path&gt;/&lt;x&gt;/`` doesn&#39;t exist will be used.</span>
+
+<span class="sd">        force_overwrite</span>
+<span class="sd">            If ``False`` and the directory ``&lt;path&gt;/&lt;expno&gt;/`` already exists,</span>
+<span class="sd">            the user will be prompted to confirm whether they are happy to</span>
+<span class="sd">            overwrite it. If ``True``, said directory will be overwritten.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: figure out x-axis issue (see warning above).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_results_exist</span><span class="p">()</span>
         <span class="n">sanity_check</span><span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;expno&quot;</span><span class="p">,</span> <span class="n">expno</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}),</span>
+            <span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">check_saveable_dir</span><span class="p">,</span> <span class="p">(</span><span class="kc">True</span><span class="p">,)),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_indices_check</span><span class="p">(</span><span class="n">indices</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pts_check</span><span class="p">(</span><span class="n">pts</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;expno&quot;</span><span class="p">,</span> <span class="n">expno</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">),</span>
             <span class="p">(</span><span class="s2">&quot;force_overwrite&quot;</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;indices&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="o">-</span><span class="n">res_len</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="n">res_len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
-            <span class="p">(</span>
-                <span class="s2">&quot;pts&quot;</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span>
-                    <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span>
-                    <span class="s2">&quot;len_one_can_be_listless&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                    <span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="p">},</span>
-                <span class="kc">True</span><span class="p">,</span>
-            <span class="p">),</span>
         <span class="p">)</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_fid_from_result</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">pts</span><span class="p">)</span>
+        <span class="c1"># calls ne.ExpInfo.write_to_bruker()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">write_to_bruker</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">expno</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">force_overwrite</span><span class="p">)</span></div>
 
-        <span class="n">fid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">pts</span><span class="p">)</span>
-        <span class="n">fid_uncomplex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">fid</span><span class="o">.</span><span class="n">size</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float64&quot;</span><span class="p">)</span>
-        <span class="n">fid_uncomplex</span><span class="p">[::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">real</span>
-        <span class="n">fid_uncomplex</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">imag</span>
 
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">NMRESPYPATH</span> <span class="o">/</span> <span class="s2">&quot;ts_templates/acqus&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-            <span class="n">text</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-
-        <span class="n">int_regex</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;-?\d+&quot;</span>
-        <span class="n">float_regex</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;-?\d+(\.\d+)?&quot;</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
-            <span class="sa">r</span><span class="s2">&quot;\$BF1= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span>
-            <span class="s2">&quot;$BF1= &quot;</span> <span class="o">+</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bf</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">500.</span> <span class="o">-</span> <span class="mf">1e-6</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">()[</span><span class="mi">0</span><span class="p">]),</span>
-            <span class="n">text</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$BYTORDA= &quot;</span> <span class="o">+</span> <span class="n">int_regex</span><span class="p">,</span> <span class="s2">&quot;$BYTORDA= 0&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$DTYPA= &quot;</span> <span class="o">+</span> <span class="n">int_regex</span><span class="p">,</span> <span class="s2">&quot;$DTYPA= 2&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$GRPDLY= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span> <span class="s2">&quot;$GRPDLY= 0&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
-            <span class="sa">r</span><span class="s2">&quot;\$NUC1= &lt;\d+[a-zA-Z]+&gt;&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;$NUC1= &lt;&quot;</span> <span class="o">+</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nuclei</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nuclei</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;1H&quot;</span><span class="p">)</span> <span class="o">+</span>
-            <span class="s2">&quot;&gt;&quot;</span><span class="p">,</span>
-            <span class="n">text</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$O1= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;$O1= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
-            <span class="sa">r</span><span class="s2">&quot;\$SFO1= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span>
-            <span class="s2">&quot;$SFO1= &quot;</span> <span class="o">+</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">500.0</span><span class="p">),</span>
-            <span class="n">text</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span>
-            <span class="sa">r</span><span class="s2">&quot;\$SW= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span>
-            <span class="s2">&quot;$SW= &quot;</span> <span class="o">+</span>
-            <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hz_ppm_valid</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mf">500.0</span><span class="p">),</span>
-            <span class="n">text</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$SW_h= &quot;</span> <span class="o">+</span> <span class="n">float_regex</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;$SW_h= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-        <span class="n">text</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\$TD= &quot;</span> <span class="o">+</span> <span class="n">int_regex</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;$TD= </span><span class="si">{</span><span class="n">fid</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
-
-        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-            <span class="n">path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">expdir</span> <span class="o">:=</span> <span class="n">path</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">expno</span><span class="p">))</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">expdir</span><span class="p">)</span>
-        <span class="n">expdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
-
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">expdir</span> <span class="o">/</span> <span class="s2">&quot;acqus&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">expdir</span> <span class="o">/</span> <span class="s2">&quot;acqu&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
-
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">expdir</span> <span class="o">/</span> <span class="s2">&quot;fid&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-            <span class="n">fh</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fid_uncomplex</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;&lt;f8&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">tobytes</span><span class="p">())</span>
-
-<div class="viewcode-block" id="Estimator1D.plot_result"><a class="viewcode-back" href="../../../content/references/estimator1d.html#nmrespy.Estimator1D.plot_result">[docs]</a>    <span class="nd">@logger</span>
+<div class="viewcode-block" id="Estimator1D.plot_result">
+<a class="viewcode-back" href="../../../references/estimator1d.html#nmrespy.Estimator1D.plot_result">[docs]</a>
+    <span class="nd">@logger</span>
     <span class="k">def</span> <span class="nf">plot_result</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">*</span><span class="p">,</span>
+        <span class="n">high_resolution_pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">axes_left</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.07</span><span class="p">,</span>
+        <span class="n">axes_right</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.96</span><span class="p">,</span>
+        <span class="n">axes_bottom</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.08</span><span class="p">,</span>
+        <span class="n">axes_top</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.96</span><span class="p">,</span>
+        <span class="n">axes_region_separation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+        <span class="n">xaxis_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hz&quot;</span><span class="p">,</span>
+        <span class="n">xaxis_label_height</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+        <span class="n">xaxis_ticks</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">]]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">oscillator_colors</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">plot_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">plot_residual</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">plot_model</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">residual_shift</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">model_shift</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">shifts_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ppm&quot;</span><span class="p">,</span>
-        <span class="n">data_color</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s2">&quot;#000000&quot;</span><span class="p">,</span>
-        <span class="n">residual_color</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s2">&quot;#808080&quot;</span><span class="p">,</span>
-        <span class="n">model_color</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s2">&quot;#808080&quot;</span><span class="p">,</span>
-        <span class="n">oscillator_colors</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">show_labels</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">stylesheet</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">ResultPlotter</span><span class="p">]:</span>
-        <span class="sd">&quot;&quot;&quot;Write estimation results to text and PDF files.</span>
+        <span class="n">residual_shift</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">label_peaks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">denote_regions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">spectrum_line_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">oscillator_line_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">residual_line_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">model_line_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">label_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">mpl</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">mpl</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">Axes</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Generate a figure of the estimation result.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        indices</span>
-<span class="sd">            The indices of results to include. Index ``0`` corresponds to the first</span>
-<span class="sd">            result obtained using the estimator, ``1`` corresponds to the next, etc.</span>
-<span class="sd">            If ``None``, all results will be included.</span>
+<span class="sd">            See :ref:`INDICES`.</span>
 
-<span class="sd">        plot_model</span>
-<span class="sd">            If ``True``, plot the model generated using ``result``. This model is</span>
-<span class="sd">            a summation of all oscillator present in the result.</span>
+<span class="sd">        high_resolution_pts</span>
+<span class="sd">            Indicates the number of points used to generate the oscillators and model.</span>
+<span class="sd">            Should be greater than or equal to ``self.default_pts[0]``. If ``None``,</span>
+<span class="sd">            ``self.default_pts[0]`` will be used.</span>
 
-<span class="sd">        plot_residual</span>
-<span class="sd">            If ``True``, plot the difference between the data and the model</span>
-<span class="sd">            generated using ``result``.</span>
+<span class="sd">        axes_left</span>
+<span class="sd">            The position of the left edge of the axes, in `figure coordinates</span>
+<span class="sd">            &lt;https://matplotlib.org/stable/tutorials/advanced/\</span>
+<span class="sd">            transforms_tutorial.html&gt;`_\. Should be between ``0.`` and ``1.``.</span>
 
-<span class="sd">        residual_shift</span>
-<span class="sd">            Specifies a translation of the residual plot along the y-axis. If</span>
-<span class="sd">            ``None``, a default shift will be applied.</span>
+<span class="sd">        axes_right</span>
+<span class="sd">            The position of the right edge of the axes, in figure coordinates. Should</span>
+<span class="sd">            be between ``0.`` and ``1.``.</span>
 
-<span class="sd">        model_shift</span>
-<span class="sd">            Specifies a translation of the residual plot along the y-axis. If</span>
-<span class="sd">            ``None``, a default shift will be applied.</span>
+<span class="sd">        axes_top</span>
+<span class="sd">            The position of the top edge of the axes, in figure coordinates. Should</span>
+<span class="sd">            be between ``0.`` and ``1.``.</span>
 
-<span class="sd">        shifts_unit</span>
-<span class="sd">            Units to display chemical shifts in. Must be either ``&#39;ppm&#39;`` or</span>
-<span class="sd">            ``&#39;hz&#39;``.</span>
+<span class="sd">        axes_bottom</span>
+<span class="sd">            The position of the bottom edge of the axes, in figure coordinates. Should</span>
+<span class="sd">            be between ``0.`` and ``1.``.</span>
 
-<span class="sd">        data_color</span>
-<span class="sd">            The colour used to plot the data. Any value that is recognised by</span>
-<span class="sd">            matplotlib as a color is permitted. See `here</span>
-<span class="sd">            &lt;https://matplotlib.org/stable/tutorials/colors/colors.html&gt;`_ for</span>
-<span class="sd">            a full description of valid values.</span>
+<span class="sd">        axes_region_separation</span>
+<span class="sd">            The extent by which adjacent regions are separated in the figure,</span>
+<span class="sd">            in figure coordinates.</span>
 
-<span class="sd">        residual_color</span>
-<span class="sd">            # The colour used to plot the residual. See ``data_color`` for a</span>
-<span class="sd">            # description of valid colors.</span>
+<span class="sd">        xaxis_unit</span>
+<span class="sd">            The unit to express chemical shifts in. Should be ``&quot;hz&quot;`` or ``&quot;ppm&quot;``.</span>
 
-<span class="sd">        model_color</span>
-<span class="sd">            The colour used to plot the model. See ``data_color`` for a</span>
-<span class="sd">            description of valid colors.</span>
+<span class="sd">        xaxis_label_height</span>
+<span class="sd">            The vertical location of the x-axis label, in figure coordinates. Should</span>
+<span class="sd">            be between ``0.`` and ``1.``, though you are likely to want this to be</span>
+<span class="sd">            only slightly larger than ``0.``.</span>
+
+<span class="sd">        xaxis_ticks</span>
+<span class="sd">            Specifies custom x-axis ticks for each region, overwriting the default</span>
+<span class="sd">            ticks. Should be of the form: ``[(i, (a, b, ...)), (j, (c, d, ...)), ...]``</span>
+<span class="sd">            where ``i`` and ``j`` are ints indicating the region under consideration,</span>
+<span class="sd">            and ``a``-``d`` are floats indicating the tick values.</span>
 
 <span class="sd">        oscillator_colors</span>
-<span class="sd">            Describes how to color individual oscillators. The following</span>
-<span class="sd">            is a complete list of options:</span>
+<span class="sd">            Describes how to color individual oscillators. See :ref:`COLOR_CYCLE`</span>
+<span class="sd">            for details.</span>
 
-<span class="sd">            * If a valid matplotlib color is given, all oscillators will</span>
-<span class="sd">              be given this color.</span>
-<span class="sd">            * If a string corresponding to a matplotlib colormap is given,</span>
-<span class="sd">              the oscillators will be consecutively shaded by linear increments</span>
-<span class="sd">              of this colormap. For all valid colormaps, see</span>
-<span class="sd">              `here &lt;https://matplotlib.org/stable/tutorials/colors/\</span>
-<span class="sd">              colormaps.html&gt;`__</span>
-<span class="sd">            * If an iterable object containing valid matplotlib colors is</span>
-<span class="sd">              given, these colors will be cycled.</span>
-<span class="sd">              For example, if ``oscillator_colors = [&#39;r&#39;, &#39;g&#39;, &#39;b&#39;]``:</span>
+<span class="sd">        plot_model</span>
+<span class="sd">            .. todo::</span>
 
-<span class="sd">              + Oscillators 1, 4, 7, ... would be :red:`red (#FF0000)`</span>
-<span class="sd">              + Oscillators 2, 5, 8, ... would be :green:`green (#008000)`</span>
-<span class="sd">              + Oscillators 3, 6, 9, ... would be :blue:`blue (#0000FF)`</span>
+<span class="sd">                Add description</span>
 
-<span class="sd">            * If ``None``, the default colouring method will be applied, which</span>
-<span class="sd">              involves cycling through the following colors:</span>
+<span class="sd">        plot_residual</span>
+<span class="sd">            .. todo::</span>
 
-<span class="sd">                - :oscblue:`#1063E0`</span>
-<span class="sd">                - :oscorange:`#EB9310`</span>
-<span class="sd">                - :oscgreen:`#2BB539`</span>
-<span class="sd">                - :oscred:`#D4200C`</span>
+<span class="sd">                Add description</span>
 
-<span class="sd">        show_labels</span>
-<span class="sd">            If ``True``, each oscillator will be given a numerical label</span>
-<span class="sd">            in the plot, if ``False``, the labels will be hidden.</span>
+<span class="sd">        model_shift</span>
+<span class="sd">            The vertical displacement of the model relative to the data.</span>
 
-<span class="sd">        stylesheet</span>
-<span class="sd">            The name of/path to a matplotlib stylesheet for further</span>
-<span class="sd">            customaisation of the plot. See `here &lt;https://matplotlib.org/\</span>
-<span class="sd">            stable/tutorials/introductory/customizing.html&gt;`__ for more</span>
-<span class="sd">            information on stylesheets.</span>
+<span class="sd">        residual_shift</span>
+<span class="sd">            The vertical displacement of the residaul relative to the data.</span>
+
+<span class="sd">        label_peaks</span>
+<span class="sd">            If True, label peaks according to their index. The parameters of a peak</span>
+<span class="sd">            denoted with the label ``i`` in the figure can be accessed with</span>
+<span class="sd">            ``self.get_results(indices)[i]``.</span>
+
+<span class="sd">        denote_regions</span>
+<span class="sd">            If ``True``, and there are regions which share a boundary, a</span>
+<span class="sd">            vertical line will be plotted to show the boundary.</span>
+
+<span class="sd">        spectrum_line_kwargs</span>
+<span class="sd">            Keyword arguments for the spectrum line. All keys should be valid</span>
+<span class="sd">            arguments for `matplotlib.axes.Axes.plot</span>
+<span class="sd">            &lt;https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html&gt;`_.</span>
+
+<span class="sd">        oscillator_line_kwargs</span>
+<span class="sd">            Keyword arguments for the oscillator lines. All keys should be valid</span>
+<span class="sd">            arguments for `matplotlib.axes.Axes.plot</span>
+<span class="sd">            &lt;https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html&gt;`_.</span>
+<span class="sd">            If ``&quot;color&quot;`` is included, it is ignored (colors are processed</span>
+<span class="sd">            based on the ``oscillator_colors`` argument.</span>
+
+<span class="sd">        residual_line_kwargs</span>
+<span class="sd">            Keyword arguments for the residual line (if included). All keys</span>
+<span class="sd">            should be valid arguments for `matplotlib.axes.Axes.plot</span>
+<span class="sd">            &lt;https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html&gt;`_.</span>
+
+<span class="sd">        model_line_kwargs</span>
+<span class="sd">            Keyword arguments for the model line (if included). All keys should</span>
+<span class="sd">            be valid arguments for `matplotlib.axes.Axes.plot</span>
+<span class="sd">            &lt;https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.plot.html&gt;`_.</span>
+
+<span class="sd">        label_kwargs</span>
+<span class="sd">            Keyword arguments for oscillator labels. All keys should be valid</span>
+<span class="sd">            arguments for</span>
+<span class="sd">            `matplotlib.text.Text</span>
+<span class="sd">            &lt;https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text&gt;`_</span>
+<span class="sd">            If ``&quot;color&quot;`` is included, it is ignored (colors are procecessed</span>
+<span class="sd">            based on the ``oscillator_colors`` argument.</span>
+<span class="sd">            ``&quot;horizontalalignment&quot;``, ``&quot;ha&quot;``, ``&quot;verticalalignment&quot;``, and</span>
+<span class="sd">            ``&quot;va&quot;`` are also ignored, as these are determined internally.</span>
+
+<span class="sd">        kwargs</span>
+<span class="sd">            Keyword arguments provided to `matplotlib.pyplot.figure</span>
+<span class="sd">            &lt;https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.figure.html\</span>
+<span class="sd">            #matplotlib.pyplot.figure&gt;`_\.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        fig</span>
+<span class="sd">            The result figure. This can be saved to various formats using the</span>
+<span class="sd">            `savefig &lt;https://matplotlib.org/stable/api/figure_api.html\</span>
+<span class="sd">            #matplotlib.figure.Figure.savefig&gt;`_ method.</span>
+
+<span class="sd">        axs</span>
+<span class="sd">            A ``(1, N)`` NumPy array of the axes generated.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_check_results_exist</span><span class="p">()</span>
         <span class="n">sanity_check</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_indices_check</span><span class="p">(</span><span class="n">indices</span><span class="p">),</span>
             <span class="p">(</span>
-                <span class="s2">&quot;indices&quot;</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int_list</span><span class="p">,</span> <span class="p">(),</span>
-                <span class="p">{</span>
-                    <span class="s2">&quot;must_be_positive&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                    <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="p">},</span>
-                <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;high_resolution_pts&quot;</span><span class="p">,</span> <span class="n">high_resolution_pts</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_int</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_pts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]},</span> <span class="kc">True</span><span class="p">,</span>
             <span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;plot_residual&quot;</span><span class="p">,</span> <span class="n">plot_residual</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;axes_left&quot;</span><span class="p">,</span> <span class="n">axes_left</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="mf">1.</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;axes_right&quot;</span><span class="p">,</span> <span class="n">axes_right</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="mf">1.</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;axes_bottom&quot;</span><span class="p">,</span> <span class="n">axes_bottom</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="mf">1.</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;axes_top&quot;</span><span class="p">,</span> <span class="n">axes_top</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="mf">1.</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;axes_region_separation&quot;</span><span class="p">,</span> <span class="n">axes_region_separation</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span>
+                <span class="p">(),</span> <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="mf">1.</span><span class="p">},</span>
+            <span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_funit_check</span><span class="p">(</span><span class="n">xaxis_unit</span><span class="p">,</span> <span class="s2">&quot;xaxis_unit&quot;</span><span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;xaxis_label_height&quot;</span><span class="p">,</span> <span class="n">xaxis_label_height</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span> <span class="s2">&quot;max_value&quot;</span><span class="p">:</span> <span class="mf">1.</span><span class="p">},</span>
+            <span class="p">),</span>
             <span class="p">(</span><span class="s2">&quot;plot_model&quot;</span><span class="p">,</span> <span class="n">plot_model</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;residual_shift&quot;</span><span class="p">,</span> <span class="n">residual_shift</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;model_shift&quot;</span><span class="p">,</span> <span class="n">model_shift</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;plot_residual&quot;</span><span class="p">,</span> <span class="n">plot_residual</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
             <span class="p">(</span>
-                <span class="s2">&quot;shifts_unit&quot;</span><span class="p">,</span> <span class="n">shifts_unit</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_frequency_unit</span><span class="p">,</span>
-                <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hz_ppm_valid</span><span class="p">,),</span>
+                <span class="s2">&quot;model_shift&quot;</span><span class="p">,</span> <span class="n">model_shift</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_float</span><span class="p">,</span> <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;min_value&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">},</span> <span class="kc">True</span><span class="p">,</span>
             <span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;data_color&quot;</span><span class="p">,</span> <span class="n">data_color</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_mpl_color</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;residual_color&quot;</span><span class="p">,</span> <span class="n">residual_color</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_mpl_color</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;model_color&quot;</span><span class="p">,</span> <span class="n">model_color</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_mpl_color</span><span class="p">),</span>
             <span class="p">(</span>
                 <span class="s2">&quot;oscillator_colors&quot;</span><span class="p">,</span> <span class="n">oscillator_colors</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_oscillator_colors</span><span class="p">,</span>
                 <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">,</span>
             <span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;show_labels&quot;</span><span class="p">,</span> <span class="n">show_labels</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;stylesheet&quot;</span><span class="p">,</span> <span class="n">stylesheet</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_str</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="kc">True</span><span class="p">),</span>
-        <span class="p">)</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_results</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
-
-        <span class="n">expinfo</span> <span class="o">=</span> <span class="n">ExpInfo</span><span class="p">(</span>
-            <span class="mi">1</span><span class="p">,</span>
-            <span class="n">sw</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">(),</span>
-            <span class="n">offset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="p">(),</span>
-            <span class="n">sfo</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">,</span>
-            <span class="n">nuclei</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nuclei</span><span class="p">,</span>
-            <span class="n">default_pts</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">default_pts</span><span class="p">,</span>
+            <span class="p">(</span><span class="s2">&quot;label_peaks&quot;</span><span class="p">,</span> <span class="n">label_peaks</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;denote_regions&quot;</span><span class="p">,</span> <span class="n">denote_regions</span><span class="p">,</span> <span class="n">sfuncs</span><span class="o">.</span><span class="n">check_bool</span><span class="p">),</span>
         <span class="p">)</span>
 
-        <span class="k">return</span> <span class="p">[</span>
-            <span class="n">ResultPlotter</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span>
-                <span class="n">result</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">funit</span><span class="o">=</span><span class="s2">&quot;hz&quot;</span><span class="p">),</span>
-                <span class="n">expinfo</span><span class="p">,</span>
-                <span class="n">region</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">get_region</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">shifts_unit</span><span class="p">),</span>
-                <span class="n">shifts_unit</span><span class="o">=</span><span class="n">shifts_unit</span><span class="p">,</span>
-                <span class="n">plot_residual</span><span class="o">=</span><span class="n">plot_residual</span><span class="p">,</span>
-                <span class="n">plot_model</span><span class="o">=</span><span class="n">plot_model</span><span class="p">,</span>
-                <span class="n">residual_shift</span><span class="o">=</span><span class="n">residual_shift</span><span class="p">,</span>
-                <span class="n">model_shift</span><span class="o">=</span><span class="n">model_shift</span><span class="p">,</span>
-                <span class="n">data_color</span><span class="o">=</span><span class="n">data_color</span><span class="p">,</span>
-                <span class="n">residual_color</span><span class="o">=</span><span class="n">residual_color</span><span class="p">,</span>
-                <span class="n">model_color</span><span class="o">=</span><span class="n">model_color</span><span class="p">,</span>
-                <span class="n">oscillator_colors</span><span class="o">=</span><span class="n">oscillator_colors</span><span class="p">,</span>
-                <span class="n">show_labels</span><span class="o">=</span><span class="n">show_labels</span><span class="p">,</span>
-                <span class="n">stylesheet</span><span class="o">=</span><span class="n">stylesheet</span><span class="p">,</span>
+        <span class="n">spectrum_line_kwargs</span> <span class="o">=</span> <span class="n">proc_kwargs_dict</span><span class="p">(</span>
+            <span class="n">spectrum_line_kwargs</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#000000&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="n">oscillator_line_kwargs</span> <span class="o">=</span> <span class="n">proc_kwargs_dict</span><span class="p">(</span>
+            <span class="n">oscillator_line_kwargs</span><span class="p">,</span>
+            <span class="n">to_pop</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;color&quot;</span><span class="p">,)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">plot_residual</span><span class="p">:</span>
+            <span class="n">residual_line_kwargs</span> <span class="o">=</span> <span class="n">proc_kwargs_dict</span><span class="p">(</span>
+                <span class="n">residual_line_kwargs</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#808080&quot;</span><span class="p">},</span>
             <span class="p">)</span>
-            <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span>
-        <span class="p">]</span></div></div>
+        <span class="k">if</span> <span class="n">plot_model</span><span class="p">:</span>
+            <span class="n">model_line_kwargs</span> <span class="o">=</span> <span class="n">proc_kwargs_dict</span><span class="p">(</span>
+                <span class="n">model_line_kwargs</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;color&quot;</span><span class="p">:</span> <span class="s2">&quot;#808080&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">label_peaks</span><span class="p">:</span>
+            <span class="n">label_kwargs</span> <span class="o">=</span> <span class="n">proc_kwargs_dict</span><span class="p">(</span>
+                <span class="n">label_kwargs</span><span class="p">,</span>
+                <span class="n">to_pop</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;ha&quot;</span><span class="p">,</span> <span class="s2">&quot;horizontalalignment&quot;</span><span class="p">,</span> <span class="s2">&quot;va&quot;</span><span class="p">,</span> <span class="s2">&quot;verticalalignment&quot;</span><span class="p">,</span> <span class="s2">&quot;color&quot;</span><span class="p">),</span>  <span class="c1"># noqa: E501</span>
+            <span class="p">)</span>
+
+        <span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_indices</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+        <span class="n">merge_indices</span><span class="p">,</span> <span class="n">merge_regions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_regions</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">xaxis_unit</span><span class="p">)</span>
+        <span class="n">n_regions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">merge_regions</span><span class="p">)</span>
+
+        <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+            <span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">ncols</span><span class="o">=</span><span class="n">n_regions</span><span class="p">,</span>
+            <span class="n">gridspec_kw</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;left&quot;</span><span class="p">:</span> <span class="n">axes_left</span><span class="p">,</span>
+                <span class="s2">&quot;right&quot;</span><span class="p">:</span> <span class="n">axes_right</span><span class="p">,</span>
+                <span class="s2">&quot;bottom&quot;</span><span class="p">:</span> <span class="n">axes_bottom</span><span class="p">,</span>
+                <span class="s2">&quot;top&quot;</span><span class="p">:</span> <span class="n">axes_top</span><span class="p">,</span>
+                <span class="s2">&quot;wspace&quot;</span><span class="p">:</span> <span class="n">axes_region_separation</span><span class="p">,</span>
+                <span class="s2">&quot;width_ratios&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">merge_regions</span><span class="p">],</span>
+            <span class="p">},</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_regions</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">axs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">axs</span><span class="p">])</span>
+        <span class="n">axs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">axs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_configure_axes</span><span class="p">(</span>
+            <span class="n">fig</span><span class="p">,</span>
+            <span class="n">axs</span><span class="p">,</span>
+            <span class="n">merge_regions</span><span class="p">,</span>
+            <span class="n">xaxis_ticks</span><span class="p">,</span>
+            <span class="n">axes_left</span><span class="p">,</span>
+            <span class="n">axes_right</span><span class="p">,</span>
+            <span class="n">xaxis_label_height</span><span class="p">,</span>
+            <span class="n">xaxis_unit</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Configure high-resolutions points for oscillator and model plots</span>
+        <span class="k">if</span> <span class="n">high_resolution_pts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">high_resolution_pts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">highres_expinfo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expinfo</span>
+        <span class="n">highres_expinfo</span><span class="o">.</span><span class="n">default_pts</span> <span class="o">=</span> <span class="p">(</span><span class="n">high_resolution_pts</span><span class="p">,)</span>
+
+        <span class="c1"># Get data which spans full spectral width.</span>
+        <span class="c1"># These will be sliced for each region.</span>
+        <span class="n">full_spectrum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="o">.</span><span class="n">real</span>
+        <span class="n">full_shifts_highres</span><span class="p">,</span> <span class="o">=</span> <span class="n">highres_expinfo</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">xaxis_unit</span><span class="p">)</span>
+        <span class="n">full_shifts</span><span class="p">,</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">xaxis_unit</span><span class="p">)</span>
+        <span class="n">full_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_fid_from_result</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+        <span class="n">full_model</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+        <span class="n">full_model</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">full_model</span><span class="p">)</span><span class="o">.</span><span class="n">real</span>
+        <span class="n">full_residual</span> <span class="o">=</span> <span class="n">full_spectrum</span> <span class="o">-</span> <span class="n">full_model</span>
+        <span class="n">full_model_highres</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_fid_from_result</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">high_resolution_pts</span><span class="p">)</span>
+        <span class="n">full_model_highres</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+        <span class="n">full_model_highres</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">full_model_highres</span><span class="p">)</span><span class="o">.</span><span class="n">real</span>
+
+        <span class="n">slices</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">slice</span><span class="p">(</span>
+                <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">convert</span><span class="p">([</span><span class="n">region</span><span class="p">],</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">xaxis_unit</span><span class="si">}</span><span class="s2">-&gt;idx&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">)</span> <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">merge_regions</span>
+        <span class="p">]</span>
+        <span class="n">highres_slices</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="nb">slice</span><span class="p">(</span>
+                <span class="o">*</span><span class="n">highres_expinfo</span><span class="o">.</span><span class="n">convert</span><span class="p">([</span><span class="n">region</span><span class="p">],</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">xaxis_unit</span><span class="si">}</span><span class="s2">-&gt;idx&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">)</span> <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">merge_regions</span>
+        <span class="p">]</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
+        <span class="n">label_ax_idxs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">merge_indices</span><span class="p">:</span>
+            <span class="n">vals</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">ps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">idx</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">((</span><span class="n">ps</span> <span class="o">==</span> <span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">))[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">label_ax_idxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
+
+        <span class="n">n_oscs</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Store line and text objects.</span>
+        <span class="c1"># Will be shifting these vertically later on</span>
+        <span class="n">spectra</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">oscs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">label_peaks</span><span class="p">:</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">plot_model</span><span class="p">:</span>
+            <span class="n">models</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">plot_residual</span><span class="p">:</span>
+            <span class="n">residuals</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">slce</span><span class="p">,</span> <span class="n">highres_slice</span><span class="p">,</span> <span class="n">ax_labels</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">slices</span><span class="p">,</span> <span class="n">highres_slices</span><span class="p">,</span> <span class="n">label_ax_idxs</span><span class="p">):</span>  <span class="c1"># noqa: E501</span>
+            <span class="n">shifts</span> <span class="o">=</span> <span class="n">full_shifts</span><span class="p">[</span><span class="n">slce</span><span class="p">]</span>
+            <span class="n">shifts_highres</span> <span class="o">=</span> <span class="n">full_shifts_highres</span><span class="p">[</span><span class="n">highres_slice</span><span class="p">]</span>
+            <span class="n">spectrum</span> <span class="o">=</span> <span class="n">full_spectrum</span><span class="p">[</span><span class="n">slce</span><span class="p">]</span>
+            <span class="n">spectra</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">spectrum</span><span class="p">,</span> <span class="o">**</span><span class="n">spectrum_line_kwargs</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">plot_residual</span><span class="p">:</span>
+                <span class="n">residual</span> <span class="o">=</span> <span class="n">full_residual</span><span class="p">[</span><span class="n">slce</span><span class="p">]</span>
+                <span class="n">residuals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">residual</span><span class="p">,</span> <span class="o">**</span><span class="n">residual_line_kwargs</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">plot_model</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">full_model</span><span class="p">[</span><span class="n">slce</span><span class="p">]</span>
+                <span class="n">models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">model_line_kwargs</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="n">colorcycle</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">oscillator_colors</span><span class="p">,</span> <span class="n">n_oscs</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">colorcycle</span><span class="p">)</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">osc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">high_resolution_pts</span><span class="p">)</span>
+                <span class="n">osc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+                <span class="n">spec</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">osc</span><span class="p">)</span><span class="o">.</span><span class="n">real</span><span class="p">[</span><span class="n">highres_slice</span><span class="p">]</span>
+                <span class="n">oscs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts_highres</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="o">**</span><span class="n">oscillator_line_kwargs</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># noqa: E501</span>
+
+                <span class="k">if</span> <span class="n">label_peaks</span> <span class="ow">and</span> <span class="p">(</span><span class="n">i</span> <span class="ow">in</span> <span class="n">ax_labels</span><span class="p">):</span>
+                    <span class="n">label_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">spec</span><span class="p">))</span>
+                    <span class="n">label_x</span> <span class="o">=</span> <span class="n">shifts_highres</span><span class="p">[</span><span class="n">label_idx</span><span class="p">]</span>
+                    <span class="n">label_y</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="n">label_idx</span><span class="p">]</span>
+                    <span class="n">label_va</span><span class="p">,</span> <span class="n">label_ha</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="p">(</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="s2">&quot;left&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">spec</span><span class="p">[</span><span class="n">label_idx</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+                        <span class="k">else</span> <span class="p">(</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+                            <span class="n">label_x</span><span class="p">,</span> <span class="n">label_y</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="n">label_va</span><span class="p">,</span>
+                            <span class="n">ha</span><span class="o">=</span><span class="n">label_ha</span><span class="p">,</span> <span class="o">**</span><span class="n">label_kwargs</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+
+        <span class="c1"># Vertical shifting of plot lines and labels</span>
+        <span class="k">if</span> <span class="n">plot_model</span> <span class="ow">and</span> <span class="p">(</span><span class="n">model_shift</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="n">model_shift</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">spectrum</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">())</span> <span class="k">for</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="n">spectra</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plot_residual</span><span class="p">:</span>
+            <span class="n">residual_span</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_line_span</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span>
+
+            <span class="n">lines_to_shift</span> <span class="o">=</span> <span class="n">oscs</span> <span class="o">+</span> <span class="n">spectra</span>
+            <span class="k">if</span> <span class="n">plot_model</span><span class="p">:</span>
+                <span class="n">lines_to_shift</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>
+
+            <span class="n">lines_to_shift_span</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_line_span</span><span class="p">(</span><span class="n">lines_to_shift</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">residual_shift</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">top</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">residual_span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">residual_span</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span>
+                    <span class="p">(</span><span class="n">lines_to_shift_span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">lines_to_shift_span</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="p">)</span> <span class="o">/</span> <span class="mf">0.91</span>
+                <span class="n">line_shift</span> <span class="o">=</span> <span class="n">residual_span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">lines_to_shift_span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.03</span> <span class="o">*</span> <span class="n">top</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">line_shift</span> <span class="o">=</span> <span class="n">residual_shift</span>
+
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines_to_shift</span><span class="p">:</span>
+                <span class="n">line</span><span class="o">.</span><span class="n">set_ydata</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">()</span> <span class="o">+</span> <span class="n">line_shift</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">label_peaks</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
+                    <span class="n">old_pos</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">get_position</span><span class="p">()</span>
+                    <span class="n">new_pos</span> <span class="o">=</span> <span class="p">(</span><span class="n">old_pos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">old_pos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">line_shift</span><span class="p">)</span>
+                    <span class="n">label</span><span class="o">.</span><span class="n">set_position</span><span class="p">(</span><span class="n">new_pos</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">plot_model</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="p">:</span>
+                    <span class="n">model</span><span class="o">.</span><span class="n">set_ydata</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">()</span> <span class="o">+</span> <span class="n">model_shift</span><span class="p">)</span>
+
+        <span class="c1"># Set y-limit</span>
+        <span class="n">all_lines</span> <span class="o">=</span> <span class="n">oscs</span> <span class="o">+</span> <span class="n">spectra</span>
+        <span class="k">if</span> <span class="n">plot_model</span><span class="p">:</span>
+            <span class="n">all_lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">models</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">plot_residual</span><span class="p">:</span>
+            <span class="n">all_lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span>
+        <span class="n">all_lines_span</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_line_span</span><span class="p">(</span><span class="n">all_lines</span><span class="p">)</span>
+        <span class="n">height</span> <span class="o">=</span> <span class="n">all_lines_span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">all_lines_span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">bottom</span> <span class="o">=</span> <span class="n">all_lines_span</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="mf">0.03</span> <span class="o">*</span> <span class="n">height</span><span class="p">)</span>
+        <span class="n">top</span> <span class="o">=</span> <span class="n">all_lines_span</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.03</span> <span class="o">*</span> <span class="n">height</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">bottom</span><span class="p">,</span> <span class="n">top</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
+
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_get_line_span</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">mpl</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">Line2D</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="nb">min</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">())</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">]),</span>
+            <span class="nb">max</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">())</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">]),</span>
+        <span class="p">)</span></div>
+
 </pre></div>
 
             <div class="clearer"></div>
@@ -1044,7 +886,7 @@
              height=30px />
     </a>
 
-    <a href="mailto:simon.hulse@chem.ox.ac.uk?subject=NMR-EsPy%20query">
+    <a href="mailto:simonhulse@protonmail.com?subject=NMR-EsPy%20query">
         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/email_icon.png"
              alt="email"
              style="padding: 0px 30px 0px 0px"
@@ -1052,12 +894,12 @@
              height=30px />
     </a>
 
-    <a href="https://foroozandeh.chem.ox.ac.uk/home">
-        <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png"
-             alt="Group website"
-             width=auto
-             height=30px />
-    </a>
+<!--     <a href="https://foroozandeh.chem.ox.ac.uk/home"> -->
+<!--         <img src="https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/nmrespy/images/link.png" -->
+<!--              alt="Group website" -->
+<!--              width=auto -->
+<!--              height=30px /> -->
+<!--     </a> -->
 </p><h3>Related Topics</h3>
 <ul>
   <li><a href="../../../index.html">Documentation index</a><ul>
