@@ -36,6 +36,7 @@ dependencies = [
     "scipy",
     "bruker_utils",
     "pybaselines",
+    "Pillow>=10.0.0",
 ]
 
 [project.urls]
