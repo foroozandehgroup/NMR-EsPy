@@ -32,7 +32,8 @@ NMR-EsPy
        walkthroughs/index
        gui/index
        references/index
-       contributors
+
+**What is NMR-EsPy?**
 
 NMR-EsPy (**N**\ uclear **M**\ agnetic **R**\ esonance **Es**\ timation in
 **Py**\ thon) is a Python package for the estimation of parameters that
@@ -45,7 +46,6 @@ NMR-EsPy package is a product of work carried out during Simon's Ph.D
 within the former Foroozandeh group in the University of Oxford's Chemistry
 Department.
 
-**What does NMR-EsPy do?**
 
 The primary goal behind the NMR-EsPy package is to quantify NMR datasets. It is
 assumed that raw NMR datasets (called FIDs) comprise a number of sinusoidal
@@ -89,7 +89,8 @@ New to NMR-EsPy? Look at the following:
 *If you wish to use the GUI:*
 
     1. Read the :ref:`installation instructions <INSTALLATION>`.
-       It is important to read the section titled *Installing the GUI to
+       If you are going to be loading the GUI from within TopSpin,
+       it is important to read the section titled *Installing the GUI to
        TopSpin*.
     2. Read the :ref:`instructions on using the GUI <GUI>`.
 
@@ -112,3 +113,12 @@ package I will try to fix them.
   338 (2022) 107173. :raw-html:`<br />`
   `<https://doi.org/10.1016/j.jmr.2022.107173>`_
 
+.. only:: latex
+
+    .. toctree::
+       :maxdepth: 2
+
+       install
+       walkthroughs/index
+       gui/index
+       references/index

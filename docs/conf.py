@@ -1,7 +1,7 @@
 # conf.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Fri 08 Dec 2023 05:08:16 PM EST
+# Last Edited: Mon 11 Dec 2023 14:21:39 EST
 
 import os
 import sys
@@ -80,7 +80,6 @@ html_sidebars = {
         "searchbox.html",
     ]
 }
-
 
 autosummary_generate = True
 
