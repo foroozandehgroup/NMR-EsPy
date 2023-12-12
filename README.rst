@@ -31,11 +31,7 @@ Getting started:
 
 * Installation: ``python -m pip install nmrespy``
 * HTML Documentation: https://foroozandehgroup.github.io/NMR-EsPy/
-* Check out the `Example Walkthrough <https://https://foroozandehgroup.github.io/NMR-EsPy/walkthrough.html>`_
-  page in the docs for a tutorial on NMR-EsPy's basic usage.
-* This `2022 JMR paper <https://doi.org/10.1016/j.jmr.2022.107173>`_ provides a
-  detailed description of the theory behind NMR-EsPy
-  and showcases a couple of results derived using it.
+* PDF Documentation: https://github.com/foroozandehgroup/NMR-EsPy/blob/gh-pages/nmr-espy.pdf
 
 .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/content/media/walkthrough/5_54-5_42.png
    :scale: 5 %

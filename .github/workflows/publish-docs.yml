@@ -3,7 +3,7 @@ name: publish-docs
 on:
   workflow_dispatch:
   push:
-    branches: [ develop ]
+    branches: [ master ]
 
 jobs:
   pubdocs:
@@ -13,8 +13,8 @@ jobs:
       - name: checkout nmrespy
         uses: actions/checkout@v2
         with:
-          ref: develop
-          path: develop
+          ref: master
+          path: master
 
       - name: setup python3.9
         uses: actions/setup-python@v2
@@ -26,7 +26,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-xetex dvipng
           python -m pip install --upgrade pip
-          cd develop/
+          cd master/
           ls .
           cat pyproject.toml
           python -m pip install -e .[dev,docs]
@@ -47,8 +47,8 @@ jobs:
       - name: update gh-pages
         run: |
           rm -r gh-pages/*
-          cp -r develop/docs/_build/html/* gh-pages/
-          cp develop/docs/_build/latex/nmr-espy.pdf gh-pages/
+          cp -r master/docs/_build/html/* gh-pages/
+          cp master/docs/_build/latex/nmr-espy.pdf gh-pages/
           cd gh-pages
           touch .nojekyll
           git config --local user.name "GitHub Actions"
