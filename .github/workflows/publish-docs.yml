@@ -48,6 +48,7 @@ jobs:
         run: |
           rm -r gh-pages/*
           cp -r develop/docs/_build/html/* gh-pages/
+          cp develop/docs/_build/latex/nmr-espy.pdf gh-pages/
           cd gh-pages
           touch .nojekyll
           git config --local user.name "GitHub Actions"
