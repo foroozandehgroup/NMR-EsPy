@@ -27,10 +27,16 @@ jobs:
           sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended texlive-xetex dvipng
           python -m pip install --upgrade pip
           cd master/
-          python -m pip install .
+          ls .
+          cat pyproject.toml
+          python -m pip install -e .[dev,docs]
           cd docs/
-          python -m pip install -r requirements.txt
-          sphinx-build -b html . html
+          sphinx-build -b html . _build/html
+          sphinx-build -b latex . _build/latex
+          python latex_tweaks.py
+          cd _build/latex/
+          xelatex --shell-escape nmr-espy.tex
+          xelatex --shell-escape nmr-espy.tex
 
       - name: checkout gh-pages branch
         uses: actions/checkout@v2
@@ -41,7 +47,8 @@ jobs:
       - name: update gh-pages
         run: |
           rm -r gh-pages/*
-          cp -r master/docs/html/* gh-pages/
+          cp -r master/docs/_build/html/* gh-pages/
+          cp master/docs/_build/latex/nmr-espy.pdf gh-pages/
           cd gh-pages
           touch .nojekyll
           git config --local user.name "GitHub Actions"
