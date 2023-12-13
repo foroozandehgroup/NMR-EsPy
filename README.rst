@@ -33,6 +33,5 @@ Getting started:
 * HTML Documentation: https://foroozandehgroup.github.io/NMR-EsPy/
 * PDF Documentation: https://github.com/foroozandehgroup/NMR-EsPy/blob/gh-pages/nmr-espy.pdf
 
-.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/content/media/walkthrough/5_54-5_42.png
-   :scale: 5 %
+.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/docs/readme_figures/cyclosporin/figure.png
    :align: center
