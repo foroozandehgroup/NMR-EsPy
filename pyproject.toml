@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nmrespy"
-version = "2.0"
+version = "2.0.0"
 authors = [
     {name = "Simon Hulse", email = "simon.hulse@chem.ox.ac.uk"}
 ]
