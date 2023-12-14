@@ -11,7 +11,7 @@ NMR-EsPy: **N**\uclear **M**\agnetic **R**\esonance **Es**\timation in
 **Py**\thon is a Python package developed for estimating the parameters that
 describe NMR data.
 
-.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/content/media/overview.png
+.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/nmrespy/images/nmrespy_full.png
    :scale: 3%
    :align: center
 
