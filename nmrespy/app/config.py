@@ -1,7 +1,7 @@
 # config.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Thu 20 Oct 2022 16:44:38 BST
+# Last Edited: Tue 12 Dec 2023 16:02:45 EST
 
 import tkinter as tk
 from PIL import ImageTk, Image
@@ -70,7 +70,7 @@ def get_PhotoImage(path, scale=1.0):
     [w, h] = image.size
     new_w = int(w * scale)
     new_h = int(h * scale)
-    image = image.resize((new_w, new_h), Image.ANTIALIAS)
+    image = image.resize((new_w, new_h), Image.LANCZOS)
     return ImageTk.PhotoImage(image)
 
 
