@@ -1,0 +1,38 @@
+# BACKEND
+backend: pgf
+#
+# SAVING FIGURES
+savefig.dpi: 600
+savefig.transparent: True
+figure.dpi: 600
+
+# AXES
+axes.linewidth: 1.2
+axes.xmargin: .03
+axes.ymargin: .03
+axes.labelsize: 8
+
+# LINES
+lines.linewidth: 1.4
+lines.markersize: 4
+
+# FONT (XeLaTeX) - Garamond and Garamond math
+text.usetex: True
+pgf.rcfonts: False
+pgf.texsystem: xelatex
+pgf.preamble: \usepackage{amsmath} \usepackage{xcolor} \usepackage{nicefrac} \usepackage{physics} \usepackage{amssymb} \usepackage{siunitx} \usepackage{fontspec} \usepackage[math-style=ISO,bold-style=ISO]{unicode-math} \setmainfont{FiraSans}[Path=/home/simon/.fonts/FiraSans/,Extension=.ttf,UprightFont=*-Regular,BoldFont=*-SemiBold,ItalicFont=*-Italic,BoldItalicFont=*-BoldItalic] \setsansfont{FiraSans}[Path=/home/simon/.fonts/FiraSans/,Extension=.ttf,UprightFont=*-Regular,BoldFont=*-SemiBold,ItalicFont=*-Italic,BoldItalicFont=*-BoldItalic] \setmathfont{FiraMath-Regular}[Path=/home/simon/.fonts/FiraMath/,Extension=.otf,Scale=MatchLowercase] \setmonofont{FiraMono}[Path=/home/simon/.fonts/FiraMono/,Extension=.ttf,Scale=MatchLowercase,UprightFont=*-Regular,BoldFont=*-Bold] \definecolor{col1}{HTML}{E42A00} \definecolor{col2}{HTML}{0051FE} \definecolor{col3}{HTML}{E6AC00} \definecolor{col4}{HTML}{A01FDF} \definecolor{col5}{HTML}{28A428} \definecolor{col6}{HTML}{FF7B00}
+font.size: 8
+
+# COLOR
+axes.prop_cycle: cycler('color', ['E42A00', '0051FE', 'E6AC00', 'A01FDF', '28A428',  'FF7B00'])
+
+# TICKS
+xtick.labelsize: 6
+ytick.labelsize: 6
+
+# LEGEND
+legend.edgecolor: k
+legend.facecolor: ffffff
+
+# PATCHES
+patch.linewidth: 1.2 # mainly to increase legend linewidth
