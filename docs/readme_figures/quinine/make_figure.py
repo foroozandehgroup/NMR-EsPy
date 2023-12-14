@@ -1,7 +1,7 @@
 # make_figure.py
 # Simon Hulse
 # simon.hulse@chem.ox.ac.uk
-# Last Edited: Wed 13 Dec 2023 17:28:27 EST
+# Last Edited: Thu 14 Dec 2023 12:40:23 PM EST
 
 
 from pathlib import Path
@@ -21,7 +21,7 @@ from utils import (
     raise_axes,
 )
 
-estimator_path = Path("/data/simon-dphil-results/cupid/quinine/estimator")
+estimator_path = Path("~/Documents/DPhil/results/cupid/quinine/estimator").expanduser()
 save_path = "quinine/quinine.pdf"
 
 
@@ -31,16 +31,34 @@ onedim_shift = multiplet_shift + 1e6
 ax_top = onedim_shift + 3e6
 
 # =====================
-colors = list(mpl.colormaps.get_cmap("viridis")(np.linspace(0.2, 1, 14)))
+colors = list(mpl.colormaps.get_cmap("plasma")(np.linspace(0.2, 0.95, 14)))
 colors.insert(4, "#808080")
-estimator = ne.Estimator2DJ.from_pickle(estimator_path)
-thold = 6. * estimator.default_multiplet_thold
-estimator.predict_multiplets(thold=thold, rm_spurious=True, max_iterations=1, check_neg_amps_every=1)
+
+thold = 1.171 # 6 * default thold
+if (path := Path("quinine/estimator.pkl")).is_file():
+    estimator = ne.Estimator2DJ.from_pickle(path)
+else:
+    estimator = ne.Estimator2DJ.from_pickle(estimator_path)
+    thold = 6. * estimator.default_multiplet_thold
+    estimator.predict_multiplets(thold=thold, rm_spurious=True, max_iterations=1, check_neg_amps_every=1)
+    estimator.to_pickle(path)
+
+xaxis_ticks = [
+    (0, (5.8, 5.75, 5.7, 5.65, 5.6)),
+    (1, (4.95, 4.9,)),
+    (2, (3.7, 3.65)),
+    (3, (3.15, 3.1,)),
+    (4, (2.75, 2.7, 2.65)),
+    (5, (1.95, 1.9, 1.85, 1.8, 1.75)),
+    (6, (1.6, 1.55, 1.5, 1.45, 1.4)),
+]
+xaxis_ticklabels = [[str(x) for x in entry[1]] for entry in xaxis_ticks]
+
 fig, axs = estimator.plot_result(
     axes_right=0.975,
-    axes_bottom=0.09,
+    axes_bottom=0.08,
     axes_top=0.975,
-    axes_left=0.065,
+    axes_left=0.075,
     multiplet_thold=thold,
     region_unit="ppm",
     contour_base=1.7e4,
@@ -63,12 +81,14 @@ fig, axs = estimator.plot_result(
         (6, (1.6, 1.55, 1.5, 1.45, 1.4)),
     ],
     ratio_1d_2d=(3., 1.),
-    figsize=(6, 4),
+    figsize=(5, 4),
 )
 raise_axes(axs, 1.1)
 axs[1, 0].set_yticks([-20, -10, 0, 10, 20])
+for ax, xticklabels in zip(axs[1], xaxis_ticklabels):
+    ax.set_xticklabels(xticklabels)
 
-fix_linewidths(axs, 0.8)
+fix_linewidths(axs, 1.)
 
 _, shifts = estimator.get_shifts(unit="ppm", meshgrid=False)
 
@@ -112,16 +132,32 @@ for i, (ax0, ax1) in enumerate(zip(axs[0], axs[1])):
 
 # Label pure shift peaks
 xs, ys, ss = get_pure_shift_labels(estimator, yshift=2.1e6, thold=1e5)
+xs[5] += 0.015
 xs[6] -= 0.015
 ss[3] = "(D)*"
 add_pure_shift_labels(axs[0], xs, ys, ss, fs=7)
 
+ax_idx = 0
+text_iter = iter(axs[0][0].texts)
+for color in colors[:4] + colors[5:]:
+    try:
+        text = next(text_iter)
+    except StopIteration:
+        ax_idx += 1
+        text_iter = iter(axs[0][ax_idx].texts)
+        text = next(text_iter)
+    txt = text.get_text()
+    txt = txt.replace("(", "").replace(")", "")
+    text.set_text(f"\\textbf{{{txt}}}")
+    text.set_color(color)
+    print(f"{ax_idx}, {color}")
+
 fig.text(
-    0.30,
-    0.34,
+    0.31,
+    0.41,
     "H\\textsubscript{2}\\hspace{-0.7pt}O",
-    color=colors[-1],
-    fontsize=8,
+    color=colors[4],
+    fontsize=7,
 )
 
 fig.savefig(save_path)

@@ -35,3 +35,6 @@ Getting started:
 
 .. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/docs/readme_figures/cyclosporin/figure.png
    :align: center
+
+.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/docs/readme_figures/quinine/figure.png
+   :align: center
