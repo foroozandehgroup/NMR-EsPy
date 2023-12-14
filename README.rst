@@ -24,10 +24,10 @@ For installation, help on getting started, API reference etc
 
 **Example of 1D Estimation**
 
-.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/docs/readme_figures/cyclosporin/figure.png
+.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/readme_figures/cyclosporin/figure.png
    :align: center
 
 **Example of 2DJ Estimation**
 
-.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/develop/docs/readme_figures/quinine/figure.png
+.. image:: https://raw.githubusercontent.com/foroozandehgroup/NMR-EsPy/master/docs/readme_figures/quinine/figure.png
    :align: center
