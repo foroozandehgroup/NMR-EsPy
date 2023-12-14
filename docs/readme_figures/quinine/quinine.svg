@@ -25,9 +25,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:document-units="pt"
      showgrid="false"
-     inkscape:zoom="1.0846354"
-     inkscape:cx="212.51381"
-     inkscape:cy="121.2389"
+     inkscape:zoom="1.5339061"
+     inkscape:cx="206.66193"
+     inkscape:cy="225.24195"
      inkscape:window-width="1850"
      inkscape:window-height="1016"
      inkscape:window-x="0"
@@ -4760,4 +4760,15 @@
        id="path108"
        style="stroke-width:0.0749999" />
   </g>
+  <text
+     xml:space="preserve"
+     style="font-style:italic;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;line-height:1.25;font-family:'Fira Sans';-inkscape-font-specification:'Fira Sans, Medium Italic';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;stroke-width:0.75"
+     x="89.920547"
+     y="12.41278"
+     id="text211457"><tspan
+       sodipodi:role="line"
+       id="tspan211455"
+       style="font-style:italic;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'Fira Sans';-inkscape-font-specification:'Fira Sans, Medium Italic';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;stroke-width:0.75"
+       x="89.920547"
+       y="12.41278">Quinine</tspan></text>
 </svg>
