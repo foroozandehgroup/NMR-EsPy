@@ -1,0 +1,9 @@
+authors:
+- family-names: "Hulse"
+  given-names: "Simon"
+  orcid: "https://orcid.org/0000-0002-5822-6198"
+title: "NMR Estimation in Python"
+version: 2.0.0
+doi: 10.5281/zenodo.11174195
+date-released: 2023-12-14
+url: https://github.com/foroozandehgroup/NMR-EsPy
