@@ -6,6 +6,8 @@
    .. image:: https://img.shields.io/badge/License-MIT-yellow.svg
       :target: https://opensource.org/licenses/MIT
 
+   .. image:: https://zenodo.org/badge/461154492.svg
+      :target: https://zenodo.org/doi/10.5281/zenodo.11174194
 
 NMR-EsPy: **N**\uclear **M**\agnetic **R**\esonance **Es**\timation in
 **Py**\thon is a Python package developed for estimating the parameters that
