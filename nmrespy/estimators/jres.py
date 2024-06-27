@@ -852,10 +852,9 @@ class Estimator2DJ(_Estimator1DProc):
         multiplet_vertical_shift: float = 0.,
         multiplet_show_center_freq: bool = True,
         multiplet_show_45: bool = True,
-        marker_size: float = 3.,
-        marker_shape: str = "o",
         label_peaks: bool = False,
         denote_regions: bool = False,
+        scatter_kwargs: Optional[dict] = None,
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         r"""Generate a figure of the estimation result.
@@ -954,12 +953,10 @@ class Estimator2DJ(_Estimator1DProc):
             If ``True``, lines are plotted on the 2DJ spectrum indicating the 45° line
             along which peaks lie in each multiplet.
 
-        marker_size
-            The size of markers indicating positions of peaks on the 2DJ contour plot.
-
-        marker_shape
-            The `shape of markers <https://matplotlib.org/stable/api/markers_api.html>`_
-            indicating positions of peaks on the 2DJ contour plot.
+        scatter_kwargs
+            Keyword arguments provided to `matplotlib.pyplot.scatter
+            <https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html>`_\.
+            If `None`, deafults to `{'s': 4.0, 'linewidths': 0.3, 'edgecolors': 'k'}`.
 
         kwargs
             Keyword arguments provided to `matplotlib.pyplot.figure
@@ -1040,7 +1037,6 @@ class Estimator2DJ(_Estimator1DProc):
             ),
             ("contour_lw", contour_lw, sfuncs.check_float, (), {"min_value": 0.}),
             ("jres_sinebell", jres_sinebell, sfuncs.check_bool),
-            ("marker_size", marker_size, sfuncs.check_float, (), {"min_value": 0.}),
             (
                 "multiplet_colors", multiplet_colors, sfuncs.check_oscillator_colors,
                 (), {}, True,
@@ -1061,6 +1057,14 @@ class Estimator2DJ(_Estimator1DProc):
         # contour_color
         # linewidth
         # marker_shape: str = "o",
+
+        if scatter_kwargs is None:
+            scatter_kwargs = {
+                's': 4.0,
+                'marker': 'o',
+                'edgecolor': 'k',
+                'linewidth': 0.3,
+            }
 
         indices = self._process_indices(indices)
         regions = sorted(
@@ -1260,11 +1264,9 @@ class Estimator2DJ(_Estimator1DProc):
                 ax.scatter(
                     x=f2,
                     y=f1,
-                    s=marker_size,
-                    marker=marker_shape,
-                    color=color,
-                    edgecolor="none",
                     zorder=100,
+                    facecolor=color,
+                    **scatter_kwargs,
                 )
                 if label_peaks:
                     for f1_, f2_, idx in zip(f1, f2, mp_idx):

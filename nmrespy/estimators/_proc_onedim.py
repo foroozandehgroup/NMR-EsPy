@@ -472,8 +472,9 @@ class _Estimator1DProc(Estimator):
                 "linestyle": "none",
                 "color": "k",
                 "mec": "k",
-                "mew": 1,
+                "mew": plt.rcParams['axes.linewidth'],
                 "clip_on": False,
+                "zorder": 1000,
             }
             for ax in axs[0, :-1]:
                 ax.plot([1], [1], transform=ax.transAxes, **break_kwargs)
