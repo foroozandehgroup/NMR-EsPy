@@ -13,6 +13,7 @@ from nmrespy._files import check_existent_dir
 from nmrespy._sanity import sanity_check, funcs as sfuncs
 import nmrglue as ng
 import numpy as np
+import scipy.integrate as integrate
 from scipy.optimize import minimize, Bounds
 
 from . import logger
@@ -123,9 +124,15 @@ class BBQChili(ne.Estimator1D):
             ),
             ("directory", directory, check_existent_dir),
         )
-        data, expinfo = ne.load.load_bruker(directory)
+        if isinstance(directory, str):
+            directoryPath = Path(directory)
 
-        if directory.parent.name == "pdata":
+        else:
+            directoryPath = directory
+
+        data, expinfo = ne.load.load_bruker(directoryPath)
+
+        if directoryPath.parent.name == "pdata":
             slice_ = slice(0, data.shape[0] // 2)
             data = (2 * ne.sig.ift(data))[slice_]
 
@@ -139,7 +146,7 @@ class BBQChili(ne.Estimator1D):
             pulse_length,
             pulse_bandwidth,
             prescan_delay,
-            datapath=directory,
+            datapath=directoryPath,
         )
 
     @classmethod
@@ -248,6 +255,70 @@ class BBQChili(ne.Estimator1D):
             )
 
         return fid
+    
+
+    def peak_integration(
+        self,
+        peaks : Union[np.ndarray, list],
+        spectrum : Optional[np.ndarray] = None,
+        area : int = 2000,
+        scale_relative : bool = False
+        ) -> Tuple[np.ndarray, list]:
+        """
+        Estimate the areas around specified peaks of the FT spectrum using the composite
+        Simpson's rule ``scipy.integrate.simpson``.
+
+        Parameters
+        ----------
+        peaks
+            The list of peaks around which to estimate the integrals.
+
+        spectrum
+            The FT spectrum on which to carry out the integration. If ``None``, the 
+            default ``self.spectrum`` will be used.
+
+        area
+            The range of frequencies (Hz) around the peak to integrate.
+
+        scale_relative
+            If True, the median peak has its integral set to ``1`` and all other integrals
+            are scaled accordingly.
+
+        Notes
+        -----
+        For oscillator integration, see :py:meth:`nmrespy.expinfo.oscillator_integrals`
+        """
+
+        if spectrum is None:
+            _spectrum = self.spectrum
+        else:
+            _spectrum = spectrum
+
+        # Create index slices for slicing around peaks
+        dshift = self.sw()[0] / self.default_pts[0]
+        idx_range = round(area / dshift) # No. of indices that correspond to the area
+        slicer = lambda i : np.s_[(i - idx_range): (i + idx_range +1)]
+
+        # Index of the peaks 
+        shifts, = self.get_shifts()
+        idx = lambda x : np.argmin(np.abs(shifts - x))
+
+        integrals = [
+            integrate.simpson(
+                y = _spectrum[slicer(idx(p))],
+                dx = dshift
+            ).real 
+            for p in peaks
+        ]
+        integrals = np.array(integrals, dtype=np.float64)
+
+        slices = [slicer(idx(p)) for p in peaks]
+
+        if scale_relative:
+            integrals = integrals / np.percentile(integrals, 50, method='nearest')
+
+        return integrals, slices
+
 
     def _time_offset(self, freq: float) -> float:
         """Calculate the time-zero for an oscillator of a particular frequency.
@@ -266,6 +337,7 @@ class BBQChili(ne.Estimator1D):
             first_order -
             0.5 * (freq - self.offset()[0]) * self.pulse_length / self.pulse_bandwidth
         )
+
 
     def _zero_order_phase_correction(self, data: np.ndarray) -> np.ndarray:
         """Zero-order phase correction on time-domain data.
