@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Iterable
 
 import nmrespy as ne
 from nmrespy._colors import RED, END, USE_COLORAMA
@@ -246,37 +246,82 @@ class BBQChili(ne.Estimator1D):
         return phased
 
     @logger
-    def back_extrapolate(self) -> np.ndarray:
-        """Calculate the offset-dependent time-zero for each oscillator in the
-        estimated FID, and reconstruct the time-shifted FID."""
+    def back_extrapolate(self, 
+            params : Optional[np.ndarray] = None,
+            deconstructed : bool = False
+        ) -> np.ndarray:
+        """
+        Calculate the offset-dependent time-zero for each oscillator in the
+        estimated FID, and reconstruct the time-shifted FID.
+
+        Parameters
+        ----------
+        params
+            Parameter array with the following structure:
+
+            * **1-dimensional data:**
+
+              .. code:: python
+
+                 params = numpy.array([
+                    [a_1, φ_1, f_1, η_1],
+                    [a_2, φ_2, f_2, η_2],
+                    ...,
+                    [a_m, φ_m, f_m, η_m],
+                 ])
+
+        deconstructed
+            If True, returns an array of the deconstructed FID.
+        """
         if not self._results:
             raise NotImplementedError(
                 f"{RED}No estimation result is associated with this estimator. "
                 "Before running back-extrapolation, you must use either `estimate` "
                 f"or `subband_estimate`.{END}"
             )
+        
+        if params is None:
+            oscillator_params = self.get_params()
+        else:
+            sanity_check(
+                self._params_check(params)
+            )
+            oscillator_params = params
 
-        fid = np.zeros(self.default_pts, dtype="complex128")
+        if deconstructed:
+            fid = np.zeros(
+                (oscillator_params.shape[0], self.default_pts[0]),
+                dtype="complex128"
+            )
+        else:
+            fid = np.zeros(self.default_pts, dtype="complex128")
+
         base_timepoints, = self.get_timepoints()
-        for oscillator in self.get_params():
+
+        for idx, oscillator in enumerate(oscillator_params):
             a, p, f, d = oscillator
             t0 = self._time_offset(f)
             timepoints = base_timepoints - t0
-            fid += (
+            oscillatorfid = (
                 a * np.exp(1j * p) *
                 np.exp((2j * np.pi * (f - self.offset()[0]) - d) * timepoints)
             )
+            if deconstructed:
+                fid[idx] = oscillatorfid 
+            else:
+                fid += oscillatorfid
 
         return fid
     
-
+    @logger
     def peak_integration(
         self,
         peaks : Union[np.ndarray, list],
         spectrum : Optional[np.ndarray] = None,
+        pts: Optional[Iterable[int]] = None,
         area : int = 2000,
-        scale_relative : bool = False
-        ) -> Tuple[np.ndarray, list]:
+        scale_relative : Optional[str] = None
+    ) -> Tuple[np.ndarray, list]:
         """
         Estimate the areas around specified peaks of the FT spectrum using the composite
         Simpson's rule ``scipy.integrate.simpson``.
@@ -290,35 +335,46 @@ class BBQChili(ne.Estimator1D):
             The FT spectrum on which to carry out the integration. If ``None``, the 
             default ``self.spectrum`` will be used.
 
+        pts
+            The number of points to construct the shifts with in each dimesnion.
+            If ``None``, and ``self.default_pts`` is a tuple of ints, it will be
+            used.
+
         area
             The range of frequencies (Hz) around the peak to integrate.
 
         scale_relative
-            If True, the median peak has its integral set to ``1`` and all other integrals
-            are scaled accordingly.
+            ``"median"`` will set the median peak' integral to ``1``, and ``"min"`` will 
+            set the smallest peak integral to ``1``, and scale all other integrals 
+            accordingly. ``None`` returns the absolute integral values.
 
         Notes
         -----
         For oscillator integration, see :py:meth:`nmrespy.expinfo.oscillator_integrals`
         """
 
+        pts = self._process_pts(pts)
+
+        assert len(spectrum) == pts[0]
+
         if spectrum is None:
-            _spectrum = self.spectrum
+            spec = self.spectrum
         else:
-            _spectrum = spectrum
+            spec = spectrum
 
         # Create index slices for slicing around peaks
-        dshift = self.sw()[0] / self.default_pts[0]
+        dshift = self.sw()[0] / pts[0]
         idx_range = round(area / dshift) # No. of indices that correspond to the area
+
         slicer = lambda i : np.s_[(i - idx_range): (i + idx_range +1)]
 
         # Index of the peaks 
-        shifts, = self.get_shifts()
+        shifts, = self.get_shifts(pts=pts)
         idx = lambda x : np.argmin(np.abs(shifts - x))
 
         integrals = [
             integrate.simpson(
-                y = _spectrum[slicer(idx(p))],
+                y = spec[slicer(idx(p))],
                 dx = dshift
             ).real 
             for p in peaks
@@ -327,10 +383,97 @@ class BBQChili(ne.Estimator1D):
 
         slices = [slicer(idx(p)) for p in peaks]
 
-        if scale_relative:
+        if scale_relative == "median":
             integrals = integrals / np.percentile(integrals, 50, method='nearest')
-
+        elif scale_relative == "min":
+            integrals = integrals / np.min(integrals)
+        elif scale_relative is None:
+            pass
+        else:
+            raise ValueError("Incorrect argument for scale_relative")
+        
         return integrals, slices
+    
+    @logger
+    def back_extrapolated_oscillator_integrals(
+        self,
+        params: np.ndarray,
+        pts: Optional[Iterable[int]] = None,
+        absolute: bool = True,
+        scale_relative_to: Optional[int] = None,
+    ) -> list:
+        """
+        Determine the integral of the FT of the back-extrapolated oscillators.
+
+        Parameters
+        ----------
+        params
+            Parameter array with the following structure:
+
+            * **1-dimensional data:**
+
+              .. code:: python
+
+                 params = numpy.array([
+                    [a_1, φ_1, f_1, η_1],
+                    [a_2, φ_2, f_2, η_2],
+                    ...,
+                    [a_m, φ_m, f_m, η_m],
+                 ])
+
+        pts
+            The number of points to construct the signals to be integrated in each
+            dimesnion. If ``None``, and ``self.default_pts`` is a tuple of ints, it
+            will be used.
+
+        absolute
+            Whether or not to take the absolute value of the spectrum before
+            integrating.
+
+        scale_relative_to
+            If an int, the integral corresponding to the assigned oscillator is
+            set to ``1``, and other integrals are scaled accordingly.
+
+        Notes
+        -----
+        The integration is performed using the composite Simpsons rule, provided
+        by `scipy.integrate.simps <https://docs.scipy.org/doc/scipy-1.5.4/\
+        reference/generated/scipy.integrate.simps.html>`_
+
+        Spacing of points along the frequency axes is set as ``1`` (i.e. ``dx = 1``).
+
+        See also
+        --------
+        :py:meth: `nmrespy.ExpInfo.oscillator_integrals`
+        """
+        sanity_check(
+            self._params_check(params),
+            self._pts_check(pts),
+            ("absolute", absolute, sfuncs.check_bool),
+            (
+                "scale_relative_to", scale_relative_to, sfuncs.check_int, (),
+                {
+                    "min_value": 0,
+                    "max_value": params.shape[0] - 1,
+                },
+                True,
+            )
+        )
+        oscillatorfids = self.back_extrapolate(params=params, deconstructed=True)
+        integrals = [
+            ne.sig.ft(oscillatorfids[i])
+            for i in range(oscillatorfids.shape[0])
+        ]
+
+        integrals = [np.absolute(x) if absolute else x for x in integrals]
+
+        for axis in reversed(range(integrals[0].ndim)):
+            integrals = [integrate.simpson(x, axis=axis) for x in integrals]
+
+        if isinstance(scale_relative_to, int):
+            integrals = [x / integrals[scale_relative_to] for x in integrals]
+
+        return integrals
     
 
     def phase_data(
@@ -408,7 +551,7 @@ class BBQChili(ne.Estimator1D):
             Zero order phase (rad)
 
         p1
-            First prder phase (rad)
+            First order phase (rad)
 
         See also
         --------
