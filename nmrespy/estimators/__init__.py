@@ -784,7 +784,7 @@ class Estimator(ne.ExpInfo):
             ),
             (
                 "max_iterations", max_iterations, sfuncs.check_int, (),
-                {"min_value": 1}, True,
+                {"min_value": 0}, True,
             ),
             (
                 "negative_amps", negative_amps, sfuncs.check_one_of,
@@ -915,7 +915,7 @@ class Estimator(ne.ExpInfo):
             region = filter_.get_region()
             noise_region = filter_.get_noise_region()
             mpm_signal, mpm_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
-            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=None)
+            nlp_signal, nlp_expinfo = filter_.get_filtered_fid(cut_ratio=cut_ratio)
 
         mpm_slice = self._get_slice("mpm", mpm_trim, mpm_signal.shape)
         mpm_signal = mpm_signal[mpm_slice]
@@ -1356,6 +1356,18 @@ class Estimator(ne.ExpInfo):
 
         if idx_to_remove:
             params = np.delete(params, idx_to_remove, axis=0)
+            if estimate_kwargs.get("max_iterations") == 0:
+                errors = result.get_errors()
+                errors = np.delete(errors, idx_to_remove, axis=0)
+                self._results[index] = Result(
+                    params,
+                    errors,
+                    result.region,
+                    result.noise_region,
+                    self.sfo,
+                    result.trajectory,
+                )
+
         if oscs_to_add is not None:
             params = np.vstack((params, oscs_to_add))
 

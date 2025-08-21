@@ -140,9 +140,7 @@ def zf(data: np.ndarray) -> np.ndarray:
     """
     zf_data = copy.deepcopy(data)
     for i, n in enumerate(zf_data.shape):
-        nearest_pow_2 = int(2 ** np.ceil(np.log2(n)))
-        if n & (n - 1) == 0:
-            nearest_pow_2 *= 2
+        nearest_pow_2 = 2 * int(2 ** np.ceil(np.log2(n)))
         pts_to_append = nearest_pow_2 - n
         shape_to_add = list(zf_data.shape)
         shape_to_add[i] = pts_to_append

@@ -5,17 +5,21 @@
 
 from __future__ import annotations
 import copy
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Literal, Optional, Tuple, Union
+from typing_extensions import dataclass_transform
 
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from nmrespy import ExpInfo, sig
+from nmrespy import plot
 from nmrespy.contour_app import ContourApp
 from nmrespy.load import load_bruker
 from nmrespy.estimators import logger
+from nmrespy.estimators import Result
 from nmrespy.estimators._proc_onedim import _Estimator1DProc
 from nmrespy.plot import make_color_cycle
 from nmrespy._colors import RED, GRE, END, USE_COLORAMA
@@ -29,6 +33,25 @@ from nmrespy._sanity import (
 if USE_COLORAMA:
     import colorama
     colorama.init()
+
+
+@dataclass
+class PlotResultData:
+
+    full_shifts_1d: np.ndarray
+    shifts_1d: list[np.ndarray]
+    shifts_2d: list[np.ndarray]
+    spectra_1d: list[np.ndarray]
+    spectra_2d: list[np.ndarray]
+    cupid_spectra: list[np.ndarray]
+    f1_f2: list[list[tuple[float, float]]]
+    center_freqs: list[list[float]]
+    multiplet_spectra: list[np.ndarray]
+    multiplet_indices: list[list[int]]
+
+    @property
+    def n_multiplets(self) -> int:
+        return len(self.multiplet_spectra)
 
 
 class Estimator2DJ(_Estimator1DProc):
@@ -279,7 +302,10 @@ class Estimator2DJ(_Estimator1DProc):
         data = copy.deepcopy(self.data)
         data[0, 0] *= 0.5
         data = sig.sinebell_apodisation(data)
-        return sig.ft(data)
+        n1, n2 = data.shape
+        data = sig.zf(data)
+        data = sig.ft(data)
+        return data
 
     @property
     def default_multiplet_thold(self) -> float:
@@ -289,7 +315,10 @@ class Estimator2DJ(_Estimator1DProc):
         Given by :math:`f_{\text{sw}}^{(1)} / 2 N^{(1)}` (i.e. half the
         spetral resolution in the indirect dimension).
         """
-        return 0.5 * (self.sw()[0] / self.default_pts[0])
+        return max(
+            self.sw()[0] / self.default_pts[0],
+            self.sw()[1] / self.default_pts[1],
+        )
 
     @logger
     def cupid_signal(
@@ -386,7 +415,6 @@ class Estimator2DJ(_Estimator1DProc):
         freq_unit: str = "hz",
         rm_spurious: bool = False,
         _log: bool = True,
-        **estimate_kwargs,
     ) -> Dict[float, Iterable[int]]:
         r"""Predict the estimated oscillators which correspond to each multiplet
         in the signal.
@@ -420,10 +448,6 @@ class Estimator2DJ(_Estimator1DProc):
 
         _log
             Ignore me!
-
-        estimate_kwargs
-            If ``rm_suprious`` is ``True``, and oscillators are purged,
-            optimisation isrun. Kwargs are given to :py:meth:estimate:\.
 
         Returns
         -------
@@ -476,7 +500,10 @@ class Estimator2DJ(_Estimator1DProc):
                             spurious[osc_loc[0]] = [osc_loc[1]]
 
             for res_idx, osc_idx in spurious.items():
-                self.edit_result(index=res_idx, rm_oscs=osc_idx, **estimate_kwargs)
+                p = self._results[res_idx].get_params()
+                e = self._results[res_idx].get_errors()
+                self._results[res_idx].params = np.delete(p, osc_idx, axis=0)
+                self._results[res_idx].errors = np.delete(e, osc_idx, axis=0)
 
         factor = 1. if freq_unit == "hz" else self.sfo[-1]
         multiplets = {
@@ -826,6 +853,15 @@ class Estimator2DJ(_Estimator1DProc):
         )
         print(f"{GRE}Saved CUPID signal to {path}/{expno}/{END}")
 
+    def direct_spectrum(self, lb: float | None) -> np.ndarray:
+        data = copy.deepcopy(self._data[0])
+        if lb is not None:
+            data = sig.exp_apodisation(data, lb)
+        data = sig.zf(data)
+        data[0] *= 0.5
+        data = sig.ft(data)
+        return data
+
     @logger
     def plot_result(
         self,
@@ -856,6 +892,7 @@ class Estimator2DJ(_Estimator1DProc):
         marker_shape: str = "o",
         label_peaks: bool = False,
         denote_regions: bool = False,
+        lb: float | None = None,
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         r"""Generate a figure of the estimation result.
@@ -876,9 +913,7 @@ class Estimator2DJ(_Estimator1DProc):
             .. math::
                 f_c - f_t < f^{(2)} - f^{(1)} < f_c + f_t
 
-            where :math:`f_c` is the central frequency of the multiplet, and `f_t` is
-            the threshold.
-
+            where :math:`f_c` is the central frequency of the multiplet, and `f_t` is the threshold.
         high_resolution_pts
             Indicates the number of points used to generate the multiplet structures
             and :py:meth:`cupid_spectrum`. Should be greater than or equal to
@@ -1063,225 +1098,71 @@ class Estimator2DJ(_Estimator1DProc):
         # marker_shape: str = "o",
 
         indices = self._process_indices(indices)
-        regions = sorted(
-            [
-                (i, result.get_region(unit=region_unit)[1])
-                for i, result in enumerate(self.get_results())
-                if i in indices
-            ],
-            key=lambda x: x[1][0],
-            reverse=True,
-        )
-
-        # Megre overlapping/bordering regions
-        merge_indices = []
-        merge_regions = []
-        for idx, region in regions:
-            assigned = False
-            for i, reg in enumerate(merge_regions):
-                if max(region) >= min(reg):
-                    merge_regions[i] = (max(reg), min(region))
-                    assigned = True
-                elif min(region) >= max(reg):
-                    merge_regions[i] = (max(region), min(reg))
-                    assigned = True
-
-                if assigned:
-                    merge_indices[i].append(idx)
-                    break
-
-            if not assigned:
-                merge_indices.append([idx])
-                merge_regions.append(region)
-
-        n_regions = len(merge_regions)
-
-        fig, axs = plt.subplots(
-            nrows=2,
-            ncols=n_regions,
-            gridspec_kw={
-                "left": axes_left,
-                "right": axes_right,
-                "bottom": axes_bottom,
-                "top": axes_top,
-                "wspace": axes_region_separation,
-                "hspace": 0.,
-                "width_ratios": [r[0] - r[1] for r in merge_regions],
-                "height_ratios": ratio_1d_2d,
-            },
+        regions = self._get_plot_regions(indices, region_unit)
+        merge_indices, merge_regions = self._merge_regions(regions)
+        fig, axs = self._get_plot_figure(
+            axes_left,
+            axes_right,
+            axes_bottom,
+            axes_top,
+            axes_region_separation,
+            merge_regions,
+            ratio_1d_2d,
             **kwargs,
         )
-        if n_regions == 1:
-            axs = axs.reshape(2, 1)
+        contour_levels = self._get_contour_levels(
+            contour_base,
+            contour_factor,
+            contour_nlevels,
+        )
+        plot_data = self._get_plot_data(
+            region_unit,
+            lb,
+            merge_indices,
+            merge_regions,
+            multiplet_thold,
+        )
 
-        if all(
-            [isinstance(x, (float, int))
-             for x in (contour_base, contour_nlevels, contour_factor)]
-        ):
-            contour_levels = [
-                contour_base * contour_factor ** i
-                for i in range(contour_nlevels)
-            ]
-        else:
-            contour_levels = None
+        baseline = self._plot_multiplets(
+            axs,
+            plot_data,
+            multiplet_colors,
+            multiplet_vertical_shift,
+            multiplet_lw,
+        )
 
-        if high_resolution_pts is None:
-            high_resolution_pts = self.default_pts[1]
+        baseline = self._plot_1d_spectrum(
+            axs,
+            plot_data,
+            baseline,
+            multiplet_lw,
+        )
 
-        expinfo_1d = self.expinfo_direct
-        expinfo_1d_highres = copy.deepcopy(expinfo_1d)
-        expinfo_1d_highres.default_pts = (high_resolution_pts,)
-        full_shifts_1d, = expinfo_1d.get_shifts(unit=region_unit)
-        full_shifts_1d_highres, = expinfo_1d_highres.get_shifts(unit=region_unit)
-        full_shifts_2d_y, full_shifts_2d_x = self.get_shifts(unit=region_unit)
-        sfo = self.sfo[1]
+        self._plot_cupid_spectrum(
+            axs,
+            plot_data,
+            baseline,
+            multiplet_lw,
+        )
 
-        shifts_2d = []
-        shifts_1d = []
-        shifts_1d_highres = []
-        spectra_2d = []
-        spectra_1d = []
-        neg_45_spectra = []
-        f1_f2 = []
-        center_freqs = []
-        multiplet_spectra = []
-        multiplet_indices = []
+        self._plot_2dj_data(
+            axs,
+            plot_data,
+            contour_levels,
+            contour_color,
+            contour_lw,
+            multiplet_colors,
+            marker_size,
+            marker_shape,
+            label_peaks,
+        )
 
-        conv = f"{region_unit}->idx"
-        full_spectrum = np.abs(
-            self.spectrum_sinebell if jres_sinebell else self.spectrum
-        ).real
-
-        for idx, region in zip(merge_indices, merge_regions):
-            slice_ = slice(*expinfo_1d.convert([region], conv)[0])
-            highres_slice = slice(*expinfo_1d_highres.convert([region], conv)[0])
-
-            shifts_2d.append(
-                (full_shifts_2d_x[:, slice_], full_shifts_2d_y[:, slice_])
-            )
-            shifts_1d.append(full_shifts_1d[slice_])
-            shifts_1d_highres.append(full_shifts_1d_highres[highres_slice])
-
-            spectra_2d.append(np.abs(full_spectrum).real[:, slice_])
-            spectra_1d.append(self.spectrum_first_direct.real[slice_])
-            neg_45_spectra.append(
-                self.cupid_spectrum(
-                    indices=idx, pts=high_resolution_pts, _log=False,
-                ).real[highres_slice]
-            )
-
-            params = self.get_params(indices=idx)
-            multiplet_indices.append(
-                list(
-                    reversed(
-                        self.predict_multiplets(
-                            indices=idx, thold=multiplet_thold, _log=False,
-                        ).values()
-                    )
-                )
-            )
-
-            multiplet_params = [params[i] for i in multiplet_indices[-1]]
-            f1_f2_region = []
-            center_freq = []
-            for multiplet_param in multiplet_params:
-                f1, f2 = multiplet_param[:, [2, 3]].T
-                cf = np.mean(f2 - f1)
-                f2 = f2 / sfo if region_unit == "ppm" else f2
-                cf = cf / sfo if region_unit == "ppm" else cf
-                center_freq.append(cf)
-                f1_f2_region.append((f1, f2))
-
-                multiplet = expinfo_1d.make_fid(
-                    multiplet_param[:, [0, 1, 3, 5]],
-                    pts=high_resolution_pts,
-                )
-                multiplet[0] *= 0.5
-                multiplet_spectra.append(sig.ft(multiplet).real)
-
-            f1_f2.append(f1_f2_region)
-            center_freqs.append(center_freq)
-
-        print(center_freqs)
-        n_multiplets = len(multiplet_spectra)
-
-        # Plot individual mutliplets
-        for ax in axs[0]:
-            colors = make_color_cycle(multiplet_colors, n_multiplets)
-            ymax = -np.inf
-            for i, mp_spectrum in enumerate(multiplet_spectra):
-                color = next(colors)
-                x = n_multiplets - 1 - i
-                line = ax.plot(
-                    full_shifts_1d_highres,
-                    mp_spectrum + multiplet_vertical_shift * x,
-                    color=color,
-                    lw=multiplet_lw,
-                    zorder=i,
-                )[0]
-                line_max = np.amax(line.get_ydata())
-                if line_max > ymax:
-                    ymax = line_max
-                i += 1
-
-        # Plot 1D spectrum
-        spec_1d_low_pt = min([np.amin(spec) for spec in spectra_1d])
-        shift = 1.03 * (ymax - spec_1d_low_pt)
-        ymax = -np.inf
-        for ax, shifts, spectrum in zip(axs[0], shifts_1d, spectra_1d):
-            line = ax.plot(shifts, spectrum + shift, color="k")[0]
-            line_max = np.amax(line.get_ydata())
-            if line_max > ymax:
-                ymax = line_max
-
-        # Plot homodecoupled spectrum
-        homo_spec_low_pt = min([np.amin(spec) for spec in neg_45_spectra])
-        shift = 1.03 * (ymax - homo_spec_low_pt)
-        for ax, shifts, spectrum in zip(axs[0], shifts_1d_highres, neg_45_spectra):
-            ax.plot(shifts, spectrum + shift, color="k")
-
-        # Plot 2DJ contour
-        for ax, shifts, spectrum in zip(axs[1], shifts_2d, spectra_2d):
-            ax.contour(
-                *shifts,
-                spectrum,
-                colors=contour_color,
-                linewidths=contour_lw,
-                levels=contour_levels,
-                zorder=0,
-            )
-
-        # Plot peak positions onto 2DJ
-        colors = make_color_cycle(multiplet_colors, n_multiplets)
-        for ax, f1f2, mp_idxs in zip(axs[1], f1_f2, multiplet_indices):
-            for mp_f1f2, mp_idx in zip(f1f2, mp_idxs):
-                color = next(colors)
-                f1, f2 = mp_f1f2
-                ax.scatter(
-                    x=f2,
-                    y=f1,
-                    s=marker_size,
-                    marker=marker_shape,
-                    color=color,
-                    edgecolor="none",
-                    zorder=100,
-                )
-                if label_peaks:
-                    for f1_, f2_, idx in zip(f1, f2, mp_idx):
-                        ax.text(
-                            x=f2_,
-                            y=f1_,
-                            s=str(idx),
-                            color=color,
-                            fontsize=8,
-                            clip_on=True,
-                        )
-
-        ylim1 = (shifts_2d[0][1][0, 0], shifts_2d[0][1][-1, 0])
+        # >>> TODO: refactor until end of method
+        ylim1 = (plot_data.shifts_2d[0][1][0, 0], plot_data.shifts_2d[0][1][-1, 0])
         # Plot multiplet central frequencies
         if multiplet_show_center_freq:
-            colors = make_color_cycle(multiplet_colors, n_multiplets)
-            for ax, center_freq in zip(axs[1], center_freqs):
+            colors = make_color_cycle(multiplet_colors, plot_data.n_multiplets)
+            for ax, center_freq in zip(axs[1], plot_data.center_freqs):
                 for cf in center_freq:
                     color = next(colors)
                     ax.plot(
@@ -1294,12 +1175,12 @@ class Estimator2DJ(_Estimator1DProc):
 
         # Plot 45 lines that multiplets lie along
         if multiplet_show_45:
-            colors = make_color_cycle(multiplet_colors, n_multiplets)
-            for ax, center_freq in zip(axs[1], center_freqs):
+            colors = make_color_cycle(multiplet_colors, plot_data.n_multiplets)
+            for ax, center_freq in zip(axs[1], plot_data.center_freqs):
                 for cf in center_freq:
                     color = next(colors)
                     ax.plot(
-                        [cf + lim / (sfo if region_unit == "ppm" else 1.)
+                        [cf + lim / (self.sfo[1] if region_unit == "ppm" else 1.)
                          for lim in ylim1],
                         ylim1,
                         color=color,
@@ -1347,6 +1228,318 @@ class Estimator2DJ(_Estimator1DProc):
         axs[1, 0].set_ylabel("Hz")
 
         return fig, axs
+
+    def _get_plot_regions(
+        self,
+        indices: list[int],
+        region_unit: Literal["hz", "ppm"],
+    ) -> list[tuple[int, tuple[float, float]]]:
+        results = self.get_results(indices=indices)
+        regions = []
+        for i, result in zip(indices, results):
+            _, region = result.get_region(unit=region_unit)
+            regions.append((i, region))
+        regions = sorted(regions, key=lambda x: x[1][0], reverse=True)
+        return regions
+
+    @staticmethod
+    def _merge_regions(
+        regions: list[tuple[int, tuple[float, float]]],
+    ) -> tuple[
+        list[list[int]],
+        list[tuple[float, float]],
+    ]:
+        # Megre overlapping/bordering regions
+        merge_indices = []
+        merge_regions = []
+        for idx, region in regions:
+            assigned = False
+            for i, reg in enumerate(merge_regions):
+                if max(region) >= min(reg):
+                    merge_regions[i] = (max(reg), min(region))
+                    assigned = True
+                elif min(region) >= max(reg):
+                    merge_regions[i] = (max(region), min(reg))
+                    assigned = True
+
+                if assigned:
+                    merge_indices[i].append(idx)
+                    break
+
+            if not assigned:
+                merge_indices.append([idx])
+                merge_regions.append(region)
+
+        return merge_indices, merge_regions
+
+    @staticmethod
+    def _get_plot_figure(
+        left: float,
+        right: float,
+        bottom: float,
+        top: float,
+        separation: float,
+        regions: list[tuple[float, float]],
+        ratio_1d_2d: tuple[float, float],
+        **kwargs: dict[str, Any],
+    ) -> tuple[mpl.figure.Figure, np.ndarray]:
+        n_regions = len(regions)
+        fig, axs = plt.subplots(
+            nrows=2,
+            ncols=n_regions,
+            gridspec_kw={
+                "left": left,
+                "right": right,
+                "bottom": bottom,
+                "top": top,
+                "wspace": separation,
+                "hspace": 0.,
+                "width_ratios": [r[0] - r[1] for r in regions],
+                "height_ratios": ratio_1d_2d,
+            },
+            **kwargs,
+        )
+        if n_regions == 1:
+            axs = axs.reshape(2, 1)
+        return fig, axs
+
+    @staticmethod
+    def _get_contour_levels(
+        base: float | None,
+        factor: float | None,
+        nlevels: int | None,
+    ):
+        if base is not None and nlevels is not None and factor is not None:
+            levels = [base * factor ** i for i in range(nlevels)]
+        else:
+            levels = None
+        return levels
+
+    def _get_plot_data(
+        self,
+        region_unit: Literal["hz", "ppm"],
+        lb: float | None,
+        merge_indices: list[list[int]],
+        merge_regions: list[tuple[float, float]],
+        multiplet_thold: float | None,
+    ) -> PlotResultData:
+        # Normal 1D
+        # This has been (optionally) line-broadened, zero-filled, and FTed
+        full_spectrum_1d = self.direct_spectrum(lb)
+        expinfo_1d = copy.deepcopy(self.expinfo_direct)
+        expinfo_1d.default_pts = full_spectrum_1d.shape
+
+        # Shifts for 1D data
+        full_shifts_1d, = expinfo_1d.get_shifts(unit=region_unit)
+
+        # Normal 2DJ, processed using sine-bell, zero-filling, and FT
+        full_spectrum_2dj = copy.deepcopy(self._data)
+        full_spectrum_2dj = np.abs(sig.ft(sig.zf(sig.sinebell_apodisation(full_spectrum_2dj)))).real
+
+        # Shifts for 2DJ spectra
+        full_shifts_2d_y, full_shifts_2d_x = self.get_shifts(pts=full_spectrum_2dj.shape, unit=region_unit)
+
+        # Homomdecoupled spectrum. Processed identically to the 1D spectrum
+        full_cupid_spectrum = self.cupid_signal()
+        if lb is not None:
+            full_cupid_spectrum = sig.exp_apodisation(full_cupid_spectrum, lb)
+        full_cupid_spectrum = sig.zf(full_cupid_spectrum)
+        full_cupid_spectrum[0] *= 0.5
+        full_cupid_spectrum = sig.ft(full_cupid_spectrum)
+
+        shifts_1d = []
+        shifts_2d = []
+        spectra_1d = []
+        spectra_2d = []
+        cupid_spectra = []
+        f1_f2 = []
+        center_freqs = []
+        multiplet_indices = []
+        multiplet_spectra = []
+
+        conv = f"{region_unit}->idx"
+        sfo = self.sfo[1]
+
+        for idx, region in zip(merge_indices, merge_regions):
+            region_idx, = expinfo_1d.convert([region], conv)
+            slice_ = slice(*region_idx)
+
+            shifts_1d.append(full_shifts_1d[slice_])
+            shifts_2d.append(
+                (full_shifts_2d_x[:, slice_], full_shifts_2d_y[:, slice_])
+            )
+
+            spectra_1d.append(full_spectrum_1d[slice_])
+            spectra_2d.append(full_spectrum_2dj[:, slice_])
+            cupid_spectra.append(full_cupid_spectrum[slice_])
+
+            mp_indices = list(
+                reversed(
+                    self.predict_multiplets(
+                        indices=idx,
+                        thold=multiplet_thold,
+                        _log=False,
+                    ).values()
+                )
+            )
+            multiplet_indices.append(mp_indices)
+
+            params = self.get_params(indices=idx)
+            mp_params = [params[i] for i in multiplet_indices[-1]]
+            f1_f2_region = []
+            center_freqs_region = []
+
+            for mp_param in mp_params:
+                f1, f2 = mp_param[:, [2, 3]].T
+                cf = np.mean(f2 - f1)
+                f2 = f2 / sfo if region_unit == "ppm" else f2
+                cf = cf / sfo if region_unit == "ppm" else cf
+                center_freqs_region.append(cf)
+                f1_f2_region.append((f1, f2))
+
+                multiplet = expinfo_1d.make_fid(
+                    mp_param[:, [0, 1, 3, 5]],
+                    pts=self._data[0].shape,
+                )
+                if lb is not None:
+                    multiplet = sig.exp_apodisation(multiplet, lb)
+                multiplet = sig.zf(multiplet)
+                multiplet[0] *= 0.5
+                multiplet = sig.ft(multiplet).real
+                multiplet_spectra.append(multiplet)
+
+            f1_f2.append(f1_f2_region)
+            center_freqs.append(center_freqs_region)
+
+        return PlotResultData(
+            full_shifts_1d,
+            shifts_1d,
+            shifts_2d,
+            spectra_1d,
+            spectra_2d,
+            cupid_spectra,
+            f1_f2,
+            center_freqs,
+            multiplet_spectra,
+            multiplet_indices,
+        )
+
+    @staticmethod
+    def _plot_multiplets(
+        axs: np.ndarray,
+        plot_data: PlotResultData,
+        multiplet_colors,
+        multiplet_vertical_shift: float,
+        lw: float,
+    ) -> float:
+        """Returns the maximum height of the plots."""
+        for ax in axs[0]:
+            colors = make_color_cycle(multiplet_colors, plot_data.n_multiplets)
+            ymax = -np.inf
+            for i, spec in enumerate(plot_data.multiplet_spectra):
+                color = next(colors)
+                x = plot_data.n_multiplets - 1 - i
+                line, = ax.plot(
+                    plot_data.full_shifts_1d,
+                    spec + multiplet_vertical_shift * x,
+                    color=color,
+                    lw=lw,
+                    zorder=i,
+                )
+                line_max = np.amax(line.get_ydata())
+                if line_max > ymax:
+                    ymax = line_max
+                i += 1
+        return ymax
+
+    @staticmethod
+    def _plot_1d_spectrum(
+        axs: np.ndarray,
+        plot_data: PlotResultData,
+        baseline: float,
+        lw: float,
+    ) -> float:
+        lowest_point = min([np.amin(spec) for spec in plot_data.spectra_1d])
+        yshift = 1.03 * (baseline - lowest_point)
+        ymax = -np.inf
+        for ax, shifts, spectrum in zip(axs[0], plot_data.shifts_1d, plot_data.spectra_1d):
+            line, = ax.plot(shifts, spectrum + yshift, color="k", lw=lw)
+            line_max = np.amax(line.get_ydata())
+            if line_max > ymax:
+                ymax = line_max
+        return ymax
+
+    @staticmethod
+    def _plot_cupid_spectrum(
+        axs: np.ndarray,
+        plot_data: PlotResultData,
+        baseline: float,
+        lw: float,
+    ) -> None:
+        lowest_point = min([np.amin(spec) for spec in plot_data.cupid_spectra])
+        shift = 1.03 * (baseline - lowest_point)
+        for ax, shifts, spectrum in zip(axs[0], plot_data.shifts_1d, plot_data.cupid_spectra):
+            ax.plot(shifts, spectrum + shift, color="k", lw=lw)
+
+    @staticmethod
+    def _plot_2dj_data(
+        axs: np.ndarray,
+        plot_data: PlotResultData,
+        contour_levels: list[float] | None,
+        contour_color,
+        contour_lw: float,
+        multiplet_colors,
+        marker_size: float,
+        marker_shape,
+        label_peaks: bool,
+    ) -> None:
+        colors = make_color_cycle(multiplet_colors, plot_data.n_multiplets)
+        for (
+            ax,
+            (f2_shifts, f1_shifts),
+            spectrum,
+            f1_f2,
+            mp_idxs
+        ) in zip(
+            axs[1],
+            plot_data.shifts_2d,
+            plot_data.spectra_2d,
+            plot_data.f1_f2,
+            plot_data.multiplet_indices,
+        ):
+            ax.contour(
+                f2_shifts,
+                f1_shifts,
+                spectrum,
+                colors=contour_color,
+                linewidths=contour_lw,
+                levels=contour_levels,
+                zorder=0,
+            )
+
+            for (f1s, f2s), mp_idx in zip(f1_f2, mp_idxs):
+                color = next(colors)
+                ax.scatter(
+                    x=f2s,
+                    y=f1s,
+                    s=marker_size,
+                    marker=marker_shape,
+                    color=color,
+                    linewidths=0.5,
+                    edgecolor="k",
+                    zorder=100,
+                )
+                if label_peaks:
+                    for f1, f2, idx in zip(f1s, f2s, mp_idx):
+                        ax.text(
+                            x=f2,
+                            y=f1,
+                            s=str(idx),
+                            color=color,
+                            fontsize=8,
+                            clip_on=True,
+                        )
+
 
     def edit_result(
         self,

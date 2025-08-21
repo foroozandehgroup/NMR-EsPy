@@ -82,7 +82,7 @@ class ResultFetcher(FrequencyConverter):
         """
         if self.errors is None:
             return None
-        dim = (self.params.shape[1] - 2) // 2
+        dim = (self.errors.shape[1] - 2) // 2
         sanity_check(
             ("funit", funit, sfuncs.check_frequency_unit, (self.hz_ppm_valid,)),
             ("sort_by", sort_by, sfuncs.check_sort_by, (dim,)),

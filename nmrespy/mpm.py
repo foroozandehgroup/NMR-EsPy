@@ -157,7 +157,8 @@ class MatrixPencil(ResultFetcher):
                 k * np.log(N) * (2 * L - k) / 2
             )
 
-        return argrelextrema(self.mdl, np.less)[0][0]
+        return np.argmin(self.mdl)
+        # return argrelextrema(self.mdl, np.less)[0][0]
 
     @timer
     @start_end_wrapper("MPM STARTED", "MPM COMPLETE")

@@ -13,6 +13,7 @@ import numpy as np
 from pybaselines.classification import dietrich
 
 import nmrespy as ne
+from nmrespy import sig
 from nmrespy.estimators import Estimator, logger, Result
 from nmrespy.write import ResultWriter
 from nmrespy._colors import GRE, END, USE_COLORAMA
