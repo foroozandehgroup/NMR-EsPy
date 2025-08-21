@@ -685,7 +685,7 @@ class ExpInfo(FrequencyConverter):
         pts: Optional[Iterable[int]] = None,
         absolute: bool = True,
         scale_relative_to: Optional[int] = None,
-    ) -> float:
+    ) -> list[float]:
         """Determine the integral of the FT of oscillators.
 
         Parameters
@@ -731,8 +731,8 @@ class ExpInfo(FrequencyConverter):
         Notes
         -----
         The integration is performed using the composite Simpsons rule, provided
-        by `scipy.integrate.simps <https://docs.scipy.org/doc/scipy-1.5.4/\
-        reference/generated/scipy.integrate.simps.html>`_
+        by `scipy.integrate.simpson
+        <https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.simpson.html>`_
 
         Spacing of points along the frequency axes is set as ``1`` (i.e. ``dx = 1``).
         """
@@ -761,12 +761,12 @@ class ExpInfo(FrequencyConverter):
         integrals = [np.absolute(x) if absolute else x for x in integrals]
 
         for axis in reversed(range(integrals[0].ndim)):
-            integrals = [integrate.simps(x, axis=axis) for x in integrals]
+            integrals = [integrate.simpson(x, axis=axis) for x in integrals]
 
         if isinstance(scale_relative_to, int):
             integrals = [x / integrals[scale_relative_to] for x in integrals]
 
-        return integrals
+        return [float(integral) for integral in integrals]
 
     @staticmethod
     def _get_dir_number(root_dir: Path) -> int:
