@@ -8,7 +8,6 @@ import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, Literal, Optional, Tuple, Union
-from typing_extensions import dataclass_transform
 
 import numpy as np
 import matplotlib as mpl
