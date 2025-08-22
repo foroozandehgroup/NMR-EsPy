@@ -20,7 +20,7 @@ from nmrespy.load import load_bruker
 from nmrespy.estimators import logger
 from nmrespy.estimators import Result
 from nmrespy.estimators._proc_onedim import _Estimator1DProc
-from nmrespy.plot import make_color_cycle
+from nmrespy.plot import make_color_cycle, clipped_plot
 from nmrespy._colors import RED, GRE, END, USE_COLORAMA
 from nmrespy._files import check_existent_dir, check_saveable_dir
 from nmrespy._sanity import (
@@ -893,6 +893,9 @@ class Estimator2DJ(_Estimator1DProc):
         label_peaks: bool = False,
         denote_regions: bool = False,
         lb: float | None = None,
+        clip_mp: float | None = None,
+        clip_1d: float | None = None,
+        clip_cupid: float | None = None,
         **kwargs,
     ) -> Tuple[mpl.figure.Figure, np.ndarray[mpl.axes.Axes]]:
         r"""Generate a figure of the estimation result.
@@ -1129,6 +1132,7 @@ class Estimator2DJ(_Estimator1DProc):
             multiplet_colors,
             multiplet_vertical_shift,
             multiplet_lw,
+            clip_mp,
         )
 
         baseline = self._plot_1d_spectrum(
@@ -1136,6 +1140,7 @@ class Estimator2DJ(_Estimator1DProc):
             plot_data,
             baseline,
             multiplet_lw,
+            clip_1d,
         )
 
         self._plot_cupid_spectrum(
@@ -1143,6 +1148,7 @@ class Estimator2DJ(_Estimator1DProc):
             plot_data,
             baseline,
             multiplet_lw,
+            clip_cupid,
         )
 
         self._plot_2dj_data(
@@ -1432,6 +1438,7 @@ class Estimator2DJ(_Estimator1DProc):
         multiplet_colors,
         multiplet_vertical_shift: float,
         lw: float,
+        clip: float | None,
     ) -> float:
         """Returns the maximum height of the plots."""
         for ax in axs[0]:
@@ -1440,14 +1447,16 @@ class Estimator2DJ(_Estimator1DProc):
             for i, spec in enumerate(plot_data.multiplet_spectra):
                 color = next(colors)
                 x = plot_data.n_multiplets - 1 - i
-                line, = ax.plot(
+                lines = clipped_plot(
+                    ax,
                     plot_data.full_shifts_1d,
                     spec + multiplet_vertical_shift * x,
+                    clip,
                     color=color,
                     lw=lw,
                     zorder=i,
                 )
-                line_max = np.amax(line.get_ydata())
+                line_max = np.amax([np.amax(line.get_ydata()) for line in lines])
                 if line_max > ymax:
                     ymax = line_max
                 i += 1
@@ -1459,12 +1468,20 @@ class Estimator2DJ(_Estimator1DProc):
         plot_data: PlotResultData,
         baseline: float,
         lw: float,
+        clip: float | None,
     ) -> float:
         lowest_point = min([np.amin(spec) for spec in plot_data.spectra_1d])
         yshift = 1.03 * (baseline - lowest_point)
         ymax = -np.inf
         for ax, shifts, spectrum in zip(axs[0], plot_data.shifts_1d, plot_data.spectra_1d):
-            line, = ax.plot(shifts, spectrum + yshift, color="k", lw=lw)
+            line, = clipped_plot(
+                ax,
+                shifts,
+                spectrum + yshift,
+                clip,
+                color="k",
+                lw=lw,
+            )
             line_max = np.amax(line.get_ydata())
             if line_max > ymax:
                 ymax = line_max
@@ -1476,11 +1493,19 @@ class Estimator2DJ(_Estimator1DProc):
         plot_data: PlotResultData,
         baseline: float,
         lw: float,
+        clip: float | None,
     ) -> None:
         lowest_point = min([np.amin(spec) for spec in plot_data.cupid_spectra])
         shift = 1.03 * (baseline - lowest_point)
         for ax, shifts, spectrum in zip(axs[0], plot_data.shifts_1d, plot_data.cupid_spectra):
-            ax.plot(shifts, spectrum + shift, color="k", lw=lw)
+            clipped_plot(
+                ax,
+                shifts,
+                spectrum + shift,
+                clip,
+                color="k",
+                lw=lw,
+            )
 
     @staticmethod
     def _plot_2dj_data(

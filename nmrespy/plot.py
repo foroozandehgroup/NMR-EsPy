@@ -576,3 +576,82 @@ def make_color_cycle(color_input: Any, n: int) -> itertools.cycle:
         iterable = [_to_hex(c) for c in color_input]
 
     return itertools.cycle(iterable)
+
+def clipped_plot(
+    ax: mpl.axes.Axes,
+    x: np.ndarray,
+    y: np.ndarray,
+    thold: float | None,
+    **kwargs,
+) -> list[mpl.lines.Line2D]:
+    assert x.ndim == 1
+    assert x.shape == y.shape
+    if thold is None:
+        return ax.plot(x, y, **kwargs)
+
+    # N.B. Only works for `y` in which first and last values are below `thold`
+    assert y[0] <= thold and y[-1] <= thold
+    in_range = y <= thold
+
+    if all(in_range):
+        return ax.plot(x, y, **kwargs)
+
+    false_to_true = [0] + np.flatnonzero(~in_range[:-1] & in_range[1:]).tolist()
+    true_to_false = np.flatnonzero(in_range[:-1] & ~in_range[1:]).tolist() + [x.size - 1]
+    n_segments = len(true_to_false)
+    lines = []
+    for i, (left, right) in enumerate(zip(false_to_true, true_to_false)):
+        # Slice with one extra point on each side, unless the point in the
+        # first or last in the dataset
+        if i == 0:
+            slice_ = slice(left, right + 2)
+            x_, y_ = x[slice_], y[slice_]
+            _process_rhs(x_, y_, thold)
+            line, = ax.plot(x_, y_, **kwargs)
+            if 'color' not in kwargs:
+                kwargs['color'] = line.get_color()
+
+        elif i == n_segments - 1:
+            slice_ = slice(left, right + 1)
+            x_, y_ = x[slice_], y[slice_]
+            _process_lhs(x_, y_, thold)
+            line, = ax.plot(x_, y_, **kwargs)
+        else:
+            slice_ = slice(left, right + 2)
+            x_, y_ = x[slice_], y[slice_]
+            _process_lhs(x_, y_, thold)
+            _process_rhs(x_, y_, thold)
+            line, = ax.plot(x_, y_, **kwargs)
+
+        lines.append(line)
+
+    return lines
+
+
+def _process_lhs(x_: np.ndarray, y_: np.ndarray, thold: float):
+    slice_ = slice(0, 2)
+    idx = 0
+    _interpolate(x_, y_, slice_, idx, thold)
+
+
+def _process_rhs(x_: np.ndarray, y_: np.ndarray, thold: float):
+    slice_ = slice(-2, None)
+    idx = -1
+    _interpolate(x_, y_, slice_, idx, thold)
+
+
+def _interpolate(x_: np.ndarray, y_: np.ndarray, slice_: slice, idx: int, thold: float):
+    left_x, right_x = x_[slice_]
+    diff_x = right_x - left_x
+
+    left_y, right_y = y_[slice_]
+    diff_y = right_y - left_y
+
+    m = 1 / diff_y
+    c = -left_y * m
+
+    interp_fraction = m * thold + c
+
+    x_interp = left_x + interp_fraction * diff_x
+    x_[idx] = x_interp
+    y_[idx] = thold
