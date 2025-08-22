@@ -473,7 +473,7 @@ class _Estimator1DProc(Estimator):
                 "linestyle": "none",
                 "color": "k",
                 "mec": "k",
-                "mew": 1,
+                "mew": mpl.rcParams["lines.linewidth"],
                 "clip_on": False,
             }
             for ax in axs[0, :-1]:
