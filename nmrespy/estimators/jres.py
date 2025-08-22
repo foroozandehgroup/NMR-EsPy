@@ -1527,7 +1527,7 @@ class Estimator2DJ(_Estimator1DProc):
                     s=marker_size,
                     marker=marker_shape,
                     color=color,
-                    linewidths=marker_kw,
+                    linewidths=marker_lw,
                     edgecolor="k",
                     zorder=100,
                 )
