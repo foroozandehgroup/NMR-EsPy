@@ -1170,7 +1170,6 @@ class Estimator(ne.ExpInfo):
         it is subjected to optimisation.
 
         There are four types of edit that you can make:
-
         * *Add* new oscillators with defined parameters.
         * *Remove* oscillators.
         * *Merge* multiple oscillators into a single oscillator.
@@ -1373,6 +1372,17 @@ class Estimator(ne.ExpInfo):
 
         print(f"Editing result {index}")
         self._optimise_after_edit(params, result, index, **estimate_kwargs)
+
+    def remove_oscillators(
+        self,
+        index: int,
+        osc_indices: list[int],
+    ) -> None:
+        result, = self.get_results(indices=[index])
+        params = result.get_params()
+        errors = result.get_errors()
+        self._results[index].params = np.delete(params, osc_indices, axis=0)
+        self._results[index].errors = np.delete(errors, osc_indices, axis=0)
 
     def _optimise_after_edit(
         self,

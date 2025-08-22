@@ -1325,7 +1325,7 @@ class Estimator2DJ(_Estimator1DProc):
     ) -> PlotResultData:
         # Normal 1D
         # This has been (optionally) line-broadened, zero-filled, and FTed
-        full_spectrum_1d = self.direct_spectrum(lb)
+        full_spectrum_1d = self.direct_spectrum(lb).real
         expinfo_1d = copy.deepcopy(self.expinfo_direct)
         expinfo_1d.default_pts = full_spectrum_1d.shape
 
@@ -1345,7 +1345,7 @@ class Estimator2DJ(_Estimator1DProc):
             full_cupid_spectrum = sig.exp_apodisation(full_cupid_spectrum, lb)
         full_cupid_spectrum = sig.zf(full_cupid_spectrum)
         full_cupid_spectrum[0] *= 0.5
-        full_cupid_spectrum = sig.ft(full_cupid_spectrum)
+        full_cupid_spectrum = sig.ft(full_cupid_spectrum).real
 
         shifts_1d = []
         shifts_2d = []
