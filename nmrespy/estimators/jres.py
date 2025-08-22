@@ -889,6 +889,7 @@ class Estimator2DJ(_Estimator1DProc):
         multiplet_show_45: bool = True,
         marker_size: float = 3.,
         marker_shape: str = "o",
+        marker_lw: float = 0.4,
         label_peaks: bool = False,
         denote_regions: bool = False,
         lb: float | None = None,
@@ -1153,6 +1154,7 @@ class Estimator2DJ(_Estimator1DProc):
             multiplet_colors,
             marker_size,
             marker_shape,
+            marker_lw,
             label_peaks,
         )
 
@@ -1490,6 +1492,7 @@ class Estimator2DJ(_Estimator1DProc):
         multiplet_colors,
         marker_size: float,
         marker_shape,
+        marker_lw: float,
         label_peaks: bool,
     ) -> None:
         colors = make_color_cycle(multiplet_colors, plot_data.n_multiplets)
@@ -1524,7 +1527,7 @@ class Estimator2DJ(_Estimator1DProc):
                     s=marker_size,
                     marker=marker_shape,
                     color=color,
-                    linewidths=0.5,
+                    linewidths=marker_kw,
                     edgecolor="k",
                     zorder=100,
                 )
