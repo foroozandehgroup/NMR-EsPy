@@ -257,9 +257,14 @@ class Filter(ExpInfo):
             scaling_factor = self._cut_scaling_factor(cut_ratio)
             filtered_spectrum *= scaling_factor
 
-            cut_hz = self.convert(
-                self._cut_indices(cut_ratio), "idx->hz"
-            )
+            indices = []
+            for initial_region, (left, right) in zip(self._region, self._cut_indices(cut_ratio)):
+                if initial_region is None:
+                    indices.append((left, right))
+                else:
+                    indices.append((left, right + 1))
+
+            cut_hz = self.convert(indices, "idx->hz")
             sw = tuple([abs(lft - rgt) for lft, rgt in cut_hz])
             offset = tuple([(lft + rgt) / 2 for lft, rgt in cut_hz])
             sfo, nuclei = self.sfo, self.nuclei
