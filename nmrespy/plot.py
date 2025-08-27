@@ -590,7 +590,7 @@ def clipped_plot(
         return ax.plot(x, y, **kwargs)
 
     # N.B. Only works for `y` in which first and last values are below `thold`
-    assert y[0] <= thold and y[-1] <= thold
+    assert y[0] < thold and y[-1] < thold
     in_range = y <= thold
 
     if all(in_range):
@@ -605,7 +605,7 @@ def clipped_plot(
         # first or last in the dataset
         if i == 0:
             slice_ = slice(left, right + 2)
-            x_, y_ = x[slice_], y[slice_]
+            x_, y_ = copy.deepcopy(x[slice_]), copy.deepcopy(y[slice_])
             _process_rhs(x_, y_, thold)
             line, = ax.plot(x_, y_, **kwargs)
             if 'color' not in kwargs:
@@ -613,12 +613,12 @@ def clipped_plot(
 
         elif i == n_segments - 1:
             slice_ = slice(left, right + 1)
-            x_, y_ = x[slice_], y[slice_]
+            x_, y_ = copy.deepcopy(x[slice_]), copy.deepcopy(y[slice_])
             _process_lhs(x_, y_, thold)
             line, = ax.plot(x_, y_, **kwargs)
         else:
             slice_ = slice(left, right + 2)
-            x_, y_ = x[slice_], y[slice_]
+            x_, y_ = copy.deepcopy(x[slice_]), copy.deepcopy(y[slice_])
             _process_lhs(x_, y_, thold)
             _process_rhs(x_, y_, thold)
             line, = ax.plot(x_, y_, **kwargs)

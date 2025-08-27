@@ -1118,6 +1118,7 @@ class Estimator2DJ(_Estimator1DProc):
             contour_factor,
             contour_nlevels,
         )
+
         plot_data = self._get_plot_data(
             region_unit,
             lb,
@@ -1474,7 +1475,7 @@ class Estimator2DJ(_Estimator1DProc):
         yshift = 1.03 * (baseline - lowest_point)
         ymax = -np.inf
         for ax, shifts, spectrum in zip(axs[0], plot_data.shifts_1d, plot_data.spectra_1d):
-            line, = clipped_plot(
+            lines = clipped_plot(
                 ax,
                 shifts,
                 spectrum + yshift,
@@ -1482,7 +1483,7 @@ class Estimator2DJ(_Estimator1DProc):
                 color="k",
                 lw=lw,
             )
-            line_max = np.amax(line.get_ydata())
+            line_max = np.amax([np.amax(line.get_ydata()) for line in lines])
             if line_max > ymax:
                 ymax = line_max
         return ymax
