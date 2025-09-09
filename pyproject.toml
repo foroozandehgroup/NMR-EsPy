@@ -19,7 +19,7 @@ keywords = [
     "Optimisation",
 ]
 description = "NMR-EsPy: Nuclear Magnetic Resonance Estimation in Python"
-readme = "README.rst"
+readme = "README-pypi.rst"
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3.8",
