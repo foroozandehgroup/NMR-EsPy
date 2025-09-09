@@ -5,11 +5,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Using Estimator1D &#8212; NMR-EsPy 2.0.0 documentation</title>
+    <title>Using Estimator1D &#8212; NMR-EsPy 2.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d7e2fa82" />
     <link rel="stylesheet" type="text/css" href="../_static/nameko.css?v=2296cfae" />
-    <script src="../_static/documentation_options.js?v=51b770b3"></script>
-    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/documentation_options.js?v=20623aea"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -24,7 +24,7 @@
   
   
 
-    <div class="related" role="navigation" aria-label="related navigation">
+    <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -39,7 +39,7 @@
         <li class="right" >
           <a href="index.html" title="Tutorials"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy 2.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy 2.1.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Tutorials</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Using <code class="docutils literal notranslate"><span class="pre">Estimator1D</span></code></a></li> 
       </ul>
@@ -84,7 +84,7 @@ phase the data, and apply baseline correction before proceeding to run
 estimation. Look at <a class="reference internal" href="../references/estimator1d.html#nmrespy.Estimator1D.phase_data" title="nmrespy.Estimator1D.phase_data"><code class="xref py py-meth docutils literal notranslate"><span class="pre">phase_data()</span></code></a> and
 <a class="reference internal" href="../references/estimator1d.html#nmrespy.Estimator1D.baseline_correction" title="nmrespy.Estimator1D.baseline_correction"><code class="xref py py-meth docutils literal notranslate"><span class="pre">baseline_correction()</span></code></a>, respectively.</p>
 </div>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ne</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">Estimator1D</span><span class="o">.</span><span class="n">new_bruker</span><span class="p">(</span><span class="s2">&quot;/home/simon/nmr_data/andrographolide/1&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">phase_data</span><span class="p">(</span><span class="n">p0</span><span class="o">=</span><span class="mf">2.653</span><span class="p">,</span> <span class="n">p1</span><span class="o">=-</span><span class="mf">5.686</span><span class="p">,</span> <span class="n">pivot</span><span class="o">=</span><span class="mi">13596</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">baseline_correction</span><span class="p">()</span>
@@ -104,7 +104,7 @@ then rely on TopSpin’s automated processing scripts to phase and
 baseline correct. However, <strong>you should not apply any window function to
 the data other than exponential line broadening.</strong></p>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ne</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">Estimator1D</span><span class="o">.</span><span class="n">new_bruker</span><span class="p">(</span><span class="s2">&quot;home/simon/nmr_data/andrographolide/1/pdata/1&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Note there is no need for extra data-processing steps</span>
 </pre></div>
@@ -119,8 +119,8 @@ parameters using <a class="reference internal" href="../references/estimator1d.h
 The parameters must be provided as a 2D NumPy array with <code class="docutils literal notranslate"><span class="pre">params.shape[1]</span> <span class="pre">==</span>
 <span class="pre">4</span></code>. Each row should contain a signal’s amplitude, phase (rad), frequency
 (Hz), and damping factor (s⁻¹).</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ne</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Using frequencies of 2,3-Dibromopropanoic acid @ 500MHz</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">params</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
 <span class="gp">... </span>    <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1864.4</span><span class="p">,</span> <span class="mf">7.</span><span class="p">],</span>
@@ -167,7 +167,7 @@ specification of isotropic chemical shifts and scalar couplings:</p>
 </ul>
 <p>It can take some time to run this function is it involves (a) starting up
 MATLAB and (b) running a simulation of the experiment.</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ne</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># 2,3-Dibromopropanoic acid</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">shifts</span> <span class="o">=</span> <span class="p">[</span><span class="mf">3.7</span><span class="p">,</span> <span class="mf">3.92</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">couplings</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mf">10.1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mf">4.3</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mf">11.3</span><span class="p">)]</span>
@@ -199,7 +199,7 @@ and the associated time-points can be retrieved using
 <a class="reference internal" href="../references/estimator1d.html#nmrespy.Estimator1D.get_timepoints" title="nmrespy.Estimator1D.get_timepoints"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_timepoints()</span></code></a>.  The spectral data is accessed
 with <a class="reference internal" href="../references/estimator1d.html#nmrespy.Estimator1D.spectrum" title="nmrespy.Estimator1D.spectrum"><code class="xref py py-meth docutils literal notranslate"><span class="pre">spectrum()</span></code></a>, and the corresponding chemical
 shifts with <a class="reference internal" href="../references/estimator1d.html#nmrespy.Estimator1D.get_shifts" title="nmrespy.Estimator1D.get_shifts"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_shifts()</span></code></a>.</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">fid</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">data</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">tp</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">get_timepoints</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">spectrum</span>
@@ -462,7 +462,7 @@ region only (index 1)</p></li>
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper"><style>
 .aligncenter {
     text-align: center;

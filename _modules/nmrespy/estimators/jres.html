@@ -4,11 +4,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>nmrespy.estimators.jres &#8212; NMR-EsPy 2.0.0 documentation</title>
+    <title>nmrespy.estimators.jres &#8212; NMR-EsPy 2.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d7e2fa82" />
     <link rel="stylesheet" type="text/css" href="../../../_static/nameko.css?v=2296cfae" />
-    <script src="../../../_static/documentation_options.js?v=51b770b3"></script>
-    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
@@ -21,7 +21,7 @@
   
   
 
-    <div class="related" role="navigation" aria-label="related navigation">
+    <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -30,7 +30,7 @@
         <li class="right" >
           <a href="../../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../../../index.html">NMR-EsPy 2.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">NMR-EsPy 2.1.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">nmrespy.estimators.jres</a></li> 
       </ul>
@@ -47,37 +47,59 @@
 <span class="c1"># simon.hulse@chem.ox.ac.uk</span>
 <span class="c1"># Last Edited: Fri 21 Jul 2023 12:36:09 BST</span>
 
-<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
-<span class="kn">import</span> <span class="nn">copy</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
 
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpl</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 
-<span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">ExpInfo</span><span class="p">,</span> <span class="n">sig</span>
-<span class="kn">from</span> <span class="nn">nmrespy.contour_app</span> <span class="kn">import</span> <span class="n">ContourApp</span>
-<span class="kn">from</span> <span class="nn">nmrespy.load</span> <span class="kn">import</span> <span class="n">load_bruker</span>
-<span class="kn">from</span> <span class="nn">nmrespy.estimators</span> <span class="kn">import</span> <span class="n">logger</span>
-<span class="kn">from</span> <span class="nn">nmrespy.estimators._proc_onedim</span> <span class="kn">import</span> <span class="n">_Estimator1DProc</span>
-<span class="kn">from</span> <span class="nn">nmrespy.plot</span> <span class="kn">import</span> <span class="n">make_color_cycle</span>
-<span class="kn">from</span> <span class="nn">nmrespy._colors</span> <span class="kn">import</span> <span class="n">RED</span><span class="p">,</span> <span class="n">GRE</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">USE_COLORAMA</span>
-<span class="kn">from</span> <span class="nn">nmrespy._files</span> <span class="kn">import</span> <span class="n">check_existent_dir</span><span class="p">,</span> <span class="n">check_saveable_dir</span>
-<span class="kn">from</span> <span class="nn">nmrespy._sanity</span> <span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpInfo</span><span class="p">,</span> <span class="n">sig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy.contour_app</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContourApp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy.load</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_bruker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy.estimators</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy.estimators</span><span class="w"> </span><span class="kn">import</span> <span class="n">Result</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy.estimators._proc_onedim</span><span class="w"> </span><span class="kn">import</span> <span class="n">_Estimator1DProc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_color_cycle</span><span class="p">,</span> <span class="n">clipped_plot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy._colors</span><span class="w"> </span><span class="kn">import</span> <span class="n">RED</span><span class="p">,</span> <span class="n">GRE</span><span class="p">,</span> <span class="n">END</span><span class="p">,</span> <span class="n">USE_COLORAMA</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy._files</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_existent_dir</span><span class="p">,</span> <span class="n">check_saveable_dir</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy._sanity</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">sanity_check</span><span class="p">,</span>
     <span class="n">funcs</span> <span class="k">as</span> <span class="n">sfuncs</span><span class="p">,</span>
 <span class="p">)</span>
 
 
 <span class="k">if</span> <span class="n">USE_COLORAMA</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">colorama</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">colorama</span>
     <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlotResultData</span><span class="p">:</span>
+
+    <span class="n">full_shifts_1d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">shifts_1d</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">shifts_2d</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">spectra_1d</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">spectra_2d</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">cupid_spectra</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">f1_f2</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span>
+    <span class="n">center_freqs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span>
+    <span class="n">multiplet_spectra</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span>
+    <span class="n">multiplet_indices</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_multiplets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">multiplet_spectra</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="Estimator2DJ">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ">[docs]</a>
-<span class="k">class</span> <span class="nc">Estimator2DJ</span><span class="p">(</span><span class="n">_Estimator1DProc</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Estimator2DJ</span><span class="p">(</span><span class="n">_Estimator1DProc</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Estimator class for J-Resolved (2DJ) datasets, enabling use of our CUPID</span>
 <span class="sd">    method for Pure Shift spectra. For a tutorial on the basic functionailty</span>
 <span class="sd">    this provides, see :ref:`ESTIMATOR2DJ`.</span>
@@ -104,7 +126,7 @@
 <div class="viewcode-block" id="Estimator2DJ.new_bruker">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.new_bruker">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">new_bruker</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">new_bruker</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span>
         <span class="n">directory</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
         <span class="n">convdta</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -161,7 +183,7 @@
 <div class="viewcode-block" id="Estimator2DJ.new_spinach">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.new_spinach">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">new_spinach</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">new_spinach</span><span class="p">(</span>
         <span class="bp">cls</span><span class="p">,</span>
         <span class="n">shifts</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
         <span class="n">couplings</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Tuple</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)],</span>
@@ -265,7 +287,7 @@
 
 <div class="viewcode-block" id="Estimator2DJ.view_data">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.view_data">[docs]</a>
-    <span class="k">def</span> <span class="nf">view_data</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">view_data</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;freq&quot;</span><span class="p">,</span>
         <span class="n">abs_</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
@@ -311,7 +333,7 @@
 
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">spectrum_tilt</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">spectrum_tilt</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate the spectrum of the data with a 45° tilt.&quot;&quot;&quot;</span>
         <span class="n">spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spectrum_sinebell</span><span class="p">)</span><span class="o">.</span><span class="n">real</span>
         <span class="n">sw1</span><span class="p">,</span> <span class="n">sw2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">()</span>
@@ -326,7 +348,7 @@
         <span class="k">return</span> <span class="n">spectrum</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">spectrum_sinebell</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">spectrum_sinebell</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Spectrum with sine-bell apodisation.</span>
 
 <span class="sd">        Generated applying sine-bell apodisation to the FID, and applying FT.</span>
@@ -334,22 +356,28 @@
         <span class="n">data</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
         <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">sinebell_apodisation</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">zf</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">default_multiplet_thold</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">default_multiplet_thold</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;The default margin for error when determining oscillators which belong to</span>
 <span class="sd">        the same multiplet.</span>
 
 <span class="sd">        Given by :math:`f_{\text{sw}}^{(1)} / 2 N^{(1)}` (i.e. half the</span>
 <span class="sd">        spetral resolution in the indirect dimension).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_pts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_pts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sw</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_pts</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+        <span class="p">)</span>
 
 <div class="viewcode-block" id="Estimator2DJ.cupid_signal">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.cupid_signal">[docs]</a>
     <span class="nd">@logger</span>
-    <span class="k">def</span> <span class="nf">cupid_signal</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cupid_signal</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -405,7 +433,7 @@
 <div class="viewcode-block" id="Estimator2DJ.cupid_spectrum">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.cupid_spectrum">[docs]</a>
     <span class="nd">@logger</span>
-    <span class="k">def</span> <span class="nf">cupid_spectrum</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cupid_spectrum</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -442,14 +470,13 @@
 <div class="viewcode-block" id="Estimator2DJ.predict_multiplets">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.predict_multiplets">[docs]</a>
     <span class="nd">@logger</span>
-    <span class="k">def</span> <span class="nf">predict_multiplets</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">predict_multiplets</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">thold</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">freq_unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;hz&quot;</span><span class="p">,</span>
         <span class="n">rm_spurious</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">_log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">estimate_kwargs</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Predict the estimated oscillators which correspond to each multiplet</span>
 <span class="sd">        in the signal.</span>
@@ -483,10 +510,6 @@
 
 <span class="sd">        _log</span>
 <span class="sd">            Ignore me!</span>
-
-<span class="sd">        estimate_kwargs</span>
-<span class="sd">            If ``rm_suprious`` is ``True``, and oscillators are purged,</span>
-<span class="sd">            optimisation isrun. Kwargs are given to :py:meth:estimate:\.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -539,7 +562,10 @@
                             <span class="n">spurious</span><span class="p">[</span><span class="n">osc_loc</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span><span class="n">osc_loc</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
 
             <span class="k">for</span> <span class="n">res_idx</span><span class="p">,</span> <span class="n">osc_idx</span> <span class="ow">in</span> <span class="n">spurious</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">edit_result</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">res_idx</span><span class="p">,</span> <span class="n">rm_oscs</span><span class="o">=</span><span class="n">osc_idx</span><span class="p">,</span> <span class="o">**</span><span class="n">estimate_kwargs</span><span class="p">)</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">[</span><span class="n">res_idx</span><span class="p">]</span><span class="o">.</span><span class="n">get_params</span><span class="p">()</span>
+                <span class="n">e</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">[</span><span class="n">res_idx</span><span class="p">]</span><span class="o">.</span><span class="n">get_errors</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">[</span><span class="n">res_idx</span><span class="p">]</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">osc_idx</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_results</span><span class="p">[</span><span class="n">res_idx</span><span class="p">]</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">osc_idx</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
         <span class="n">factor</span> <span class="o">=</span> <span class="mf">1.</span> <span class="k">if</span> <span class="n">freq_unit</span> <span class="o">==</span> <span class="s2">&quot;hz&quot;</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">multiplets</span> <span class="o">=</span> <span class="p">{</span>
@@ -552,7 +578,7 @@
 
 <div class="viewcode-block" id="Estimator2DJ.get_multiplet_integrals">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.get_multiplet_integrals">[docs]</a>
-    <span class="k">def</span> <span class="nf">get_multiplet_integrals</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_multiplet_integrals</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">scale</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
@@ -591,7 +617,7 @@
 <div class="viewcode-block" id="Estimator2DJ.sheared_signal">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.sheared_signal">[docs]</a>
     <span class="nd">@logger</span>
-    <span class="k">def</span> <span class="nf">sheared_signal</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sheared_signal</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -689,7 +715,7 @@
 
 <div class="viewcode-block" id="Estimator2DJ.construct_multiplet_fids">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.construct_multiplet_fids">[docs]</a>
-    <span class="k">def</span> <span class="nf">construct_multiplet_fids</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">construct_multiplet_fids</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">pts</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -750,7 +776,7 @@
 
 <div class="viewcode-block" id="Estimator2DJ.write_multiplets_to_bruker">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.write_multiplets_to_bruker">[docs]</a>
-    <span class="k">def</span> <span class="nf">write_multiplets_to_bruker</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write_multiplets_to_bruker</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
         <span class="n">expno_prefix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -848,7 +874,7 @@
 
 <div class="viewcode-block" id="Estimator2DJ.write_cupid_to_bruker">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.write_cupid_to_bruker">[docs]</a>
-    <span class="k">def</span> <span class="nf">write_cupid_to_bruker</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write_cupid_to_bruker</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
         <span class="n">expno</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -905,10 +931,19 @@
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">GRE</span><span class="si">}</span><span class="s2">Saved CUPID signal to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">expno</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">END</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">direct_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">lb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">exp_apodisation</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">lb</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">zf</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span>
+
 <div class="viewcode-block" id="Estimator2DJ.plot_result">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.plot_result">[docs]</a>
     <span class="nd">@logger</span>
-    <span class="k">def</span> <span class="nf">plot_result</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_result</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">indices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">multiplet_thold</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -935,8 +970,13 @@
         <span class="n">multiplet_show_45</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">marker_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.</span><span class="p">,</span>
         <span class="n">marker_shape</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span>
+        <span class="n">marker_lw</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.4</span><span class="p">,</span>
         <span class="n">label_peaks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">denote_regions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">lb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">clip_mp</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">clip_1d</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">clip_cupid</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">mpl</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">mpl</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">Axes</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Generate a figure of the estimation result.</span>
@@ -957,9 +997,7 @@
 <span class="sd">            .. math::</span>
 <span class="sd">                f_c - f_t &lt; f^{(2)} - f^{(1)} &lt; f_c + f_t</span>
 
-<span class="sd">            where :math:`f_c` is the central frequency of the multiplet, and `f_t` is</span>
-<span class="sd">            the threshold.</span>
-
+<span class="sd">            where :math:`f_c` is the central frequency of the multiplet, and `f_t` is the threshold.</span>
 <span class="sd">        high_resolution_pts</span>
 <span class="sd">            Indicates the number of points used to generate the multiplet structures</span>
 <span class="sd">            and :py:meth:`cupid_spectrum`. Should be greater than or equal to</span>
@@ -1144,225 +1182,76 @@
         <span class="c1"># marker_shape: str = &quot;o&quot;,</span>
 
         <span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_indices</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
-        <span class="n">regions</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
-            <span class="p">[</span>
-                <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">get_region</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
-                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_results</span><span class="p">())</span>
-                <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span>
-            <span class="p">],</span>
-            <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
-            <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-        <span class="p">)</span>
-
-        <span class="c1"># Megre overlapping/bordering regions</span>
-        <span class="n">merge_indices</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">merge_regions</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">regions</span><span class="p">:</span>
-            <span class="n">assigned</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">reg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">merge_regions</span><span class="p">):</span>
-                <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="n">region</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">min</span><span class="p">(</span><span class="n">reg</span><span class="p">):</span>
-                    <span class="n">merge_regions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">reg</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">region</span><span class="p">))</span>
-                    <span class="n">assigned</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="k">elif</span> <span class="nb">min</span><span class="p">(</span><span class="n">region</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">max</span><span class="p">(</span><span class="n">reg</span><span class="p">):</span>
-                    <span class="n">merge_regions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">region</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">reg</span><span class="p">))</span>
-                    <span class="n">assigned</span> <span class="o">=</span> <span class="kc">True</span>
-
-                <span class="k">if</span> <span class="n">assigned</span><span class="p">:</span>
-                    <span class="n">merge_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
-                    <span class="k">break</span>
-
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">assigned</span><span class="p">:</span>
-                <span class="n">merge_indices</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">idx</span><span class="p">])</span>
-                <span class="n">merge_regions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">region</span><span class="p">)</span>
-
-        <span class="n">n_regions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">merge_regions</span><span class="p">)</span>
-
-        <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
-            <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-            <span class="n">ncols</span><span class="o">=</span><span class="n">n_regions</span><span class="p">,</span>
-            <span class="n">gridspec_kw</span><span class="o">=</span><span class="p">{</span>
-                <span class="s2">&quot;left&quot;</span><span class="p">:</span> <span class="n">axes_left</span><span class="p">,</span>
-                <span class="s2">&quot;right&quot;</span><span class="p">:</span> <span class="n">axes_right</span><span class="p">,</span>
-                <span class="s2">&quot;bottom&quot;</span><span class="p">:</span> <span class="n">axes_bottom</span><span class="p">,</span>
-                <span class="s2">&quot;top&quot;</span><span class="p">:</span> <span class="n">axes_top</span><span class="p">,</span>
-                <span class="s2">&quot;wspace&quot;</span><span class="p">:</span> <span class="n">axes_region_separation</span><span class="p">,</span>
-                <span class="s2">&quot;hspace&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span>
-                <span class="s2">&quot;width_ratios&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">merge_regions</span><span class="p">],</span>
-                <span class="s2">&quot;height_ratios&quot;</span><span class="p">:</span> <span class="n">ratio_1d_2d</span><span class="p">,</span>
-            <span class="p">},</span>
+        <span class="n">regions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_plot_regions</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">region_unit</span><span class="p">)</span>
+        <span class="n">merge_indices</span><span class="p">,</span> <span class="n">merge_regions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_merge_regions</span><span class="p">(</span><span class="n">regions</span><span class="p">)</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_plot_figure</span><span class="p">(</span>
+            <span class="n">axes_left</span><span class="p">,</span>
+            <span class="n">axes_right</span><span class="p">,</span>
+            <span class="n">axes_bottom</span><span class="p">,</span>
+            <span class="n">axes_top</span><span class="p">,</span>
+            <span class="n">axes_region_separation</span><span class="p">,</span>
+            <span class="n">merge_regions</span><span class="p">,</span>
+            <span class="n">ratio_1d_2d</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">if</span> <span class="n">n_regions</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">axs</span> <span class="o">=</span> <span class="n">axs</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">contour_levels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_contour_levels</span><span class="p">(</span>
+            <span class="n">contour_base</span><span class="p">,</span>
+            <span class="n">contour_factor</span><span class="p">,</span>
+            <span class="n">contour_nlevels</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span>
-            <span class="p">[</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">))</span>
-             <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="n">contour_base</span><span class="p">,</span> <span class="n">contour_nlevels</span><span class="p">,</span> <span class="n">contour_factor</span><span class="p">)]</span>
-        <span class="p">):</span>
-            <span class="n">contour_levels</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="n">contour_base</span> <span class="o">*</span> <span class="n">contour_factor</span> <span class="o">**</span> <span class="n">i</span>
-                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">contour_nlevels</span><span class="p">)</span>
-            <span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">contour_levels</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">plot_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_plot_data</span><span class="p">(</span>
+            <span class="n">region_unit</span><span class="p">,</span>
+            <span class="n">lb</span><span class="p">,</span>
+            <span class="n">merge_indices</span><span class="p">,</span>
+            <span class="n">merge_regions</span><span class="p">,</span>
+            <span class="n">multiplet_thold</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">high_resolution_pts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">high_resolution_pts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_pts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">baseline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_multiplets</span><span class="p">(</span>
+            <span class="n">axs</span><span class="p">,</span>
+            <span class="n">plot_data</span><span class="p">,</span>
+            <span class="n">multiplet_colors</span><span class="p">,</span>
+            <span class="n">multiplet_vertical_shift</span><span class="p">,</span>
+            <span class="n">multiplet_lw</span><span class="p">,</span>
+            <span class="n">clip_mp</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="n">expinfo_1d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expinfo_direct</span>
-        <span class="n">expinfo_1d_highres</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">expinfo_1d</span><span class="p">)</span>
-        <span class="n">expinfo_1d_highres</span><span class="o">.</span><span class="n">default_pts</span> <span class="o">=</span> <span class="p">(</span><span class="n">high_resolution_pts</span><span class="p">,)</span>
-        <span class="n">full_shifts_1d</span><span class="p">,</span> <span class="o">=</span> <span class="n">expinfo_1d</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">)</span>
-        <span class="n">full_shifts_1d_highres</span><span class="p">,</span> <span class="o">=</span> <span class="n">expinfo_1d_highres</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">)</span>
-        <span class="n">full_shifts_2d_y</span><span class="p">,</span> <span class="n">full_shifts_2d_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">)</span>
-        <span class="n">sfo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">baseline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_1d_spectrum</span><span class="p">(</span>
+            <span class="n">axs</span><span class="p">,</span>
+            <span class="n">plot_data</span><span class="p">,</span>
+            <span class="n">baseline</span><span class="p">,</span>
+            <span class="n">multiplet_lw</span><span class="p">,</span>
+            <span class="n">clip_1d</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="n">shifts_2d</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">shifts_1d</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">shifts_1d_highres</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">spectra_2d</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">spectra_1d</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">neg_45_spectra</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">f1_f2</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">center_freqs</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">multiplet_spectra</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">multiplet_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plot_cupid_spectrum</span><span class="p">(</span>
+            <span class="n">axs</span><span class="p">,</span>
+            <span class="n">plot_data</span><span class="p">,</span>
+            <span class="n">baseline</span><span class="p">,</span>
+            <span class="n">multiplet_lw</span><span class="p">,</span>
+            <span class="n">clip_cupid</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="n">conv</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region_unit</span><span class="si">}</span><span class="s2">-&gt;idx&quot;</span>
-        <span class="n">full_spectrum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">spectrum_sinebell</span> <span class="k">if</span> <span class="n">jres_sinebell</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span>
-        <span class="p">)</span><span class="o">.</span><span class="n">real</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plot_2dj_data</span><span class="p">(</span>
+            <span class="n">axs</span><span class="p">,</span>
+            <span class="n">plot_data</span><span class="p">,</span>
+            <span class="n">contour_levels</span><span class="p">,</span>
+            <span class="n">contour_color</span><span class="p">,</span>
+            <span class="n">contour_lw</span><span class="p">,</span>
+            <span class="n">multiplet_colors</span><span class="p">,</span>
+            <span class="n">marker_size</span><span class="p">,</span>
+            <span class="n">marker_shape</span><span class="p">,</span>
+            <span class="n">marker_lw</span><span class="p">,</span>
+            <span class="n">label_peaks</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">region</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">merge_indices</span><span class="p">,</span> <span class="n">merge_regions</span><span class="p">):</span>
-            <span class="n">slice_</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="o">*</span><span class="n">expinfo_1d</span><span class="o">.</span><span class="n">convert</span><span class="p">([</span><span class="n">region</span><span class="p">],</span> <span class="n">conv</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">highres_slice</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="o">*</span><span class="n">expinfo_1d_highres</span><span class="o">.</span><span class="n">convert</span><span class="p">([</span><span class="n">region</span><span class="p">],</span> <span class="n">conv</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
-
-            <span class="n">shifts_2d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">full_shifts_2d_x</span><span class="p">[:,</span> <span class="n">slice_</span><span class="p">],</span> <span class="n">full_shifts_2d_y</span><span class="p">[:,</span> <span class="n">slice_</span><span class="p">])</span>
-            <span class="p">)</span>
-            <span class="n">shifts_1d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full_shifts_1d</span><span class="p">[</span><span class="n">slice_</span><span class="p">])</span>
-            <span class="n">shifts_1d_highres</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full_shifts_1d_highres</span><span class="p">[</span><span class="n">highres_slice</span><span class="p">])</span>
-
-            <span class="n">spectra_2d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">full_spectrum</span><span class="p">)</span><span class="o">.</span><span class="n">real</span><span class="p">[:,</span> <span class="n">slice_</span><span class="p">])</span>
-            <span class="n">spectra_1d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spectrum_first_direct</span><span class="o">.</span><span class="n">real</span><span class="p">[</span><span class="n">slice_</span><span class="p">])</span>
-            <span class="n">neg_45_spectra</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">cupid_spectrum</span><span class="p">(</span>
-                    <span class="n">indices</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="n">high_resolution_pts</span><span class="p">,</span> <span class="n">_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                <span class="p">)</span><span class="o">.</span><span class="n">real</span><span class="p">[</span><span class="n">highres_slice</span><span class="p">]</span>
-            <span class="p">)</span>
-
-            <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">idx</span><span class="p">)</span>
-            <span class="n">multiplet_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                <span class="nb">list</span><span class="p">(</span>
-                    <span class="nb">reversed</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">predict_multiplets</span><span class="p">(</span>
-                            <span class="n">indices</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span> <span class="n">thold</span><span class="o">=</span><span class="n">multiplet_thold</span><span class="p">,</span> <span class="n">_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                        <span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-                    <span class="p">)</span>
-                <span class="p">)</span>
-            <span class="p">)</span>
-
-            <span class="n">multiplet_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">multiplet_indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
-            <span class="n">f1_f2_region</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="n">center_freq</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">multiplet_param</span> <span class="ow">in</span> <span class="n">multiplet_params</span><span class="p">:</span>
-                <span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="o">=</span> <span class="n">multiplet_param</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]]</span><span class="o">.</span><span class="n">T</span>
-                <span class="n">cf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">f2</span> <span class="o">-</span> <span class="n">f1</span><span class="p">)</span>
-                <span class="n">f2</span> <span class="o">=</span> <span class="n">f2</span> <span class="o">/</span> <span class="n">sfo</span> <span class="k">if</span> <span class="n">region_unit</span> <span class="o">==</span> <span class="s2">&quot;ppm&quot;</span> <span class="k">else</span> <span class="n">f2</span>
-                <span class="n">cf</span> <span class="o">=</span> <span class="n">cf</span> <span class="o">/</span> <span class="n">sfo</span> <span class="k">if</span> <span class="n">region_unit</span> <span class="o">==</span> <span class="s2">&quot;ppm&quot;</span> <span class="k">else</span> <span class="n">cf</span>
-                <span class="n">center_freq</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cf</span><span class="p">)</span>
-                <span class="n">f1_f2_region</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">))</span>
-
-                <span class="n">multiplet</span> <span class="o">=</span> <span class="n">expinfo_1d</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span>
-                    <span class="n">multiplet_param</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
-                    <span class="n">pts</span><span class="o">=</span><span class="n">high_resolution_pts</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="n">multiplet</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
-                <span class="n">multiplet_spectra</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">multiplet</span><span class="p">)</span><span class="o">.</span><span class="n">real</span><span class="p">)</span>
-
-            <span class="n">f1_f2</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f1_f2_region</span><span class="p">)</span>
-            <span class="n">center_freqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">center_freq</span><span class="p">)</span>
-
-        <span class="nb">print</span><span class="p">(</span><span class="n">center_freqs</span><span class="p">)</span>
-        <span class="n">n_multiplets</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">multiplet_spectra</span><span class="p">)</span>
-
-        <span class="c1"># Plot individual mutliplets</span>
-        <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-            <span class="n">colors</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">multiplet_colors</span><span class="p">,</span> <span class="n">n_multiplets</span><span class="p">)</span>
-            <span class="n">ymax</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">mp_spectrum</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">multiplet_spectra</span><span class="p">):</span>
-                <span class="n">color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
-                <span class="n">x</span> <span class="o">=</span> <span class="n">n_multiplets</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span>
-                <span class="n">line</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-                    <span class="n">full_shifts_1d_highres</span><span class="p">,</span>
-                    <span class="n">mp_spectrum</span> <span class="o">+</span> <span class="n">multiplet_vertical_shift</span> <span class="o">*</span> <span class="n">x</span><span class="p">,</span>
-                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
-                    <span class="n">lw</span><span class="o">=</span><span class="n">multiplet_lw</span><span class="p">,</span>
-                    <span class="n">zorder</span><span class="o">=</span><span class="n">i</span><span class="p">,</span>
-                <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-                <span class="n">line_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">())</span>
-                <span class="k">if</span> <span class="n">line_max</span> <span class="o">&gt;</span> <span class="n">ymax</span><span class="p">:</span>
-                    <span class="n">ymax</span> <span class="o">=</span> <span class="n">line_max</span>
-                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
-
-        <span class="c1"># Plot 1D spectrum</span>
-        <span class="n">spec_1d_low_pt</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">spectra_1d</span><span class="p">])</span>
-        <span class="n">shift</span> <span class="o">=</span> <span class="mf">1.03</span> <span class="o">*</span> <span class="p">(</span><span class="n">ymax</span> <span class="o">-</span> <span class="n">spec_1d_low_pt</span><span class="p">)</span>
-        <span class="n">ymax</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
-        <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shifts_1d</span><span class="p">,</span> <span class="n">spectra_1d</span><span class="p">):</span>
-            <span class="n">line</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">spectrum</span> <span class="o">+</span> <span class="n">shift</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">line_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">())</span>
-            <span class="k">if</span> <span class="n">line_max</span> <span class="o">&gt;</span> <span class="n">ymax</span><span class="p">:</span>
-                <span class="n">ymax</span> <span class="o">=</span> <span class="n">line_max</span>
-
-        <span class="c1"># Plot homodecoupled spectrum</span>
-        <span class="n">homo_spec_low_pt</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">neg_45_spectra</span><span class="p">])</span>
-        <span class="n">shift</span> <span class="o">=</span> <span class="mf">1.03</span> <span class="o">*</span> <span class="p">(</span><span class="n">ymax</span> <span class="o">-</span> <span class="n">homo_spec_low_pt</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shifts_1d_highres</span><span class="p">,</span> <span class="n">neg_45_spectra</span><span class="p">):</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">spectrum</span> <span class="o">+</span> <span class="n">shift</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Plot 2DJ contour</span>
-        <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">shifts_2d</span><span class="p">,</span> <span class="n">spectra_2d</span><span class="p">):</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span>
-                <span class="o">*</span><span class="n">shifts</span><span class="p">,</span>
-                <span class="n">spectrum</span><span class="p">,</span>
-                <span class="n">colors</span><span class="o">=</span><span class="n">contour_color</span><span class="p">,</span>
-                <span class="n">linewidths</span><span class="o">=</span><span class="n">contour_lw</span><span class="p">,</span>
-                <span class="n">levels</span><span class="o">=</span><span class="n">contour_levels</span><span class="p">,</span>
-                <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-            <span class="p">)</span>
-
-        <span class="c1"># Plot peak positions onto 2DJ</span>
-        <span class="n">colors</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">multiplet_colors</span><span class="p">,</span> <span class="n">n_multiplets</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">f1f2</span><span class="p">,</span> <span class="n">mp_idxs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">f1_f2</span><span class="p">,</span> <span class="n">multiplet_indices</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">mp_f1f2</span><span class="p">,</span> <span class="n">mp_idx</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">f1f2</span><span class="p">,</span> <span class="n">mp_idxs</span><span class="p">):</span>
-                <span class="n">color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
-                <span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="o">=</span> <span class="n">mp_f1f2</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
-                    <span class="n">x</span><span class="o">=</span><span class="n">f2</span><span class="p">,</span>
-                    <span class="n">y</span><span class="o">=</span><span class="n">f1</span><span class="p">,</span>
-                    <span class="n">s</span><span class="o">=</span><span class="n">marker_size</span><span class="p">,</span>
-                    <span class="n">marker</span><span class="o">=</span><span class="n">marker_shape</span><span class="p">,</span>
-                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
-                    <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
-                    <span class="n">zorder</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-                <span class="p">)</span>
-                <span class="k">if</span> <span class="n">label_peaks</span><span class="p">:</span>
-                    <span class="k">for</span> <span class="n">f1_</span><span class="p">,</span> <span class="n">f2_</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">,</span> <span class="n">mp_idx</span><span class="p">):</span>
-                        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-                            <span class="n">x</span><span class="o">=</span><span class="n">f2_</span><span class="p">,</span>
-                            <span class="n">y</span><span class="o">=</span><span class="n">f1_</span><span class="p">,</span>
-                            <span class="n">s</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">idx</span><span class="p">),</span>
-                            <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
-                            <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
-                            <span class="n">clip_on</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                        <span class="p">)</span>
-
-        <span class="n">ylim1</span> <span class="o">=</span> <span class="p">(</span><span class="n">shifts_2d</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">shifts_2d</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># &gt;&gt;&gt; TODO: refactor until end of method</span>
+        <span class="n">ylim1</span> <span class="o">=</span> <span class="p">(</span><span class="n">plot_data</span><span class="o">.</span><span class="n">shifts_2d</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">shifts_2d</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
         <span class="c1"># Plot multiplet central frequencies</span>
         <span class="k">if</span> <span class="n">multiplet_show_center_freq</span><span class="p">:</span>
-            <span class="n">colors</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">multiplet_colors</span><span class="p">,</span> <span class="n">n_multiplets</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">center_freq</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">center_freqs</span><span class="p">):</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">multiplet_colors</span><span class="p">,</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">n_multiplets</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">center_freq</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">center_freqs</span><span class="p">):</span>
                 <span class="k">for</span> <span class="n">cf</span> <span class="ow">in</span> <span class="n">center_freq</span><span class="p">:</span>
                     <span class="n">color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
                     <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
@@ -1375,12 +1264,12 @@
 
         <span class="c1"># Plot 45 lines that multiplets lie along</span>
         <span class="k">if</span> <span class="n">multiplet_show_45</span><span class="p">:</span>
-            <span class="n">colors</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">multiplet_colors</span><span class="p">,</span> <span class="n">n_multiplets</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">center_freq</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">center_freqs</span><span class="p">):</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">multiplet_colors</span><span class="p">,</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">n_multiplets</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">center_freq</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">center_freqs</span><span class="p">):</span>
                 <span class="k">for</span> <span class="n">cf</span> <span class="ow">in</span> <span class="n">center_freq</span><span class="p">:</span>
                     <span class="n">color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
                     <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-                        <span class="p">[</span><span class="n">cf</span> <span class="o">+</span> <span class="n">lim</span> <span class="o">/</span> <span class="p">(</span><span class="n">sfo</span> <span class="k">if</span> <span class="n">region_unit</span> <span class="o">==</span> <span class="s2">&quot;ppm&quot;</span> <span class="k">else</span> <span class="mf">1.</span><span class="p">)</span>
+                        <span class="p">[</span><span class="n">cf</span> <span class="o">+</span> <span class="n">lim</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">region_unit</span> <span class="o">==</span> <span class="s2">&quot;ppm&quot;</span> <span class="k">else</span> <span class="mf">1.</span><span class="p">)</span>
                          <span class="k">for</span> <span class="n">lim</span> <span class="ow">in</span> <span class="n">ylim1</span><span class="p">],</span>
                         <span class="n">ylim1</span><span class="p">,</span>
                         <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
@@ -1430,9 +1319,341 @@
         <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span></div>
 
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_plot_regions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">indices</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">region_unit</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;hz&quot;</span><span class="p">,</span> <span class="s2">&quot;ppm&quot;</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_results</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
+        <span class="n">regions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">results</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">region</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get_region</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">)</span>
+            <span class="n">regions</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span><span class="p">,</span> <span class="n">region</span><span class="p">))</span>
+        <span class="n">regions</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">regions</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">regions</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_merge_regions</span><span class="p">(</span>
+        <span class="n">regions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
+        <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+        <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+    <span class="p">]:</span>
+        <span class="c1"># Megre overlapping/bordering regions</span>
+        <span class="n">merge_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">merge_regions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">regions</span><span class="p">:</span>
+            <span class="n">assigned</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">reg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">merge_regions</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="n">region</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">min</span><span class="p">(</span><span class="n">reg</span><span class="p">):</span>
+                    <span class="n">merge_regions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">reg</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">region</span><span class="p">))</span>
+                    <span class="n">assigned</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">elif</span> <span class="nb">min</span><span class="p">(</span><span class="n">region</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nb">max</span><span class="p">(</span><span class="n">reg</span><span class="p">):</span>
+                    <span class="n">merge_regions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">region</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">reg</span><span class="p">))</span>
+                    <span class="n">assigned</span> <span class="o">=</span> <span class="kc">True</span>
+
+                <span class="k">if</span> <span class="n">assigned</span><span class="p">:</span>
+                    <span class="n">merge_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">assigned</span><span class="p">:</span>
+                <span class="n">merge_indices</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">idx</span><span class="p">])</span>
+                <span class="n">merge_regions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">region</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">merge_indices</span><span class="p">,</span> <span class="n">merge_regions</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_plot_figure</span><span class="p">(</span>
+        <span class="n">left</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">right</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">bottom</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">top</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">separation</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">regions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+        <span class="n">ratio_1d_2d</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">mpl</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">Figure</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+        <span class="n">n_regions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">regions</span><span class="p">)</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+            <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">ncols</span><span class="o">=</span><span class="n">n_regions</span><span class="p">,</span>
+            <span class="n">gridspec_kw</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;left&quot;</span><span class="p">:</span> <span class="n">left</span><span class="p">,</span>
+                <span class="s2">&quot;right&quot;</span><span class="p">:</span> <span class="n">right</span><span class="p">,</span>
+                <span class="s2">&quot;bottom&quot;</span><span class="p">:</span> <span class="n">bottom</span><span class="p">,</span>
+                <span class="s2">&quot;top&quot;</span><span class="p">:</span> <span class="n">top</span><span class="p">,</span>
+                <span class="s2">&quot;wspace&quot;</span><span class="p">:</span> <span class="n">separation</span><span class="p">,</span>
+                <span class="s2">&quot;hspace&quot;</span><span class="p">:</span> <span class="mf">0.</span><span class="p">,</span>
+                <span class="s2">&quot;width_ratios&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">regions</span><span class="p">],</span>
+                <span class="s2">&quot;height_ratios&quot;</span><span class="p">:</span> <span class="n">ratio_1d_2d</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_regions</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">axs</span> <span class="o">=</span> <span class="n">axs</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_contour_levels</span><span class="p">(</span>
+        <span class="n">base</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">nlevels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">base</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">nlevels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">factor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">levels</span> <span class="o">=</span> <span class="p">[</span><span class="n">base</span> <span class="o">*</span> <span class="n">factor</span> <span class="o">**</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlevels</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">levels</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">levels</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_plot_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region_unit</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;hz&quot;</span><span class="p">,</span> <span class="s2">&quot;ppm&quot;</span><span class="p">],</span>
+        <span class="n">lb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">merge_indices</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]],</span>
+        <span class="n">merge_regions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span>
+        <span class="n">multiplet_thold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlotResultData</span><span class="p">:</span>
+        <span class="c1"># Normal 1D</span>
+        <span class="c1"># This has been (optionally) line-broadened, zero-filled, and FTed</span>
+        <span class="n">full_spectrum_1d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">direct_spectrum</span><span class="p">(</span><span class="n">lb</span><span class="p">)</span><span class="o">.</span><span class="n">real</span>
+        <span class="n">expinfo_1d</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expinfo_direct</span><span class="p">)</span>
+        <span class="n">expinfo_1d</span><span class="o">.</span><span class="n">default_pts</span> <span class="o">=</span> <span class="n">full_spectrum_1d</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Shifts for 1D data</span>
+        <span class="n">full_shifts_1d</span><span class="p">,</span> <span class="o">=</span> <span class="n">expinfo_1d</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">)</span>
+
+        <span class="c1"># Normal 2DJ, processed using sine-bell, zero-filling, and FT</span>
+        <span class="n">full_spectrum_2dj</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+        <span class="n">full_spectrum_2dj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">zf</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">sinebell_apodisation</span><span class="p">(</span><span class="n">full_spectrum_2dj</span><span class="p">))))</span><span class="o">.</span><span class="n">real</span>
+
+        <span class="c1"># Shifts for 2DJ spectra</span>
+        <span class="n">full_shifts_2d_y</span><span class="p">,</span> <span class="n">full_shifts_2d_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">pts</span><span class="o">=</span><span class="n">full_spectrum_2dj</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">region_unit</span><span class="p">)</span>
+
+        <span class="c1"># Homomdecoupled spectrum. Processed identically to the 1D spectrum</span>
+        <span class="n">full_cupid_spectrum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cupid_signal</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">lb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">full_cupid_spectrum</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">exp_apodisation</span><span class="p">(</span><span class="n">full_cupid_spectrum</span><span class="p">,</span> <span class="n">lb</span><span class="p">)</span>
+        <span class="n">full_cupid_spectrum</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">zf</span><span class="p">(</span><span class="n">full_cupid_spectrum</span><span class="p">)</span>
+        <span class="n">full_cupid_spectrum</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+        <span class="n">full_cupid_spectrum</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">full_cupid_spectrum</span><span class="p">)</span><span class="o">.</span><span class="n">real</span>
+
+        <span class="n">shifts_1d</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">shifts_2d</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">spectra_1d</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">spectra_2d</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">cupid_spectra</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">f1_f2</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">center_freqs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">multiplet_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">multiplet_spectra</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">conv</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">region_unit</span><span class="si">}</span><span class="s2">-&gt;idx&quot;</span>
+        <span class="n">sfo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sfo</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">region</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">merge_indices</span><span class="p">,</span> <span class="n">merge_regions</span><span class="p">):</span>
+            <span class="n">region_idx</span><span class="p">,</span> <span class="o">=</span> <span class="n">expinfo_1d</span><span class="o">.</span><span class="n">convert</span><span class="p">([</span><span class="n">region</span><span class="p">],</span> <span class="n">conv</span><span class="p">)</span>
+            <span class="n">slice_</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="o">*</span><span class="n">region_idx</span><span class="p">)</span>
+
+            <span class="n">shifts_1d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full_shifts_1d</span><span class="p">[</span><span class="n">slice_</span><span class="p">])</span>
+            <span class="n">shifts_2d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">full_shifts_2d_x</span><span class="p">[:,</span> <span class="n">slice_</span><span class="p">],</span> <span class="n">full_shifts_2d_y</span><span class="p">[:,</span> <span class="n">slice_</span><span class="p">])</span>
+            <span class="p">)</span>
+
+            <span class="n">spectra_1d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full_spectrum_1d</span><span class="p">[</span><span class="n">slice_</span><span class="p">])</span>
+            <span class="n">spectra_2d</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full_spectrum_2dj</span><span class="p">[:,</span> <span class="n">slice_</span><span class="p">])</span>
+            <span class="n">cupid_spectra</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full_cupid_spectrum</span><span class="p">[</span><span class="n">slice_</span><span class="p">])</span>
+
+            <span class="n">mp_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+                <span class="nb">reversed</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">predict_multiplets</span><span class="p">(</span>
+                        <span class="n">indices</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span>
+                        <span class="n">thold</span><span class="o">=</span><span class="n">multiplet_thold</span><span class="p">,</span>
+                        <span class="n">_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">multiplet_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mp_indices</span><span class="p">)</span>
+
+            <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">idx</span><span class="p">)</span>
+            <span class="n">mp_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">multiplet_indices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+            <span class="n">f1_f2_region</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">center_freqs_region</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">for</span> <span class="n">mp_param</span> <span class="ow">in</span> <span class="n">mp_params</span><span class="p">:</span>
+                <span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="o">=</span> <span class="n">mp_param</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]]</span><span class="o">.</span><span class="n">T</span>
+                <span class="n">cf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">f2</span> <span class="o">-</span> <span class="n">f1</span><span class="p">)</span>
+                <span class="n">f2</span> <span class="o">=</span> <span class="n">f2</span> <span class="o">/</span> <span class="n">sfo</span> <span class="k">if</span> <span class="n">region_unit</span> <span class="o">==</span> <span class="s2">&quot;ppm&quot;</span> <span class="k">else</span> <span class="n">f2</span>
+                <span class="n">cf</span> <span class="o">=</span> <span class="n">cf</span> <span class="o">/</span> <span class="n">sfo</span> <span class="k">if</span> <span class="n">region_unit</span> <span class="o">==</span> <span class="s2">&quot;ppm&quot;</span> <span class="k">else</span> <span class="n">cf</span>
+                <span class="n">center_freqs_region</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cf</span><span class="p">)</span>
+                <span class="n">f1_f2_region</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">))</span>
+
+                <span class="n">multiplet</span> <span class="o">=</span> <span class="n">expinfo_1d</span><span class="o">.</span><span class="n">make_fid</span><span class="p">(</span>
+                    <span class="n">mp_param</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]],</span>
+                    <span class="n">pts</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">lb</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">multiplet</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">exp_apodisation</span><span class="p">(</span><span class="n">multiplet</span><span class="p">,</span> <span class="n">lb</span><span class="p">)</span>
+                <span class="n">multiplet</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">zf</span><span class="p">(</span><span class="n">multiplet</span><span class="p">)</span>
+                <span class="n">multiplet</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mf">0.5</span>
+                <span class="n">multiplet</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">ft</span><span class="p">(</span><span class="n">multiplet</span><span class="p">)</span><span class="o">.</span><span class="n">real</span>
+                <span class="n">multiplet_spectra</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">multiplet</span><span class="p">)</span>
+
+            <span class="n">f1_f2</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f1_f2_region</span><span class="p">)</span>
+            <span class="n">center_freqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">center_freqs_region</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">PlotResultData</span><span class="p">(</span>
+            <span class="n">full_shifts_1d</span><span class="p">,</span>
+            <span class="n">shifts_1d</span><span class="p">,</span>
+            <span class="n">shifts_2d</span><span class="p">,</span>
+            <span class="n">spectra_1d</span><span class="p">,</span>
+            <span class="n">spectra_2d</span><span class="p">,</span>
+            <span class="n">cupid_spectra</span><span class="p">,</span>
+            <span class="n">f1_f2</span><span class="p">,</span>
+            <span class="n">center_freqs</span><span class="p">,</span>
+            <span class="n">multiplet_spectra</span><span class="p">,</span>
+            <span class="n">multiplet_indices</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_multiplets</span><span class="p">(</span>
+        <span class="n">axs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">plot_data</span><span class="p">:</span> <span class="n">PlotResultData</span><span class="p">,</span>
+        <span class="n">multiplet_colors</span><span class="p">,</span>
+        <span class="n">multiplet_vertical_shift</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">lw</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">clip</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the maximum height of the plots.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">multiplet_colors</span><span class="p">,</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">n_multiplets</span><span class="p">)</span>
+            <span class="n">ymax</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">spec</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">plot_data</span><span class="o">.</span><span class="n">multiplet_spectra</span><span class="p">):</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">n_multiplets</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span>
+                <span class="n">lines</span> <span class="o">=</span> <span class="n">clipped_plot</span><span class="p">(</span>
+                    <span class="n">ax</span><span class="p">,</span>
+                    <span class="n">plot_data</span><span class="o">.</span><span class="n">full_shifts_1d</span><span class="p">,</span>
+                    <span class="n">spec</span> <span class="o">+</span> <span class="n">multiplet_vertical_shift</span> <span class="o">*</span> <span class="n">x</span><span class="p">,</span>
+                    <span class="n">clip</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                    <span class="n">lw</span><span class="o">=</span><span class="n">lw</span><span class="p">,</span>
+                    <span class="n">zorder</span><span class="o">=</span><span class="n">i</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">line_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">())</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">line_max</span> <span class="o">&gt;</span> <span class="n">ymax</span><span class="p">:</span>
+                    <span class="n">ymax</span> <span class="o">=</span> <span class="n">line_max</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">ymax</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_1d_spectrum</span><span class="p">(</span>
+        <span class="n">axs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">plot_data</span><span class="p">:</span> <span class="n">PlotResultData</span><span class="p">,</span>
+        <span class="n">baseline</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">lw</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">clip</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">lowest_point</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">spectra_1d</span><span class="p">])</span>
+        <span class="n">yshift</span> <span class="o">=</span> <span class="mf">1.03</span> <span class="o">*</span> <span class="p">(</span><span class="n">baseline</span> <span class="o">-</span> <span class="n">lowest_point</span><span class="p">)</span>
+        <span class="n">ymax</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">shifts_1d</span><span class="p">,</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">spectra_1d</span><span class="p">):</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">clipped_plot</span><span class="p">(</span>
+                <span class="n">ax</span><span class="p">,</span>
+                <span class="n">shifts</span><span class="p">,</span>
+                <span class="n">spectrum</span> <span class="o">+</span> <span class="n">yshift</span><span class="p">,</span>
+                <span class="n">clip</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span>
+                <span class="n">lw</span><span class="o">=</span><span class="n">lw</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">line_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">get_ydata</span><span class="p">())</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">line_max</span> <span class="o">&gt;</span> <span class="n">ymax</span><span class="p">:</span>
+                <span class="n">ymax</span> <span class="o">=</span> <span class="n">line_max</span>
+        <span class="k">return</span> <span class="n">ymax</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_cupid_spectrum</span><span class="p">(</span>
+        <span class="n">axs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">plot_data</span><span class="p">:</span> <span class="n">PlotResultData</span><span class="p">,</span>
+        <span class="n">baseline</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">lw</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">clip</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">lowest_point</span> <span class="o">=</span> <span class="nb">min</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">cupid_spectra</span><span class="p">])</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="mf">1.03</span> <span class="o">*</span> <span class="p">(</span><span class="n">baseline</span> <span class="o">-</span> <span class="n">lowest_point</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">shifts</span><span class="p">,</span> <span class="n">spectrum</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">shifts_1d</span><span class="p">,</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">cupid_spectra</span><span class="p">):</span>
+            <span class="n">clipped_plot</span><span class="p">(</span>
+                <span class="n">ax</span><span class="p">,</span>
+                <span class="n">shifts</span><span class="p">,</span>
+                <span class="n">spectrum</span> <span class="o">+</span> <span class="n">shift</span><span class="p">,</span>
+                <span class="n">clip</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span>
+                <span class="n">lw</span><span class="o">=</span><span class="n">lw</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_2dj_data</span><span class="p">(</span>
+        <span class="n">axs</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">plot_data</span><span class="p">:</span> <span class="n">PlotResultData</span><span class="p">,</span>
+        <span class="n">contour_levels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">contour_color</span><span class="p">,</span>
+        <span class="n">contour_lw</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">multiplet_colors</span><span class="p">,</span>
+        <span class="n">marker_size</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">marker_shape</span><span class="p">,</span>
+        <span class="n">marker_lw</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">label_peaks</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">make_color_cycle</span><span class="p">(</span><span class="n">multiplet_colors</span><span class="p">,</span> <span class="n">plot_data</span><span class="o">.</span><span class="n">n_multiplets</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span>
+            <span class="n">ax</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">f2_shifts</span><span class="p">,</span> <span class="n">f1_shifts</span><span class="p">),</span>
+            <span class="n">spectrum</span><span class="p">,</span>
+            <span class="n">f1_f2</span><span class="p">,</span>
+            <span class="n">mp_idxs</span>
+        <span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">plot_data</span><span class="o">.</span><span class="n">shifts_2d</span><span class="p">,</span>
+            <span class="n">plot_data</span><span class="o">.</span><span class="n">spectra_2d</span><span class="p">,</span>
+            <span class="n">plot_data</span><span class="o">.</span><span class="n">f1_f2</span><span class="p">,</span>
+            <span class="n">plot_data</span><span class="o">.</span><span class="n">multiplet_indices</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span>
+                <span class="n">f2_shifts</span><span class="p">,</span>
+                <span class="n">f1_shifts</span><span class="p">,</span>
+                <span class="n">spectrum</span><span class="p">,</span>
+                <span class="n">colors</span><span class="o">=</span><span class="n">contour_color</span><span class="p">,</span>
+                <span class="n">linewidths</span><span class="o">=</span><span class="n">contour_lw</span><span class="p">,</span>
+                <span class="n">levels</span><span class="o">=</span><span class="n">contour_levels</span><span class="p">,</span>
+                <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">for</span> <span class="p">(</span><span class="n">f1s</span><span class="p">,</span> <span class="n">f2s</span><span class="p">),</span> <span class="n">mp_idx</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">f1_f2</span><span class="p">,</span> <span class="n">mp_idxs</span><span class="p">):</span>
+                <span class="n">color</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">colors</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                    <span class="n">x</span><span class="o">=</span><span class="n">f2s</span><span class="p">,</span>
+                    <span class="n">y</span><span class="o">=</span><span class="n">f1s</span><span class="p">,</span>
+                    <span class="n">s</span><span class="o">=</span><span class="n">marker_size</span><span class="p">,</span>
+                    <span class="n">marker</span><span class="o">=</span><span class="n">marker_shape</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                    <span class="n">linewidths</span><span class="o">=</span><span class="n">marker_lw</span><span class="p">,</span>
+                    <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span>
+                    <span class="n">zorder</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">label_peaks</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">f1s</span><span class="p">,</span> <span class="n">f2s</span><span class="p">,</span> <span class="n">mp_idx</span><span class="p">):</span>
+                        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+                            <span class="n">x</span><span class="o">=</span><span class="n">f2</span><span class="p">,</span>
+                            <span class="n">y</span><span class="o">=</span><span class="n">f1</span><span class="p">,</span>
+                            <span class="n">s</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">idx</span><span class="p">),</span>
+                            <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                            <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                            <span class="n">clip_on</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="p">)</span>
+
+
 <div class="viewcode-block" id="Estimator2DJ.edit_result">
 <a class="viewcode-back" href="../../../references/estimator2dj.html#nmrespy.Estimator2DJ.edit_result">[docs]</a>
-    <span class="k">def</span> <span class="nf">edit_result</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">edit_result</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
         <span class="n">add_oscs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -1577,7 +1798,7 @@
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper"><style>
 .aligncenter {
     text-align: center;

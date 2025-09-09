@@ -5,11 +5,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Using Estimator2DJ &#8212; NMR-EsPy 2.0.0 documentation</title>
+    <title>Using Estimator2DJ &#8212; NMR-EsPy 2.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d7e2fa82" />
     <link rel="stylesheet" type="text/css" href="../_static/nameko.css?v=2296cfae" />
-    <script src="../_static/documentation_options.js?v=51b770b3"></script>
-    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/documentation_options.js?v=20623aea"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -24,7 +24,7 @@
   
   
 
-    <div class="related" role="navigation" aria-label="related navigation">
+    <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -39,7 +39,7 @@
         <li class="right" >
           <a href="estimator1d.html" title="Using Estimator1D"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy 2.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">NMR-EsPy 2.1.0 documentation</a> &#187;</li>
           <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Tutorials</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Using <code class="docutils literal notranslate"><span class="pre">Estimator2DJ</span></code></a></li> 
       </ul>
@@ -81,7 +81,7 @@ must import time-domain 2DJ data. The path should be set as
 file, and an <code class="docutils literal notranslate"><span class="pre">acqu2s</span></code> file directly under this directory. Phasing in the
 direct-dimension will be needed. If deemed necessary, baseline correction can
 be performed too.</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ne</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span> <span class="o">=</span> <span class="n">ne</span><span class="o">.</span><span class="n">Estimator2DJ</span><span class="o">.</span><span class="n">new_bruker</span><span class="p">(</span><span class="s2">&quot;/home/simon/nmr_data/qunine/dexamethasone/2&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">phase_data</span><span class="p">(</span><span class="n">p0</span><span class="o">=</span><span class="mf">0.041</span><span class="p">,</span> <span class="n">p1</span><span class="o">=-</span><span class="mf">6.383</span><span class="p">,</span> <span class="n">pivot</span><span class="o">=</span><span class="mi">1923</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">estimator</span><span class="o">.</span><span class="n">baseline_correction</span><span class="p">()</span>
@@ -138,9 +138,9 @@ be performed too.</p>
 <p>We will be using the estimator generated above for the rest of this
 tutorial. If you do not have access to MATLAB/Spinach, you can construct the
 estimator by using an FID I made earlier:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nmrespy</span> <span class="k">as</span> <span class="nn">ne</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pickle</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ne</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">estimator_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ne</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> \
 <span class="gp">... </span>    <span class="o">/</span> <span class="s2">&quot;samples/jres_sucrose_sythetic/sucrose_jres_synthetic.pkl&quot;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fid_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
@@ -195,7 +195,7 @@ spectrum.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cupid_spectrum</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">cupid_spectrum</span><span class="p">()</span><span class="o">.</span><span class="n">real</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get direct-dimension shifts</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">shifts</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span> <span class="n">meshgrid</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">))</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">init_spectrum</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">shifts</span><span class="p">,</span> <span class="n">cupid_spectrum</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;r&quot;</span><span class="p">)</span>
@@ -262,7 +262,7 @@ plotted.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">shifts_f2</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">get_shifts</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="s2">&quot;ppm&quot;</span><span class="p">,</span> <span class="n">meshgrid</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">fids</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">construct_multiplet_fids</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create an iterator which cycles through values infinitely</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">cycle</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">cycle</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">colors</span> <span class="o">=</span> <span class="n">cycle</span><span class="p">([</span><span class="s2">&quot;#84c757&quot;</span><span class="p">,</span> <span class="s2">&quot;#ef476f&quot;</span><span class="p">,</span> <span class="s2">&quot;#ffd166&quot;</span><span class="p">,</span> <span class="s2">&quot;#36c9c6&quot;</span><span class="p">])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.5</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">))</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">fid</span> <span class="ow">in</span> <span class="n">fids</span><span class="p">:</span>
@@ -432,7 +432,7 @@ files for later use, and saving log files, look at the relevant sections in the
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper"><style>
 .aligncenter {
     text-align: center;

@@ -5,11 +5,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Installation &#8212; NMR-EsPy 2.0.0 documentation</title>
+    <title>Installation &#8212; NMR-EsPy 2.1.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d7e2fa82" />
     <link rel="stylesheet" type="text/css" href="_static/nameko.css?v=2296cfae" />
-    <script src="_static/documentation_options.js?v=51b770b3"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/documentation_options.js?v=20623aea"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -24,7 +24,7 @@
   
   
 
-    <div class="related" role="navigation" aria-label="related navigation">
+    <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -39,7 +39,7 @@
         <li class="right" >
           <a href="index.html" title="NMR-EsPy"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">NMR-EsPy 2.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-0"><a href="index.html">NMR-EsPy 2.1.0 documentation</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Installation</a></li> 
       </ul>
     </div>  
@@ -182,7 +182,7 @@ the following steps.</p>
 <p>Load a Python REPL and enter the following to determine where the GUI loading
 scripts are located:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="go">$ &lt;pyexe&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">nmrespy</span> <span class="kn">import</span> <span class="n">TOPSPINPATHS</span> <span class="k">as</span> <span class="n">tp</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nmrespy</span><span class="w"> </span><span class="kn">import</span> <span class="n">TOPSPINPATHS</span> <span class="k">as</span> <span class="n">tp</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">tp</span><span class="p">:</span>
 <span class="gp">... </span>     <span class="nb">print</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
 <span class="gp">...</span>
@@ -227,7 +227,7 @@ path information.</p>
 your Python executable. One way to determine this which should be independent
 of Operating System is to load a Python REPL and enter the following lines
 (below is an example on Windows):</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">sys</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\\\\</span><span class="s1">&#39;</span><span class="p">)</span> <span class="c1"># replace is needed for Windows</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">{</span><span class="n">exe</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="go">&quot;C:\\Users\\simon\\.venv\\Scripts\\python.exe&quot;</span>
@@ -245,7 +245,7 @@ variable <code class="docutils literal notranslate"><span class="pre">pdflatex_e
 path, enter the following into a REPL:</p>
 <ul>
 <li><p><em>UNIX</em></p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">subprocess</span> <span class="kn">import</span> <span class="n">check_output</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_output</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="n">check_output</span><span class="p">([</span><span class="s2">&quot;which&quot;</span><span class="p">,</span> <span class="s2">&quot;pdflatex&quot;</span><span class="p">])</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exe</span><span class="p">,</span> <span class="s1">&#39;utf-8&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">{</span><span class="n">exe</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -254,7 +254,7 @@ path, enter the following into a REPL:</p>
 </div>
 </li>
 <li><p><em>Windows</em></p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">subprocess</span> <span class="kn">import</span> <span class="n">check_output</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="kn">import</span> <span class="n">check_output</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="n">check_output</span><span class="p">(</span><span class="s2">&quot;where pdflatex&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">exe</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exe</span><span class="p">,</span> <span class="s1">&#39;utf-8&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\\\</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="si">{</span><span class="n">exe</span><span class="si">}</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -336,7 +336,7 @@ installation instructions</a>)</p></li>
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper"><style>
 .aligncenter {
     text-align: center;
